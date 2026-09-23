@@ -23,6 +23,7 @@ dependencies:
   - numpy>=1.26
   - rdkit>=2025.03,<2026    # Dimorphite-DL 2.0.2 requires RDKit <2026; use the compatible 2025 series.
   - dimorphite-dl=2.0.2     # protonation adapter reference implementation, Phase 4.3
+  - biopython>=1.83,<2      # mmCIF parsing and chain/entity structure extraction, Phase 4.4
   # --- build + quality tooling ---
   - hatchling>=1.25
   - pytest>=8

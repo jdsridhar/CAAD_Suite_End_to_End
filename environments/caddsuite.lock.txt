@@ -161,6 +161,7 @@ https://conda.anaconda.org/conda-forge/noarch/typing-inspection-0.4.4-pyhcf101f3
 https://conda.anaconda.org/conda-forge/noarch/wheel-0.48.0-pyhd8ed1ab_0.conda#9a2124517bfd5d792e0f7b86eefdfeb8
 https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_3.conda#3845f3d75991bae0fb90884662f4327c
 https://conda.anaconda.org/conda-forge/noarch/annotated-types-0.8.0-pyhd8ed1ab_0.conda#108c928d2a8551832dbc762b535e90bb
+https://conda.anaconda.org/conda-forge/linux-64/biopython-1.88-py312h5cc1888_1.conda#c37ac31f8250f43dd0455d7bb8334f87
 https://conda.anaconda.org/conda-forge/linux-64/contourpy-1.4.0-py312h9be0db6_1.conda#64e62dfa49dd4688301b02d8cfea3687
 https://conda.anaconda.org/conda-forge/noarch/email-validator-2.3.0-pyhd8ed1ab_0.conda#3bc0ac31178387e8ed34094d9481bfe8
 https://conda.anaconda.org/conda-forge/linux-64/grimp-3.17-py312hc767a74_1.conda#950f3dd0045c0b51a2adf786d27d2cd9

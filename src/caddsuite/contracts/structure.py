@@ -50,6 +50,44 @@ class Structure(VersionedContract):
     raw: ArtifactRef
 
 
+class PolymerChainCandidate(ContractModel):
+    """A polymer chain mapped from an mmCIF label ID to its author-facing chain ID."""
+
+    label_asym_id: NonEmptyStr
+    auth_asym_id: str | None = None
+    entity_id: NonEmptyStr
+    description: str | None = None
+    sequence: str = ""
+    molecule_type: NonEmptyStr
+    observed_residue_count: Annotated[int, Field(ge=0)] = 0
+
+
+class LigandCandidate(ContractModel):
+    """A non-water non-polymer residue instance that may be selected for the target."""
+
+    component_id: NonEmptyStr
+    label_asym_id: NonEmptyStr
+    auth_asym_id: str | None = None
+    label_entity_id: str | None = None
+    auth_seq_id: str | None = None
+    insertion_code: str | None = None
+    name: str | None = None
+    category: Literal["ligand", "cofactor", "additive", "ion", "metal", "other"]
+    atom_count: Annotated[int, Field(ge=1)]
+
+
+class StructureSplit(VersionedContract):
+    """Candidate polymer chains and small-molecule components from one raw structure."""
+
+    schema_version: str = "structure_split/1.0"
+
+    id: ULIDStr
+    structure_id: ULIDStr
+    polymer_chains: tuple[PolymerChainCandidate, ...]
+    ligand_candidates: tuple[LigandCandidate, ...]
+    entity_sequences: dict[str, str]
+
+
 class ComponentRecord(ContractModel):
     """A non-polymer component found in a structure (and what happened to it)."""
 

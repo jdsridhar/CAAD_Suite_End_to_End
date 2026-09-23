@@ -33,3 +33,5 @@ Start with the audit, then read in this order:
 New ADRs: copy [`ADR/0000-template.md`](ADR/0000-template.md), take the next number, and never delete or renumber. Supersede instead.
 
 The runtime scheduling model, restart contract, and current limits are documented in [WORKFLOW_SCHEDULER.md](WORKFLOW_SCHEDULER.md).
+
+Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](CHEMISTRY_STANDARDIZATION.md), [PROTONATION.md](PROTONATION.md), and [STRUCTURE_SOURCE.md](STRUCTURE_SOURCE.md).

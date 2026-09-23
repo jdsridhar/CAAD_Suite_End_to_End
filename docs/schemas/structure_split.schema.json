@@ -1,0 +1,218 @@
+{
+  "$defs": {
+    "LigandCandidate": {
+      "additionalProperties": false,
+      "description": "A non-water non-polymer residue instance that may be selected for the target.",
+      "properties": {
+        "atom_count": {
+          "minimum": 1,
+          "title": "Atom Count",
+          "type": "integer"
+        },
+        "auth_asym_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auth Asym Id"
+        },
+        "auth_seq_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auth Seq Id"
+        },
+        "category": {
+          "enum": [
+            "ligand",
+            "cofactor",
+            "additive",
+            "ion",
+            "metal",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "component_id": {
+          "minLength": 1,
+          "title": "Component Id",
+          "type": "string"
+        },
+        "insertion_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Insertion Code"
+        },
+        "label_asym_id": {
+          "minLength": 1,
+          "title": "Label Asym Id",
+          "type": "string"
+        },
+        "label_entity_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label Entity Id"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        }
+      },
+      "required": [
+        "component_id",
+        "label_asym_id",
+        "category",
+        "atom_count"
+      ],
+      "title": "LigandCandidate",
+      "type": "object"
+    },
+    "PolymerChainCandidate": {
+      "additionalProperties": false,
+      "description": "A polymer chain mapped from an mmCIF label ID to its author-facing chain ID.",
+      "properties": {
+        "auth_asym_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Auth Asym Id"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "entity_id": {
+          "minLength": 1,
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "label_asym_id": {
+          "minLength": 1,
+          "title": "Label Asym Id",
+          "type": "string"
+        },
+        "molecule_type": {
+          "minLength": 1,
+          "title": "Molecule Type",
+          "type": "string"
+        },
+        "observed_residue_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Observed Residue Count",
+          "type": "integer"
+        },
+        "sequence": {
+          "default": "",
+          "title": "Sequence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label_asym_id",
+        "entity_id",
+        "molecule_type"
+      ],
+      "title": "PolymerChainCandidate",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/structure_split/1.0",
+  "additionalProperties": false,
+  "description": "Candidate polymer chains and small-molecule components from one raw structure.",
+  "properties": {
+    "entity_sequences": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Entity Sequences",
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "ligand_candidates": {
+      "items": {
+        "$ref": "#/$defs/LigandCandidate"
+      },
+      "title": "Ligand Candidates",
+      "type": "array"
+    },
+    "polymer_chains": {
+      "items": {
+        "$ref": "#/$defs/PolymerChainCandidate"
+      },
+      "title": "Polymer Chains",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "structure_split/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "structure_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Structure Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "structure_id",
+    "polymer_chains",
+    "ligand_candidates",
+    "entity_sequences"
+  ],
+  "title": "StructureSplit",
+  "type": "object"
+}
