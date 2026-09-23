@@ -20,7 +20,8 @@ Build a **small, well-tested orchestration core** (target < 3 k lines) with:
 - content-hash cache keys;
 - retry policies;
 - a restricted expression language for gates;
-- a resource-aware scheduler over the `Executor` interface (ADR-0007).
+- a resource-aware scheduler over the `Executor` interface (ADR-0007);
+- dynamic per-subject task materialization, normalized-output caching, explicit stage handlers, and safe recovery reconciliation for running/interrupted tasks.
 
 Workflow definitions stay **engine-agnostic and declarative**, so exporting to an external engine (e.g. Snakemake or CWL) remains possible.
 
@@ -44,8 +45,8 @@ Gate text is parsed with Python's AST and interpreted by a small allowlist. It s
 | **Celery/RQ queues** | Simple distributed tasks | Queues without DAG semantics, caching or provenance |
 
 ## Consequences
-- Positive: exactly the semantics we need (gates, decisions, content-hash cache); fully testable with fake adapters; small enough to understand end to end.
-- Negative: we own the scheduler's correctness, so the test suite must include kill-and-resume, cancellation and failure-isolation tests; less mature HPC support than Snakemake/Nextflow.
+- Positive: exactly the semantics we need (gates, decisions, content-hash cache); the scheduler now has fake-handler integration tests for fan-out, retries, failure isolation, same-run resume, cache reuse, and handler-mediated crash recovery. The core remains small enough to understand end to end.
+- Negative: we own the scheduler's correctness, so the test suite must include kill-and-resume, cancellation and failure-isolation tests; less mature HPC support than Snakemake/Nextflow. Engine-specific process records and cancellation wiring remain adapter/application integration work.
 - Mitigation: keep definitions declarative; implement the SLURM executor behind the `Executor` interface; design for crash-only recovery (state is always in the DB).
 
 ## Revisit when

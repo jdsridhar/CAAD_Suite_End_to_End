@@ -1,0 +1,55 @@
+{
+  "dataset": "G-DOCK-1",
+  "source_project": "/home/sridhar/dockingsuite_data/projects/test_docking",
+  "source_policy": "Copied small author-owned reference inputs and outputs; original project was read-only.",
+  "target": "5NIU",
+  "ligands": {
+    "RC8__5NIU": {
+      "raw_smiles": "[Na]OC(=O)CNc1cc(CCC(=O)Nc2ccc(c(c2)C)F)ccc1OC",
+      "standardized_smiles": "COc1ccc(CCC(=O)Nc2ccc(F)c(C)c2)cc1NCC(=O)O",
+      "score_kcal_mol": -10.219,
+      "heavy_atoms": 26,
+      "ligand_efficiency_kcal_mol_per_heavy_atom": 0.393,
+      "status": "docked"
+    },
+    "RC34__5NIU": {
+      "raw_smiles": "[Na]OC(=O)CNc1cc(CCNC(=O)C(=O)Nc2cccc(c2)C)ccc1OC",
+      "standardized_smiles": "COc1ccc(CCNC(=O)C(=O)Nc2cccc(C)c2)cc1NCC(=O)O",
+      "score_kcal_mol": -10.251,
+      "heavy_atoms": 28,
+      "ligand_efficiency_kcal_mol_per_heavy_atom": 0.3661,
+      "status": "docked"
+    }
+  },
+  "docking": {
+    "engine": "AutoDock Vina",
+    "version": "f458505-mod",
+    "scoring_function": "vina",
+    "seed": 42,
+    "exhaustiveness": 16,
+    "num_modes": 9,
+    "cpu": 14,
+    "center_angstrom": [
+      4.701,
+      12.376,
+      188.797
+    ],
+    "size_angstrom": [
+      28.3,
+      22.0,
+      22.0
+    ]
+  },
+  "ligand_preparation": {
+    "rdkit": "2025.03.6",
+    "embedder": "ETKDGv3",
+    "seed": 42,
+    "force_field": "MMFF94",
+    "max_iterations": 2000
+  },
+  "box_method": "arithmetic coordinate center; max(axis range + 2*5.0 A, 22.0 A)",
+  "limitations": [
+    "This pins the legacy run output; it is not a redocking benchmark or independent scientific validation.",
+    "Scores can vary with Vina build, CPU behavior, and exact receptor/ligand preparation."
+  ]
+}

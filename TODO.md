@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 3 — Workflow engine, execution layer, CLI skeleton |
-| **Last completed** | Phase 3.10 plugin registry and adapter conformance skeleton (2026-09-24) |
-| **Current task** | [-] 3.11 Fake-adapter workflow integration gate |
-| **Next task** | Phase 4.1 legacy docking behavior fixtures |
+| **Current phase** | Phase 4 — Docking migration |
+| **Last completed** | Phase 3.11 fake-handler workflow scheduler gate (2026-09-24) |
+| **Current task** | [-] 4.2 Chemical standardization and seeded conformer embedding |
+| **Next task** | Phase 4.3 pH 7.4 protonation adapter |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -94,7 +94,7 @@ When the user says **CONTINUE**:
 - [x] 2.10 import-linter layer contracts
 - [x] 2.11 Gate: unit tests, exported schemas, architecture contracts
 
-## Phase 3 — Workflow engine, execution layer, CLI skeleton `[-]`
+## Phase 3 — Workflow engine, execution layer, CLI skeleton `[x]`
 
 - [x] 3.1 Workflow definition schema (`caddsuite.workflow/1`) + example workflows (`workflows/*.yaml`)
 - [x] 3.2 Compiler: validate against capabilities and contract types; build task graph (symbolic fan-out per compound/pose)
@@ -104,20 +104,24 @@ When the user says **CONTINUE**:
 - [x] 3.6 Resource contracts + thread-safe local admission scheduler for CPU, host memory, and exclusive GPU IDs; GPU memory minimums are enforced when reported; leases are process-local and require task reconciliation after restart
 - [x] 3.7 Gate expression language uses an AST allowlist, declared dotted fields, safe helpers, and no `eval`; malicious expressions and missing fields are tested
 - [x] 3.8 Stage-configured retry/backoff policy; atomic decision persistence + task resume; dependency-aware rerun planning and transactional downstream task reset/cache invalidation. REST/CLI endpoints and checkpoint-aware retry remain in Phases 13 and 3.11.
-- [x] 3.9 Typer CLI: doctor, project create/list, workflow validate/plan, status, decide, logs; actual run is guarded until 3.11, and compound import follows Phase 4 standardization. Usage documented in docs/CLI.md
+- [x] 3.9 Typer CLI skeleton: doctor, project create/list, workflow validate/plan, status, decide, logs; actual execution remains guarded until engine-backed stage handlers and normalized input loading are wired in Phases 4-10. Compound import follows Phase 4 standardization. Usage documented in docs/CLI.md
 - [x] 3.10 Plugin registry discovers the caddsuite.adapters entry-point group, checks plugin/adapter IDs and StageCapability conflicts, exposes immutable snapshots, and provides structural adapter conformance checks; family-level scientific conformance remains Phases 4-10 and 14
-- [ ] 3.11 **Gate:** fake-adapter suite green — fan-out, gates, cache hit/miss, **kill -9 → resume**, cancel kills tree, failure isolation
+- [x] 3.11 **Gate:** fake-handler scheduler integration — fan-out, gates, cache hit/miss, **kill -9 → resume**, process-tree cancellation, failure isolation
   - [x] Durable SQLite cache for normalized contract payloads; first successful cache writer wins.
   - [x] Compiled task templates retain gate, failure policy, and retry settings.
   - [x] Executor recovery tests kill the supervisor, reattach to the live process, cancel the old process tree, and rerun the interrupted task.
   - [x] Cache hit/miss, result schema validation, and task state integration tests.
-  - [ ] Implement a cohesive scheduler run loop integrating dynamic fan-out, per-item gate evaluation, cache lookup, retries, and failure isolation.
-  - **Status:** reusable primitives and component-level fake-adapter tests are validated; scheduler orchestration remains open, so the Phase 3 gate is not yet complete.
+  - [x] Engine-neutral scheduler resolves workflow bindings, expands fan-out by stable subject ID, applies gates/retries/failure policies, and caches normalized outputs.
+  - [x] Same-run resume reuses persisted task identity; reset tasks rebind deterministic cache keys; new workflow runs reuse compatible cached results.
+  - [x] Running/interrupted work requires explicit handler reconciliation before re-execution; test covers supervisor loss, interruption and safe resume.
+  - [x] Fake-handler integration suite covers the combined path; LocalExecutor tests independently verify SIGKILL recovery and process-tree cancellation.
+  - [x] Scheduler architecture and learning notes documented in docs/architecture/WORKFLOW_SCHEDULER.md.
+  - **Gate result:** full check passes, including 186 tests at the Phase 3.11 checkpoint; the later full repository gate now has 195 tests. Scientific engine handlers and CLI execution wiring remain in their migration phases.
 
-## Phase 4 — Docking migration `[ ]`
+## Phase 4 — Docking migration `[-]`
 
-- [ ] 4.1 Golden tests pinning legacy behaviour (standardize, embed, normalize_input, make_box, build_complex, collect_scores) on G-DOCK-1 inputs
-- [ ] 4.2 `chem.standardize` (policy object) + `chem.embed` (merged, seeded) + registry import (InChIKey)
+- [x] 4.1 Golden tests pinning legacy behaviour (standardize, embed, normalize_input, make_box, build_complex, collect_scores) on G-DOCK-1 inputs
+- [-] 4.2 `chem.standardize` (policy object) + `chem.embed` (merged, seeded) + registry import (InChIKey)
 - [ ] 4.3 `chem.protonation` (per Q3) with recorded method/pH/version
 - [ ] 4.4 `adapters.structure_sources.rcsb` + `structure.split` (keep SEQRES; candidate ligands; DECISION_REQUIRED on ambiguity — SCI-11, SCI-24)
 - [ ] 4.5 `structure.prepare_protein` (PDBFixer protocol, sequence-aware gaps) — runs as a worker in `cadd`
@@ -278,7 +282,7 @@ When the user says **CONTINUE**:
 
 - [ ] T1 Unit tests per module (from 2.4 on)
 - [ ] T2 Adapter golden tests (plans + normalizers on recorded real outputs)
-- [ ] T3 Workflow tests with fake adapters (3.11)
+- [x] T3 Workflow tests with fake handlers (3.11)
 - [ ] T4 Engine-marked integration tests (auto-skip when the engine is absent)
 - [ ] T5 Regression suite vs legacy golden datasets (MIGRATION_PLAN §3)
 
@@ -299,6 +303,8 @@ When the user says **CONTINUE**:
 | Date | Session summary |
 |---|---|
 | 2026-09-24 | Phase 3.11 in progress: durable normalized-result cache (migration 0003), compiled gate/failure/retry policy preservation, and process recovery/cancellation tests added. Full gate: 182 tests pass; Ruff, strict mypy, import-linter and schemas pass. Remaining: cohesive fake-adapter scheduler run loop for fan-out, gates, cache reuse and failure isolation. |
+| 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |
+| 2026-09-24 | Phase 3.11 complete: engine-neutral scheduler now resolves bindings, dynamically fans out by stable subject identity, evaluates restricted gates, retries configured error codes, isolates per-subject failures, persists/reuses task instances, and caches normalized outputs across runs. Crash-resume requires handler reconciliation for RUNNING/INTERRUPTED work; no duplicate process is launched without confirmation. Full gate: 186 tests; Ruff, formatting, strict mypy (67 files), import-linter, and schemas pass. Starting Phase 4.1 legacy docking golden fixtures. |
 | 2026-09-24 | Phase 3.10 completed: plugin factory discovery through Python entry points, deterministic ID/capability registration, early failures for duplicates/conflicts/broken adapters, common port types, a structural conformance check, plugin SDK guide, and plugin-aware doctor output. Full gate: 173 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting fake-adapter integration gate (3.11). |
 | 2026-09-24 | Phase 3.9 CLI skeleton completed: local doctor, project create/list, workflow validation and plan-only display, run guard, task status, atomic decision submission, and artifact log tail; documented in docs/CLI.md. Raw compound import is deferred to Phase 4 so input is not misrepresented as standardized chemistry. Full gate: 169 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting plugin registry (3.10). |
 | 2026-09-24 | Phase 3.8 completed: bounded per-stage retry policy with explicit retryable error codes/backoff; human decisions are committed with AWAITING_DECISION -> READY and state history atomically; dependency-aware rerun plans reset selected tasks transactionally and clear their current cache keys, refusing active work. Workflow schema refreshed. Full gate: 163 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting CLI milestone (3.9). |

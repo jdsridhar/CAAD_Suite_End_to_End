@@ -18,7 +18,7 @@ caddsuite logs ARTIFACT_ID [--tail-bytes N] [--data-root PATH]
 
 The data root defaults to `~/caddsuite_data`; set `CADDSUITE_DATA_ROOT` or pass `--data-root` to select another Linux-native location.
 
-`workflow validate` checks the declarative workflow structure without requiring scientific engines. `run --plan-only` prints the declared stage plan. Actual runs remain disabled until the plugin registry and scheduler gate are complete; the CLI reports this explicitly and does not create a pretend workflow run.
+`workflow validate` checks the declarative workflow structure without requiring scientific engines. `run --plan-only` prints the declared stage plan. Actual runs remain plan-only until the initial engine adapters and a plugin-backed StageHandler/input loader are wired into the CLI. The scheduler itself is implemented and integration-tested with fake handlers; the CLI will not create a scientific run that cannot execute its selected engines.
 
 `compound import` will be added with Phase 4 chemical standardization. The import command must create a reproducible neutral-parent identity and preserve the selected calculation form, so storing a raw SMILES as if it were a standardized compound would be misleading.
 

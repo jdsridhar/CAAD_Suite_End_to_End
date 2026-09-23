@@ -119,6 +119,64 @@ class TaskStateStore:
                 raise TaskNotFound(f"task {task_id!r} does not exist")
             return _snapshot(task)
 
+    def set_cache_key(self, task_id: str, cache_key: str, *, expected_version: int) -> TaskSnapshot:
+        """Bind a deterministic key to a reset pending task before it is scheduled."""
+        if not re.fullmatch(r"[0-9a-f]{64}", cache_key):
+            raise ValueError("cache_key must be a lowercase SHA-256 digest")
+        with self._sessions.begin() as session:
+            result = cast(
+                CursorResult[Any],
+                session.execute(
+                    update(TaskRow)
+                    .where(
+                        TaskRow.id == task_id,
+                        TaskRow.state == TaskState.PENDING.value,
+                        TaskRow.version == expected_version,
+                        TaskRow.cache_key.is_(None),
+                    )
+                    .values(cache_key=cache_key, updated_at=utcnow())
+                ),
+            )
+            if result.rowcount != 1:
+                task = session.get(TaskRow, task_id)
+                if task is None:
+                    raise TaskNotFound(f"task {task_id!r} does not exist")
+                raise RuntimeError(
+                    f"task {task_id!r} must be pending at version {expected_version} "
+                    "with no cache key before assigning one"
+                )
+            task = session.get(TaskRow, task_id)
+            if task is None:
+                raise RuntimeError(f"task {task_id!r} disappeared while assigning its cache key")
+            return _snapshot(task)
+
+    def find_instance(
+        self,
+        *,
+        run_id: str,
+        stage_id: str,
+        subject_kind: str | None,
+        subject_id: str | None,
+    ) -> TaskSnapshot | None:
+        """Find a persisted stage instance for resume; duplicates indicate corrupt scheduling."""
+        with self._sessions() as session:
+            rows = tuple(
+                session.scalars(
+                    select(TaskRow).where(
+                        TaskRow.run_id == run_id,
+                        TaskRow.stage_id == stage_id,
+                        TaskRow.subject_kind == subject_kind,
+                        TaskRow.subject_id == subject_id,
+                    )
+                )
+            )
+            if len(rows) > 1:
+                raise RuntimeError(
+                    f"run {run_id!r} has duplicate task instances for "
+                    f"stage={stage_id!r}, subject={subject_id!r}"
+                )
+            return _snapshot(rows[0]) if rows else None
+
     def transition(
         self,
         task_id: str,

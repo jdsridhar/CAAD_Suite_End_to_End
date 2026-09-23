@@ -1,0 +1,3 @@
+name,smiles,pdb_id,safe_id
+RC8,[Na]OC(=O)CNc1cc(CCC(=O)Nc2ccc(c(c2)C)F)ccc1OC,5NIU,RC8__5NIU
+RC34,[Na]OC(=O)CNc1cc(CCNC(=O)C(=O)Nc2cccc(c2)C)ccc1OC,5NIU,RC34__5NIU

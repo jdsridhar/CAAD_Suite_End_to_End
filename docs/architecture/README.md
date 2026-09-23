@@ -30,3 +30,5 @@ Start with the audit, then read in this order:
 | [0015](ADR/0015-proof-of-extensibility-engines.md) | Second engine per family: AutoDock4, OpenMM (then NAMD), PySCF (then ORCA) | Accepted |
 
 New ADRs: copy [`ADR/0000-template.md`](ADR/0000-template.md), take the next number, and never delete or renumber. Supersede instead.
+
+The runtime scheduling model, restart contract, and current limits are documented in [WORKFLOW_SCHEDULER.md](WORKFLOW_SCHEDULER.md).
