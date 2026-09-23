@@ -15,6 +15,10 @@ Legacy code hard-wires engines into orchestration: "docking" means Vina + Meeko 
 5. Every adapter must pass a published **conformance test suite**.
 6. Layering is enforced by an `import-linter` contract: the core never imports `adapters`.
 
+## Initial implementation boundary (Phase 3.10)
+
+The registry loads no-argument factories from `caddsuite.adapters` and records plugin ID/version, adapter ID, and typed stage capabilities. Its initial conformance check verifies required metadata and method presence only; it does not prove that an adapter's plan is safe, its normalized results are correct, or its science is valid. Those checks will be added with each migrated family adapter and the Phase 14 fixture-based conformance suite. Executable availability and version probing remain adapter-owned so the core has no engine-name branches.
+
 ## Alternatives considered
 | Option | Pros | Cons | Why not |
 |---|---|---|---|

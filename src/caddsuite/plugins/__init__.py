@@ -1,1 +1,21 @@
-"""Entry-point discovery of adapters and the adapter conformance kit — Phase 3 (§5.5)."""
+"""Installed plugin discovery and the initial adapter conformance kit."""
+
+from caddsuite.plugins.registry import (
+    AdapterPlugin,
+    AdapterRegistration,
+    PluginDiscoveryError,
+    PluginRegistry,
+    PluginSnapshot,
+    RegisteredAdapter,
+    adapter_conformance_issues,
+)
+
+__all__ = [
+    "AdapterPlugin",
+    "AdapterRegistration",
+    "PluginDiscoveryError",
+    "PluginRegistry",
+    "PluginSnapshot",
+    "RegisteredAdapter",
+    "adapter_conformance_issues",
+]

@@ -12,6 +12,7 @@ import typer
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from caddsuite.plugins.registry import PluginDiscoveryError, PluginRegistry
 from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
@@ -50,17 +51,32 @@ def register_commands(app: typer.Typer) -> None:
         """Report the data root and database migration state."""
         root = resolve_data_root(data_root)
         db = database_path(root)
+        plugin_error = None
+        try:
+            snapshot = PluginRegistry.discover().snapshot()
+            plugins = [
+                {
+                    "plugin_id": plugin_id,
+                    "version": version,
+                    "adapters": [
+                        adapter.adapter_id
+                        for adapter in snapshot.adapters.values()
+                        if adapter.plugin_id == plugin_id
+                    ],
+                }
+                for plugin_id, version in snapshot.plugins
+            ]
+        except PluginDiscoveryError as exc:
+            plugins = []
+            plugin_error = str(exc)
         typer.echo(
             json.dumps(
                 {
                     "data_root": str(root),
                     "database_exists": db.exists(),
                     "database_revision": migrate.current_revision(db) if db.exists() else None,
-                    "engine_plugins": [],
-                    "note": (
-                        "Engine discovery is provided by installed plugins; none are"
-                        " registered yet."
-                    ),
+                    "plugins": plugins,
+                    "plugin_discovery_error": plugin_error,
                 },
                 indent=2,
             )
