@@ -1,0 +1,11 @@
+CADD Suite
+Copyright 2026 jdsridhar
+
+This repository is licensed under the Apache License, Version 2.0.
+The full license text is in the LICENSE file.
+
+CADD Suite is being developed as a unification of independent scientific
+applications authored by jdsridhar. Third-party scientific engines and services
+(including licensed or non-commercial software) are not included or relicensed
+by this repository. Their users remain responsible for obtaining and complying
+with the relevant software licenses and terms.

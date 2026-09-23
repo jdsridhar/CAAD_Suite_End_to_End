@@ -1,6 +1,6 @@
 # ADR-0013: Open-source license for the platform; process boundaries keep copyleft and non-commercial engines isolated
 
-- **Status:** **Proposed**. Apache-2.0 is recommended; the author must confirm it before a `LICENSE` file is added, because a license is the author's own legal statement.
+- **Status:** **Accepted** (author approved Apache-2.0 on 2026-09-23).
 - **Date:** 2026-09-23
 - **Related:** Q1 (the author wrote all four legacy apps), Q2 (publish as open source), ADR-0002, Audit §4.3
 
@@ -13,7 +13,7 @@
   - **Strong copyleft:** Open Babel (**GPL-2.0-only**), gmx_MMPBSA (**GPL-3.0**), parts of AmberTools (GPL-3.0), PLIP (GPL family, to verify), PyQt (GPL-3.0; not used).
   - **Non-commercial / proprietary:** CHARMM-GUI (web service), CGenFF, NAMD/VMD, ORCA, Gaussian.
 
-## Decision (proposed)
+## Decision
 1. License the platform under **Apache-2.0**: permissive, includes an explicit patent grant, widely used in scientific software, and compatible with inclusion in GPL-3.0 projects.
 2. **Isolation rule:** platform code (`src/caddsuite`, `src/caddsuite_worker`) **never imports GPL-licensed libraries in-process**. GPL tools run as *separate programs* (CLI, or a worker process inside the engine's own environment). This is ADR-0002's process isolation, which here doubles as license isolation. Examples: Open Babel via the `obabel` CLI, never `pybel`; PLIP via its CLI.
 3. If an in-process GPL import is ever unavoidable, that code goes into a **separately packaged, GPL-licensed optional plugin**. The core never depends on it.
@@ -35,7 +35,7 @@
 - Negative: contributors must follow the isolation rule. An import-linter contract will forbid imports of known GPL modules (`openbabel`, `pybel`, `plip`, `PyQt5/6`) from `caddsuite*`.
 
 ## Revisit when
-Before the first public release (Phase 18), or if a required GPL library has no CLI and must be imported.
+If a required GPL library has no CLI and must be imported, or if the distribution model materially changes.
 
 ## Learning notes
 Licenses attach to *distribution* and *derivative works*. Calling a GPL program as a separate process is generally treated as "mere aggregation", while importing a GPL library into one Python process is widely considered creating a combined work. This is why architecture and licensing interact. This is not legal advice; complex cases need a lawyer.

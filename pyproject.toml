@@ -8,8 +8,7 @@ dynamic = ["version"]
 description = "Extensible, reproducible computational drug-discovery platform: engine-independent docking, MD, MM/GBSA and QM workflows through adapters, with full provenance."
 readme = "README.md"
 requires-python = ">=3.11"
-# License: open source (decision Q2). The exact license is pending the author's
-# confirmation, see docs/architecture/ADR/0013 (Apache-2.0 proposed).
+license = "Apache-2.0"
 keywords = ["drug discovery", "docking", "molecular dynamics", "quantum chemistry", "provenance", "workflow"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",

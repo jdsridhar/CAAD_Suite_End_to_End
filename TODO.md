@@ -10,7 +10,7 @@
 | **Last completed** | Phase 3.1 workflow definitions and examples (2026-09-23) |
 | **Current task** | [ ] 3.2 Workflow compiler: capability/type validation and task graph |
 | **Next task** | 3.3 Task state machine persisted in SQLite |
-| **Blocking questions** | No Phase 3 blockers. Select the platform license before the first public push (ADR-0013; Apache-2.0 is proposed). |
+| **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -29,8 +29,8 @@ When the user says **CONTINUE**:
 
 | ID | Resolution | Status / follow-up |
 |---|---|---|
-| Q1 | `autodock-autopilot-main` is entirely the author's code. | Resolved; eligible for incremental migration. Add license/NOTICE before public distribution. |
-| Q2 | The platform will be published as open source. | Resolved for platform distribution. Exact platform license is still a release decision; licensed/non-commercial engines remain user-installed and are never bundled. |
+| Q1 | `autodock-autopilot-main` is entirely the author's code. | Resolved; eligible for incremental migration. |
+| Q2 | The platform will be published as open source. | Resolved; Apache-2.0 selected, and licensed/non-commercial engines remain user-installed and are never bundled. |
 | Q3 | Use standardized neutral parent for registry identity and ADMET; calculate using explicit pH 7.4 microstates, require a decision when ambiguous; neutral remains explicit reproduction option. | Accepted in ADR-0014. |
 | Q4 | Preserve CHARMM-GUI bundle import and add an automated AmberTools/AMBER-family builder. | Accepted in ADR-0011. |
 | Q5 | OpenMM as the second MD engine; NAMD later. | Accepted in ADR-0015. |
@@ -53,7 +53,7 @@ When the user says **CONTINUE**:
 - [x] 0010 Scientific validation as a first-class subsystem — Accepted
 - [x] 0011 MD system building: CHARMM-GUI import + AmberTools builder — Accepted (Q4)
 - [x] 0012 Reproducibility: provenance + env locks + export — Accepted
-- [ ] 0013 Open-source license/dependency isolation — Apache-2.0 proposed; exact license and NOTICE required before public release
+- [x] 0013 Open-source license/dependency isolation - Apache-2.0 accepted; LICENSE and NOTICE added
 - [x] 0014 Ligand identity/forms and pH 7.4 protonation policy — Accepted (Q3)
 - [x] 0015 Second engines: AutoDock4, OpenMM, PySCF — Accepted (Q1, Q5, Q6)
 
@@ -286,11 +286,10 @@ When the user says **CONTINUE**:
 
 ## Blockers
 
-- No Phase 3 implementation blocker. Initial commit is recorded locally; public distribution awaits the platform license selection in ADR-0013.
-- Public release requires selecting the exact platform license and adding LICENSE/NOTICE (ADR-0013).
+- No Phase 3 implementation blocker. Apache-2.0 is selected; LICENSE and NOTICE are present; the authorized initial public push is being completed.
 
 ## Session log
 
 | Date | Session summary |
 |---|---|
-| 2026-09-23 | Phase 3.1 completed: versioned engine-neutral workflow schema, safe YAML loader, structural DAG/binding validation, deterministic JSON Schema export, two example workflows, and tests. Quality gate: 103 tests pass; Ruff, strict mypy, import-linter and schema freshness pass. Frozen 143-file legacy baseline matches. Compiler/capability and contract compatibility remain Phase 3.2. Audit and architecture accepted; Q1–Q6 and D1/D2 resolved. Copied 21 files into WSL with hash verification, removed active OneDrive copy (pointer retained), initialized Git, created isolated `caddsuite` env and explicit lock. Phase 2 implemented: contracts/schema exporter, units, identities/accessions, validation, SQLAlchemy/Alembic/SQLite WAL, artifact store, provenance, CLI subset, docs and tests. Gate: 99 tests pass, 96% statement coverage; Ruff, strict mypy, import-linter and schema checks pass. Legacy baseline verified. The initial commit is recorded locally; public push awaits license selection. |
+| 2026-09-23 | Phase 3.1 completed: versioned engine-neutral workflow schema, safe YAML loader, structural DAG/binding validation, deterministic JSON Schema export, two example workflows, and tests. Quality gate: 103 tests pass; Ruff, strict mypy, import-linter and schema freshness pass. Frozen 143-file legacy baseline matches. Compiler/capability and contract compatibility remain Phase 3.2. Audit and architecture accepted; Q1–Q6 and D1/D2 resolved. Copied 21 files into WSL with hash verification, removed active OneDrive copy (pointer retained), initialized Git, created isolated `caddsuite` env and explicit lock. Phase 2 implemented: contracts/schema exporter, units, identities/accessions, validation, SQLAlchemy/Alembic/SQLite WAL, artifact store, provenance, CLI subset, docs and tests. Gate: 99 tests pass, 96% statement coverage; Ruff, strict mypy, import-linter and schema checks pass. Legacy baseline verified. Initial commit 088e82a recorded locally; Apache-2.0 license and NOTICE added; public push underway. |

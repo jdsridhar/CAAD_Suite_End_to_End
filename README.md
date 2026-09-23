@@ -44,10 +44,10 @@ Keep the repository and data on the Linux filesystem (`~/…`), not under `/mnt/
 - [Architecture overview](docs/architecture/README.md): target architecture, domain model, migration plan, ADRs
 - [Developer setup](docs/dev/DEVELOPER_SETUP.md) · [Learning notes](docs/dev/LEARNING_NOTES.md)
 
+## License
+
+CADD Suite is licensed under the [Apache License 2.0](LICENSE). The [NOTICE](NOTICE) file identifies project attribution and clarifies that third-party scientific engines and services are not distributed here.
+
 ## Scientific honesty
 
 Everything this platform computes is a **computational prediction**. Docking scores are not binding free energies. MM/GBSA values are end-point estimates, not experimental ΔG. A prioritized candidate is *prioritized according to configured computational criteria*. It is not proven active. Experimental validation is always required.
-
-## License
-
-The platform will be released as open source. The license is pending the author's confirmation (Apache-2.0 proposed, see [ADR-0013](docs/architecture/ADR/0013-open-source-license-and-dependency-isolation.md)). Engines keep their own licenses and are never bundled.
