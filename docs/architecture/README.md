@@ -5,8 +5,9 @@ Start with the audit, then read in this order:
 1. [`../ARCHITECTURE_AUDIT.md`](../ARCHITECTURE_AUDIT.md): what exists today. It covers four apps and ~15 k lines, and gives evidence-referenced findings (SCI-/ARCH-/SEC-/REPRO- IDs used throughout these docs).
 2. [`TARGET_ARCHITECTURE.md`](TARGET_ARCHITECTURE.md): the layered design: ports & adapters, workers, executors, workflow engine, validation, storage and provenance, and the Docking→MD transition.
 3. [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md): entities, accessions (`CMP0001_DOCK_001` …), normalized result contracts, units policy.
-4. [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md): legacy → target mapping, golden datasets from your real results, phase gates, intentional-change log, risks.
-5. [`ADR/`](ADR/): the decisions and why they were made.
+4. [WORKFLOW_COMPILER.md](WORKFLOW_COMPILER.md): capability lookup, typed edges, deterministic task templates, and deferred fan-out.
+5. [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md): legacy → target mapping, golden datasets from your real results, phase gates, intentional-change log, risks.
+6. [`ADR/`](ADR/): the decisions and why they were made.
 
 ## Architecture Decision Records
 
@@ -24,7 +25,7 @@ Start with the audit, then read in this order:
 | [0010](ADR/0010-scientific-compatibility-validation-first-class.md) | Scientific compatibility validation as a subsystem | Accepted |
 | [0011](ADR/0011-md-system-building-charmm-gui-import-plus-automated-builder.md) | MD system building: CHARMM-GUI import + AmberTools builder | Accepted |
 | [0012](ADR/0012-reproducibility-mechanism.md) | Reproducibility: provenance + env locks + export; containers optional | Accepted |
-| [0013](ADR/0013-open-source-license-and-dependency-isolation.md) | Open-source license (Apache-2.0 proposed); GPL/non-commercial engines isolated by process boundaries | **Proposed** (author to confirm license) |
+| [0013](ADR/0013-open-source-license-and-dependency-isolation.md) | Open-source license (Apache-2.0); GPL/non-commercial engines isolated by process boundaries | Accepted |
 | [0014](ADR/0014-ligand-standardization-and-protonation-policy.md) | Ligand identity = neutral parent; calculation forms at pH 7.4 via Dimorphite-DL; ambiguity → decision | Accepted |
 | [0015](ADR/0015-proof-of-extensibility-engines.md) | Second engine per family: AutoDock4, OpenMM (then NAMD), PySCF (then ORCA) | Accepted |
 

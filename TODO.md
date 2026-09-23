@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 3 — Workflow engine, execution layer, CLI skeleton |
-| **Last completed** | Phase 3.1 workflow definitions and examples (2026-09-23) |
-| **Current task** | [ ] 3.2 Workflow compiler: capability/type validation and task graph |
-| **Next task** | 3.3 Task state machine persisted in SQLite |
+| **Last completed** | Phase 3.2 capability-aware workflow compiler (2026-09-23) |
+| **Current task** | [ ] 3.3 Task state machine persisted in SQLite |
+| **Next task** | 3.4 Cache keys from canonical JSON and input artifact hashes |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -97,7 +97,7 @@ When the user says **CONTINUE**:
 ## Phase 3 — Workflow engine, execution layer, CLI skeleton `[-]`
 
 - [x] 3.1 Workflow definition schema (`caddsuite.workflow/1`) + example workflows (`workflows/*.yaml`)
-- [ ] 3.2 Compiler: validate against capabilities and contract types; build task graph (fan-out per compound/pose)
+- [x] 3.2 Compiler: validate against capabilities and contract types; build task graph (symbolic fan-out per compound/pose)
 - [ ] 3.3 Task state machine persisted in SQLite (incl. CACHED, AWAITING_DECISION, INTERRUPTED)
 - [ ] 3.4 Cache keys (canonical JSON + input artifact hashes)
 - [ ] 3.5 `LocalExecutor`: argv only, process groups, stdout/stderr artifacts, PID + start-time reattach, cancellation
@@ -292,4 +292,5 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-23 | Phase 3.2 completed: typed stage capability registry; exact normalized contract checks on workflow inputs and stage edges; engine availability/ambiguity diagnostics; disabled-stage and workflow-output validation; stable topological task templates with symbolic compound/pose fan-out. Added report_bundle/1.0 and made the ADMET example pass a pH 7.4 CompoundForm through its configured gate to docking. Full gate: 109 tests pass; Ruff, strict mypy, import-linter and schemas pass. Legacy 143-file baseline verified unchanged. Next: persisted task state machine (3.3). |
 | 2026-09-23 | Phase 3.1 completed: versioned engine-neutral workflow schema, safe YAML loader, structural DAG/binding validation, deterministic JSON Schema export, two example workflows, and tests. Quality gate: 103 tests pass; Ruff, strict mypy, import-linter and schema freshness pass. Frozen 143-file legacy baseline matches. Compiler/capability and contract compatibility remain Phase 3.2. Audit and architecture accepted; Q1–Q6 and D1/D2 resolved. Copied 21 files into WSL with hash verification, removed active OneDrive copy (pointer retained), initialized Git, created isolated `caddsuite` env and explicit lock. Phase 2 implemented: contracts/schema exporter, units, identities/accessions, validation, SQLAlchemy/Alembic/SQLite WAL, artifact store, provenance, CLI subset, docs and tests. Gate: 99 tests pass, 96% statement coverage; Ruff, strict mypy, import-linter and schema checks pass. Legacy baseline verified. Initial commit 088e82a and license commit f02d971 pushed to origin/main at https://github.com/jdsridhar/CAAD_Suite_End_to_End. Windows Git Credential Manager is configured as the WSL credential helper. |

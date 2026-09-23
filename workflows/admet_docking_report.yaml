@@ -18,27 +18,41 @@ stages:
     output_contract: property_prediction_set/1.0
     params:
       endpoints: [drug_likeness, structural_alerts, physicochemistry]
+  - id: protonate
+    kind: chemistry.protonate
+    engine: dimorphite_dl
+    for_each: compound
+    input_contracts:
+      compound: compound/1.0
+    input_bindings:
+      compound: $compounds
+    output_contract: compound_form/1.0
+    params:
+      target_ph: 7.4
+      ambiguous_microstates: require_decision
   - id: configured_filter
     kind: gate
     for_each: compound
-    needs: [admet]
+    needs: [admet, protonate]
     input_contracts:
       predictions: property_prediction_set/1.0
+      ligand: compound_form/1.0
     input_bindings:
       predictions: admet
-    output_contract: candidate/1.0
+      ligand: protonate
+    output_contract: compound_form/1.0
     gate: admet.qed >= 0.4
-    on_fail: flag
+    on_fail: exclude
   - id: dock
     kind: docking
     engine: vina
     for_each: compound
     needs: [configured_filter]
     input_contracts:
-      candidate: candidate/1.0
+      ligand: compound_form/1.0
       target: structure/1.0
     input_bindings:
-      candidate: configured_filter
+      ligand: configured_filter
       target: $target_structure
     output_contract: docking_run/1.0
     params:
@@ -54,6 +68,7 @@ stages:
     input_bindings:
       property_results: admet
       docking_results: dock
+    output_contract: report_bundle/1.0
     params:
       formats: [html, json, csv]
 outputs:

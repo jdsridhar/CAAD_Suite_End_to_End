@@ -318,7 +318,13 @@ class Ranking:
     statement: str = "Prioritized according to the configured computational criteria; not experimental evidence."
 ```
 
-### 4.9 Execution, provenance, validation
+### 4.9 Reports
+
+A ReportBundle references one or more format-labelled, content-addressed ReportArtifact
+files and records project identity, generation time, and limitations. Large report bytes
+remain in file storage rather than relational tables.
+
+### 4.10 Execution, provenance, validation
 
 ```python
 class WorkflowRun:  id; accession; workflow_hash; resolved_config_hash; status; started_at; finished_at

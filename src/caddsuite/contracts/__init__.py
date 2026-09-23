@@ -13,6 +13,7 @@ from caddsuite.contracts import (  # noqa: F401  (imported for registration side
     properties,
     qm,
     registry,
+    reporting,
     structure,
 )
 from caddsuite.contracts.base import (

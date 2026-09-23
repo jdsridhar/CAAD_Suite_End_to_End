@@ -75,3 +75,14 @@ These notes cover the concepts behind each implemented piece: what it is, why it
 - **Alternatives:** hard-coded Python pipelines (easy to start, difficult to modify or serialize); a general-purpose workflow framework (more features, but brings its model and runtime dependencies into the platform).
 - **Computational chemistry connection:** a docking result can feed pose analysis and then a compatible complex-preparation stage, but the workflow compiler must still check structure and parameterization compatibility before MD.
 - **Interview line:** *"The workflow file expresses scientific intent and typed dependencies; adapters own software-specific execution, and a compiler checks whether the selected engines and data contracts are compatible."*
+
+
+## Phase 3.2: capability-aware workflow compilation
+
+### 1. Compile intent before execution
+- **What:** WorkflowCompiler resolves each enabled stage against an engine-neutral capability descriptor, checks ports and normalized contract versions, and emits a deterministic topological graph of task templates.
+- **Why:** workflows should fail early when an engine is unavailable, a required input is missing, or a producer's data cannot satisfy the next stage. Catching these errors before docking or MD saves compute and avoids disguising scientific incompatibility as a file-format conversion.
+- **Alternatives:** let each adapter discover errors during execution (late and costly); encode every legal combination in fixed Python pipelines (not extensible).
+- **Dynamic fan-out:** a docking stage can yield a variable number of poses. Compilation therefore records a pose or compound fan-out template; the scheduler creates concrete task IDs once the upstream artifacts reveal item identities and counts.
+- **Scientific boundary:** exact normalized contract compatibility is static. Protonation, topology, parameterization and atom-level validity still require checks on the actual structures and stay visible at runtime.
+- **Interview line:** *"The compiler is engine-independent: adapters publish capabilities, contracts connect stages, and the compiler rejects unsupported graphs before any scientific process starts."*

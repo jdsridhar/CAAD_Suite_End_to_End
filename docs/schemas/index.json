@@ -17,6 +17,7 @@
   "qm_calculation": "qm_calculation/1.0",
   "qm_result": "qm_result/1.0",
   "ranking": "ranking/1.0",
+  "report_bundle": "report_bundle/1.0",
   "software_environment": "software_environment/1.0",
   "structure": "structure/1.0",
   "trajectory": "trajectory/1.0",
