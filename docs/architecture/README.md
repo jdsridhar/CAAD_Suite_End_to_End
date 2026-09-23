@@ -28,6 +28,7 @@ Start with the audit, then read in this order:
 | [0013](ADR/0013-open-source-license-and-dependency-isolation.md) | Open-source license (Apache-2.0); GPL/non-commercial engines isolated by process boundaries | Accepted |
 | [0014](ADR/0014-ligand-standardization-and-protonation-policy.md) | Ligand identity = neutral parent; calculation forms at pH 7.4 via Dimorphite-DL; ambiguity → decision | Accepted |
 | [0015](ADR/0015-proof-of-extensibility-engines.md) | Second engine per family: AutoDock4, OpenMM (then NAMD), PySCF (then ORCA) | Accepted |
+| [0016](ADR/0016-protonation-engine-port-and-dependency-bound.md) | Protonation port, explicit ambiguity decisions, and RDKit/Dimorphite dependency bound | Accepted |
 
 New ADRs: copy [`ADR/0000-template.md`](ADR/0000-template.md), take the next number, and never delete or renumber. Supersede instead.
 

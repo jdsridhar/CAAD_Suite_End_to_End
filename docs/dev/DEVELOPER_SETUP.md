@@ -25,6 +25,8 @@ Recreate the exact environment from the lock (no dependency solving):
 conda create -n caddsuite --file environments/caddsuite.lock.txt
 ```
 
+The core chemistry environment includes RDKit 2025.09.6 and Dimorphite-DL 2.0.2. Dimorphite-DL s conda-forge package currently requires RDKit <2026. For a pip-managed environment, install the optional extras with pip install -e .[chem,protonation]; the project constrains RDKit to a compatible series.
+
 After changing dependencies, refresh the lock file:
 
 ```bash

@@ -25,7 +25,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-chem = ["rdkit>=2025.3"]
+chem = ["rdkit>=2025.3,<2026"]
+protonation = ["dimorphite-dl==2.0.2"]
 dev = [
     "pytest>=8",
     "pytest-cov",

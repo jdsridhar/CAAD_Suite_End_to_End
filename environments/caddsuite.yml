@@ -21,8 +21,8 @@ dependencies:
   - typer>=0.12
   - pyyaml>=6
   - numpy>=1.26
-  - rdkit>=2025.03          # chem services run in the core env (Phase 4). Resolved 2026.03.6, whereas the
-                            # legacy docking env 'cadd' has 2025.03.6; regression tests compare by InChIKey.
+  - rdkit>=2025.03,<2026    # Dimorphite-DL 2.0.2 requires RDKit <2026; use the compatible 2025 series.
+  - dimorphite-dl=2.0.2     # protonation adapter reference implementation, Phase 4.3
   # --- build + quality tooling ---
   - hatchling>=1.25
   - pytest>=8

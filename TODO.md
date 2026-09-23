@@ -126,7 +126,10 @@ When the user says **CONTINUE**:
   - [x] Repeated ETKDGv3+MMFF94 with the same seed/version yields identical SDF bytes; tests verify registered artifact hash.
   - [x] Migration 0004 adds a unique project/InChIKey index and compound_inputs; migration/model parity and registry tests pass.
   - [x] Learning notes and chemistry/identity rationale documented in docs/architecture/CHEMISTRY_STANDARDIZATION.md.
-- [ ] 4.3 `chem.protonation` (per Q3) with recorded method/pH/version
+- [x] 4.3 `chem.protonation` via engine-neutral ProtonationEnumerator + Dimorphite-DL adapter; record method/pH/version; explicit ambiguity decision
+  - [x] Single-state and multi-state behavior validated with real Dimorphite-DL results (acetic acid, trimethylamine, RC8, RC34).
+  - [x] Reject malformed, empty, possibly truncated, and altered heavy-atom connectivity results; allow explicit single-form selection or run-all.
+  - [x] Version/parameters recorded; dependency lock documents RDKit 2025 series constraint and upstream limitations in docs/architecture/PROTONATION.md and ADR-0016.
 - [ ] 4.4 `adapters.structure_sources.rcsb` + `structure.split` (keep SEQRES; candidate ligands; DECISION_REQUIRED on ambiguity — SCI-11, SCI-24)
 - [ ] 4.5 `structure.prepare_protein` (PDBFixer protocol, sequence-aware gaps) — runs as a worker in `cadd`
 - [ ] 4.6 `structure.binding_site` (bbox centre — SCI-16; site method recorded — SCI-05) + `DOCK.BLIND_BOX` rule
