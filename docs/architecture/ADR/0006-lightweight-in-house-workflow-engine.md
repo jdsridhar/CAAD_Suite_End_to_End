@@ -24,6 +24,14 @@ Build a **small, well-tested orchestration core** (target < 3 k lines) with:
 
 Workflow definitions stay **engine-agnostic and declarative**, so exporting to an external engine (e.g. Snakemake or CWL) remains possible.
 
+## Retry, decision, and rerun semantics
+
+A stage's retry policy names the exact retryable error codes, attempt limit, initial delay, multiplier, and cap. Defaults mean one attempt and zero automatic retries; the scheduler never retries scientific non-convergence unless the workflow explicitly marks that code retryable. A human decision is persisted in the same SQLite transaction that moves its task from `AWAITING_DECISION` to `READY`. Rerun planning computes transitive dependents from the workflow DAG; the selected task set resets atomically to `PENDING` and loses its current cache key. Running tasks must first be cancelled, and unresolved decisions must first be answered.
+
+## Gate expression safety
+
+Gate text is parsed with Python's AST and interpreted by a small allowlist. It supports boolean logic, comparisons, numeric unary signs, declared dotted fields, and the pure helpers `abs`, `min`, `max`, `len`, and `exists`. It never calls Python `eval`, accepts no indexing, attribute access outside the declared result schema, arbitrary function calls, or arithmetic expressions. A gate must resolve to a boolean. Thresholds remain in the workflow file and are not supplied as platform defaults.
+
 ## Alternatives considered
 | Option | Strengths | Poor fit because |
 |---|---|---|

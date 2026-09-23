@@ -179,6 +179,78 @@ class TaskStateStore:
                 raise RuntimeError(f"updated task {task_id!r} disappeared in the same transaction")
             return _snapshot(task)
 
+    def for_run(self, run_id: str) -> tuple[TaskSnapshot, ...]:
+        with self._sessions() as session:
+            tasks = session.scalars(
+                select(TaskRow)
+                .where(TaskRow.run_id == run_id)
+                .order_by(TaskRow.stage_id, TaskRow.id)
+            )
+            return tuple(_snapshot(task) for task in tasks)
+
+    def reset_for_rerun(
+        self, task_ids: Sequence[str], *, reason: str = "user requested stage rerun"
+    ) -> tuple[TaskSnapshot, ...]:
+        # Active work must be cancelled and pending human decisions resolved first.
+        unique_ids = tuple(dict.fromkeys(task_ids))
+        if not unique_ids:
+            raise ValueError("at least one task must be selected for rerun")
+        if not reason.strip():
+            raise ValueError("rerun reason must not be blank")
+        timestamp = utcnow()
+        with self._sessions.begin() as session:
+            rows: list[TaskRow] = []
+            for task_id in unique_ids:
+                task = session.get(TaskRow, task_id)
+                if task is None:
+                    raise TaskNotFound(f"task {task_id!r} does not exist")
+                rows.append(task)
+            for task in rows:
+                current = TaskState(task.state)
+                if current is not TaskState.PENDING:
+                    validate_transition(current, TaskState.PENDING)
+            for task in rows:
+                current = TaskState(task.state)
+                if current is TaskState.PENDING:
+                    continue
+                version = task.version
+                result = cast(
+                    CursorResult[Any],
+                    session.execute(
+                        update(TaskRow)
+                        .where(
+                            TaskRow.id == task.id,
+                            TaskRow.state == current.value,
+                            TaskRow.version == version,
+                        )
+                        .values(
+                            state=TaskState.PENDING.value,
+                            version=TaskRow.version + 1,
+                            cache_key=None,
+                            updated_at=timestamp,
+                        )
+                    ),
+                )
+                if result.rowcount != 1:
+                    actual_row = session.execute(
+                        select(TaskRow.state, TaskRow.version).where(TaskRow.id == task.id)
+                    ).one()
+                    actual_state = TaskState(actual_row[0])
+                    raise TaskStateConflict(task.id, current, actual_state, version, actual_row[1])
+                session.add(
+                    TaskStateEventRow(
+                        task_id=task.id,
+                        version=version + 1,
+                        from_state=current.value,
+                        to_state=TaskState.PENDING.value,
+                        reason=reason,
+                        created_at=timestamp,
+                    )
+                )
+            session.flush()
+            refreshed = [session.get(TaskRow, task_id) for task_id in unique_ids]
+            return tuple(_snapshot(task) for task in refreshed if task is not None)
+
     def history(self, task_id: str) -> tuple[TaskTransition, ...]:
         with self._sessions() as session:
             exists = session.scalar(select(TaskRow.id).where(TaskRow.id == task_id))

@@ -15,10 +15,11 @@
 2. The UI runs in the Windows browser against `http://localhost:<port>` (ADR-0009).
 3. All process launching goes through an **`Executor`** interface (`submit/poll/cancel/reattach`). The Phase 3 `LocalExecutor`:
    - uses argument lists only (no shell) and runs each task in its own process group, so cancelling kills the whole tree;
-   - records PID + start time so it can reattach after a crash;
+   - records PID + Linux start-time token so a live process can be reattached after a crash;
+   - captures stdout/stderr as content-addressed artifacts. If the child finishes while the application is down, Linux does not retain its exit code; recovery records an unknown outcome and must not infer success from output files;
    - sets resource-derived thread and GPU environment variables.
    `SSHExecutor` and `SlurmExecutor` are added later behind the same interface.
-4. A **resource model** (CPUs, memory, GPUs, exclusive GPU) replaces the per-app FIFO queues and `nproc`-based thread counts.
+4. A **resource model** (CPUs, memory, GPUs, exclusive GPU) replaces the per-app FIFO queues and `nproc`-based thread counts. The local admission scheduler makes atomic in-process reservations; GPU IDs are exclusive, and an unknown VRAM size cannot satisfy a configured minimum. It does not estimate usable memory or oversubscribe a GPU.
 
 ## Alternatives considered
 | Option | Why not |
@@ -35,4 +36,4 @@
 The user needs native macOS/Windows execution for some engine, or a cloud batch service becomes the main target.
 
 ## Learning notes
-Explain the difference between **orchestration** (deciding what runs) and **execution** (running it somewhere), and why process groups matter. Killing only a parent (the legacy `pkill -P`) can orphan `mpirun` workers.
+The local resource scheduler is intentionally process-local and has no fairness queue yet; workflow recovery must reconcile running tasks before admitting new work. The local executor exposes a serializable process locator; the orchestration store must persist it with the task attempt before relying on crash recovery. Reattachment rejects PID reuse by comparing the Linux process start-time token. Explain the difference between **orchestration** (deciding what runs) and **execution** (running it somewhere), and why process groups matter. Killing only a parent (the legacy `pkill -P`) can orphan `mpirun` workers.

@@ -1,5 +1,47 @@
 {
   "$defs": {
+    "RetryPolicy": {
+      "additionalProperties": false,
+      "description": "Bounded retries for named retryable error codes; no retries are implicit.",
+      "properties": {
+        "backoff_multiplier": {
+          "default": 2,
+          "minimum": 1,
+          "title": "Backoff Multiplier",
+          "type": "number"
+        },
+        "initial_delay_s": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Initial Delay S",
+          "type": "number"
+        },
+        "max_attempts": {
+          "default": 1,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "max_delay_s": {
+          "default": 300,
+          "minimum": 0,
+          "title": "Max Delay S",
+          "type": "number"
+        },
+        "retry_on": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$",
+            "type": "string"
+          },
+          "title": "Retry On",
+          "type": "array"
+        }
+      },
+      "title": "RetryPolicy",
+      "type": "object"
+    },
     "StageDefinition": {
       "additionalProperties": false,
       "description": "One declarative workflow node; plugin-specific parameters remain JSON data.",
@@ -114,6 +156,9 @@
           "additionalProperties": true,
           "title": "Params",
           "type": "object"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
         }
       },
       "required": [

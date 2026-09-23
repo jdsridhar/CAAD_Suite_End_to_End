@@ -18,6 +18,7 @@ _ALLOWED: dict[TaskState, frozenset[TaskState]] = {
             TaskState.CACHED,
             TaskState.SKIPPED,
             TaskState.CANCELLED,
+            TaskState.PENDING,
         }
     ),
     TaskState.AWAITING_DECISION: frozenset(
@@ -33,7 +34,7 @@ _ALLOWED: dict[TaskState, frozenset[TaskState]] = {
             TaskState.INTERRUPTED,
         }
     ),
-    TaskState.INTERRUPTED: frozenset({TaskState.READY, TaskState.CANCELLED}),
+    TaskState.INTERRUPTED: frozenset({TaskState.READY, TaskState.PENDING, TaskState.CANCELLED}),
     TaskState.FAILED: frozenset({TaskState.READY, TaskState.PENDING}),
     TaskState.CANCELLED: frozenset({TaskState.READY, TaskState.PENDING}),
     TaskState.SKIPPED: frozenset({TaskState.PENDING}),

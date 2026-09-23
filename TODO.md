@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 3 — Workflow engine, execution layer, CLI skeleton |
-| **Last completed** | Phase 3.4 canonical content-addressed cache keys (2026-09-24) |
-| **Current task** | [-] 3.5 LocalExecutor: safe process lifecycle and log artifacts |
-| **Next task** | 3.6 Resource model and admission scheduler |
+| **Last completed** | Phase 3.8 retry rules, human decisions, and task reruns (2026-09-24) |
+| **Current task** | [-] 3.9 caddsuite CLI workflow commands |
+| **Next task** | 3.10 Plugin registry and adapter conformance kit |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -100,10 +100,10 @@ When the user says **CONTINUE**:
 - [x] 3.2 Compiler: validate against capabilities and contract types; build task graph (symbolic fan-out per compound/pose)
 - [x] 3.3 Task state machine persisted in SQLite (incl. CACHED, AWAITING_DECISION, INTERRUPTED); CAS versioning + append-only transition history
 - [x] 3.4 Cache keys (canonical JSON + input artifact hashes); role-aware hashes include contract, adapter, engine versions and effective params; task stores the digest
-- [ ] 3.5 `LocalExecutor`: argv only, process groups, stdout/stderr artifacts, PID + start-time reattach, cancellation
-- [ ] 3.6 Resource model + admission scheduler (CPU/mem/GPU; exclusive GPU)
-- [ ] 3.7 Gate expression language (AST whitelist) + tests (including malicious input)
-- [ ] 3.8 Retry policies; decisions API; re-run stage / from checkpoint
+- [x] 3.5 `LocalExecutor`: argv only, process groups, stdout/stderr artifacts, PID + start-time reattach, cancellation; logs are registered as artifacts; an exited process recovered after supervisor downtime has unknown status and is never assumed successful
+- [x] 3.6 Resource contracts + thread-safe local admission scheduler for CPU, host memory, and exclusive GPU IDs; GPU memory minimums are enforced when reported; leases are process-local and require task reconciliation after restart
+- [x] 3.7 Gate expression language uses an AST allowlist, declared dotted fields, safe helpers, and no `eval`; malicious expressions and missing fields are tested
+- [x] 3.8 Stage-configured retry/backoff policy; atomic decision persistence + task resume; dependency-aware rerun planning and transactional downstream task reset/cache invalidation. REST/CLI endpoints and checkpoint-aware retry remain in Phases 13 and 3.11.
 - [ ] 3.9 `caddsuite` CLI (Typer): `doctor`, `project`, `compound import`, `run`, `status`, `decide`, `logs`
 - [ ] 3.10 Plugin registry (entry points) + adapter conformance kit (skeleton)
 - [ ] 3.11 **Gate:** fake-adapter suite green — fan-out, gates, cache hit/miss, **kill -9 → resume**, cancel kills tree, failure isolation
@@ -292,6 +292,10 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-24 | Phase 3.8 completed: bounded per-stage retry policy with explicit retryable error codes/backoff; human decisions are committed with AWAITING_DECISION -> READY and state history atomically; dependency-aware rerun plans reset selected tasks transactionally and clear their current cache keys, refusing active work. Workflow schema refreshed. Full gate: 163 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting CLI milestone (3.9). |
+| 2026-09-24 | Phase 3.7 completed: non-eval gate expression parser with a strict AST/operator/function allowlist, declared nested-field allowlist, optional-field exists(), safe short-circuit logic, and explicit boolean results. Malicious syntax, undeclared access, missing fields, and user-selected threshold behavior covered. Starting retry/decision lifecycle (3.8). |
+| 2026-09-24 | Phase 3.6 completed: typed resource request/capacity contracts and atomic, thread-safe local admission for CPU cores, host memory, and exclusive GPU IDs; device memory constraints reject unknown/undersized GPUs. Full gate: 135 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting safe gate expression language (3.7). |
+| 2026-09-24 | Phase 3.5 completed: Linux local executor launches validated argv with shell disabled and isolated process groups; PID + Linux process start time supports safe live reattachment, cancellation targets the process group, and stdout/stderr are stored as content-addressed artifacts. If a child exits while its supervisor is down, Linux cannot recover the exit code; executor reports unknown outcome. Full gate: 129 tests pass. Starting resource admission model (3.6). |
 | 2026-09-24 | Phase 3.4 completed: canonical deterministic cache key helper, rejecting invalid hashes/non-finite or non-JSON values; artifact order and mapping key order do not affect the digest, but role/content, params, contract, adapter or engine version changes do. Persisted cache key on task rows. Full gate: 126 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting LocalExecutor (3.5). |
 | 2026-09-24 | Phase 3.3 completed: persisted task lifecycle with validated transitions, optimistic compare-and-swap version checks, and append-only SQLite history; migration 0002. Quality gate: 115 tests pass; Ruff, strict mypy, import-linter and schemas pass. Continuing with canonical task cache keys. |
 | 2026-09-23 | Phase 3.2 completed: typed stage capability registry; exact normalized contract checks on workflow inputs and stage edges; engine availability/ambiguity diagnostics; disabled-stage and workflow-output validation; stable topological task templates with symbolic compound/pose fan-out. Added report_bundle/1.0 and made the ADMET example pass a pH 7.4 CompoundForm through its configured gate to docking. Full gate: 109 tests pass; Ruff, strict mypy, import-linter and schemas pass. Legacy 143-file baseline verified unchanged. Next: persisted task state machine (3.3). |

@@ -195,3 +195,64 @@ def test_task_cache_key_is_persisted_and_validated(task_store) -> None:
     assert store.get(task.id).cache_key == cache_key
     with pytest.raises(ValueError, match="lowercase SHA-256"):
         _create(task_store, cache_key="not-a-digest")
+
+
+def test_rerun_resets_a_task_set_and_invalidates_cache_keys(task_store) -> None:
+    store, run_id = task_store
+    dock = store.create(run_id=run_id, stage_id="dock", cache_key="a" * 64)
+    analysis = store.create(run_id=run_id, stage_id="analysis", cache_key="b" * 64)
+    for task in (dock, analysis):
+        for target in (TaskState.READY, TaskState.RUNNING, TaskState.SUCCEEDED):
+            task = store.transition(
+                task.id,
+                expected=task.state,
+                target=target,
+                expected_version=task.version,
+            )
+    reset = store.reset_for_rerun([dock.id, analysis.id], reason="rerun from docking")
+    assert {task.state for task in reset} == {TaskState.PENDING}
+    assert {task.cache_key for task in reset} == {None}
+    assert {task.version for task in reset} == {4}
+    assert len(store.history(dock.id)) == 5
+    assert store.history(dock.id)[-1].reason == "rerun from docking"
+
+
+def test_rerun_plan_validation_prevents_partial_reset(task_store) -> None:
+    store, run_id = task_store
+    completed = store.create(run_id=run_id, stage_id="dock", cache_key="a" * 64)
+    active = store.create(run_id=run_id, stage_id="analysis", cache_key="b" * 64)
+    completed = store.transition(
+        completed.id,
+        expected=TaskState.PENDING,
+        target=TaskState.READY,
+        expected_version=0,
+    )
+    completed = store.transition(
+        completed.id,
+        expected=TaskState.READY,
+        target=TaskState.RUNNING,
+        expected_version=1,
+    )
+    completed = store.transition(
+        completed.id,
+        expected=TaskState.RUNNING,
+        target=TaskState.SUCCEEDED,
+        expected_version=2,
+    )
+    active = store.transition(
+        active.id,
+        expected=TaskState.PENDING,
+        target=TaskState.READY,
+        expected_version=0,
+    )
+    active = store.transition(
+        active.id,
+        expected=TaskState.READY,
+        target=TaskState.RUNNING,
+        expected_version=1,
+    )
+    with pytest.raises(InvalidTaskTransition):
+        store.reset_for_rerun([completed.id, active.id])
+    assert store.get(completed.id).state is TaskState.SUCCEEDED
+    assert store.get(completed.id).cache_key == "a" * 64
+    assert store.get(active.id).state is TaskState.RUNNING

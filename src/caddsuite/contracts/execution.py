@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import AwareDatetime, Field, StringConstraints
+from pydantic import AwareDatetime, Field, StringConstraints, model_validator
 
 from caddsuite.contracts.base import (
     ArtifactRef,
@@ -97,3 +97,26 @@ class ErrorRecord(ContractModel):
     retryable: bool
     partial_outputs: tuple[ArtifactRef, ...] = ()
     engine_excerpt: str | None = None
+
+
+class ResourceRequest(ContractModel):
+    """Per-task resource reservation; memory fields are MiB and GPU reservations are exclusive."""
+
+    cpu_cores: Annotated[int, Field(ge=1)]
+    memory_MiB: Annotated[int, Field(ge=1)]
+    gpu_count: Annotated[int, Field(ge=0)] = 0
+    gpu_memory_MiB_per_gpu: Annotated[int, Field(ge=1)] | None = None
+
+    @model_validator(mode="after")
+    def _validate_gpu_memory_request(self) -> ResourceRequest:
+        if self.gpu_count == 0 and self.gpu_memory_MiB_per_gpu is not None:
+            raise ValueError("gpu_memory_MiB_per_gpu requires gpu_count > 0")
+        return self
+
+
+class ResourceCapacity(ContractModel):
+    """Usable host capacity supplied by discovery/configuration, not guessed by the scheduler."""
+
+    cpu_cores: Annotated[int, Field(ge=1)]
+    memory_MiB: Annotated[int, Field(ge=1)]
+    gpus: tuple[GPUInfo, ...] = ()

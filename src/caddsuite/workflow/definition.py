@@ -16,7 +16,7 @@ from typing import Annotated, Literal
 import yaml
 from pydantic import Field, StringConstraints, model_validator
 
-from caddsuite.contracts.base import ContractModel, NonEmptyStr
+from caddsuite.contracts.base import Code, ContractModel, NonEmptyStr
 
 WorkflowSchema = Literal["caddsuite.workflow/1"]
 StageId = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,62}$")]
@@ -30,6 +30,38 @@ class WorkflowInput(ContractModel):
     contract: NonEmptyStr
     required: bool = True
     description: str | None = None
+
+
+class RetryPolicy(ContractModel):
+    """Bounded retries for named retryable error codes; no retries are implicit."""
+
+    max_attempts: Annotated[int, Field(ge=1, le=100)] = 1
+    initial_delay_s: Annotated[float, Field(ge=0, allow_inf_nan=False)] = 0
+    backoff_multiplier: Annotated[float, Field(ge=1, allow_inf_nan=False)] = 2
+    max_delay_s: Annotated[float, Field(ge=0, allow_inf_nan=False)] = 300
+    retry_on: tuple[Code, ...] = ()
+
+    @model_validator(mode="after")
+    def _retry_codes_are_unique(self) -> RetryPolicy:
+        if len(self.retry_on) != len(set(self.retry_on)):
+            raise ValueError("retry_on error codes must be unique")
+        return self
+
+    def should_retry(self, failed_attempt: int, error_code: str) -> bool:
+        if failed_attempt < 1:
+            raise ValueError("failed_attempt must be 1-based")
+        return failed_attempt < self.max_attempts and error_code in self.retry_on
+
+    def delay_after_failure(self, failed_attempt: int) -> float:
+        if failed_attempt < 1:
+            raise ValueError("failed_attempt must be 1-based")
+        if self.initial_delay_s == 0 or self.max_delay_s == 0:
+            return 0
+        try:
+            delay = self.initial_delay_s * self.backoff_multiplier ** (failed_attempt - 1)
+        except OverflowError:
+            return self.max_delay_s
+        return min(delay, self.max_delay_s)
 
 
 class StageDefinition(ContractModel):
@@ -47,6 +79,7 @@ class StageDefinition(ContractModel):
     params: dict[str, object] = Field(default_factory=dict)
     gate: str | None = None
     on_fail: FailurePolicy = "stop"
+    retry: RetryPolicy = Field(default_factory=RetryPolicy)
 
     @model_validator(mode="after")
     def dependencies_are_unique(self) -> StageDefinition:
