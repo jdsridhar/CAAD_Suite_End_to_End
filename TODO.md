@@ -8,7 +8,7 @@
 |---|---|
 | **Current phase** | Phase 4 — Docking migration |
 | **Last completed** | Phase 3.11 fake-handler workflow scheduler gate (2026-09-24) |
-| **Current task** | [-] 4.2 Chemical standardization and seeded conformer embedding |
+| **Current task** | [-] 4.3 pH 7.4 protonation adapter |
 | **Next task** | Phase 4.3 pH 7.4 protonation adapter |
 | **Blocking questions** | No Phase 3 blockers. |
 
@@ -121,7 +121,11 @@ When the user says **CONTINUE**:
 ## Phase 4 — Docking migration `[-]`
 
 - [x] 4.1 Golden tests pinning legacy behaviour (standardize, embed, normalize_input, make_box, build_complex, collect_scores) on G-DOCK-1 inputs
-- [-] 4.2 `chem.standardize` (policy object) + `chem.embed` (merged, seeded) + registry import (InChIKey)
+- [x] 4.2 `chem.standardize` (policy object) + `chem.embed` (seeded, artifact digest checked) + registry import (project-scoped InChIKey deduplication; every raw input retained)
+  - [x] RC8 and RC34 standardization reproduces golden canonical SMILES, InChIKeys, neutral charges, and heavy-atom counts.
+  - [x] Repeated ETKDGv3+MMFF94 with the same seed/version yields identical SDF bytes; tests verify registered artifact hash.
+  - [x] Migration 0004 adds a unique project/InChIKey index and compound_inputs; migration/model parity and registry tests pass.
+  - [x] Learning notes and chemistry/identity rationale documented in docs/architecture/CHEMISTRY_STANDARDIZATION.md.
 - [ ] 4.3 `chem.protonation` (per Q3) with recorded method/pH/version
 - [ ] 4.4 `adapters.structure_sources.rcsb` + `structure.split` (keep SEQRES; candidate ligands; DECISION_REQUIRED on ambiguity — SCI-11, SCI-24)
 - [ ] 4.5 `structure.prepare_protein` (PDBFixer protocol, sequence-aware gaps) — runs as a worker in `cadd`
@@ -304,6 +308,7 @@ When the user says **CONTINUE**:
 |---|---|
 | 2026-09-24 | Phase 3.11 in progress: durable normalized-result cache (migration 0003), compiled gate/failure/retry policy preservation, and process recovery/cancellation tests added. Full gate: 182 tests pass; Ruff, strict mypy, import-linter and schemas pass. Remaining: cohesive fake-adapter scheduler run loop for fan-out, gates, cache reuse and failure isolation. |
 | 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |
+| 2026-09-23 | Phase 4.2 complete: implemented RDKit neutral-parent standardization with explicit policy/provenance, deterministic seeded conformer embedding with artifact digest verification, project/InChIKey registry deduplication with preservation of every raw submission, and migration 0004. Golden RC8/RC34 identities match; full gate passes (203 tests, Ruff, format, strict mypy 70 files, import-linter, schemas). Frozen 143-file source baseline and docking fixture SHA manifest verified. Starting 4.3 protonation adapter. |
 | 2026-09-24 | Phase 3.11 complete: engine-neutral scheduler now resolves bindings, dynamically fans out by stable subject identity, evaluates restricted gates, retries configured error codes, isolates per-subject failures, persists/reuses task instances, and caches normalized outputs across runs. Crash-resume requires handler reconciliation for RUNNING/INTERRUPTED work; no duplicate process is launched without confirmation. Full gate: 186 tests; Ruff, formatting, strict mypy (67 files), import-linter, and schemas pass. Starting Phase 4.1 legacy docking golden fixtures. |
 | 2026-09-24 | Phase 3.10 completed: plugin factory discovery through Python entry points, deterministic ID/capability registration, early failures for duplicates/conflicts/broken adapters, common port types, a structural conformance check, plugin SDK guide, and plugin-aware doctor output. Full gate: 173 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting fake-adapter integration gate (3.11). |
 | 2026-09-24 | Phase 3.9 CLI skeleton completed: local doctor, project create/list, workflow validation and plan-only display, run guard, task status, atomic decision submission, and artifact log tail; documented in docs/CLI.md. Raw compound import is deferred to Phase 4 so input is not misrepresented as standardized chemistry. Full gate: 169 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting plugin registry (3.10). |

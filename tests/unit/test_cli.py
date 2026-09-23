@@ -25,7 +25,7 @@ def test_db_upgrade_creates_database(tmp_path: Path) -> None:
     result = runner.invoke(app, ["db", "upgrade", "--data-root", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "caddsuite.db").exists()
-    assert "revision 0003" in result.output
+    assert "revision 0004" in result.output
 
 
 def test_host_info_is_json() -> None:

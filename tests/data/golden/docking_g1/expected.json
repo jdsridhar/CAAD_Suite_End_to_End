@@ -7,6 +7,7 @@
     "RC8__5NIU": {
       "raw_smiles": "[Na]OC(=O)CNc1cc(CCC(=O)Nc2ccc(c(c2)C)F)ccc1OC",
       "standardized_smiles": "COc1ccc(CCC(=O)Nc2ccc(F)c(C)c2)cc1NCC(=O)O",
+      "inchikey": "MGWJPKZBBDDEDO-UHFFFAOYSA-N",
       "score_kcal_mol": -10.219,
       "heavy_atoms": 26,
       "ligand_efficiency_kcal_mol_per_heavy_atom": 0.393,
@@ -15,6 +16,7 @@
     "RC34__5NIU": {
       "raw_smiles": "[Na]OC(=O)CNc1cc(CCNC(=O)C(=O)Nc2cccc(c2)C)ccc1OC",
       "standardized_smiles": "COc1ccc(CCNC(=O)C(=O)Nc2cccc(C)c2)cc1NCC(=O)O",
+      "inchikey": "MWHHAHWGROFSGQ-UHFFFAOYSA-N",
       "score_kcal_mol": -10.251,
       "heavy_atoms": 28,
       "ligand_efficiency_kcal_mol_per_heavy_atom": 0.3661,

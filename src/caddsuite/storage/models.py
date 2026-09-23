@@ -102,7 +102,7 @@ class CompoundRow(Base):
     __tablename__ = "compounds"
     __table_args__ = (
         UniqueConstraint("project_id", "accession"),
-        Index("ix_compounds_project_inchikey", "project_id", "inchikey"),
+        Index("uq_compounds_project_inchikey", "project_id", "inchikey", unique=True),
     )
 
     id: Mapped[str] = _ulid_pk()
@@ -110,6 +110,18 @@ class CompoundRow(Base):
     accession: Mapped[str] = mapped_column(String(32))
     name: Mapped[str] = mapped_column(String(200))
     inchikey: Mapped[str] = mapped_column(String(27))
+    payload: Mapped[dict[str, Any]]
+    created_at: Mapped[datetime] = _created()
+
+
+class CompoundInputRow(Base):
+    """Every raw user submission linked to its standardized chemical identity."""
+
+    __tablename__ = "compound_inputs"
+    __table_args__ = (Index("ix_compound_inputs_compound_id", "compound_id"),)
+
+    id: Mapped[str] = _ulid_pk()
+    compound_id: Mapped[str] = mapped_column(ForeignKey("compounds.id"))
     payload: Mapped[dict[str, Any]]
     created_at: Mapped[datetime] = _created()
 
