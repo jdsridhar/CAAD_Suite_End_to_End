@@ -193,6 +193,18 @@ class TaskAttemptRow(Base):
     error: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
+class TaskCacheRow(Base):
+    # Durable normalized output keyed by the complete cache digest.
+
+    __tablename__ = "task_cache"
+
+    cache_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    schema_version: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, Any]]
+    source_task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"))
+    created_at: Mapped[datetime] = _created()
+
+
 # -------------------------------------------------------------------------- artifacts
 class ArtifactRow(Base):
     """A content-addressed file. Identity is the sha256 of its bytes."""

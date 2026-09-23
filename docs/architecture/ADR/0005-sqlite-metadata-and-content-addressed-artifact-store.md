@@ -15,6 +15,7 @@
 2. **Content-addressed artifact store:** `~/caddsuite_data/artifacts/sha256/<aa>/<bb>/<sha256>`. Files are immutable and read-only, registered in an `artifacts` table (ULID, sha256, size, media type, kind, producer attempt, original name).
 3. Human-browsable project trees are **symlink views** that are regenerated from the DB. Filenames are never identity.
 4. Hot scalar results are promoted to indexed columns; full normalized payloads are stored as versioned JSON.
+5. Successful task outputs may also be stored in a dedicated SQLite cache keyed by the deterministic task digest. Cache entries retain schema version and source task identity and are loaded through the contract registry/upcasters.
 5. The DB schema stays PostgreSQL-compatible (no SQLite-only SQL), so a server deployment is a configuration change.
 
 ## Alternatives considered
@@ -27,7 +28,7 @@
 | Store trajectories in the DB | One place | Huge, slow, anti-pattern | Explicitly forbidden |
 
 ## Consequences
-- Positive: transactional workflow state; deduplication (the same receptor PDBQT is stored once); cache keys can reference content hashes; export is just DB rows + referenced blobs.
+- Positive: transactional workflow state and durable normalized-output reuse across workflow runs; deduplication (the same receptor PDBQT is stored once); cache keys can reference content hashes; export is just DB rows + referenced blobs.
 - Negative: hashing large trajectories costs seconds per GB at registration; the store needs garbage collection of unreferenced blobs (planned tool).
 - Risk: the SQLite write lock under heavy concurrency. Mitigated by WAL, short transactions, and a single scheduler writer.
 

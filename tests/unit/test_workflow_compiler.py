@@ -79,6 +79,12 @@ def test_examples_compile_against_declared_capabilities(workflow_name: str) -> N
     assert compiled.name == workflow.name
     assert set(compiled.task_order) == {stage.id for stage in workflow.stages}
     assert compiled.outputs == tuple(sorted(workflow.outputs.items()))
+    if workflow_name == "admet_docking_report.yaml":
+        configured_filter = next(
+            task for task in compiled.tasks if task.stage_id == "configured_filter"
+        )
+        assert configured_filter.gate == "admet.qed >= 0.4"
+        assert configured_filter.on_fail == "exclude"
     for task in compiled.tasks:
         assert all(dependency in compiled.task_order for dependency in task.dependencies)
 

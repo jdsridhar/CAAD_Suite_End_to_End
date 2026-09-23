@@ -107,6 +107,12 @@ When the user says **CONTINUE**:
 - [x] 3.9 Typer CLI: doctor, project create/list, workflow validate/plan, status, decide, logs; actual run is guarded until 3.11, and compound import follows Phase 4 standardization. Usage documented in docs/CLI.md
 - [x] 3.10 Plugin registry discovers the caddsuite.adapters entry-point group, checks plugin/adapter IDs and StageCapability conflicts, exposes immutable snapshots, and provides structural adapter conformance checks; family-level scientific conformance remains Phases 4-10 and 14
 - [ ] 3.11 **Gate:** fake-adapter suite green — fan-out, gates, cache hit/miss, **kill -9 → resume**, cancel kills tree, failure isolation
+  - [x] Durable SQLite cache for normalized contract payloads; first successful cache writer wins.
+  - [x] Compiled task templates retain gate, failure policy, and retry settings.
+  - [x] Executor recovery tests kill the supervisor, reattach to the live process, cancel the old process tree, and rerun the interrupted task.
+  - [x] Cache hit/miss, result schema validation, and task state integration tests.
+  - [ ] Implement a cohesive scheduler run loop integrating dynamic fan-out, per-item gate evaluation, cache lookup, retries, and failure isolation.
+  - **Status:** reusable primitives and component-level fake-adapter tests are validated; scheduler orchestration remains open, so the Phase 3 gate is not yet complete.
 
 ## Phase 4 — Docking migration `[ ]`
 
@@ -292,6 +298,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-24 | Phase 3.11 in progress: durable normalized-result cache (migration 0003), compiled gate/failure/retry policy preservation, and process recovery/cancellation tests added. Full gate: 182 tests pass; Ruff, strict mypy, import-linter and schemas pass. Remaining: cohesive fake-adapter scheduler run loop for fan-out, gates, cache reuse and failure isolation. |
 | 2026-09-24 | Phase 3.10 completed: plugin factory discovery through Python entry points, deterministic ID/capability registration, early failures for duplicates/conflicts/broken adapters, common port types, a structural conformance check, plugin SDK guide, and plugin-aware doctor output. Full gate: 173 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting fake-adapter integration gate (3.11). |
 | 2026-09-24 | Phase 3.9 CLI skeleton completed: local doctor, project create/list, workflow validation and plan-only display, run guard, task status, atomic decision submission, and artifact log tail; documented in docs/CLI.md. Raw compound import is deferred to Phase 4 so input is not misrepresented as standardized chemistry. Full gate: 169 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting plugin registry (3.10). |
 | 2026-09-24 | Phase 3.8 completed: bounded per-stage retry policy with explicit retryable error codes/backoff; human decisions are committed with AWAITING_DECISION -> READY and state history atomically; dependency-aware rerun plans reset selected tasks transactionally and clear their current cache keys, refusing active work. Workflow schema refreshed. Full gate: 163 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting CLI milestone (3.9). |

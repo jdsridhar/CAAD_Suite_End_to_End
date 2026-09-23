@@ -13,7 +13,12 @@ from dataclasses import dataclass
 import caddsuite.contracts  # noqa: F401  (register all core normalized contracts)
 from caddsuite.contracts.base import contract_registry
 from caddsuite.workflow.capabilities import CapabilityRegistry, StageCapability
-from caddsuite.workflow.definition import StageDefinition, WorkflowDefinition
+from caddsuite.workflow.definition import (
+    FailurePolicy,
+    RetryPolicy,
+    StageDefinition,
+    WorkflowDefinition,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +57,9 @@ class TaskTemplate:
     for_each: str | None
     fanout_inputs: tuple[str, ...]
     params: Mapping[str, object]
+    gate: str | None
+    on_fail: FailurePolicy
+    retry: RetryPolicy
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,6 +203,9 @@ class WorkflowCompiler:
                     for_each=stage.for_each,
                     fanout_inputs=fanout_inputs,
                     params=dict(stage.params),
+                    gate=stage.gate,
+                    on_fail=stage.on_fail,
+                    retry=stage.retry,
                 )
             )
         return CompiledWorkflow(
