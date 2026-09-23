@@ -153,8 +153,24 @@ class TaskRow(Base):
     subject_id: Mapped[str | None] = mapped_column(String(26))
     cache_key: Mapped[str | None] = mapped_column(String(64), index=True)
     state: Mapped[str] = mapped_column(String(32))
+    version: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     created_at: Mapped[datetime] = _created()
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime(), default=utcnow, onupdate=utcnow)
+
+
+class TaskStateEventRow(Base):
+    """Append-only audit record for every task-state transition."""
+
+    __tablename__ = "task_state_events"
+    __table_args__ = (UniqueConstraint("task_id", "version"),)
+
+    id: Mapped[str] = _ulid_pk()
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"))
+    version: Mapped[int] = mapped_column(Integer)
+    from_state: Mapped[str | None] = mapped_column(String(32))
+    to_state: Mapped[str] = mapped_column(String(32))
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created()
 
 
 class TaskAttemptRow(Base):
