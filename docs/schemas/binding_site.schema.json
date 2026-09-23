@@ -1,0 +1,172 @@
+{
+  "$defs": {
+    "BindingSiteMethod": {
+      "enum": [
+        "reference_ligand",
+        "residue_selection",
+        "coordinates",
+        "blind_whole_protein",
+        "pocket_detection"
+      ],
+      "title": "BindingSiteMethod",
+      "type": "string"
+    },
+    "LigandReference": {
+      "additionalProperties": false,
+      "properties": {
+        "chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain"
+        },
+        "copies_found": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Copies Found",
+          "type": "integer"
+        },
+        "resname": {
+          "minLength": 1,
+          "title": "Resname",
+          "type": "string"
+        },
+        "resseq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resseq"
+        }
+      },
+      "required": [
+        "resname"
+      ],
+      "title": "LigandReference",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/binding_site/1.0",
+  "additionalProperties": false,
+  "description": "A docking search space. ``method`` is mandatory: results from blind and\npocket-directed searches must never be silently co-ranked (audit SCI-05).",
+  "properties": {
+    "center_A": {
+      "maxItems": 3,
+      "minItems": 3,
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "title": "Center A",
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "method": {
+      "$ref": "#/$defs/BindingSiteMethod"
+    },
+    "min_size_A": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Min Size A"
+    },
+    "padding_A": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Padding A"
+    },
+    "reference": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LigandReference"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "default": "binding_site/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "size_A": {
+      "maxItems": 3,
+      "minItems": 3,
+      "prefixItems": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      ],
+      "title": "Size A",
+      "type": "array"
+    },
+    "target_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Target Id",
+      "type": "string"
+    },
+    "volume_A3": {
+      "exclusiveMinimum": 0,
+      "title": "Volume A3",
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "target_id",
+    "method",
+    "center_A",
+    "size_A",
+    "volume_A3"
+  ],
+  "title": "BindingSite",
+  "type": "object"
+}

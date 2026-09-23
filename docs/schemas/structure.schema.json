@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "StructureSource": {
+      "enum": [
+        "rcsb",
+        "alphafold",
+        "local",
+        "charmm_gui"
+      ],
+      "title": "StructureSource",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/structure/1.0",
+  "additionalProperties": false,
+  "description": "A raw macromolecular structure exactly as obtained.",
+  "properties": {
+    "altloc_policy": {
+      "default": "first_model_altloc_A",
+      "minLength": 1,
+      "title": "Altloc Policy",
+      "type": "string"
+    },
+    "entity_sequences": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Entity Sequences",
+      "type": "object"
+    },
+    "experimental_method": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Experimental Method"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "model_index": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Model Index",
+      "type": "integer"
+    },
+    "raw": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "resolution_A": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resolution A"
+    },
+    "schema_version": {
+      "default": "structure/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/StructureSource"
+    },
+    "source_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Id"
+    },
+    "target_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Target Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "target_id",
+    "source",
+    "raw"
+  ],
+  "title": "Structure",
+  "type": "object"
+}

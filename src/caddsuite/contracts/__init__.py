@@ -1,0 +1,38 @@
+"""Normalized, versioned result contracts (docs/architecture/DOMAIN_MODEL.md).
+
+Importing this package registers every contract class, so ``load_contract`` and
+``contract_registry`` see all of them.
+"""
+
+from caddsuite.contracts import (  # noqa: F401  (imported for registration side effects)
+    analysis,
+    docking,
+    evidence,
+    execution,
+    md,
+    properties,
+    qm,
+    registry,
+    structure,
+)
+from caddsuite.contracts.base import (
+    ArtifactRef,
+    ContractModel,
+    EntityRef,
+    SoftwareRef,
+    VersionedContract,
+    contract_registry,
+    load_contract,
+    register_upcaster,
+)
+
+__all__ = [
+    "ArtifactRef",
+    "ContractModel",
+    "EntityRef",
+    "SoftwareRef",
+    "VersionedContract",
+    "contract_registry",
+    "load_contract",
+    "register_upcaster",
+]

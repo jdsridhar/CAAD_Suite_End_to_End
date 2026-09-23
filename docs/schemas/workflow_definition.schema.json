@@ -1,0 +1,218 @@
+{
+  "$defs": {
+    "StageDefinition": {
+      "additionalProperties": false,
+      "description": "One declarative workflow node; plugin-specific parameters remain JSON data.",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "engine": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine"
+        },
+        "for_each": {
+          "anyOf": [
+            {
+              "enum": [
+                "compound",
+                "pose",
+                "selected_pose",
+                "target"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "For Each"
+        },
+        "gate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gate"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "input_bindings": {
+          "additionalProperties": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Input Bindings",
+          "type": "object"
+        },
+        "input_contracts": {
+          "additionalProperties": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Input Contracts",
+          "type": "object"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "needs": {
+          "default": [],
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{0,62}$",
+            "type": "string"
+          },
+          "title": "Needs",
+          "type": "array"
+        },
+        "on_fail": {
+          "default": "stop",
+          "enum": [
+            "exclude",
+            "flag",
+            "stop"
+          ],
+          "title": "On Fail",
+          "type": "string"
+        },
+        "output_contract": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Contract"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ],
+      "title": "StageDefinition",
+      "type": "object"
+    },
+    "WorkflowInput": {
+      "additionalProperties": false,
+      "description": "A named value supplied to a run, with its normalized contract type.",
+      "properties": {
+        "contract": {
+          "minLength": 1,
+          "title": "Contract",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contract"
+      ],
+      "title": "WorkflowInput",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/caddsuite.workflow/1",
+  "additionalProperties": false,
+  "description": "A complete DAG declaration with no vendor-specific engine coupling.",
+  "properties": {
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "inputs": {
+      "additionalProperties": {
+        "$ref": "#/$defs/WorkflowInput"
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "name": {
+      "maxLength": 160,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "outputs": {
+      "additionalProperties": {
+        "pattern": "^[a-z][a-z0-9_]{0,62}$",
+        "type": "string"
+      },
+      "title": "Outputs",
+      "type": "object"
+    },
+    "schema": {
+      "const": "caddsuite.workflow/1",
+      "title": "Schema",
+      "type": "string"
+    },
+    "stages": {
+      "items": {
+        "$ref": "#/$defs/StageDefinition"
+      },
+      "minItems": 1,
+      "title": "Stages",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "name",
+    "stages"
+  ],
+  "title": "WorkflowDefinition",
+  "type": "object"
+}

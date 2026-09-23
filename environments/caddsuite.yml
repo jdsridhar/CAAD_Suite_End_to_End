@@ -1,0 +1,34 @@
+# Conda environment for the CADD Suite platform CORE (not the engines).
+# Engines keep their own envs (cadd, gmx, gmxMMPBSA, dft-gui) — see ADR-0002.
+#
+#   conda env create -f environments/caddsuite.yml
+#   conda activate caddsuite
+#   pip install -e . --no-deps --no-build-isolation
+#
+# Lower bounds here are the *intent*; the exact resolved set is recorded in
+# environments/caddsuite.lock.txt (conda list --explicit) — ADR-0012.
+name: caddsuite
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pip
+  # --- core runtime ---
+  - pydantic>=2.7,<3
+  - sqlalchemy>=2.0,<2.1
+  - alembic>=1.13
+  - typer>=0.12
+  - pyyaml>=6
+  - numpy>=1.26
+  - rdkit>=2025.03          # chem services run in the core env (Phase 4). Resolved 2026.03.6, whereas the
+                            # legacy docking env 'cadd' has 2025.03.6; regression tests compare by InChIKey.
+  # --- build + quality tooling ---
+  - hatchling>=1.25
+  - pytest>=8
+  - pytest-cov
+  - hypothesis
+  - ruff
+  - mypy
+  - types-pyyaml
+  - import-linter

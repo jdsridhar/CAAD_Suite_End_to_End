@@ -1,0 +1,416 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "MDProtocol": {
+      "additionalProperties": false,
+      "properties": {
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/MDStage"
+          },
+          "minItems": 1,
+          "title": "Stages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "stages"
+      ],
+      "title": "MDProtocol",
+      "type": "object"
+    },
+    "MDStage": {
+      "additionalProperties": false,
+      "properties": {
+        "barostat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Barostat"
+        },
+        "constraints": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Constraints"
+        },
+        "hmr": {
+          "default": false,
+          "title": "Hmr",
+          "type": "boolean"
+        },
+        "integrator": {
+          "minLength": 1,
+          "title": "Integrator",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/MDStageKind"
+        },
+        "length_ns": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Length Ns"
+        },
+        "n_steps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Steps"
+        },
+        "nonbonded": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Nonbonded",
+          "type": "object"
+        },
+        "pressure_bar": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pressure Bar"
+        },
+        "restraints": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Restraints"
+        },
+        "temperature_K": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temperature K"
+        },
+        "thermostat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thermostat"
+        },
+        "timestep_fs": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timestep Fs"
+        }
+      },
+      "required": [
+        "kind",
+        "integrator"
+      ],
+      "title": "MDStage",
+      "type": "object"
+    },
+    "MDStageKind": {
+      "enum": [
+        "minimization",
+        "nvt",
+        "npt",
+        "production"
+      ],
+      "title": "MDStageKind",
+      "type": "string"
+    },
+    "SegmentRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "title": "Artifacts",
+          "type": "object"
+        },
+        "index": {
+          "minimum": 1,
+          "title": "Index",
+          "type": "integer"
+        },
+        "length_ns": {
+          "exclusiveMinimum": 0,
+          "title": "Length Ns",
+          "type": "number"
+        },
+        "n_steps": {
+          "minimum": 1,
+          "title": "N Steps",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/TaskState"
+        }
+      },
+      "required": [
+        "index",
+        "length_ns",
+        "n_steps",
+        "status"
+      ],
+      "title": "SegmentRecord",
+      "type": "object"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    },
+    "TaskState": {
+      "description": "Workflow task states (TARGET_ARCHITECTURE §8.2).",
+      "enum": [
+        "pending",
+        "ready",
+        "awaiting_decision",
+        "running",
+        "succeeded",
+        "succeeded_with_warnings",
+        "failed",
+        "cancelled",
+        "skipped",
+        "cached",
+        "interrupted"
+      ],
+      "title": "TaskState",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/md_simulation/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "accession": {
+      "pattern": "^CMP\\d{4,}_MD_\\d{3,}$",
+      "title": "Accession",
+      "type": "string"
+    },
+    "adapter": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "engine": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "performance_ns_per_day": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Performance Ns Per Day"
+    },
+    "protocol": {
+      "$ref": "#/$defs/MDProtocol"
+    },
+    "schema_version": {
+      "default": "md_simulation/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "seeds": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Seeds",
+      "type": "object"
+    },
+    "segments": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SegmentRecord"
+      },
+      "title": "Segments",
+      "type": "array"
+    },
+    "system_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "System Id",
+      "type": "string"
+    },
+    "total_ns": {
+      "minimum": 0,
+      "title": "Total Ns",
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "accession",
+    "system_id",
+    "protocol",
+    "engine",
+    "adapter",
+    "total_ns"
+  ],
+  "title": "MDSimulation",
+  "type": "object"
+}

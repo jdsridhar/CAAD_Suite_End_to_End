@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "CandidateStatus": {
+      "enum": [
+        "active",
+        "excluded",
+        "flagged"
+      ],
+      "title": "CandidateStatus",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/candidate/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "compound_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Compound Id",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "project_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "reason_evidence_ids": {
+      "default": [],
+      "items": {
+        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+        "type": "string"
+      },
+      "title": "Reason Evidence Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "candidate/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/CandidateStatus",
+      "default": "active"
+    }
+  },
+  "required": [
+    "id",
+    "compound_id",
+    "project_id"
+  ],
+  "title": "Candidate",
+  "type": "object"
+}

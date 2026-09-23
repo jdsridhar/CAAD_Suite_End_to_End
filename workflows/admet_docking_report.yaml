@@ -1,0 +1,60 @@
+schema: caddsuite.workflow/1
+name: ADMET, docking and report
+description: A short configurable screen; the example gate is illustrative and is not a platform default.
+inputs:
+  compounds:
+    contract: compound/1.0
+  target_structure:
+    contract: structure/1.0
+stages:
+  - id: admet
+    kind: property_prediction
+    engine: rdkit_rules
+    for_each: compound
+    input_contracts:
+      compound: compound/1.0
+    input_bindings:
+      compound: $compounds
+    output_contract: property_prediction_set/1.0
+    params:
+      endpoints: [drug_likeness, structural_alerts, physicochemistry]
+  - id: configured_filter
+    kind: gate
+    for_each: compound
+    needs: [admet]
+    input_contracts:
+      predictions: property_prediction_set/1.0
+    input_bindings:
+      predictions: admet
+    output_contract: candidate/1.0
+    gate: admet.qed >= 0.4
+    on_fail: flag
+  - id: dock
+    kind: docking
+    engine: vina
+    for_each: compound
+    needs: [configured_filter]
+    input_contracts:
+      candidate: candidate/1.0
+      target: structure/1.0
+    input_bindings:
+      candidate: configured_filter
+      target: $target_structure
+    output_contract: docking_run/1.0
+    params:
+      exhaustiveness: 16
+      num_modes: 9
+      seed: 42
+  - id: report
+    kind: report
+    needs: [admet, dock]
+    input_contracts:
+      property_results: property_prediction_set/1.0
+      docking_results: docking_run/1.0
+    input_bindings:
+      property_results: admet
+      docking_results: dock
+    params:
+      formats: [html, json, csv]
+outputs:
+  report: report

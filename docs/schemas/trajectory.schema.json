@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/trajectory/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "files": {
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    },
+    "frame_interval_ps": {
+      "exclusiveMinimum": 0,
+      "title": "Frame Interval Ps",
+      "type": "number"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "n_frames": {
+      "minimum": 1,
+      "title": "N Frames",
+      "type": "integer"
+    },
+    "processing": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Processing",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "trajectory/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simulation_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "time_range_ns": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "minimum": 0,
+          "type": "number"
+        }
+      ],
+      "title": "Time Range Ns",
+      "type": "array"
+    },
+    "topology": {
+      "$ref": "#/$defs/ArtifactRef"
+    }
+  },
+  "required": [
+    "id",
+    "simulation_id",
+    "files",
+    "topology",
+    "n_frames",
+    "frame_interval_ps",
+    "time_range_ns"
+  ],
+  "title": "Trajectory",
+  "type": "object"
+}

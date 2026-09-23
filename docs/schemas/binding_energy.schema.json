@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "BindingEnergyMethod": {
+      "enum": [
+        "MM/GBSA",
+        "MM/PBSA"
+      ],
+      "title": "BindingEnergyMethod",
+      "type": "string"
+    },
+    "EnergyStatistics": {
+      "additionalProperties": false,
+      "properties": {
+        "block_size_frames": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Block Size Frames"
+        },
+        "mean": {
+          "title": "Mean",
+          "type": "number"
+        },
+        "n_effective": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Effective"
+        },
+        "sd": {
+          "minimum": 0,
+          "title": "Sd",
+          "type": "number"
+        },
+        "sem_block": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sem Block"
+        },
+        "sem_naive": {
+          "minimum": 0,
+          "title": "Sem Naive",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mean",
+        "sd",
+        "sem_naive"
+      ],
+      "title": "EnergyStatistics",
+      "type": "object"
+    },
+    "EntropyTreatment": {
+      "enum": [
+        "none",
+        "interaction_entropy",
+        "c2",
+        "nmode",
+        "quasi_harmonic"
+      ],
+      "title": "EntropyTreatment",
+      "type": "string"
+    },
+    "FrameSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "end_frame": {
+          "minimum": 0,
+          "title": "End Frame",
+          "type": "integer"
+        },
+        "n_used": {
+          "minimum": 1,
+          "title": "N Used",
+          "type": "integer"
+        },
+        "start_frame": {
+          "minimum": 0,
+          "title": "Start Frame",
+          "type": "integer"
+        },
+        "stride": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Stride",
+          "type": "integer"
+        },
+        "window_ns": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "minimum": 0,
+              "type": "number"
+            }
+          ],
+          "title": "Window Ns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "start_frame",
+        "end_frame",
+        "n_used",
+        "window_ns"
+      ],
+      "title": "FrameSelection",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/binding_energy/1.0",
+  "additionalProperties": false,
+  "description": "End-point binding-energy estimate. Never an experimental ΔG (requirements §17).",
+  "properties": {
+    "accession": {
+      "pattern": "^CMP\\d{4,}_MMPBSA_\\d{3,}$",
+      "title": "Accession",
+      "type": "string"
+    },
+    "components_kcal_per_mol": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Components Kcal Per Mol",
+      "type": "object"
+    },
+    "entropy": {
+      "$ref": "#/$defs/EntropyTreatment"
+    },
+    "frames": {
+      "$ref": "#/$defs/FrameSelection"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "method": {
+      "$ref": "#/$defs/BindingEnergyMethod"
+    },
+    "model": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Model",
+      "type": "object"
+    },
+    "salt_concentration_M": {
+      "minimum": 0,
+      "title": "Salt Concentration M",
+      "type": "number"
+    },
+    "schema_version": {
+      "default": "binding_energy/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "statistics": {
+      "$ref": "#/$defs/EnergyStatistics"
+    },
+    "temperature_K": {
+      "exclusiveMinimum": 0,
+      "title": "Temperature K",
+      "type": "number"
+    },
+    "tool": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "trajectory_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Trajectory Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "accession",
+    "trajectory_id",
+    "method",
+    "model",
+    "tool",
+    "frames",
+    "temperature_K",
+    "salt_concentration_M",
+    "entropy",
+    "components_kcal_per_mol",
+    "statistics"
+  ],
+  "title": "BindingEnergyResult",
+  "type": "object"
+}

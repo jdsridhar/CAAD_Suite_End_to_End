@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/conformer/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "energy_kcal_per_mol": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Energy Kcal Per Mol"
+    },
+    "form_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Form Id",
+      "type": "string"
+    },
+    "generator": {
+      "minLength": 1,
+      "title": "Generator",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "n_generated": {
+      "default": 1,
+      "minimum": 1,
+      "title": "N Generated",
+      "type": "integer"
+    },
+    "optimizer": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Optimizer"
+    },
+    "optimizer_converged": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Optimizer Converged"
+    },
+    "schema_version": {
+      "default": "conformer/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Seed"
+    },
+    "selected_by": {
+      "default": "single_embedding",
+      "minLength": 1,
+      "title": "Selected By",
+      "type": "string"
+    },
+    "structure": {
+      "$ref": "#/$defs/ArtifactRef"
+    }
+  },
+  "required": [
+    "id",
+    "form_id",
+    "generator",
+    "structure"
+  ],
+  "title": "Conformer",
+  "type": "object"
+}

@@ -1,0 +1,208 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ClusterMembership": {
+      "additionalProperties": false,
+      "properties": {
+        "cluster_id": {
+          "minimum": 1,
+          "title": "Cluster Id",
+          "type": "integer"
+        },
+        "cluster_size": {
+          "minimum": 1,
+          "title": "Cluster Size",
+          "type": "integer"
+        },
+        "method": {
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "rmsd_cutoff_A": {
+          "exclusiveMinimum": 0,
+          "title": "Rmsd Cutoff A",
+          "type": "number"
+        }
+      },
+      "required": [
+        "cluster_id",
+        "cluster_size",
+        "method",
+        "rmsd_cutoff_A"
+      ],
+      "title": "ClusterMembership",
+      "type": "object"
+    },
+    "DockingScore": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "docking_score",
+          "default": "docking_score",
+          "title": "Kind",
+          "type": "string"
+        },
+        "ligand_efficiency": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ligand Efficiency"
+        },
+        "scoring_function": {
+          "minLength": 1,
+          "title": "Scoring Function",
+          "type": "string"
+        },
+        "unit": {
+          "const": "kcal/mol",
+          "default": "kcal/mol",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "scoring_function"
+      ],
+      "title": "DockingScore",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/pose/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "accession": {
+      "pattern": "^CMP\\d{4,}_POSE_\\d{3,}$",
+      "title": "Accession",
+      "type": "string"
+    },
+    "cluster": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ClusterMembership"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "fidelity_max_dev_A": {
+      "minimum": 0,
+      "title": "Fidelity Max Dev A",
+      "type": "number"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "rank": {
+      "minimum": 1,
+      "title": "Rank",
+      "type": "integer"
+    },
+    "raw": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "rmsd_to_best_lb_A": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rmsd To Best Lb A"
+    },
+    "rmsd_to_best_ub_A": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rmsd To Best Ub A"
+    },
+    "run_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "pose/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "score": {
+      "$ref": "#/$defs/DockingScore"
+    },
+    "structure": {
+      "$ref": "#/$defs/ArtifactRef"
+    }
+  },
+  "required": [
+    "id",
+    "accession",
+    "run_id",
+    "rank",
+    "score",
+    "structure",
+    "raw",
+    "fidelity_max_dev_A"
+  ],
+  "title": "Pose",
+  "type": "object"
+}

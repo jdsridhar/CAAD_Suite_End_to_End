@@ -1,0 +1,245 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "enum": [
+        "weighted_sum",
+        "pareto",
+        "lexicographic"
+      ],
+      "title": "Aggregation",
+      "type": "string"
+    },
+    "CriterionContribution": {
+      "additionalProperties": false,
+      "properties": {
+        "contribution": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contribution"
+        },
+        "criterion": {
+          "minLength": 1,
+          "title": "Criterion",
+          "type": "string"
+        },
+        "normalized": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalized"
+        },
+        "raw_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Raw Value"
+        },
+        "weight": {
+          "exclusiveMinimum": 0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "criterion",
+        "weight"
+      ],
+      "title": "CriterionContribution",
+      "type": "object"
+    },
+    "MissingPolicy": {
+      "enum": [
+        "exclude_candidate",
+        "worst_value",
+        "skip_criterion"
+      ],
+      "title": "MissingPolicy",
+      "type": "string"
+    },
+    "Normalization": {
+      "enum": [
+        "rank",
+        "min_max",
+        "z_score",
+        "threshold"
+      ],
+      "title": "Normalization",
+      "type": "string"
+    },
+    "RankedCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Candidate Id",
+          "type": "string"
+        },
+        "contributions": {
+          "items": {
+            "$ref": "#/$defs/CriterionContribution"
+          },
+          "title": "Contributions",
+          "type": "array"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "rank",
+        "contributions"
+      ],
+      "title": "RankedCandidate",
+      "type": "object"
+    },
+    "RankingCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "criterion": {
+          "minLength": 1,
+          "title": "Criterion",
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "lower_better",
+            "higher_better"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "missing_policy": {
+          "$ref": "#/$defs/MissingPolicy",
+          "default": "exclude_candidate"
+        },
+        "normalization": {
+          "$ref": "#/$defs/Normalization"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold"
+        },
+        "weight": {
+          "exclusiveMinimum": 0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "criterion",
+        "direction",
+        "normalization",
+        "weight"
+      ],
+      "title": "RankingCriterion",
+      "type": "object"
+    },
+    "RankingScheme": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "$ref": "#/$defs/Aggregation"
+        },
+        "criteria": {
+          "items": {
+            "$ref": "#/$defs/RankingCriterion"
+          },
+          "minItems": 1,
+          "title": "Criteria",
+          "type": "array"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "criteria",
+        "aggregation"
+      ],
+      "title": "RankingScheme",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/ranking/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/RankedCandidate"
+      },
+      "title": "Results",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "ranking/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scheme": {
+      "$ref": "#/$defs/RankingScheme"
+    },
+    "statement": {
+      "const": "Prioritized according to the configured computational criteria; computational predictions require experimental validation.",
+      "default": "Prioritized according to the configured computational criteria; computational predictions require experimental validation.",
+      "title": "Statement",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "scheme",
+    "results"
+  ],
+  "title": "Ranking",
+  "type": "object"
+}

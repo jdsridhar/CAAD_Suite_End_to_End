@@ -1,0 +1,176 @@
+{
+  "$defs": {
+    "CompoundFormKind": {
+      "enum": [
+        "parent_neutral",
+        "protonated_microstate",
+        "tautomer",
+        "user_supplied"
+      ],
+      "title": "CompoundFormKind",
+      "type": "string"
+    },
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/compound_form/1.0",
+  "additionalProperties": false,
+  "description": "The chemical species a calculation actually uses.",
+  "properties": {
+    "compound_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Compound Id",
+      "type": "string"
+    },
+    "decision_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Decision Id"
+    },
+    "formal_charge": {
+      "title": "Formal Charge",
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/CompoundFormKind"
+    },
+    "method": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SoftwareRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "ph": {
+      "anyOf": [
+        {
+          "maximum": 14,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ph"
+    },
+    "population_rank": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Population Rank"
+    },
+    "schema_version": {
+      "default": "compound_form/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "smiles": {
+      "minLength": 1,
+      "title": "Smiles",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "compound_id",
+    "kind",
+    "smiles",
+    "formal_charge"
+  ],
+  "title": "CompoundForm",
+  "type": "object"
+}

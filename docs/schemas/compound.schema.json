@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "ChemicalIdentity": {
+      "additionalProperties": false,
+      "description": "Structure-derived identity of the standardized parent.",
+      "properties": {
+        "canonical_smiles": {
+          "minLength": 1,
+          "title": "Canonical Smiles",
+          "type": "string"
+        },
+        "formal_charge": {
+          "title": "Formal Charge",
+          "type": "integer"
+        },
+        "formula": {
+          "minLength": 1,
+          "title": "Formula",
+          "type": "string"
+        },
+        "heavy_atom_count": {
+          "minimum": 1,
+          "title": "Heavy Atom Count",
+          "type": "integer"
+        },
+        "inchi": {
+          "pattern": "^InChI=1S?/",
+          "title": "Inchi",
+          "type": "string"
+        },
+        "inchikey": {
+          "pattern": "^[A-Z]{14}-[A-Z]{10}-[A-Z]$",
+          "title": "Inchikey",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonical_smiles",
+        "inchi",
+        "inchikey",
+        "formula",
+        "formal_charge",
+        "heavy_atom_count"
+      ],
+      "title": "ChemicalIdentity",
+      "type": "object"
+    },
+    "InputRecord": {
+      "additionalProperties": false,
+      "description": "Exactly what the user supplied, kept verbatim for provenance.",
+      "properties": {
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "original_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Name"
+        },
+        "original_text": {
+          "minLength": 1,
+          "title": "Original Text",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "csv",
+            "sdf",
+            "smiles_list",
+            "pubchem",
+            "chembl",
+            "manual",
+            "legacy_import"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "original_text"
+      ],
+      "title": "InputRecord",
+      "type": "object"
+    },
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    },
+    "StandardizationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "minLength": 1,
+          "title": "Policy",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/StandardizationStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "toolkit": {
+          "$ref": "#/$defs/SoftwareRef"
+        }
+      },
+      "required": [
+        "policy",
+        "steps",
+        "toolkit"
+      ],
+      "title": "StandardizationRecord",
+      "type": "object"
+    },
+    "StandardizationStep": {
+      "additionalProperties": false,
+      "properties": {
+        "changed": {
+          "title": "Changed",
+          "type": "boolean"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        },
+        "operation": {
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "changed"
+      ],
+      "title": "StandardizationStep",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/compound/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "accession": {
+      "pattern": "^CMP\\d{4,}$",
+      "title": "Accession",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_record": {
+      "$ref": "#/$defs/InputRecord"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "parent": {
+      "$ref": "#/$defs/ChemicalIdentity"
+    },
+    "project_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "compound/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "standardization": {
+      "$ref": "#/$defs/StandardizationRecord"
+    },
+    "tags": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "accession",
+    "project_id",
+    "name",
+    "input_record",
+    "parent",
+    "standardization"
+  ],
+  "title": "Compound",
+  "type": "object"
+}

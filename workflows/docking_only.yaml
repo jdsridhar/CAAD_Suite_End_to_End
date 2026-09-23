@@ -1,0 +1,43 @@
+schema: caddsuite.workflow/1
+name: Docking only
+description: Standardize registered compound forms, then dock against a supplied target.
+inputs:
+  compounds:
+    contract: compound/1.0
+    description: Registered parent compounds in this project.
+  target_structure:
+    contract: structure/1.0
+    description: Protein structure selected by the user.
+stages:
+  - id: standardize
+    kind: chemistry.standardize
+    for_each: compound
+    input_contracts:
+      compound: compound/1.0
+    input_bindings:
+      compound: $compounds
+    output_contract: compound_form/1.0
+    params:
+      identity_policy: neutral_parent
+      preserve_stereochemistry: true
+  - id: dock
+    kind: docking
+    engine: vina
+    for_each: compound
+    needs: [standardize]
+    input_contracts:
+      ligand: compound_form/1.0
+      target: structure/1.0
+    input_bindings:
+      ligand: standardize
+      target: $target_structure
+    output_contract: docking_run/1.0
+    params:
+      search_space:
+        method: reference_ligand
+        padding_A: 5.0
+      exhaustiveness: 16
+      num_modes: 9
+      seed: 42
+outputs:
+  docking_runs: dock

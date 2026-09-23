@@ -1,0 +1,282 @@
+{
+  "$defs": {
+    "EntityRef": {
+      "additionalProperties": false,
+      "description": "Polymorphic reference to another platform entity (e.g. a pose or a conformer).",
+      "properties": {
+        "accession": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accession"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "EntityRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "QMModel": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "minLength": 1,
+          "title": "Basis",
+          "type": "string"
+        },
+        "dispersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dispersion"
+        },
+        "method": {
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "enum": [
+                "rhf",
+                "uhf",
+                "rohf",
+                "rks",
+                "uks",
+                "roks"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference"
+        }
+      },
+      "required": [
+        "method",
+        "basis"
+      ],
+      "title": "QMModel",
+      "type": "object"
+    },
+    "QMProtocol": {
+      "enum": [
+        "single_point",
+        "optimization",
+        "frequency",
+        "opt_freq",
+        "tddft"
+      ],
+      "title": "QMProtocol",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    },
+    "SolvationSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "solvent": {
+          "minLength": 1,
+          "title": "Solvent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "solvent"
+      ],
+      "title": "SolvationSpec",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/qm_calculation/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "accession": {
+      "pattern": "^CMP\\d{4,}_QM_\\d{3,}$",
+      "title": "Accession",
+      "type": "string"
+    },
+    "adapter": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "charge": {
+      "title": "Charge",
+      "type": "integer"
+    },
+    "engine": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "form_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Form Id",
+      "type": "string"
+    },
+    "geometry_source": {
+      "$ref": "#/$defs/EntityRef"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "keywords": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Keywords",
+      "type": "object"
+    },
+    "model": {
+      "$ref": "#/$defs/QMModel"
+    },
+    "multiplicity": {
+      "minimum": 1,
+      "title": "Multiplicity",
+      "type": "integer"
+    },
+    "protocol": {
+      "$ref": "#/$defs/QMProtocol"
+    },
+    "requested_properties": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Requested Properties",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "qm_calculation/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "solvation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SolvationSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "id",
+    "accession",
+    "form_id",
+    "geometry_source",
+    "engine",
+    "adapter",
+    "model",
+    "protocol",
+    "charge",
+    "multiplicity"
+  ],
+  "title": "QMCalculation",
+  "type": "object"
+}

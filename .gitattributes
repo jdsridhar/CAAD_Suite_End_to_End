@@ -1,0 +1,8 @@
+# Normalize line endings: the repo is edited from both Windows tools and WSL.
+# CRLF in inputs has already bitten the legacy MD suite (.mdp parsing, ARCHITECTURE_AUDIT §6).
+* text=auto eol=lf
+
+*.png binary
+*.pdf binary
+*.zip binary
+*.gz binary

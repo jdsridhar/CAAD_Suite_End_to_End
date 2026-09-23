@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "EnvironmentKind": {
+      "enum": [
+        "conda",
+        "container",
+        "venv",
+        "system"
+      ],
+      "title": "EnvironmentKind",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/software_environment/1.0",
+  "additionalProperties": false,
+  "description": "A captured software environment (ADR-0012). ``lock_sha256`` identifies the exact\npackage set, so two results can be checked for having come from the same environment.",
+  "properties": {
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "key_packages": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Key Packages",
+      "type": "object"
+    },
+    "kind": {
+      "$ref": "#/$defs/EnvironmentKind"
+    },
+    "lock": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "lock_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Lock Sha256",
+      "type": "string"
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Name"
+    },
+    "prefix": {
+      "minLength": 1,
+      "title": "Prefix",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "software_environment/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "prefix",
+    "lock_sha256",
+    "captured_at"
+  ],
+  "title": "SoftwareEnvironment",
+  "type": "object"
+}

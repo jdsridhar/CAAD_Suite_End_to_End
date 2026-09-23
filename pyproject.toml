@@ -1,0 +1,139 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "caddsuite"
+dynamic = ["version"]
+description = "Extensible, reproducible computational drug-discovery platform: engine-independent docking, MD, MM/GBSA and QM workflows through adapters, with full provenance."
+readme = "README.md"
+requires-python = ">=3.11"
+# License: open source (decision Q2). The exact license is pending the author's
+# confirmation, see docs/architecture/ADR/0013 (Apache-2.0 proposed).
+keywords = ["drug discovery", "docking", "molecular dynamics", "quantum chemistry", "provenance", "workflow"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "pydantic>=2.7,<3",
+    "sqlalchemy>=2.0,<2.1",
+    "alembic>=1.13",
+    "typer>=0.12",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+chem = ["rdkit>=2025.3"]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "hypothesis",
+    "ruff",
+    "mypy",
+    "types-PyYAML",
+    "import-linter",
+]
+
+[project.scripts]
+caddsuite = "caddsuite.cli.main:app"
+
+# Built-in engine adapters register here exactly like third-party plugins (ADR-0003).
+# They are added as each engine family is migrated (Phase 4 onwards).
+[project.entry-points."caddsuite.adapters"]
+
+[tool.hatch.version]
+path = "src/caddsuite/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/caddsuite", "src/caddsuite_worker"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/caddsuite/storage/migrations" = "caddsuite/storage/migrations"
+
+# ----------------------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "engine(name): needs an installed scientific engine; skipped automatically when absent",
+    "legacy_data: needs read-only legacy data (see CADDSUITE_LEGACY_DATA)",
+    "slow: long-running test",
+]
+filterwarnings = ["error::DeprecationWarning:caddsuite.*"]
+
+# ----------------------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["src/caddsuite/storage/migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "PT", "RUF", "SIM", "C4"]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # scientific text legitimately uses Å, Δ, ×, ±, …
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "S607", "S108"]
+
+# ----------------------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+packages = ["caddsuite", "caddsuite_worker"]
+exclude = ["src/caddsuite/storage/migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["rdkit.*"]
+ignore_missing_imports = true
+
+# ----------------------------------------------------------------------------- import-linter
+# Architectural fitness functions: the layering rules of TARGET_ARCHITECTURE §3,
+# checked on every test run (tests/architecture/test_layers.py).
+[tool.importlinter]
+root_packages = ["caddsuite", "caddsuite_worker"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain and contracts are pure (no infrastructure, no frameworks)"
+type = "forbidden"
+source_modules = ["caddsuite.domain", "caddsuite.contracts"]
+forbidden_modules = [
+    "caddsuite.storage", "caddsuite.workflow", "caddsuite.execution", "caddsuite.provenance",
+    "caddsuite.adapters", "caddsuite.plugins", "caddsuite.api", "caddsuite.cli",
+    "sqlalchemy", "alembic", "typer",
+]
+
+[[tool.importlinter.contracts]]
+name = "The core never imports adapters (they are discovered at runtime)"
+type = "forbidden"
+source_modules = [
+    "caddsuite.domain", "caddsuite.contracts", "caddsuite.ports", "caddsuite.validation",
+    "caddsuite.workflow", "caddsuite.execution", "caddsuite.storage", "caddsuite.provenance",
+    "caddsuite.plugins", "caddsuite.chem", "caddsuite.structure", "caddsuite.analysis",
+    "caddsuite.ranking", "caddsuite.reporting",
+]
+forbidden_modules = ["caddsuite.adapters"]
+
+[[tool.importlinter.contracts]]
+name = "Nothing below the presentation layer imports it"
+type = "forbidden"
+source_modules = [
+    "caddsuite.domain", "caddsuite.contracts", "caddsuite.ports", "caddsuite.validation",
+    "caddsuite.workflow", "caddsuite.execution", "caddsuite.storage", "caddsuite.provenance",
+    "caddsuite.plugins", "caddsuite.adapters", "caddsuite.chem", "caddsuite.structure",
+    "caddsuite.analysis", "caddsuite.ranking", "caddsuite.reporting",
+]
+forbidden_modules = ["caddsuite.api", "caddsuite.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Engine-side worker runtime is independent of the core (runs in foreign envs)"
+type = "forbidden"
+source_modules = ["caddsuite_worker"]
+forbidden_modules = ["caddsuite", "pydantic", "sqlalchemy", "alembic", "typer", "yaml"]

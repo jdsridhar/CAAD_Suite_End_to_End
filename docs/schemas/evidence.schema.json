@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "Direction": {
+      "enum": [
+        "lower_better",
+        "higher_better",
+        "boolean",
+        "informational"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "EntityRef": {
+      "additionalProperties": false,
+      "description": "Polymorphic reference to another platform entity (e.g. a pose or a conformer).",
+      "properties": {
+        "accession": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accession"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "EntityRef",
+      "type": "object"
+    },
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/evidence/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "candidate_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "criterion": {
+      "minLength": 1,
+      "title": "Criterion",
+      "type": "string"
+    },
+    "direction": {
+      "$ref": "#/$defs/Direction"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "const": "computational_prediction",
+      "default": "computational_prediction",
+      "title": "Kind",
+      "type": "string"
+    },
+    "method": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SoftwareRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "default": "evidence/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_result": {
+      "$ref": "#/$defs/EntityRef"
+    },
+    "uncertainty": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uncertainty"
+    },
+    "unit": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unit"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "title": "Value"
+    }
+  },
+  "required": [
+    "id",
+    "candidate_id",
+    "criterion",
+    "value",
+    "direction",
+    "source_result"
+  ],
+  "title": "Evidence",
+  "type": "object"
+}

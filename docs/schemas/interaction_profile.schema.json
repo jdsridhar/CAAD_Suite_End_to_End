@@ -1,0 +1,254 @@
+{
+  "$defs": {
+    "EntityRef": {
+      "additionalProperties": false,
+      "description": "Polymorphic reference to another platform entity (e.g. a pose or a conformer).",
+      "properties": {
+        "accession": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accession"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "EntityRef",
+      "type": "object"
+    },
+    "Interaction": {
+      "additionalProperties": false,
+      "properties": {
+        "angle_deg": {
+          "anyOf": [
+            {
+              "maximum": 180,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Angle Deg"
+        },
+        "distance_A": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distance A"
+        },
+        "ligand_atoms": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Ligand Atoms",
+          "type": "array"
+        },
+        "residue": {
+          "$ref": "#/$defs/ResidueRef"
+        },
+        "type": {
+          "$ref": "#/$defs/InteractionType"
+        }
+      },
+      "required": [
+        "type",
+        "residue"
+      ],
+      "title": "Interaction",
+      "type": "object"
+    },
+    "InteractionType": {
+      "enum": [
+        "hydrogen_bond",
+        "hydrophobic",
+        "salt_bridge",
+        "pi_stacking",
+        "pi_cation",
+        "halogen_bond",
+        "water_bridge",
+        "metal_complex",
+        "polar_contact"
+      ],
+      "title": "InteractionType",
+      "type": "string"
+    },
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "ResidueRef": {
+      "additionalProperties": false,
+      "properties": {
+        "chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain"
+        },
+        "icode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icode"
+        },
+        "resname": {
+          "minLength": 1,
+          "title": "Resname",
+          "type": "string"
+        },
+        "resnum": {
+          "title": "Resnum",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resname",
+        "resnum"
+      ],
+      "title": "ResidueRef",
+      "type": "object"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/interaction_profile/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "interactions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Interaction"
+      },
+      "title": "Interactions",
+      "type": "array"
+    },
+    "method": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "schema_version": {
+      "default": "interaction_profile/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "subject": {
+      "$ref": "#/$defs/EntityRef"
+    }
+  },
+  "required": [
+    "id",
+    "subject",
+    "method"
+  ],
+  "title": "InteractionProfile",
+  "type": "object"
+}

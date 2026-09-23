@@ -1,0 +1,293 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "ComponentRecord": {
+      "additionalProperties": false,
+      "description": "A non-polymer component found in a structure (and what happened to it).",
+      "properties": {
+        "category": {
+          "enum": [
+            "water",
+            "ion",
+            "metal",
+            "cofactor",
+            "ligand",
+            "additive",
+            "modified_residue",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain"
+        },
+        "n_atoms": {
+          "minimum": 0,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "resname": {
+          "minLength": 1,
+          "title": "Resname",
+          "type": "string"
+        },
+        "resseq": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resseq"
+        }
+      },
+      "required": [
+        "resname",
+        "category",
+        "n_atoms"
+      ],
+      "title": "ComponentRecord",
+      "type": "object"
+    },
+    "GapRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "after_residue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After Residue"
+        },
+        "chain": {
+          "minLength": 1,
+          "title": "Chain",
+          "type": "string"
+        },
+        "missing": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing",
+          "type": "array"
+        },
+        "modelled": {
+          "title": "Modelled",
+          "type": "boolean"
+        },
+        "position": {
+          "enum": [
+            "n_terminal",
+            "internal",
+            "c_terminal"
+          ],
+          "title": "Position",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chain",
+        "missing",
+        "position",
+        "modelled"
+      ],
+      "title": "GapRecord",
+      "type": "object"
+    },
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/prepared_receptor/1.0",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "kept": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ComponentRecord"
+      },
+      "title": "Kept",
+      "type": "array"
+    },
+    "missing_residues": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/GapRecord"
+      },
+      "title": "Missing Residues",
+      "type": "array"
+    },
+    "ph": {
+      "maximum": 14,
+      "minimum": 0,
+      "title": "Ph",
+      "type": "number"
+    },
+    "protocol": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "protonation_method": {
+      "minLength": 1,
+      "title": "Protonation Method",
+      "type": "string"
+    },
+    "removed": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ComponentRecord"
+      },
+      "title": "Removed",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "prepared_receptor/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "structure_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Structure Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "structure_id",
+    "protocol",
+    "ph",
+    "protonation_method"
+  ],
+  "title": "PreparedReceptor",
+  "type": "object"
+}
