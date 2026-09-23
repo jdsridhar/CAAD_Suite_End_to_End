@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 3 — Workflow engine, execution layer, CLI skeleton |
-| **Last completed** | Phase 3.8 retry rules, human decisions, and task reruns (2026-09-24) |
-| **Current task** | [-] 3.9 caddsuite CLI workflow commands |
-| **Next task** | 3.10 Plugin registry and adapter conformance kit |
+| **Last completed** | Phase 3.9 local CLI skeleton (2026-09-24) |
+| **Current task** | [-] 3.10 Plugin registry and adapter conformance kit |
+| **Next task** | 3.11 Fake-adapter workflow integration gate |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -104,7 +104,7 @@ When the user says **CONTINUE**:
 - [x] 3.6 Resource contracts + thread-safe local admission scheduler for CPU, host memory, and exclusive GPU IDs; GPU memory minimums are enforced when reported; leases are process-local and require task reconciliation after restart
 - [x] 3.7 Gate expression language uses an AST allowlist, declared dotted fields, safe helpers, and no `eval`; malicious expressions and missing fields are tested
 - [x] 3.8 Stage-configured retry/backoff policy; atomic decision persistence + task resume; dependency-aware rerun planning and transactional downstream task reset/cache invalidation. REST/CLI endpoints and checkpoint-aware retry remain in Phases 13 and 3.11.
-- [ ] 3.9 `caddsuite` CLI (Typer): `doctor`, `project`, `compound import`, `run`, `status`, `decide`, `logs`
+- [x] 3.9 Typer CLI: doctor, project create/list, workflow validate/plan, status, decide, logs; actual run is guarded until 3.11, and compound import follows Phase 4 standardization. Usage documented in docs/CLI.md
 - [ ] 3.10 Plugin registry (entry points) + adapter conformance kit (skeleton)
 - [ ] 3.11 **Gate:** fake-adapter suite green — fan-out, gates, cache hit/miss, **kill -9 → resume**, cancel kills tree, failure isolation
 
@@ -292,6 +292,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-24 | Phase 3.9 CLI skeleton completed: local doctor, project create/list, workflow validation and plan-only display, run guard, task status, atomic decision submission, and artifact log tail; documented in docs/CLI.md. Raw compound import is deferred to Phase 4 so input is not misrepresented as standardized chemistry. Full gate: 169 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting plugin registry (3.10). |
 | 2026-09-24 | Phase 3.8 completed: bounded per-stage retry policy with explicit retryable error codes/backoff; human decisions are committed with AWAITING_DECISION -> READY and state history atomically; dependency-aware rerun plans reset selected tasks transactionally and clear their current cache keys, refusing active work. Workflow schema refreshed. Full gate: 163 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting CLI milestone (3.9). |
 | 2026-09-24 | Phase 3.7 completed: non-eval gate expression parser with a strict AST/operator/function allowlist, declared nested-field allowlist, optional-field exists(), safe short-circuit logic, and explicit boolean results. Malicious syntax, undeclared access, missing fields, and user-selected threshold behavior covered. Starting retry/decision lifecycle (3.8). |
 | 2026-09-24 | Phase 3.6 completed: typed resource request/capacity contracts and atomic, thread-safe local admission for CPU cores, host memory, and exclusive GPU IDs; device memory constraints reject unknown/undersized GPUs. Full gate: 135 tests pass; Ruff, strict mypy, import-linter and schemas pass. Starting safe gate expression language (3.7). |

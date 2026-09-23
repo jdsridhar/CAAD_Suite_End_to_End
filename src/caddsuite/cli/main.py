@@ -8,6 +8,7 @@ from typing import Annotated
 
 import typer
 
+from caddsuite.cli.commands import register_commands
 from caddsuite.contracts.schema_export import diff_schemas, export_schemas
 from caddsuite.provenance.host import capture_host_info
 from caddsuite.provenance.software import platform_ref, snapshot_conda_prefix
@@ -88,6 +89,9 @@ def env_snapshot(prefix: Annotated[Path, typer.Argument(help="Conda environment 
             indent=2,
         )
     )
+
+
+register_commands(app)
 
 
 def main() -> None:  # pragma: no cover - thin wrapper
