@@ -167,9 +167,13 @@ class DockingScore:
 
 ```python
 class Complex:
-    id: ULID; receptor: Ref[PreparedReceptor]; pose: Ref[Pose]
-    builder: SoftwareRef; structure: ArtifactRef
-    checks: list[Ref[ValidationIssue]]                    # clashes, bond orders, H completeness
+    id: ULID; compound_id: ULID; form_id: ULID; target_id: ULID
+    structure_id: ULID; prepared_receptor_id: ULID
+    docking_run_id: ULID; pose_id: ULID
+    protein: ArtifactRef; ligand: ArtifactRef; assembled: ArtifactRef
+    protein_atom_count: int; ligand_atom_count: int; ligand_heavy_atom_count: int
+    coordinate_fidelity_max_dev_A: float
+    parameters: dict                                    # coordinate assembly; md_ready=false
 
 class Parameterization:
     id: ULID

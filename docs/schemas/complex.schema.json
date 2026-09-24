@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "caddsuite://schemas/complex/1.0",
+  "additionalProperties": false,
+  "description": "A linked protein + docked-ligand coordinate assembly.\n\nThis contract records coordinates and lineage only. It does not imply force-field\nassignment, validated atom typing, or topology readiness for molecular dynamics.",
+  "properties": {
+    "assembled": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "assembly_method": {
+      "default": "normalized_pose_sdf_plus_prepared_receptor_pdb",
+      "title": "Assembly Method",
+      "type": "string"
+    },
+    "compound_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Compound Id",
+      "type": "string"
+    },
+    "coordinate_fidelity_max_dev_A": {
+      "minimum": 0,
+      "title": "Coordinate Fidelity Max Dev A",
+      "type": "number"
+    },
+    "docking_run_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Docking Run Id",
+      "type": "string"
+    },
+    "form_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Form Id",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "ligand": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "ligand_atom_count": {
+      "minimum": 1,
+      "title": "Ligand Atom Count",
+      "type": "integer"
+    },
+    "ligand_heavy_atom_count": {
+      "minimum": 1,
+      "title": "Ligand Heavy Atom Count",
+      "type": "integer"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "pose_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Pose Id",
+      "type": "string"
+    },
+    "prepared_receptor_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Prepared Receptor Id",
+      "type": "string"
+    },
+    "protein": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "protein_atom_count": {
+      "minimum": 1,
+      "title": "Protein Atom Count",
+      "type": "integer"
+    },
+    "schema_version": {
+      "default": "complex/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "structure_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Structure Id",
+      "type": "string"
+    },
+    "target_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Target Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "compound_id",
+    "form_id",
+    "target_id",
+    "structure_id",
+    "prepared_receptor_id",
+    "docking_run_id",
+    "pose_id",
+    "protein",
+    "ligand",
+    "assembled",
+    "protein_atom_count",
+    "ligand_atom_count",
+    "ligand_heavy_atom_count",
+    "coordinate_fidelity_max_dev_A"
+  ],
+  "title": "Complex",
+  "type": "object"
+}

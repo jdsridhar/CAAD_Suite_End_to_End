@@ -6,6 +6,7 @@ Importing this package registers every contract class, so ``load_contract`` and
 
 from caddsuite.contracts import (  # noqa: F401  (imported for registration side effects)
     analysis,
+    complex,
     docking,
     evidence,
     execution,

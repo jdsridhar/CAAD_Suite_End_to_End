@@ -29,6 +29,7 @@ Start with the audit, then read in this order:
 | [0014](ADR/0014-ligand-standardization-and-protonation-policy.md) | Ligand identity = neutral parent; calculation forms at pH 7.4 via Dimorphite-DL; ambiguity → decision | Accepted |
 | [0015](ADR/0015-proof-of-extensibility-engines.md) | Second engine per family: AutoDock4, OpenMM (then NAMD), PySCF (then ORCA) | Accepted |
 | [0016](ADR/0016-protonation-engine-port-and-dependency-bound.md) | Protonation port, explicit ambiguity decisions, and RDKit/Dimorphite dependency bound | Accepted |
+| [0017](ADR/0017-coordinate-complex-assembly.md) | Coordinate complex assembly is separate from MD parameterization | Accepted |
 
 New ADRs: copy [`ADR/0000-template.md`](ADR/0000-template.md), take the next number, and never delete or renumber. Supersede instead.
 
@@ -41,3 +42,4 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [Binding-site definitions](BINDING_SITE.md)
 
 - [AutoDock Vina adapter](VINA_ADAPTER.md)
+- [Docking pose to coordinate complex](COMPLEX_ASSEMBLY.md)

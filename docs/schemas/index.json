@@ -2,6 +2,7 @@
   "binding_energy": "binding_energy/1.0",
   "binding_site": "binding_site/1.0",
   "candidate": "candidate/1.0",
+  "complex": "complex/1.0",
   "compound": "compound/1.0",
   "compound_form": "compound_form/1.0",
   "conformer": "conformer/1.1",

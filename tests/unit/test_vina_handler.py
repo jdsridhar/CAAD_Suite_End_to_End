@@ -13,6 +13,7 @@ from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
+from caddsuite.adapters.structure_preparation.complex_builder import CoordinateComplexBuilderHandler
 from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparationHandler
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.registry import (
@@ -232,5 +233,23 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         assert all(pose.fidelity_max_dev_A <= 0.005 for pose in result.poses)
         assert store.verify(result.artifacts["vina_poses_pdbqt"].sha256 or "")
         assert store.verify(result.artifacts["vina_stdout"].sha256 or "")
+        complex_handler = CoordinateComplexBuilderHandler(artifact_store=store, sessions=sessions)
+        coordinate_complex = complex_handler.execute(
+            SimpleNamespace(
+                task=SimpleNamespace(stage_id="complex", params={}),
+                inputs={
+                    "compound": (compound,),
+                    "form": (form,),
+                    "target_structure": (structure,),
+                    "receptor": (prepared,),
+                    "docking": (result,),
+                    "pose": (result.poses[0],),
+                },
+            )
+        )
+        assert coordinate_complex.pose_id == result.poses[0].id
+        assert coordinate_complex.ligand_heavy_atom_count == compound.parent.heavy_atom_count
+        assert coordinate_complex.parameters["md_ready"] is False
+        assert store.verify(coordinate_complex.assembled.sha256 or "")
     finally:
         engine.dispose()

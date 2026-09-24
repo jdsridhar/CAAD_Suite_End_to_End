@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 4 — Docking migration |
-| **Last completed** | Phase 4.7 AutoDock Vina adapter migration (2026-09-24) |
-| **Current task** | [-] 4.8 structure.complex_builder migration from `build_complex.py` |
-| **Next task** | Phase 4.8 complex builder; then Phase 4.9 AutoDock4 extensibility proof |
+| **Last completed** | Phase 4.8 `structure.complex_builder` migration (2026-09-24) |
+| **Current task** | [-] 4.9 AutoDock4 extensibility proof |
+| **Next task** | Phase 4.9 AutoDock4 adapter PoC; then Phase 4.10 docking migration gate |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -157,8 +157,14 @@ When the user says **CONTINUE**:
   - [x] Execute Meeko receptor/ligand prep, Vina, and Meeko pose export through `LocalExecutor`; preserve raw/intermediate artifacts and stdout/stderr.
   - [x] Validate compound/form/conformer and receptor/site lineage; check hashes, pose graph identity, atom-map coordinates, and normalize `DockingRun` + ordered `Pose` children in `DockingResult`.
   - [x] Engine-enabled 5NIU/RC8 smoke test: PDBFixer → Meeko → Vina seed 42 → Meeko SDF export; normalized pose/artifact hashes verified. This is execution/format validation, not docking-accuracy validation.
-- [ ] 4.8 `structure.complex_builder` (from `build_complex.py`, no shell)
-- [ ] 4.9 **PoC second docking engine** (AutoDock4 from autopilot if Q1 allows; else GNINA) with **zero core diffs**
+- [-] 4.8 `structure.complex_builder` migration from `build_complex.py` (no shell)
+  - [x] Audit legacy conversion, bond-order reconstruction, coordinate check, receptor-H/heterogen removal, and PDB writer limitations.
+  - [x] Define `complex/1.0` lineage contract and record coordinate-only vs parameterized-system boundary (ADR-0017).
+  - [x] Implement hash/identity-checked normalized SDF + prepared receptor assembly; retain prepared H/heterogens and reject unsupported PDB cases.
+  - [x] Add unit checks for chemistry/lineage, formal charge, heavy-atom coordinate rounding, HETATM/H retention, connectivity remapping, artifact tampering, and stored stage output.
+  - [x] Compare the assembled RC8 ligand coordinates with the archived legacy G-DOCK-1 complex at PDB precision; exact coordinate multiset preserved.
+  - [x] Real PDBFixer → Meeko → Vina → complex engine path passes; full core gate passes (248 passed, 5 engine-specific skips).
+- [-] 4.9 **PoC second docking engine** (AutoDock4 from autopilot if Q1 allows; else GNINA) with **zero core diffs**
 - [ ] 4.10 **Gate:** G-DOCK-1/2 regression green; G-DOCK-4 re-docking RMSD reported; PoC merged without core changes
 
 ## Phase 5 — ADMET integration `[ ]`
