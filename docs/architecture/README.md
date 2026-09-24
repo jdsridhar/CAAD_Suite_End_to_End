@@ -39,3 +39,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [Protein preparation boundary](PROTEIN_PREPARATION.md)
 
 - [Binding-site definitions](BINDING_SITE.md)
+
+- [AutoDock Vina adapter](VINA_ADAPTER.md)
