@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from caddsuite.contracts.base import (
     ADMETAccession,
@@ -60,6 +60,16 @@ class PropertyPredictionSet(VersionedContract):
 
     id: ULIDStr
     accession: ADMETAccession
-    form_id: ULIDStr  # the neutral parent by default (ADR-0014)
+    compound_id: ULIDStr
+    #: None means the calculation used the Compound's neutral parent identity.
+    form_id: ULIDStr | None = None
     predictor: SoftwareRef
-    predictions: tuple[PropertyPrediction, ...]
+    parameters: dict[str, object] = Field(default_factory=dict)
+    predictions: tuple[PropertyPrediction, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def prediction_endpoints_are_unique(self) -> PropertyPredictionSet:
+        endpoints = tuple(prediction.endpoint for prediction in self.predictions)
+        if len(endpoints) != len(set(endpoints)):
+            raise ValueError("property prediction set repeats an endpoint")
+        return self

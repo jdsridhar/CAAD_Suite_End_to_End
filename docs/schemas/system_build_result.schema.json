@@ -1,0 +1,745 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "AtomSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "n_atoms": {
+          "minimum": 1,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "description",
+        "n_atoms",
+        "verified"
+      ],
+      "title": "AtomSelection",
+      "type": "object"
+    },
+    "BoxSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "enum": [
+            "rectangular",
+            "triclinic",
+            "truncated_octahedron",
+            "rhombic_dodecahedron"
+          ],
+          "title": "Shape",
+          "type": "string"
+        },
+        "vectors_nm": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Vectors Nm",
+          "type": "array"
+        }
+      },
+      "required": [
+        "shape",
+        "vectors_nm"
+      ],
+      "title": "BoxSpec",
+      "type": "object"
+    },
+    "ForceFieldFamily": {
+      "enum": [
+        "charmm",
+        "amber",
+        "openff"
+      ],
+      "title": "ForceFieldFamily",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "MDProtocol": {
+      "additionalProperties": false,
+      "properties": {
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/MDStage"
+          },
+          "minItems": 1,
+          "title": "Stages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "stages"
+      ],
+      "title": "MDProtocol",
+      "type": "object"
+    },
+    "MDStage": {
+      "additionalProperties": false,
+      "properties": {
+        "barostat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Barostat"
+        },
+        "constraints": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Constraints"
+        },
+        "hmr": {
+          "default": false,
+          "title": "Hmr",
+          "type": "boolean"
+        },
+        "integrator": {
+          "minLength": 1,
+          "title": "Integrator",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/MDStageKind"
+        },
+        "length_ns": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Length Ns"
+        },
+        "n_steps": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Steps"
+        },
+        "nonbonded": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Nonbonded",
+          "type": "object"
+        },
+        "pressure_bar": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pressure Bar"
+        },
+        "restraints": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Restraints"
+        },
+        "temperature_K": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temperature K"
+        },
+        "thermostat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thermostat"
+        },
+        "timestep_fs": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 10,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timestep Fs"
+        }
+      },
+      "required": [
+        "kind",
+        "integrator"
+      ],
+      "title": "MDStage",
+      "type": "object"
+    },
+    "MDStageKind": {
+      "enum": [
+        "minimization",
+        "nvt",
+        "npt",
+        "production"
+      ],
+      "title": "MDStageKind",
+      "type": "string"
+    },
+    "MDSystem": {
+      "additionalProperties": false,
+      "properties": {
+        "box": {
+          "$ref": "#/$defs/BoxSpec"
+        },
+        "builder": {
+          "$ref": "#/$defs/SoftwareRef"
+        },
+        "complex_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Complex Id"
+        },
+        "composition": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Composition",
+          "type": "object"
+        },
+        "engine_inputs": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            "type": "object"
+          },
+          "title": "Engine Inputs",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ionic_strength_M": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ionic Strength M"
+        },
+        "n_atoms": {
+          "minimum": 1,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "net_charge": {
+          "title": "Net Charge",
+          "type": "number"
+        },
+        "parameterization_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Parameterization Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "md_system/1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "selections": {
+          "additionalProperties": {
+            "$ref": "#/$defs/AtomSelection"
+          },
+          "title": "Selections",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "parameterization_id",
+        "builder",
+        "box",
+        "n_atoms",
+        "net_charge"
+      ],
+      "title": "MDSystem",
+      "type": "object"
+    },
+    "Parameterization": {
+      "additionalProperties": false,
+      "description": "Which force field, ligand parameters, charges, water and ions: never implicit.",
+      "properties": {
+        "artifacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "title": "Artifacts",
+          "type": "object"
+        },
+        "ff_family": {
+          "$ref": "#/$defs/ForceFieldFamily"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "ion_parameters": {
+          "minLength": 1,
+          "title": "Ion Parameters",
+          "type": "string"
+        },
+        "ligand_charge_model": {
+          "minLength": 1,
+          "title": "Ligand Charge Model",
+          "type": "string"
+        },
+        "ligand_method": {
+          "minLength": 1,
+          "title": "Ligand Method",
+          "type": "string"
+        },
+        "protein_ff": {
+          "minLength": 1,
+          "title": "Protein Ff",
+          "type": "string"
+        },
+        "quality": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Quality",
+          "type": "object"
+        },
+        "schema_version": {
+          "default": "parameterization/1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "tool": {
+          "$ref": "#/$defs/SoftwareRef"
+        },
+        "water_model": {
+          "minLength": 1,
+          "title": "Water Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ff_family",
+        "protein_ff",
+        "ligand_method",
+        "ligand_charge_model",
+        "water_model",
+        "ion_parameters",
+        "tool"
+      ],
+      "title": "Parameterization",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "How an issue affects execution.\n\n* BLOCKER: the task must not run (e.g. force-field families mixed).\n* DECISION_REQUIRED: a legitimate scientific choice exists; pause and ask the user.\n* WARNING: proceed, but surface it in the UI and in the report.\n* INFO: context for provenance and reports.",
+      "enum": [
+        "blocker",
+        "decision_required",
+        "warning",
+        "info"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    },
+    "SubjectRef": {
+      "additionalProperties": false,
+      "description": "What the issue is about (a compound, a parameter, a task, ...).",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "SubjectRef",
+      "type": "object"
+    },
+    "ValidationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "evidence": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Evidence",
+          "type": "object"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "remediation": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Remediation",
+          "type": "array"
+        },
+        "rule_version": {
+          "minLength": 1,
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "subject": {
+          "$ref": "#/$defs/SubjectRef"
+        }
+      },
+      "required": [
+        "code",
+        "severity",
+        "subject",
+        "message",
+        "rule_version"
+      ],
+      "title": "ValidationIssue",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/system_build_result/1.0",
+  "additionalProperties": false,
+  "description": "Normalized parameterization, system and protocol plus retained raw artifacts.",
+  "properties": {
+    "builder": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "complex_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Complex Id",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "normalized_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Normalized Artifacts",
+      "type": "object"
+    },
+    "parameterization": {
+      "$ref": "#/$defs/Parameterization"
+    },
+    "protocol": {
+      "$ref": "#/$defs/MDProtocol"
+    },
+    "raw_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Raw Artifacts",
+      "type": "object"
+    },
+    "request_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "system_build_result/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "system": {
+      "$ref": "#/$defs/MDSystem"
+    },
+    "validation_issues": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ValidationIssue"
+      },
+      "title": "Validation Issues",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "request_id",
+    "complex_id",
+    "builder",
+    "parameterization",
+    "system",
+    "protocol"
+  ],
+  "title": "SystemBuildResult",
+  "type": "object"
+}

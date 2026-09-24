@@ -23,6 +23,8 @@
   "software_environment": "software_environment/1.0",
   "structure": "structure/1.0",
   "structure_split": "structure_split/1.0",
+  "system_build_request": "system_build_request/1.0",
+  "system_build_result": "system_build_result/1.0",
   "trajectory": "trajectory/1.0",
   "trajectory_analysis": "trajectory_analysis/1.0"
 }

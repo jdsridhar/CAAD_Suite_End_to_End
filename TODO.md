@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 5 — ADMET integration |
-| **Last completed** | Phase 4.10 docking migration gate (2026-09-24; G-DOCK-4 target missed and reported) |
-| **Current task** | [-] 5.1 Audit and port legacy `PropertyPredictor` to a modular RDKit rules adapter |
-| **Next task** | 5.2 known-molecule checks, then evaluate an optional ML predictor |
+| **Current phase** | Phase 6 — Complex preparation + system building |
+| **Last completed** | Phase 6.1 SystemBuilder port and pose-validation gate (2026-09-24) |
+| **Current task** | [-] 6.2 CHARMM-GUI bundle import and protocol normalization |
+| **Next task** | 6.3 force-field family compatibility table and rule |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -176,17 +176,17 @@ When the user says **CONTINUE**:
   - [x] G-DOCK-4 executed with 5NIU/8YZ, Vina `f458505-mod`, seed 42, exhaustiveness 16, 9 poses; full ranked RMSDs recorded in `docs/validation/G-DOCK-4.md`.
   - [!] G-DOCK-4 target (<2 Å) failed: top pose 12.3928 Å; best of nine 10.3426 Å. No accuracy claim; investigate across a benchmark before changing thresholds.
 
-## Phase 5 — ADMET integration `[ ]`
+## Phase 5 — ADMET integration `[x]`
 
-- [ ] 5.1 `PropertyPredictor` port + `adapters.admet.rdkit_rules` (fix SCI-15: Ghose total atoms, honest labels, neutral-parent input)
-- [ ] 5.2 Known-molecule tests (aspirin, sulfamethoxazole, ibuprofen, caffeine)
-- [ ] 5.3 Evaluate an ML predictor (e.g. ADMET-AI) with model/version/applicability-domain metadata
-- [ ] 5.4 **Gate:** definitions documented; tests green
+- [x] 5.1 `PropertyPredictor` port + `adapters.admet.rdkit_rules` (fix SCI-15: Ghose total atoms, honest labels, neutral-parent input)
+- [x] 5.2 Known-molecule tests (aspirin, sulfamethoxazole, ibuprofen, caffeine)
+- [x] 5.3 Evaluate ADMET-AI v2: recommend an isolated optional worker adapter; do not install it into the core environment or integrate unreviewed model/data assets. Record package/model version, dataset, raw outputs, parameters and applicability/uncertainty limitations. Follow up with licensing and benchmark checks before integration.
+- [x] 5.4 **Gate:** definitions documented; tests green. Full quality gate: 267 passed, 5 engine-only skips; Ruff, format, strict mypy (92 files), import-linter and schemas pass.
 
-## Phase 6 — Complex preparation + system building `[ ]`
+## Phase 6 — Complex preparation + system building `[-]`
 
-- [ ] 6.1 `SystemBuilder` port; pose validation rules (clashes, stereo, bond orders, H completeness)
-- [ ] 6.2 `adapters.system_builders.charmm_gui_import` (bundle ingest, protocol normalization from `.mdp`, selections verified — G-MD-3/4)
+- [x] 6.1 `SystemBuilder` port; pose validation rules (clashes, stereo, bond orders, H completeness). Full gate passes: 275 passed, 5 optional engine-only skips; Ruff, format, strict mypy (95 files), import-linter and schemas.
+- [-] 6.2 `adapters.system_builders.charmm_gui_import` (bundle ingest, protocol normalization from `.mdp`, selections verified — G-MD-3/4)
 - [ ] 6.3 FF-family compatibility table + `FF.FAMILY_CONSISTENCY` rule
 - [ ] 6.4 `adapters.system_builders.amber_tleap` (ff14SB/GAFF2/AM1-BCC; ParmEd → GROMACS with single-point energy cross-check) — Q4
 - [ ] 6.5 **Gate:** G-MD-3/4 green; validators active
@@ -321,7 +321,7 @@ When the user says **CONTINUE**:
 - [ ] V4 MM-GBSA per-frame agreement on 11 frames (9.4)
 - [ ] V5 AmberTools → GROMACS topology conversion: single-point energy agreement (6.4)
 - [ ] V6 Temperature/pressure stability checks on the tiny MD integration run (7.6)
-- [ ] V7 Known-molecule ADMET descriptor sanity (5.2)
+- [x] V7 Known-molecule ADMET descriptor sanity (5.2)
 
 ## Testing tasks (cross-phase)
 
@@ -347,10 +347,12 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-24 | Phase 6.1 complete: audited read-only CHARMM-GUI bundles and legacy MD handoff; added a family-neutral SystemBuilder port, typed request/result contracts and configurable pose graph/stereochemistry/charge/hydrogen/clash validation with structured issues. No engine execution or user-data modification. Full gate: 275 passed, 5 optional engine-only skips; Ruff, format, strict mypy (95 files), import-linter and schemas pass. Starting 6.2 bundle importer. |
 | 2026-09-24 | Phase 3.11 in progress: durable normalized-result cache (migration 0003), compiled gate/failure/retry policy preservation, and process recovery/cancellation tests added. Full gate: 182 tests pass; Ruff, strict mypy, import-linter and schemas pass. Remaining: cohesive fake-adapter scheduler run loop for fan-out, gates, cache reuse and failure isolation. |
 | 2026-09-24 | Phase 4.4 RCSB mmCIF source and structure-selection adapter committed and pushed as d27bc59; raw source and entity sequences retained, chain/ligand ambiguity produces explicit decisions, and the 5NIU fixture hash is pinned. Starting Phase 4.5 protein preparation. |
 | 2026-09-24 | Phase 4.5 complete: isolated PDBFixer worker, confined request builder, argv-only planner, hash-checked PreparedReceptor normalization, and LocalExecutor stage handler with content-addressed output/request/log artifacts. Core gate: 225 passed, 4 engine-marked tests skipped; 7 focused tests pass with cadd enabled (PDBFixer 1.12.0 / OpenMM 8.4), including terminal-gap reporting, internal-gap reconstruction, overwrite refusal, and artifact registration. Runtime plugin-discovery assembly is deferred to the API/application phase. Starting 4.6 binding-site definition. |
 | 2026-09-24 | Phase 4.6 complete: reference-ligand, whole-protein blind, and user-coordinate site builders implemented. 5NIU 8YZ golden now pins bbox midpoint (6.2435, 13.235, 189.6215 A) and dimensions (28.341, 22, 22 A); source artifact hash and method are preserved. Blind builder triggers existing DOCK.BLIND_BOX decision rule; large-volume warning has 8J3V coverage. Full quality gate: 229 passed, 4 engine-specific tests skipped; Ruff, formatting, strict mypy (80 source files), import-linter, and schemas pass. Starting 4.7 Vina adapter. |
+| 2026-09-24 | Phase 5.1–5.4 complete: implemented the engine-neutral PropertyPredictor port and optional RDKit rules adapter, corrected Ghose to total atom count, explicitly labels descriptors/rules/alerts/ESOL/legacy heuristic, and uses neutral parent unless a linked form is selected. Added known-molecule checks for aspirin, sulfamethoxazole, ibuprofen and caffeine plus request/form/range/claim-label tests. Evaluated ADMET-AI v2; deferred its adapter until model/data licensing, environment isolation and benchmark coverage are resolved; review recorded in docs/architecture/ADMET_ADAPTER.md. Frozen legacy manifest passes. Full gate: 267 passed, 5 engine-only skips; Ruff, format, strict mypy (92 files), import-linter and schemas pass. Starting Phase 6.1 SystemBuilder audit/port.
 | 2026-09-24 | Phase 4.9–4.10 complete: AutoDock4/AutoGrid4 4.2.6 extracted user-locally, engine-specific plans/parser and normalized handler added with zero core diffs; engine-enabled 5NIU/RC8 pipeline exercised through Meeko → AutoGrid4 → AutoDock4 → Meeko and emitted the common result contract. Corrected AD4 site lineage validation for either raw-structure or prepared-receptor frame. Full quality gate passes (257 passed, 5 optional integration skips; Ruff, format, strict mypy 89 files, import-linter, schemas). G-DOCK-4 uses the RCSB 8YZ CCD topology with native coordinates checked by mmCIF atom order; Vina seed 42 / exhaustiveness 16 produced top-pose RMSD 12.3928 Å (best of 9: 10.3426 Å), missing <2 Å target. Reported as scientific failure in `docs/validation/G-DOCK-4.md`; no accuracy claim. Continuing into ADMET audit.
 | 2026-09-24 | Phase 4.7 complete: Vina/Meeko shell-free planner and `VinaDockingHandler`, typed `DockingResult`, raw + normalized pose artifacts, run parameters, seed, logs, and lineage checks implemented. Real 5NIU/RC8 fixture run passes PDBFixer → Meeko receptor/ligand → Vina → Meeko export; pose graphs and heavy-atom coordinates are checked from Meeko index maps. Two build-specific details are documented: preserved Vina rejects `--log` (executor stdout/stderr are logs); Meeko ligand input needs a suffix-bearing stage copy of extensionless content-addressed SDF. Full gate: 242 passed, 5 engine-specific skips; Ruff/format, strict mypy (83 files), import-linter, schema freshness pass. Engine-enabled prep+docking regression: 8 passed. Runtime plugin/capability composition remains Phase 13.1; this integration check is not a docking-accuracy validation. Starting Phase 4.8 complex builder audit.
 | 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |

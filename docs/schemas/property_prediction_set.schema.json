@@ -253,20 +253,39 @@
       "title": "Accession",
       "type": "string"
     },
-    "form_id": {
+    "compound_id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
-      "title": "Form Id",
+      "title": "Compound Id",
       "type": "string"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "Id",
       "type": "string"
     },
+    "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+    },
     "predictions": {
       "items": {
         "$ref": "#/$defs/PropertyPrediction"
       },
+      "minItems": 1,
       "title": "Predictions",
       "type": "array"
     },
@@ -282,7 +301,7 @@
   "required": [
     "id",
     "accession",
-    "form_id",
+    "compound_id",
     "predictor",
     "predictions"
   ],
