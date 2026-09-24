@@ -84,3 +84,31 @@ class DockingRun(VersionedContract):
                 "autopilot ran Vina without --seed and AD4 with 'seed pid time', SCI-13)"
             )
         return self
+
+
+class DockingResult(VersionedContract):
+    """A complete normalized docking-stage output with its ordered pose children.
+
+    The workflow scheduler transports one versioned contract per stage. This aggregate
+    keeps the DockingRun and pose contracts together without flattening pose data into
+    untyped JSON or losing the identity relationships needed by selection/MD stages.
+    """
+
+    schema_version: str = "docking_result/1.0"
+
+    run: DockingRun
+    poses: tuple[Pose, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _pose_links_are_consistent(self) -> DockingResult:
+        ids = tuple(pose.id for pose in self.poses)
+        if ids != self.run.pose_ids:
+            raise ValueError("run.pose_ids must match the ordered pose IDs in the result")
+        if any(pose.run_id != self.run.id for pose in self.poses):
+            raise ValueError("every pose must reference this docking run")
+        ranks = tuple(pose.rank for pose in self.poses)
+        if ranks != tuple(range(1, len(self.poses) + 1)):
+            raise ValueError("docking pose ranks must be consecutive and ordered from 1")
+        if len(set(ids)) != len(ids):
+            raise ValueError("docking result cannot repeat a pose ID")
+        return self

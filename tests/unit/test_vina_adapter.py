@@ -12,6 +12,9 @@ from caddsuite.adapters.docking.vina import (
     VinaParameters,
     ligand_efficiency,
     parse_vina_scores,
+    plan_meeko_export_command,
+    plan_meeko_ligand_command,
+    plan_meeko_receptor_command,
     plan_vina_command,
 )
 from caddsuite.contracts.structure import BindingSite, BindingSiteMethod, LigandReference
@@ -118,3 +121,49 @@ def test_vina_output_cannot_replace_an_input_file(tmp_path: Path) -> None:
             ),
             working_directory=job,
         )
+
+
+def test_meeko_command_plans_are_shell_free_and_record_prep_choices(tmp_path: Path) -> None:
+    job = tmp_path / "meeko job"
+    job.mkdir()
+    python, receptor_script, ligand_script, export_script, receptor, ligand, poses = (
+        job / name
+        for name in (
+            "python",
+            "mk_prepare_receptor.py",
+            "mk_prepare_ligand.py",
+            "mk_export.py",
+            "prepared receptor.pdb",
+            "conformer.sdf",
+            "poses.pdbqt",
+        )
+    )
+    for path in (python, receptor_script, ligand_script, export_script, receptor, ligand, poses):
+        path.write_text("", encoding="utf-8")
+    receptor_plan = plan_meeko_receptor_command(
+        python_executable=python,
+        script=receptor_script,
+        receptor_pdb=receptor,
+        output_pdbqt=job / "receptor.pdbqt",
+        output_json=job / "receptor.json",
+        working_directory=job,
+    )
+    ligand_plan = plan_meeko_ligand_command(
+        python_executable=python,
+        script=ligand_script,
+        ligand_sdf=ligand,
+        output_pdbqt=job / "ligand.pdbqt",
+        working_directory=job,
+    )
+    export_plan = plan_meeko_export_command(
+        python_executable=python,
+        script=export_script,
+        poses_pdbqt=poses,
+        output_sdf=job / "exported.sdf",
+        working_directory=job,
+    )
+    assert "--read_pdb" in receptor_plan.argv
+    assert "--add_index_map" in ligand_plan.argv
+    assert ligand_plan.argv[ligand_plan.argv.index("--charge_model") + 1] == "gasteiger"
+    assert export_plan.argv[export_plan.argv.index("--write_sdf") + 1].endswith("exported.sdf")
+    assert all(isinstance(plan.argv, tuple) for plan in (receptor_plan, ligand_plan, export_plan))

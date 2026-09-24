@@ -23,7 +23,7 @@ from caddsuite.contracts.analysis import (
     MetricSeries,
 )
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract, load_contract
-from caddsuite.contracts.docking import DockingRun, DockingScore, Pose
+from caddsuite.contracts.docking import DockingResult, DockingRun, DockingScore, Pose
 from caddsuite.contracts.evidence import (
     RANKING_STATEMENT,
     Aggregation,
@@ -243,6 +243,40 @@ def test_stochastic_docking_requires_seed(make_software: MakeSoftware) -> None:
         DockingRun(**common)
     assert DockingRun(seed=42, **common).seed == 42
     assert DockingRun(stochastic=False, **common).seed is None
+
+
+def test_docking_result_keeps_pose_children_linked_to_the_run(
+    make_software: MakeSoftware, make_artifact: MakeArtifact
+) -> None:
+    run_id = new_ulid()
+    pose_id = new_ulid()
+    run = DockingRun(
+        id=run_id,
+        accession="CMP0034_DOCK_001",
+        form_id=new_ulid(),
+        conformer_id=new_ulid(),
+        receptor_id=new_ulid(),
+        site_id=new_ulid(),
+        engine=make_software("AutoDock Vina", "1.2.7"),
+        adapter=make_software("caddsuite.vina", "0.1.0"),
+        params={"seed": 42},
+        seed=42,
+        pose_ids=(pose_id,),
+    )
+    pose = Pose(
+        id=pose_id,
+        accession="CMP0034_POSE_001",
+        run_id=run_id,
+        rank=1,
+        score=DockingScore(value=-8.0, scoring_function="vina"),
+        structure=make_artifact("pose.sdf.normalized"),
+        raw=make_artifact("pose.pdbqt"),
+        fidelity_max_dev_A=0.0,
+    )
+    result = DockingResult(run=run, poses=(pose,))
+    assert result.schema_version == "docking_result/1.0"
+    with pytest.raises(ValidationError, match="pose_ids"):
+        DockingResult(run=run.model_copy(update={"pose_ids": ()}), poses=(pose,))
 
 
 # ------------------------------------------------------------------------------- MD
