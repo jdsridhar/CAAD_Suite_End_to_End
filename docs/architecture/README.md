@@ -35,3 +35,5 @@ New ADRs: copy [`ADR/0000-template.md`](ADR/0000-template.md), take the next num
 The runtime scheduling model, restart contract, and current limits are documented in [WORKFLOW_SCHEDULER.md](WORKFLOW_SCHEDULER.md).
 
 Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](CHEMISTRY_STANDARDIZATION.md), [PROTONATION.md](PROTONATION.md), and [STRUCTURE_SOURCE.md](STRUCTURE_SOURCE.md).
+
+- [Protein preparation boundary](PROTEIN_PREPARATION.md)
