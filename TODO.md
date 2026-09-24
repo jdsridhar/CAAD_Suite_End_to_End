@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 4 — Docking migration |
-| **Last completed** | Phase 4.6 binding-site geometry and blind-box validation (2026-09-24) |
-| **Current task** | [-] 4.7 AutoDock Vina adapter migration |
-| **Next task** | Phase 4.7 AutoDock Vina adapter migration |
+| **Last completed** | Phase 4.7 AutoDock Vina adapter migration (2026-09-24) |
+| **Current task** | [-] 4.8 structure.complex_builder migration from `build_complex.py` |
+| **Next task** | Phase 4.8 complex builder; then Phase 4.9 AutoDock4 extensibility proof |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -146,7 +146,7 @@ When the user says **CONTINUE**:
   - [x] Deterministic model-1/alternate-location handling and source-hash verification; site retains source artifact and method.
   - [x] Whole-protein and manual-coordinate site definitions preserve distinct methods and artifacts.
   - [x] Blind search emits DOCK.BLIND_BOX decision request; large search-space warning remains active.
-- [-] 4.7 `adapters.docking.vina` (Meeko prep, plan/normalize, per-job CPU, normalized SDF poses via template transfer)
+- [x] 4.7 `adapters.docking.vina` (Meeko prep, shell-free execution, per-job CPU, normalized SDF poses with measured atom-map fidelity)
   - [x] Audit confirms the original cadd Vina build (`f458505-mod`) and Meeko 0.7.1; ProDy is absent.
   - [x] Explicit sampling contract and shell-free argv planner record box geometry, seed and per-job CPU.
   - [x] Pose-score parser and ligand-efficiency calculation reproduce archived RC8/RC34 score rows.
@@ -154,7 +154,9 @@ When the user says **CONTINUE**:
   - [x] Execute the real PDBFixer 1.12.0 → Meeko 0.7.1 receptor-preparation path on 5NIU chain A; Meeko emits PDBQT and parameter JSON without ProDy.
   - [x] Add shell-free Meeko command planners for receptor, ligand (explicit Gasteiger charge model and index map), and pose export.
   - [x] Add `DockingResult` aggregate contract so one scheduler stage output retains typed run and ordered, linked pose children; schema is exported.
-  - [ ] Execute Vina, capture raw outputs, export normalized SDF poses with Meeko, and return normalized docking contracts/artifacts.
+  - [x] Execute Meeko receptor/ligand prep, Vina, and Meeko pose export through `LocalExecutor`; preserve raw/intermediate artifacts and stdout/stderr.
+  - [x] Validate compound/form/conformer and receptor/site lineage; check hashes, pose graph identity, atom-map coordinates, and normalize `DockingRun` + ordered `Pose` children in `DockingResult`.
+  - [x] Engine-enabled 5NIU/RC8 smoke test: PDBFixer → Meeko → Vina seed 42 → Meeko SDF export; normalized pose/artifact hashes verified. This is execution/format validation, not docking-accuracy validation.
 - [ ] 4.8 `structure.complex_builder` (from `build_complex.py`, no shell)
 - [ ] 4.9 **PoC second docking engine** (AutoDock4 from autopilot if Q1 allows; else GNINA) with **zero core diffs**
 - [ ] 4.10 **Gate:** G-DOCK-1/2 regression green; G-DOCK-4 re-docking RMSD reported; PoC merged without core changes
@@ -334,7 +336,7 @@ When the user says **CONTINUE**:
 | 2026-09-24 | Phase 4.4 RCSB mmCIF source and structure-selection adapter committed and pushed as d27bc59; raw source and entity sequences retained, chain/ligand ambiguity produces explicit decisions, and the 5NIU fixture hash is pinned. Starting Phase 4.5 protein preparation. |
 | 2026-09-24 | Phase 4.5 complete: isolated PDBFixer worker, confined request builder, argv-only planner, hash-checked PreparedReceptor normalization, and LocalExecutor stage handler with content-addressed output/request/log artifacts. Core gate: 225 passed, 4 engine-marked tests skipped; 7 focused tests pass with cadd enabled (PDBFixer 1.12.0 / OpenMM 8.4), including terminal-gap reporting, internal-gap reconstruction, overwrite refusal, and artifact registration. Runtime plugin-discovery assembly is deferred to the API/application phase. Starting 4.6 binding-site definition. |
 | 2026-09-24 | Phase 4.6 complete: reference-ligand, whole-protein blind, and user-coordinate site builders implemented. 5NIU 8YZ golden now pins bbox midpoint (6.2435, 13.235, 189.6215 A) and dimensions (28.341, 22, 22 A); source artifact hash and method are preserved. Blind builder triggers existing DOCK.BLIND_BOX decision rule; large-volume warning has 8J3V coverage. Full quality gate: 229 passed, 4 engine-specific tests skipped; Ruff, formatting, strict mypy (80 source files), import-linter, and schemas pass. Starting 4.7 Vina adapter. |
-| 2026-09-24 | Phase 4.7 ongoing: Vina parameter/argv/score contracts and golden score regression are in place; PDBFixer→registered PDB→Meeko receptor prep works on 5NIU without ProDy. Added argv planners for Meeko receptor, ligand (explicit Gasteiger charges and index map), and SDF export, plus the versioned DockingResult aggregate (typed run and ordered pose contracts) and JSON Schema. Full quality gate: 240 passed, 4 engine-only skips; Ruff, format, strict mypy (82 files), import-linter, schemas pass. Engine-enabled PDBFixer/Meeko handoff suite: 7 passed. Remaining Phase 4.7: execute ligand prep + Vina + export in a handler; validate identity/coordinates; normalize/register every pose and raw artifact.
+| 2026-09-24 | Phase 4.7 complete: Vina/Meeko shell-free planner and `VinaDockingHandler`, typed `DockingResult`, raw + normalized pose artifacts, run parameters, seed, logs, and lineage checks implemented. Real 5NIU/RC8 fixture run passes PDBFixer → Meeko receptor/ligand → Vina → Meeko export; pose graphs and heavy-atom coordinates are checked from Meeko index maps. Two build-specific details are documented: preserved Vina rejects `--log` (executor stdout/stderr are logs); Meeko ligand input needs a suffix-bearing stage copy of extensionless content-addressed SDF. Full gate: 242 passed, 5 engine-specific skips; Ruff/format, strict mypy (83 files), import-linter, schema freshness pass. Engine-enabled prep+docking regression: 8 passed. Runtime plugin/capability composition remains Phase 13.1; this integration check is not a docking-accuracy validation. Starting Phase 4.8 complex builder audit.
 | 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |
 | 2026-09-23 | Phase 4.2 complete: implemented RDKit neutral-parent standardization with explicit policy/provenance, deterministic seeded conformer embedding with artifact digest verification, project/InChIKey registry deduplication with preservation of every raw submission, and migration 0004. Golden RC8/RC34 identities match; full gate passes (203 tests, Ruff, format, strict mypy 70 files, import-linter, schemas). Frozen 143-file source baseline and docking fixture SHA manifest verified. Starting 4.3 protonation adapter. |
 | 2026-09-24 | Phase 3.11 complete: engine-neutral scheduler now resolves bindings, dynamically fans out by stable subject identity, evaluates restricted gates, retries configured error codes, isolates per-subject failures, persists/reuses task instances, and caches normalized outputs across runs. Crash-resume requires handler reconciliation for RUNNING/INTERRUPTED work; no duplicate process is launched without confirmation. Full gate: 186 tests; Ruff, formatting, strict mypy (67 files), import-linter, and schemas pass. Starting Phase 4.1 legacy docking golden fixtures. |

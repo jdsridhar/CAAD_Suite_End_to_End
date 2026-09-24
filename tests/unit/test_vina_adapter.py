@@ -16,6 +16,8 @@ from caddsuite.adapters.docking.vina import (
     plan_meeko_ligand_command,
     plan_meeko_receptor_command,
     plan_vina_command,
+    pose_coordinate_fidelity,
+    split_vina_pose_models,
 )
 from caddsuite.contracts.structure import BindingSite, BindingSiteMethod, LigandReference
 from caddsuite.domain.identity import new_ulid
@@ -50,7 +52,6 @@ def test_vina_argv_uses_explicit_site_sampling_seed_and_per_job_cpu(tmp_path: Pa
         ligand_pdbqt=ligand,
         site=_site(),
         output_pdbqt=job / "poses.pdbqt",
-        log_file=job / "vina.log",
         parameters=VinaParameters(
             exhaustiveness=16,
             num_modes=9,
@@ -104,14 +105,13 @@ def test_vina_output_cannot_replace_an_input_file(tmp_path: Path) -> None:
     binary, receptor, ligand = (job / name for name in ("vina", "rec.pdbqt", "lig.pdbqt"))
     for path in (binary, receptor, ligand):
         path.touch()
-    with pytest.raises(ValueError, match="new files"):
+    with pytest.raises(ValueError, match="new file"):
         plan_vina_command(
             executable=binary,
             receptor_pdbqt=receptor,
             ligand_pdbqt=ligand,
             site=_site(),
             output_pdbqt=receptor,
-            log_file=job / "vina.log",
             parameters=VinaParameters(
                 exhaustiveness=1,
                 num_modes=1,
@@ -167,3 +167,36 @@ def test_meeko_command_plans_are_shell_free_and_record_prep_choices(tmp_path: Pa
     assert ligand_plan.argv[ligand_plan.argv.index("--charge_model") + 1] == "gasteiger"
     assert export_plan.argv[export_plan.argv.index("--write_sdf") + 1].endswith("exported.sdf")
     assert all(isinstance(plan.argv, tuple) for plan in (receptor_plan, ligand_plan, export_plan))
+
+
+def test_vina_pose_split_and_meeko_coordinate_fidelity() -> None:
+    model = "\n".join(
+        (
+            "MODEL 1",
+            "REMARK VINA RESULT: -8.0 0.0 0.0",
+            "REMARK INDEX MAP 3 1 1 2 2 3",
+            "ATOM      1  H   UNL     1       0.000   1.000   0.000  1.00  0.00     0.0 HD",
+            "ATOM      2  C   UNL     1       0.000   0.000   0.000  1.00  0.00     0.0 C",
+            "ATOM      3  O   UNL     1       1.000   0.000   0.000  1.00  0.00     0.0 OA",
+            "ENDMDL",
+        )
+    )
+    assert split_vina_pose_models(model) == (model + "\n",)
+    fidelity = pose_coordinate_fidelity(
+        model,
+        source_atomic_numbers=(6, 8, 1),
+        exported_atomic_numbers=(6, 8, 1),
+        exported_coordinates_A=((0.001, 0.0, 0.0), (1.0, 0.002, 0.0), (0.0, 1.0, 0.0)),
+    )
+    assert fidelity == pytest.approx(0.002)
+
+
+def test_vina_pose_conversion_requires_complete_index_map() -> None:
+    with pytest.raises(VinaOutputError, match="source heavy atom"):
+        pose_coordinate_fidelity(
+            "REMARK INDEX MAP 1 1\n"
+            "ATOM      1  C   UNL     1       0.000   0.000   0.000  1.00  0.00     0.0 C\n",
+            source_atomic_numbers=(6, 8),
+            exported_atomic_numbers=(6, 8),
+            exported_coordinates_A=((0.0, 0.0, 0.0), (1.0, 0.0, 0.0)),
+        )

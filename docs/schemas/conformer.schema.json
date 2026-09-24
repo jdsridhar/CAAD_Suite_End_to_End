@@ -36,9 +36,22 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/conformer/1.0",
+  "$id": "caddsuite://schemas/conformer/1.1",
   "additionalProperties": false,
   "properties": {
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
+    },
     "energy_kcal_per_mol": {
       "anyOf": [
         {
@@ -97,7 +110,7 @@
       "title": "Optimizer Converged"
     },
     "schema_version": {
-      "default": "conformer/1.0",
+      "default": "conformer/1.1",
       "title": "Schema Version",
       "type": "string"
     },

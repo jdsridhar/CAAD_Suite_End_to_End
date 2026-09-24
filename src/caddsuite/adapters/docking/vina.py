@@ -167,7 +167,6 @@ def plan_vina_command(
     ligand_pdbqt: Path,
     site: BindingSite,
     output_pdbqt: Path,
-    log_file: Path,
     parameters: VinaParameters,
     working_directory: Path,
 ) -> CommandSpec:
@@ -177,15 +176,14 @@ def plan_vina_command(
     ligand = ligand_pdbqt.resolve(strict=True)
     cwd = working_directory.resolve(strict=True)
     output = output_pdbqt.resolve()
-    log = log_file.resolve()
     if not binary.is_file() or not receptor.is_file() or not ligand.is_file():
         raise ValueError("Vina executable, receptor PDBQT, and ligand PDBQT must be files")
-    if output.exists() or log.exists():
-        raise ValueError("Vina output and log paths must be new files")
-    if output in (receptor, ligand) or log in {output, receptor, ligand}:
-        raise ValueError("Vina output paths must not replace input artifacts")
-    if not output.is_relative_to(cwd) or not log.is_relative_to(cwd):
-        raise ValueError("Vina output and log paths must be inside the job directory")
+    if output.exists():
+        raise ValueError("Vina output path must be a new file")
+    if output in (receptor, ligand):
+        raise ValueError("Vina output path must not replace an input artifact")
+    if not output.is_relative_to(cwd):
+        raise ValueError("Vina output path must be inside the job directory")
     if not all(math.isfinite(value) for value in (*site.center_A, *site.size_A)):
         raise ValueError("binding-site geometry must be finite")
 
@@ -219,8 +217,6 @@ def plan_vina_command(
         str(parameters.seed),
         "--out",
         str(output),
-        "--log",
-        str(log),
     )
     return CommandSpec(argv=argv, cwd=cwd)
 
@@ -256,6 +252,128 @@ def parse_vina_scores(
     if expected_modes is not None and len(records) != expected_modes:
         raise VinaOutputError(f"expected {expected_modes} scored poses, found {len(records)}")
     return tuple(records)
+
+
+def split_vina_pose_models(pdbqt_text: str) -> tuple[str, ...]:
+    """Return each Vina MODEL block; accept a single-model file without wrappers."""
+    models: list[str] = []
+    current: list[str] | None = None
+    for line in pdbqt_text.splitlines():
+        if line.startswith("MODEL"):
+            if current is not None:
+                raise VinaOutputError("Vina output starts a MODEL before closing the previous one")
+            current = [line]
+        elif line.startswith("ENDMDL"):
+            if current is None:
+                raise VinaOutputError("Vina output closes a MODEL that was never opened")
+            current.append(line)
+            models.append("\n".join(current) + "\n")
+            current = None
+        elif current is not None:
+            current.append(line)
+    if current is not None:
+        raise VinaOutputError("Vina output contains an unterminated MODEL")
+    if models:
+        return tuple(models)
+    if "REMARK VINA RESULT" not in pdbqt_text:
+        raise VinaOutputError("Vina output contains no pose model")
+    return (pdbqt_text,)
+
+
+def pose_coordinate_fidelity(
+    raw_model: str,
+    *,
+    source_atomic_numbers: tuple[int, ...],
+    exported_atomic_numbers: tuple[int, ...],
+    exported_coordinates_A: tuple[tuple[float, float, float], ...],
+    exported_to_source_indices: tuple[int, ...] | None = None,
+) -> float:
+    """Measure max heavy-atom displacement between raw PDBQT and Meeko SDF export.
+
+    Meeko's ``REMARK INDEX MAP`` maps PDBQT serials back to input SDF atom indices.
+    ``exported_to_source_indices`` permits a graph-derived mapping (including only
+    heavy atoms) when Meeko exports atoms in a different order than the input SDF.
+    """
+    if len(exported_atomic_numbers) != len(exported_coordinates_A):
+        raise VinaOutputError("exported pose atom coordinates are incomplete")
+    if exported_to_source_indices is None:
+        exported_to_source_indices = tuple(range(len(exported_atomic_numbers)))
+    if (
+        len(exported_to_source_indices) != len(exported_atomic_numbers)
+        or len(set(exported_to_source_indices)) != len(exported_to_source_indices)
+        or any(not 0 <= index < len(source_atomic_numbers) for index in exported_to_source_indices)
+    ):
+        raise VinaOutputError("pose atom correspondence is not a valid one-to-one mapping")
+    if any(
+        exported_atomic_numbers[i] != source_atomic_numbers[source_index]
+        for i, source_index in enumerate(exported_to_source_indices)
+    ):
+        raise VinaOutputError("Meeko-exported pose atom elements do not match the input form")
+
+    serial_to_index: dict[int, int] = {}
+    for line in raw_model.splitlines():
+        if line.startswith("REMARK INDEX MAP"):
+            fields = line.split()[3:]
+            if not fields or len(fields) % 2:
+                raise VinaOutputError("malformed Meeko atom index map in Vina output")
+            try:
+                pairs = tuple(
+                    (int(fields[i]), int(fields[i + 1])) for i in range(0, len(fields), 2)
+                )
+            except ValueError as exc:
+                raise VinaOutputError("non-integer atom index in Vina output map") from exc
+            for atom_index, serial in pairs:
+                if serial < 1 or atom_index < 1 or atom_index > len(source_atomic_numbers):
+                    raise VinaOutputError("Vina atom index map points outside the source ligand")
+                if serial in serial_to_index or atom_index in serial_to_index.values():
+                    raise VinaOutputError("Vina atom index map contains duplicate atoms")
+                serial_to_index[serial] = atom_index
+    if not serial_to_index:
+        raise VinaOutputError("Vina output lacks the Meeko atom index map")
+
+    coordinates_by_serial: dict[int, tuple[float, float, float]] = {}
+    for line in raw_model.splitlines():
+        if line.startswith(("ATOM  ", "HETATM")):
+            try:
+                serial = int(line[6:11])
+                coordinates = (float(line[30:38]), float(line[38:46]), float(line[46:54]))
+            except ValueError as exc:
+                raise VinaOutputError("malformed atom coordinates in Vina pose") from exc
+            if serial in coordinates_by_serial or not all(math.isfinite(v) for v in coordinates):
+                raise VinaOutputError(
+                    "Vina pose has duplicate atom serials or non-finite coordinates"
+                )
+            coordinates_by_serial[serial] = coordinates
+
+    raw_by_source_index: dict[int, tuple[float, float, float]] = {}
+    for serial, atom_index in serial_to_index.items():
+        source_index = atom_index - 1
+        if source_atomic_numbers[source_index] == 1:
+            continue
+        if serial not in coordinates_by_serial:
+            raise VinaOutputError(f"atom map refers to absent PDBQT atom serial {serial}")
+        raw_by_source_index[source_index] = coordinates_by_serial[serial]
+
+    deviations = []
+    mapped_heavy: set[int] = set()
+    for exported_index, source_index in enumerate(exported_to_source_indices):
+        if source_atomic_numbers[source_index] == 1:
+            continue
+        raw = raw_by_source_index.get(source_index)
+        if raw is None:
+            raise VinaOutputError("Vina atom map does not cover every source heavy atom")
+        mapped_heavy.add(source_index)
+        exported = exported_coordinates_A[exported_index]
+        deviations.append(math.sqrt(sum((a - b) ** 2 for a, b in zip(raw, exported, strict=True))))
+    expected_heavy_indices = {
+        index for index, number in enumerate(source_atomic_numbers) if number > 1
+    }
+    if (
+        len(raw_by_source_index) != len(expected_heavy_indices)
+        or mapped_heavy != expected_heavy_indices
+    ):
+        raise VinaOutputError("Vina atom map does not cover every heavy atom exactly once")
+    return max(deviations)
 
 
 def ligand_efficiency(affinity_kcal_mol: float, heavy_atom_count: int) -> float:

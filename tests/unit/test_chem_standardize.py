@@ -74,6 +74,8 @@ def test_seeded_embedding_repeats_exactly_and_registers_sdf(repo_root: Path) -> 
     assert all(role == "conformer_structure" for _, role in registered)
     assert first.conformer.seed == 42
     assert first.conformer.generator == "ETKDGv3"
+    assert first.conformer.compound_id == form.compound_id
+    assert first.conformer.schema_version == "conformer/1.1"
     assert first.conformer.structure.sha256 is not None
     assert first.conformer.optimizer == "MMFF94"
     assert first.molecule.GetNumHeavyAtoms() == expected["heavy_atoms"]

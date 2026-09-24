@@ -13,20 +13,43 @@ The environment's Conda package label alone is not sufficient version provenance
 
 ## Implemented boundary
 
-`caddsuite.adapters.docking.vina` currently provides:
+`caddsuite.adapters.docking.vina` provides strict sampling parameters, shell-free Vina
+argv planning, version-compatible pose score parsing, ligand efficiency, explicit Meeko
+command planners, model splitting, and coordinate-fidelity checks. The installed Vina build
+rejects `--log`; the adapter relies on `LocalExecutor` stdout/stderr artifacts instead.
 
-- Strict Vina sampling parameters: exhaustiveness, pose count, energy range, per-job CPU allocation, and an explicit random seed.
-- Shell-free argv planning from a normalized `BindingSite`; box center and dimensions are passed in Angstrom.
-- Parsing of Vina's pose-level `REMARK VINA RESULT` affinity and RMSD fields.
-- The platform's ligand-efficiency convention, `LE = -affinity / heavy_atom_count`.
+`VinaDockingHandler` now executes the stage with normalized inputs: Compound, CompoundForm,
+Conformer, PreparedReceptor, Structure, and BindingSite. It verifies lineage and artifact
+hashes, prepares the receptor and ligand with Meeko, executes Vina, exports poses to SDF,
+checks molecular graph identity, and checks heavy-atom coordinate transfer through Meeko's
+atom-index map. Since Meeko's exported SDF atom order may differ from the source order, the
+coordinate check resolves graph mappings and compares against the raw PDBQT coordinates;
+no unchecked index-based transfer is assumed. The adapter stores raw PDBQT, Meeko inputs and
+outputs, normalized per-pose SDFs, and per-command stdout/stderr artifacts. It returns a
+`DockingResult` containing a checked `DockingRun`, ordered `Pose` contracts, and artifact
+references.
 
-G-DOCK-1's archived RC8 and RC34 PDBQT results exercise the parser and reproduce the recorded score and ligand efficiency. The planner test checks that paths with spaces stay single argv elements and that the seed and CPU allocation are explicit.
+The content-addressed store uses extensionless blob paths. Meeko's ligand CLI infers format
+from filename extension, so the handler stages the byte-identical registered SDF as
+`ligand_input.sdf` in the isolated job directory. The source digest remains part of the run's
+cache inputs and provenance.
 
-## Meeko data flow being migrated
+## Meeko data flow and validation
 
-Meeko writes ligand PDBQT with SMILES and atom-index remarks, and `mk_export.py` uses those records to export Vina poses as SDF without guessing bond orders. This is the selected route for normalized poses; the legacy direct Open Babel PDBQT-to-SDF conversion is not the source of chemical identity.
+Meeko writes ligand PDBQT with SMILES and atom-index remarks. `mk_export.py` uses those
+records to export Vina poses as SDF with bond orders. The receptor worker emits canonical
+mmCIF plus a separately hashed PDB derivative; Meeko's direct `--read_pdb` route works
+without ProDy. mmCIF remains authoritative, while PDB is a compatibility artifact whose
+fixed-width identifiers must be checked for large structures.
 
-The current protein-preparation worker emits authoritative mmCIF. Meeko documents direct PDB input without ProDy and mmCIF input through ProDy ([receptor input options](https://meeko.readthedocs.io/en/develop/rec_cli_options.html)). It also exports Vina poses to SDF using ligand identity metadata preserved in PDBQT remarks ([pose export](https://meeko.readthedocs.io/en/develop/export_usage.html)). Because ProDy is absent, the Meeko receptor adapter needs a separately tracked PDB derivative for the direct `--read_pdb` path. That derivative must remain linked to the same prepared-receptor result and retain mmCIF as the authoritative structure. The next implementation tasks are ligand/receptor Meeko plans, pose SDF export, raw output capture, and integration of `DockingRun`/`Pose` contracts.
+The cadd environment was audited as Vina `f458505-mod` and Meeko 0.7.1. An engine-enabled
+5NIU/RC8 fixture run completed PDBFixer → Meeko receptor and ligand preparation → Vina
+(seed 42, exhaustiveness 1, two requested modes) → Meeko SDF export. The handler normalized
+the returned poses, verified their graph and heavy-atom coordinate fidelity, and registered
+all output artifacts. This is a small software/format integration check; it does not validate
+docking accuracy. Golden G-DOCK-1 RC8/RC34 score parsing independently reproduces archived
+scores and ligand-efficiency values. Capability/entry-point composition of the handler stays
+in the API/application wiring phase.
 
 ## Scientific limits
 

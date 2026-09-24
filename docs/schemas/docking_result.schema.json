@@ -373,6 +373,13 @@
   "additionalProperties": false,
   "description": "A complete normalized docking-stage output with its ordered pose children.\n\nThe workflow scheduler transports one versioned contract per stage. This aggregate\nkeeps the DockingRun and pose contracts together without flattening pose data into\nuntyped JSON or losing the identity relationships needed by selection/MD stages.",
   "properties": {
+    "artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Artifacts",
+      "type": "object"
+    },
     "poses": {
       "items": {
         "$ref": "#/$defs/Pose"

@@ -56,7 +56,7 @@ class Pose(VersionedContract):
     structure: ArtifactRef
     #: engine-native pose (e.g. PDBQT model k), kept for provenance and re-analysis
     raw: ArtifactRef
-    #: max coordinate deviation of the template transfer (legacy build_complex.py check)
+    #: measured max heavy-atom deviation from the raw engine pose during normalization
     fidelity_max_dev_A: NonNegativeFloat
 
 
@@ -98,6 +98,7 @@ class DockingResult(VersionedContract):
 
     run: DockingRun
     poses: tuple[Pose, ...] = Field(min_length=1)
+    artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _pose_links_are_consistent(self) -> DockingResult:

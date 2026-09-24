@@ -138,6 +138,7 @@ def embed_conformer(
     conformer = Conformer(
         id=new_ulid(),
         form_id=form.id,
+        compound_id=form.compound_id,
         generator=policy.generator,
         seed=policy.seed,
         n_generated=1,

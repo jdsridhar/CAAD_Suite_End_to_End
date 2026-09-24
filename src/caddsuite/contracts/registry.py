@@ -116,10 +116,12 @@ STOCHASTIC_GENERATORS = frozenset({"ETKDG", "ETKDGv2", "ETKDGv3", "ETDG", "obabe
 
 
 class Conformer(VersionedContract):
-    schema_version: str = "conformer/1.0"
+    schema_version: str = "conformer/1.1"
 
     id: ULIDStr
     form_id: ULIDStr
+    #: Parent identity used by workflow fan-out/joining; optional for old stored contracts.
+    compound_id: ULIDStr | None = None
     generator: NonEmptyStr
     seed: int | None = None
     n_generated: Annotated[int, Field(ge=1)] = 1

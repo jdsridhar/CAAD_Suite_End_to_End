@@ -99,7 +99,7 @@ class CompoundForm:        # the species a calculation actually uses
     decision: Ref[Decision] | None       # if a human chose it
 
 class Conformer:
-    id: ULID; form: Ref[CompoundForm]
+    id: ULID; form: Ref[CompoundForm]; compound_id: ULID | None  # optional legacy-compatible fan-out key
     generator: str                       # "ETKDGv3"; seed: int; n_generated: int; selected_by: str
     optimizer: str | None                # "MMFF94" | "UFF"; converged: bool; energy_kcal_per_mol: float | None
     structure: ArtifactRef               # SDF with explicit H
@@ -136,6 +136,9 @@ class BindingSite:
 ### 4.3 Docking
 
 ```python
+class DockingResult:       # one scheduler output containing typed run + ordered child poses + artifacts
+    run: DockingRun; poses: tuple[Pose, ...]; artifacts: dict[str, ArtifactRef]
+
 class DockingRun:          # CMP0001_DOCK_001
     id: ULID; accession: str
     form: Ref[CompoundForm]; conformer: Ref[Conformer]
@@ -151,7 +154,7 @@ class Pose:                # CMP0001_POSE_003
     cluster: ClusterMembership | None                     # real pairwise clustering (SCI-14)
     structure: ArtifactRef                                # NORMALIZED SDF: bond orders + explicit H
     raw: ArtifactRef                                      # engine-native (e.g. PDBQT model k)
-    fidelity_max_dev_A: float                             # template-transfer check (build_complex.py)
+    fidelity_max_dev_A: float                             # max heavy-atom raw-PDBQT → normalized-SDF deviation
 
 class DockingScore:
     value: float; unit: Literal["kcal/mol"]
