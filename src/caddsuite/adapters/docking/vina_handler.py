@@ -12,14 +12,16 @@ from pydantic import ValidationError
 from rdkit import Chem
 from sqlalchemy.orm import Session, sessionmaker
 
+from caddsuite.adapters.docking.meeko import (
+    plan_meeko_export_command,
+    plan_meeko_ligand_command,
+    plan_meeko_receptor_command,
+)
 from caddsuite.adapters.docking.vina import (
     VinaOutputError,
     VinaParameters,
     ligand_efficiency,
     parse_vina_scores,
-    plan_meeko_export_command,
-    plan_meeko_ligand_command,
-    plan_meeko_receptor_command,
     plan_vina_command,
     pose_coordinate_fidelity,
     split_vina_pose_models,

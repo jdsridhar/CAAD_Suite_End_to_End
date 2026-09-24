@@ -26,6 +26,13 @@ Run the fixture integrity and behavior checks with:
 pytest -q tests/unit/test_docking_golden.py
 ```
 
-The tests use only Python's standard library and remain runnable without RDKit, Vina, or Open
-Babel installed. Phase 4.2 adds chemistry-level comparisons when the standardization and
-embedding implementation is introduced.
+The native 8YZ reference ligand is retained as `receptors/5NIU_ref_ligand.pdb`. Its chemical
+component dictionary topology is included as `receptors/8YZ_ideal.sdf`, downloaded from the
+RCSB CCD at `https://files.rcsb.org/ligands/download/8YZ_ideal.sdf`. The engine integration
+checks that the atom-name order in the native PDB matches the 5NIU mmCIF chemical-component
+atom order, then transfers the crystal coordinates onto this stereochemically defined graph
+before preparing hydrogens. This avoids inferring ambiguous stereochemistry from PDB distances.
+
+The standalone fixture checks in `tests/unit/test_docking_golden.py` use only the Python
+standard library. Chemistry and engine integration checks require their corresponding
+packages and skip when optional engine environments are unavailable.

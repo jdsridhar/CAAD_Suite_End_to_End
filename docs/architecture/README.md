@@ -42,4 +42,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [Binding-site definitions](BINDING_SITE.md)
 
 - [AutoDock Vina adapter](VINA_ADAPTER.md)
+- [AutoDock4 adapter proof of extensibility](AUTODOCK4_ADAPTER.md)
 - [Docking pose to coordinate complex](COMPLEX_ASSEMBLY.md)

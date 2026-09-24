@@ -6,11 +6,11 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 4 — Docking migration |
-| **Last completed** | Phase 4.8 `structure.complex_builder` migration (2026-09-24) |
-| **Current task** | [-] 4.9 AutoDock4 extensibility proof |
-| **Next task** | Phase 4.9 AutoDock4 adapter PoC; then Phase 4.10 docking migration gate |
-| **Blocking questions** | No Phase 3 blockers. |
+| **Current phase** | Phase 5 — ADMET integration |
+| **Last completed** | Phase 4.10 docking migration gate (2026-09-24; G-DOCK-4 target missed and reported) |
+| **Current task** | [-] 5.1 Audit and port legacy `PropertyPredictor` to a modular RDKit rules adapter |
+| **Next task** | 5.2 known-molecule checks, then evaluate an optional ML predictor |
+| **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -157,15 +157,24 @@ When the user says **CONTINUE**:
   - [x] Execute Meeko receptor/ligand prep, Vina, and Meeko pose export through `LocalExecutor`; preserve raw/intermediate artifacts and stdout/stderr.
   - [x] Validate compound/form/conformer and receptor/site lineage; check hashes, pose graph identity, atom-map coordinates, and normalize `DockingRun` + ordered `Pose` children in `DockingResult`.
   - [x] Engine-enabled 5NIU/RC8 smoke test: PDBFixer → Meeko → Vina seed 42 → Meeko SDF export; normalized pose/artifact hashes verified. This is execution/format validation, not docking-accuracy validation.
-- [-] 4.8 `structure.complex_builder` migration from `build_complex.py` (no shell)
+- [x] 4.8 `structure.complex_builder` migration from `build_complex.py` (no shell)
   - [x] Audit legacy conversion, bond-order reconstruction, coordinate check, receptor-H/heterogen removal, and PDB writer limitations.
   - [x] Define `complex/1.0` lineage contract and record coordinate-only vs parameterized-system boundary (ADR-0017).
   - [x] Implement hash/identity-checked normalized SDF + prepared receptor assembly; retain prepared H/heterogens and reject unsupported PDB cases.
   - [x] Add unit checks for chemistry/lineage, formal charge, heavy-atom coordinate rounding, HETATM/H retention, connectivity remapping, artifact tampering, and stored stage output.
   - [x] Compare the assembled RC8 ligand coordinates with the archived legacy G-DOCK-1 complex at PDB precision; exact coordinate multiset preserved.
   - [x] Real PDBFixer → Meeko → Vina → complex engine path passes; full core gate passes (248 passed, 5 engine-specific skips).
-- [-] 4.9 **PoC second docking engine** (AutoDock4 from autopilot if Q1 allows; else GNINA) with **zero core diffs**
-- [ ] 4.10 **Gate:** G-DOCK-1/2 regression green; G-DOCK-4 re-docking RMSD reported; PoC merged without core changes
+- [x] 4.9 **PoC second docking engine** (AutoDock4 from autopilot, Q1 permits) with **zero core diffs**
+  - [x] Audit legacy AutoDock4/AutoGrid4 preparation, GPF/DPF defaults, execution, DLG parsing and scientific caveats.
+  - [x] Extract user-local AutoDock4/AutoGrid4 4.2.6 runtime without system installation or Conda-environment changes.
+  - [x] Add engine-specific validated GPF/DPF planners, reproducible seeds, shell-free commands, typed DLG parser, shared Meeko planners and normalized stage handler.
+  - [x] Real PDBFixer → Meeko → AutoGrid4 → AutoDock4 → Meeko export integration produces the common `DockingResult` with registered raw/normalized poses and logs.
+  - [x] Confirm no changes to workflow/compiler/contracts/scheduler/storage core; only adapter-facing shared Meeko utilities were reused by Vina.
+- [x] 4.10 **Gate:** G-DOCK-1/2 regression green; G-DOCK-4 RMSD measured/reported; PoC merged without core changes
+  - [x] Full core gate: 257 passed, 5 optional-engine skips; lint, format, strict mypy (89 files), import-linter and schemas pass.
+  - [x] Existing 5NIU/RC8 real Vina workflow plus complex-builder integration passes; AutoDock4 engine integration also passes.
+  - [x] G-DOCK-4 executed with 5NIU/8YZ, Vina `f458505-mod`, seed 42, exhaustiveness 16, 9 poses; full ranked RMSDs recorded in `docs/validation/G-DOCK-4.md`.
+  - [!] G-DOCK-4 target (<2 Å) failed: top pose 12.3928 Å; best of nine 10.3426 Å. No accuracy claim; investigate across a benchmark before changing thresholds.
 
 ## Phase 5 — ADMET integration `[ ]`
 
@@ -306,7 +315,7 @@ When the user says **CONTINUE**:
 
 ## Scientific validation tasks (cross-phase)
 
-- [ ] V1 Re-docking of 5NIU co-crystal ligand (8YZ): RMSD < 2 Å target (4.10)
+- [!] V1 Redocking of 5NIU co-crystal ligand 8YZ missed the <2 Å target (top pose 12.3928 Å); single-run details in `docs/validation/G-DOCK-4.md`; extend to a multi-complex benchmark before interpreting.
 - [ ] V2 Psi4 reference energies vs legacy batch results (10.6)
 - [ ] V3 MDAnalysis vs gmx metrics on 2M2D_LIG (8.5)
 - [ ] V4 MM-GBSA per-frame agreement on 11 frames (9.4)
@@ -342,6 +351,7 @@ When the user says **CONTINUE**:
 | 2026-09-24 | Phase 4.4 RCSB mmCIF source and structure-selection adapter committed and pushed as d27bc59; raw source and entity sequences retained, chain/ligand ambiguity produces explicit decisions, and the 5NIU fixture hash is pinned. Starting Phase 4.5 protein preparation. |
 | 2026-09-24 | Phase 4.5 complete: isolated PDBFixer worker, confined request builder, argv-only planner, hash-checked PreparedReceptor normalization, and LocalExecutor stage handler with content-addressed output/request/log artifacts. Core gate: 225 passed, 4 engine-marked tests skipped; 7 focused tests pass with cadd enabled (PDBFixer 1.12.0 / OpenMM 8.4), including terminal-gap reporting, internal-gap reconstruction, overwrite refusal, and artifact registration. Runtime plugin-discovery assembly is deferred to the API/application phase. Starting 4.6 binding-site definition. |
 | 2026-09-24 | Phase 4.6 complete: reference-ligand, whole-protein blind, and user-coordinate site builders implemented. 5NIU 8YZ golden now pins bbox midpoint (6.2435, 13.235, 189.6215 A) and dimensions (28.341, 22, 22 A); source artifact hash and method are preserved. Blind builder triggers existing DOCK.BLIND_BOX decision rule; large-volume warning has 8J3V coverage. Full quality gate: 229 passed, 4 engine-specific tests skipped; Ruff, formatting, strict mypy (80 source files), import-linter, and schemas pass. Starting 4.7 Vina adapter. |
+| 2026-09-24 | Phase 4.9–4.10 complete: AutoDock4/AutoGrid4 4.2.6 extracted user-locally, engine-specific plans/parser and normalized handler added with zero core diffs; engine-enabled 5NIU/RC8 pipeline exercised through Meeko → AutoGrid4 → AutoDock4 → Meeko and emitted the common result contract. Corrected AD4 site lineage validation for either raw-structure or prepared-receptor frame. Full quality gate passes (257 passed, 5 optional integration skips; Ruff, format, strict mypy 89 files, import-linter, schemas). G-DOCK-4 uses the RCSB 8YZ CCD topology with native coordinates checked by mmCIF atom order; Vina seed 42 / exhaustiveness 16 produced top-pose RMSD 12.3928 Å (best of 9: 10.3426 Å), missing <2 Å target. Reported as scientific failure in `docs/validation/G-DOCK-4.md`; no accuracy claim. Continuing into ADMET audit.
 | 2026-09-24 | Phase 4.7 complete: Vina/Meeko shell-free planner and `VinaDockingHandler`, typed `DockingResult`, raw + normalized pose artifacts, run parameters, seed, logs, and lineage checks implemented. Real 5NIU/RC8 fixture run passes PDBFixer → Meeko receptor/ligand → Vina → Meeko export; pose graphs and heavy-atom coordinates are checked from Meeko index maps. Two build-specific details are documented: preserved Vina rejects `--log` (executor stdout/stderr are logs); Meeko ligand input needs a suffix-bearing stage copy of extensionless content-addressed SDF. Full gate: 242 passed, 5 engine-specific skips; Ruff/format, strict mypy (83 files), import-linter, schema freshness pass. Engine-enabled prep+docking regression: 8 passed. Runtime plugin/capability composition remains Phase 13.1; this integration check is not a docking-accuracy validation. Starting Phase 4.8 complex builder audit.
 | 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |
 | 2026-09-23 | Phase 4.2 complete: implemented RDKit neutral-parent standardization with explicit policy/provenance, deterministic seeded conformer embedding with artifact digest verification, project/InChIKey registry deduplication with preservation of every raw submission, and migration 0004. Golden RC8/RC34 identities match; full gate passes (203 tests, Ruff, format, strict mypy 70 files, import-linter, schemas). Frozen 143-file source baseline and docking fixture SHA manifest verified. Starting 4.3 protonation adapter. |

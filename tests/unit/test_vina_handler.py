@@ -1,8 +1,9 @@
-"""Small real-engine docking integration for the Vina→Meeko adapter boundary."""
+"""Engine integration for Vina, AutoDock4, complex assembly, and 8YZ redocking."""
 
 from __future__ import annotations
 
 import importlib.metadata
+import math
 import os
 import subprocess
 from pathlib import Path
@@ -10,8 +11,9 @@ from types import SimpleNamespace
 
 import pytest
 from rdkit import Chem
-from rdkit.Chem import rdMolDescriptors
+from rdkit.Chem import rdMolAlign, rdMolDescriptors
 
+from caddsuite.adapters.docking.autodock4_handler import AutoDock4DockingHandler
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
 from caddsuite.adapters.structure_preparation.complex_builder import CoordinateComplexBuilderHandler
 from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparationHandler
@@ -29,6 +31,7 @@ from caddsuite.contracts.registry import (
 from caddsuite.contracts.structure import (
     BindingSite,
     BindingSiteMethod,
+    LigandReference,
     Structure,
     StructureSource,
 )
@@ -251,5 +254,250 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         assert coordinate_complex.ligand_heavy_atom_count == compound.parent.heavy_atom_count
         assert coordinate_complex.parameters["md_ready"] is False
         assert store.verify(coordinate_complex.assembled.sha256 or "")
+
+        ad4_bin_dir = os.environ.get("CADDSUITE_AUTODOCK4_BIN_DIR")
+        if ad4_bin_dir:
+            ad4_bin = Path(ad4_bin_dir)
+            autodock = ad4_bin / "autodock4"
+            autogrid = ad4_bin / "autogrid4"
+            ad4_version = (
+                subprocess.run(
+                    [str(autodock), "--version"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=20,
+                )
+                .stdout.splitlines()[0]
+                .strip()
+            )
+            autogrid_version = (
+                subprocess.run(
+                    [str(autogrid), "--version"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=20,
+                )
+                .stdout.splitlines()[0]
+                .strip()
+            )
+            ad4_handler = AutoDock4DockingHandler(
+                autodock_executable=autodock,
+                autogrid_executable=autogrid,
+                meeko_python=meeko_python,
+                mk_prepare_receptor=engine_dir / "mk_prepare_receptor.py",
+                mk_prepare_ligand=engine_dir / "mk_prepare_ligand.py",
+                mk_export=engine_dir / "mk_export.py",
+                autodock_version=ad4_version,
+                autogrid_version=autogrid_version,
+                meeko_version=meeko_version,
+                work_root=tmp_path / "autodock4-jobs",
+                log_root=tmp_path / "autodock4-logs",
+                executor=LocalExecutor(store, sessions),
+                artifact_store=store,
+                sessions=sessions,
+            )
+            ad4_result = ad4_handler.execute(
+                SimpleNamespace(
+                    task=SimpleNamespace(
+                        stage_id="dock_ad4",
+                        params={
+                            "grid": {"npts": [80, 80, 80], "spacing_A": 0.375},
+                            "docking": {
+                                "seed": [42, 1337],
+                                "ga_runs": 2,
+                                "ga_pop_size": 10,
+                                "ga_num_evals": 1000,
+                                "ga_num_generations": 100,
+                                "ga_elitism": 1,
+                                "ga_mutation_rate": 0.02,
+                                "ga_crossover_rate": 0.8,
+                                "ga_window_size": 10,
+                                "rmsd_threshold_A": 2.0,
+                            },
+                        },
+                    ),
+                    inputs={
+                        "compound": (compound,),
+                        "form": (form,),
+                        "conformer": (conformer,),
+                        "receptor": (prepared,),
+                        "target_structure": (structure,),
+                        "site": (site,),
+                    },
+                )
+            )
+            assert ad4_result.run.seed == 42
+            assert ad4_result.run.pose_ids == tuple(pose.id for pose in ad4_result.poses)
+            assert ad4_result.poses
+            assert all(store.verify(pose.structure.sha256 or "") for pose in ad4_result.poses)
+            assert all(store.verify(pose.raw.sha256 or "") for pose in ad4_result.poses)
+            assert store.verify(ad4_result.artifacts["autodock4_dlg"].sha256 or "")
+
+        # G-DOCK-4: blind-independent, coordinate-frame-preserving Vina redocking of
+        # the native 8YZ ligand. The symmetry-aware RMSD is calculated without fitting.
+        native_pdb = ROOT / "tests/data/golden/docking_g1/receptors/5NIU_ref_ligand.pdb"
+        native_coordinates = Chem.MolFromPDBFile(str(native_pdb), removeHs=False, sanitize=True)
+        ideal_path = ROOT / "tests/data/golden/docking_g1/receptors/8YZ_ideal.sdf"
+        ideal_molecule = Chem.SDMolSupplier(str(ideal_path), removeHs=False)[0]
+        assert native_coordinates is not None
+        assert ideal_molecule is not None
+        native_coordinates = Chem.RemoveHs(native_coordinates)
+        native_parent = Chem.RemoveHs(ideal_molecule)
+        cif_lines = (ROOT / "tests/data/golden/structure_g1/5NIU.cif").read_text().splitlines()
+        atom_loop_start = next(
+            index
+            for index, line in enumerate(cif_lines)
+            if line.strip() == "_chem_comp_atom.comp_id"
+        )
+        ccd_heavy_names = []
+        for line in cif_lines[atom_loop_start + 5 :]:
+            fields = line.split()
+            if not fields or line.startswith("#"):
+                break
+            if fields[0] == "8YZ" and fields[2] != "H":
+                ccd_heavy_names.append(fields[1])
+        pdb_atom_lines = [
+            line
+            for line in native_pdb.read_text().splitlines()
+            if line.startswith(("ATOM", "HETATM"))
+        ]
+        pdb_atom_names = [line[12:16].strip() for line in pdb_atom_lines]
+        assert pdb_atom_names == ccd_heavy_names
+        assert tuple(atom.GetAtomicNum() for atom in native_coordinates.GetAtoms()) == tuple(
+            atom.GetAtomicNum() for atom in native_parent.GetAtoms()
+        )
+        native_conformer_coords = native_coordinates.GetConformer()
+        ideal_conformer = native_parent.GetConformer()
+        for atom_index in range(native_parent.GetNumAtoms()):
+            ideal_conformer.SetAtomPosition(
+                atom_index, native_conformer_coords.GetAtomPosition(atom_index)
+            )
+        native_smiles = Chem.MolToSmiles(native_parent, canonical=True, isomericSmiles=True)
+        native_inchi = Chem.MolToInchi(native_parent)
+        native_sdf = tmp_path / "native_8yz.sdf"
+        native_ligand = Chem.AddHs(native_parent, addCoords=True)
+        with Chem.SDWriter(str(native_sdf)) as writer:
+            writer.write(native_ligand)
+        native_blob = store.put_file(native_sdf)
+        with sessions.begin() as session:
+            native_row = register_blob(
+                session,
+                native_blob,
+                kind="ligand_conformer_sdf",
+                media_type="chemical/x-mdl-sdfile",
+                original_name="native_8yz.sdf",
+            )
+            native_artifact_id = native_row.id
+        native_compound_id = new_ulid()
+        native_compound = Compound(
+            id=native_compound_id,
+            accession="CMP0002",
+            project_id=project_id,
+            name="Native 8YZ redocking fixture",
+            input_record=InputRecord(source="legacy_import", original_text=native_smiles),
+            parent=ChemicalIdentity(
+                canonical_smiles=native_smiles,
+                inchi=native_inchi,
+                inchikey=Chem.MolToInchiKey(native_parent),
+                formula=rdMolDescriptors.CalcMolFormula(native_parent),
+                formal_charge=Chem.GetFormalCharge(native_parent),
+                heavy_atom_count=native_parent.GetNumHeavyAtoms(),
+            ),
+            standardization=StandardizationRecord(
+                policy="native_reference_ligand",
+                steps=(StandardizationStep(operation="PDB_graph_perception", changed=False),),
+                toolkit=SoftwareRef(
+                    name="RDKit",
+                    version=importlib.metadata.version("rdkit"),
+                    kind=SoftwareKind.LIBRARY,
+                    license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+                ),
+            ),
+        )
+        native_form = CompoundForm(
+            id=new_ulid(),
+            compound_id=native_compound_id,
+            kind=CompoundFormKind.PARENT_NEUTRAL,
+            smiles=native_smiles,
+            formal_charge=Chem.GetFormalCharge(native_parent),
+        )
+        native_conformer = Conformer(
+            id=new_ulid(),
+            form_id=native_form.id,
+            compound_id=native_compound_id,
+            generator="native_crystal_coordinates_with_RDKit_hydrogens",
+            selected_by="G-DOCK-4",
+            structure=ArtifactRef(
+                artifact_id=native_artifact_id,
+                role="ligand_conformer_sdf",
+                sha256=native_blob.sha256,
+            ),
+        )
+        native_site = BindingSite(
+            id=new_ulid(),
+            target_id=target_id,
+            method=BindingSiteMethod.REFERENCE_LIGAND,
+            reference=LigandReference(resname="8YZ", chain="A", resseq="201", copies_found=2),
+            center_A=(6.2435, 13.235, 189.6215),
+            size_A=(28.341, 22.0, 22.0),
+            source_structure=structure.raw,
+        )
+        redock = handler.execute(
+            SimpleNamespace(
+                task=SimpleNamespace(
+                    stage_id="redock_native_8yz",
+                    params={
+                        "exhaustiveness": 16,
+                        "num_modes": 9,
+                        "energy_range_kcal_mol": 3.0,
+                        "cpu_cores": 2,
+                        "seed": 42,
+                    },
+                ),
+                inputs={
+                    "compound": (native_compound,),
+                    "form": (native_form,),
+                    "conformer": (native_conformer,),
+                    "receptor": (prepared,),
+                    "target_structure": (structure,),
+                    "site": (native_site,),
+                },
+            )
+        )
+        redocked_molecules = [
+            mol
+            for pose in redock.poses
+            if (
+                mol := Chem.MolFromMolFile(
+                    str(store.path_for(pose.structure.sha256 or "")),
+                    removeHs=False,
+                    sanitize=True,
+                )
+            )
+            is not None
+        ]
+        assert len(redocked_molecules) == len(redock.poses)
+        native_heavy = Chem.RemoveHs(native_parent)
+        pose_rmsds_A = tuple(
+            rdMolAlign.CalcRMS(Chem.RemoveHs(molecule), native_heavy, maxMatches=10000)
+            for molecule in redocked_molecules
+        )
+        print(
+            "G-DOCK-4",
+            {
+                "engine": vina_version,
+                "seed": redock.run.seed,
+                "exhaustiveness": redock.run.params["exhaustiveness"],
+                "poses_rank_score_rmsd_A": tuple(
+                    (pose.rank, pose.score.value, round(rmsd, 4))
+                    for pose, rmsd in zip(redock.poses, pose_rmsds_A, strict=True)
+                ),
+                "target_A": 2.0,
+            },
+        )
+        assert redock.run.seed == 42
+        assert all(math.isfinite(rmsd) for rmsd in pose_rmsds_A)
     finally:
         engine.dispose()
