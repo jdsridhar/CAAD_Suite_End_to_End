@@ -4,7 +4,7 @@
   "candidate": "candidate/1.0",
   "compound": "compound/1.0",
   "compound_form": "compound_form/1.0",
-  "conformer": "conformer/1.0",
+  "conformer": "conformer/1.1",
   "docking_result": "docking_result/1.0",
   "docking_run": "docking_run/1.0",
   "evidence": "evidence/1.0",
