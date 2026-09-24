@@ -29,7 +29,7 @@ class PDBFixerPreparationHandler:
     """Execute selected-chain protein preparation with a foreign-env PDBFixer worker."""
 
     adapter_id = "structure.prepare_protein.pdbfixer"
-    adapter_version = "1.0.0"
+    adapter_version = "1.1.0"
 
     def __init__(
         self,
@@ -109,9 +109,11 @@ class PDBFixerPreparationHandler:
         stage_dir.mkdir(mode=0o700)
         source = self.artifact_store.path_for(structure.raw.sha256)
         output = stage_dir / "prepared_receptor.cif"
+        pdb_output = stage_dir / "prepared_receptor.pdb"
         request = write_pdbfixer_request(
             source_mmcif=source,
             output_mmcif=output,
+            output_pdb=pdb_output,
             request_path=stage_dir / "worker_request.json",
             work_dir=stage_dir,
             selected_chain_ids=tuple(chains),
@@ -142,14 +144,18 @@ class PDBFixerPreparationHandler:
                 "STRUCTURE.INVALID_WORKER_RESPONSE",
                 f"PDBFixer stdout is not a JSON worker response: {exc}",
             ) from exc
-        if not output.is_file():
+        if not output.is_file() or not pdb_output.is_file():
             raise StageExecutionFailure(
                 "STRUCTURE.OUTPUT_MISSING",
-                "PDBFixer reported success but did not produce its prepared mmCIF.",
+                "PDBFixer reported success but did not produce both prepared mmCIF"
+                " and PDB outputs.",
             )
 
         prepared_ref = self._register_file(
             output, kind="prepared_receptor_mmcif", media_type="chemical/x-mmcif"
+        )
+        prepared_pdb_ref = self._register_file(
+            pdb_output, kind="prepared_receptor_pdb", media_type="chemical/x-pdb"
         )
         request_ref = self._register_file(
             request, kind="worker_request", media_type="application/json"
@@ -160,6 +166,7 @@ class PDBFixerPreparationHandler:
             selected_chain_ids=tuple(chains),
             ph=ph,
             prepared_artifact=prepared_ref,
+            prepared_pdb_artifact=prepared_pdb_ref,
             report_artifact=execution.stdout,
             request_artifact=request_ref,
             stderr_artifact=execution.stderr,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -76,8 +77,33 @@ def test_handler_runs_worker_and_registers_normalized_artifacts(tmp_path: Path) 
         assert result.selected_chain_ids == ("A",)
         assert result.artifacts["source_structure"].sha256 == source_blob.sha256
         assert store.verify(result.artifacts["prepared_structure"].sha256 or "")
+        assert store.verify(result.artifacts["prepared_structure_pdb"].sha256 or "")
         assert store.verify(result.artifacts["worker_report"].sha256 or "")
         assert store.verify(result.artifacts["worker_request"].sha256 or "")
         assert result.output_residue_count == 126
+
+        receptor_pdb = store.path_for(result.artifacts["prepared_structure_pdb"].sha256 or "")
+        receptor_pdbqt = tmp_path / "meeko_receptor.pdbqt"
+        receptor_json = tmp_path / "meeko_receptor.json"
+        meeko = Path(PYFIXER_PYTHON).with_name("mk_prepare_receptor.py")
+        meeko_run = subprocess.run(
+            [
+                str(meeko),
+                "--read_pdb",
+                str(receptor_pdb),
+                "--write_pdbqt",
+                str(receptor_pdbqt),
+                "--write_json",
+                str(receptor_json),
+            ],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        assert meeko_run.returncode == 0, meeko_run.stderr
+        assert receptor_pdbqt.stat().st_size > 0
+        assert receptor_json.stat().st_size > 0
     finally:
         engine.dispose()

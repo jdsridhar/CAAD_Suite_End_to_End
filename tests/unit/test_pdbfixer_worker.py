@@ -23,12 +23,14 @@ pytestmark = pytest.mark.skipif(
 
 def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path) -> None:
     output = tmp_path / "prepared.cif"
+    output_pdb = tmp_path / "prepared.pdb"
     request = tmp_path / "request.json"
     request.write_text(
         json.dumps(
             {
                 "input_mmcif": str(FIXTURE),
                 "output_mmcif": str(output),
+                "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
                 "fill_internal_gaps": True,
@@ -53,6 +55,9 @@ def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path)
     result = response["result"]
     assert result["input_sha256"] == hashlib.sha256(FIXTURE.read_bytes()).hexdigest()
     assert result["output_sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+    assert result["output_pdb_sha256"] == hashlib.sha256(output_pdb.read_bytes()).hexdigest()
+    pdb_text = output_pdb.read_text(encoding="utf-8")
+    assert "ATOM  " in pdb_text
     assert result["selected_chain_ids"] == ["A"]
     assert result["pdbfixer_version"]
     assert result["openmm_version"]
@@ -98,12 +103,14 @@ def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
     damaged = tmp_path / "internal-gap.cif"
     damaged.write_text("\n".join(filtered) + "\n", encoding="utf-8")
     output = tmp_path / "prepared-gap.cif"
+    output_pdb = tmp_path / "prepared-gap.pdb"
     request = tmp_path / "gap-request.json"
     request.write_text(
         json.dumps(
             {
                 "input_mmcif": str(damaged),
                 "output_mmcif": str(output),
+                "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
                 "fill_internal_gaps": True,
@@ -136,6 +143,7 @@ def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
 
 def test_worker_refuses_to_overwrite_an_existing_artifact(tmp_path: Path) -> None:
     output = tmp_path / "protected.cif"
+    output_pdb = tmp_path / "protected.pdb"
     output.write_text("existing scientific artifact", encoding="utf-8")
     request = tmp_path / "overwrite-request.json"
     request.write_text(
@@ -143,6 +151,7 @@ def test_worker_refuses_to_overwrite_an_existing_artifact(tmp_path: Path) -> Non
             {
                 "input_mmcif": str(FIXTURE),
                 "output_mmcif": str(output),
+                "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
             }

@@ -27,6 +27,7 @@ def write_pdbfixer_request(
     *,
     source_mmcif: Path,
     output_mmcif: Path,
+    output_pdb: Path,
     request_path: Path,
     work_dir: Path,
     selected_chain_ids: tuple[str, ...],
@@ -42,14 +43,21 @@ def write_pdbfixer_request(
     source = source_mmcif.resolve(strict=True)
     root = work_dir.resolve(strict=True)
     output = output_mmcif.resolve()
+    pdb_output = output_pdb.resolve()
     request = request_path.resolve()
     if not source.is_file():
         raise ValueError("source_mmcif must be a regular file")
-    if output == source or output.exists():
-        raise ValueError("output_mmcif must be a new path distinct from the input")
-    for label, path in (("output_mmcif", output), ("request_path", request)):
+    if source in (output, pdb_output) or output == pdb_output:
+        raise ValueError("input, output_mmcif, and output_pdb paths must differ")
+    for label, path in (
+        ("output_mmcif", output),
+        ("output_pdb", pdb_output),
+        ("request_path", request),
+    ):
         if not path.is_relative_to(root):
             raise ValueError(f"{label} must be inside the stage work directory")
+    if output.exists() or pdb_output.exists():
+        raise ValueError("prepared outputs must be new files")
     if request.exists():
         raise ValueError("request_path already exists")
     if not selected_chain_ids or any(not chain for chain in selected_chain_ids):
@@ -62,6 +70,7 @@ def write_pdbfixer_request(
     payload: dict[str, Any] = {
         "input_mmcif": str(source),
         "output_mmcif": str(output),
+        "output_pdb": str(pdb_output),
         "selected_chain_ids": list(selected_chain_ids),
         "ph": ph,
         "fill_internal_gaps": fill_internal_gaps,
@@ -109,6 +118,7 @@ def normalize_pdbfixer_result(
     selected_chain_ids: tuple[str, ...],
     ph: float,
     prepared_artifact: ArtifactRef,
+    prepared_pdb_artifact: ArtifactRef,
     report_artifact: ArtifactRef,
     request_artifact: ArtifactRef | None = None,
     stderr_artifact: ArtifactRef | None = None,
@@ -120,7 +130,7 @@ def normalize_pdbfixer_result(
             f"{response.get('error', 'no structured error was returned')}"
         )
     result = response["result"]
-    if result.get("protocol") != "caddsuite.pdbfixer-worker/1":
+    if result.get("protocol") != "caddsuite.pdbfixer-worker/2":
         raise ProteinPreparationError("unsupported PDBFixer worker protocol")
     if sorted(selected_chain_ids) != result.get("selected_chain_ids"):
         raise ProteinPreparationError("worker selected chain IDs differ from the request")
@@ -135,6 +145,9 @@ def normalize_pdbfixer_result(
     output_digest = result.get("output_sha256")
     if not output_digest or prepared_artifact.sha256 != output_digest:
         raise ProteinPreparationError("prepared artifact digest differs from worker output digest")
+    pdb_digest = result.get("output_pdb_sha256")
+    if not pdb_digest or prepared_pdb_artifact.sha256 != pdb_digest:
+        raise ProteinPreparationError("prepared PDB digest differs from worker output digest")
 
     try:
         gaps = tuple(
@@ -205,6 +218,7 @@ def normalize_pdbfixer_result(
         artifacts={
             "source_structure": structure.raw,
             "prepared_structure": prepared_artifact,
+            "prepared_structure_pdb": prepared_pdb_artifact,
             "worker_report": report_artifact,
             **({"worker_request": request_artifact} if request_artifact else {}),
             **({"worker_stderr": stderr_artifact} if stderr_artifact else {}),

@@ -30,6 +30,7 @@ def test_request_records_policy_and_command_is_argv_only(tmp_path: Path) -> None
     request = write_pdbfixer_request(
         source_mmcif=source,
         output_mmcif=work / "prepared.cif",
+        output_pdb=work / "prepared.pdb",
         request_path=work / "request.json",
         work_dir=work,
         selected_chain_ids=("A", "B"),
@@ -37,6 +38,7 @@ def test_request_records_policy_and_command_is_argv_only(tmp_path: Path) -> None
         keep_water=True,
     )
     payload = json.loads(request.read_text(encoding="utf-8"))
+    assert payload["output_pdb"] == str((work / "prepared.pdb").resolve())
     assert payload["selected_chain_ids"] == ["A", "B"]
     assert payload["ph"] == 7.4
     assert payload["keep_water"] is True
@@ -59,6 +61,7 @@ def test_request_rejects_output_outside_workdir_and_duplicate_chains(tmp_path: P
         write_pdbfixer_request(
             source_mmcif=source,
             output_mmcif=tmp_path / "escape.cif",
+            output_pdb=work / "prepared.pdb",
             request_path=work / "request.json",
             work_dir=work,
             selected_chain_ids=("A",),
@@ -68,6 +71,7 @@ def test_request_rejects_output_outside_workdir_and_duplicate_chains(tmp_path: P
         write_pdbfixer_request(
             source_mmcif=source,
             output_mmcif=work / "prepared.cif",
+            output_pdb=work / "prepared.pdb",
             request_path=work / "request.json",
             work_dir=work,
             selected_chain_ids=("A", "A"),
@@ -91,9 +95,10 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
     response = {
         "ok": True,
         "result": {
-            "protocol": "caddsuite.pdbfixer-worker/1",
+            "protocol": "caddsuite.pdbfixer-worker/2",
             "input_sha256": input_digest,
             "output_sha256": output_digest,
+            "output_pdb_sha256": "e" * 64,
             "pdbfixer_version": "1.12.0",
             "openmm_version": "8.4",
             "selected_chain_ids": ["A"],
@@ -119,6 +124,7 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
         selected_chain_ids=("A",),
         ph=7.4,
         prepared_artifact=_artifact("prepared_receptor_mmcif", output_digest),
+        prepared_pdb_artifact=_artifact("prepared_receptor_pdb", "e" * 64),
         report_artifact=_artifact("worker_report", "c" * 64),
     )
     assert result.structure_id == structure.id
@@ -126,6 +132,7 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
     assert result.missing_residues[0].missing == ("HIS", "HIS")
     assert result.missing_residues[0].modelled is False
     assert result.artifacts["prepared_structure"].sha256 == output_digest
+    assert result.artifacts["prepared_structure_pdb"].sha256 == "e" * 64
     assert result.supporting_software[0].name == "OpenMM"
 
     with pytest.raises(ProteinPreparationError, match="artifact digest"):
@@ -135,5 +142,6 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
             selected_chain_ids=("A",),
             ph=7.4,
             prepared_artifact=_artifact("prepared_receptor_mmcif", "d" * 64),
+            prepared_pdb_artifact=_artifact("prepared_receptor_pdb", "e" * 64),
             report_artifact=_artifact("worker_report", "c" * 64),
         )

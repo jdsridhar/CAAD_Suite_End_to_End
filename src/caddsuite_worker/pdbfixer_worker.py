@@ -24,13 +24,14 @@ def _sha256(path: Path) -> str:
 def prepare(request: dict[str, Any]) -> dict[str, Any]:
     """Prepare selected protein chains and return explicit changes and versions."""
     from openmm import __version__ as openmm_version  # type: ignore[import-not-found]
-    from openmm.app import PDBxFile  # type: ignore[import-not-found]
+    from openmm.app import PDBFile, PDBxFile  # type: ignore[import-not-found]
     from pdbfixer import PDBFixer  # type: ignore[import-not-found]
 
     source = Path(request["input_mmcif"]).resolve(strict=True)
     destination = Path(request["output_mmcif"]).resolve()
-    if source == destination:
-        raise ValueError("input and output mmCIF paths must differ")
+    pdb_destination = Path(request["output_pdb"]).resolve()
+    if source in (destination, pdb_destination) or destination == pdb_destination:
+        raise ValueError("input, mmCIF output, and PDB output paths must differ")
     selected_values = request["selected_chain_ids"]
     if not isinstance(selected_values, list) or any(
         not isinstance(item, str) or not item for item in selected_values
@@ -39,8 +40,9 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
     selected = set(selected_values)
     if len(selected) != len(selected_values):
         raise ValueError("selected_chain_ids must not contain duplicates")
-    if destination.exists():
-        raise FileExistsError(f"refusing to overwrite existing output: {destination}")
+    for output_path in (destination, pdb_destination):
+        if output_path.exists():
+            raise FileExistsError(f"refusing to overwrite existing output: {output_path}")
     ph = float(request["ph"])
     if not 0 <= ph <= 14:
         raise ValueError("ph must be between 0 and 14")
@@ -97,22 +99,37 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
     missing_atom_count = sum(len(names) for names in fixer.missingAtoms.values())
     fixer.addMissingAtoms()
     fixer.addMissingHydrogens(pH=ph)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary_name = tempfile.mkstemp(
-        prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
-    )
-    os.close(fd)
-    temporary = Path(temporary_name)
+    temporary_files: list[Path] = []
+    published: list[Path] = []
     try:
-        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+        for output_path in (destination, pdb_destination):
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            fd, temporary_name = tempfile.mkstemp(
+                prefix=f".{output_path.name}.", suffix=".tmp", dir=output_path.parent
+            )
+            os.close(fd)
+            temporary_files.append(Path(temporary_name))
+        with temporary_files[0].open("w", encoding="utf-8", newline="\n") as stream:
             PDBxFile.writeFile(fixer.topology, fixer.positions, stream, keepIds=True)
-        os.replace(temporary, destination)
+        with temporary_files[1].open("w", encoding="utf-8", newline="\n") as stream:
+            PDBFile.writeFile(fixer.topology, fixer.positions, stream, keepIds=True)
+        for temporary, output_path in zip(
+            temporary_files, (destination, pdb_destination), strict=True
+        ):
+            os.replace(temporary, output_path)
+            published.append(output_path)
+    except Exception:
+        for output_path in published:
+            output_path.unlink(missing_ok=True)
+        raise
     finally:
-        temporary.unlink(missing_ok=True)
+        for temporary in temporary_files:
+            temporary.unlink(missing_ok=True)
     return {
-        "protocol": "caddsuite.pdbfixer-worker/1",
+        "protocol": "caddsuite.pdbfixer-worker/2",
         "input_sha256": _sha256(source),
         "output_sha256": _sha256(destination),
+        "output_pdb_sha256": _sha256(pdb_destination),
         "pdbfixer_version": importlib.metadata.version("pdbfixer"),
         "openmm_version": openmm_version,
         "selected_chain_ids": sorted(selected),
