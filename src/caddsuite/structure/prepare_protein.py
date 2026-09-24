@@ -110,6 +110,8 @@ def normalize_pdbfixer_result(
     ph: float,
     prepared_artifact: ArtifactRef,
     report_artifact: ArtifactRef,
+    request_artifact: ArtifactRef | None = None,
+    stderr_artifact: ArtifactRef | None = None,
 ) -> PreparedReceptor:
     """Validate worker metadata and map engine output into the common receptor contract."""
     if response.get("ok") is not True or not isinstance(response.get("result"), dict):
@@ -204,5 +206,7 @@ def normalize_pdbfixer_result(
             "source_structure": structure.raw,
             "prepared_structure": prepared_artifact,
             "worker_report": report_artifact,
+            **({"worker_request": request_artifact} if request_artifact else {}),
+            **({"worker_stderr": stderr_artifact} if stderr_artifact else {}),
         },
     )

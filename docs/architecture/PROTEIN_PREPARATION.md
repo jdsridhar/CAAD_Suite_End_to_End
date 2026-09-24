@@ -7,6 +7,8 @@ does not import PDBFixer or OpenMM. It sends a JSON request to the stdlib-only
 `caddsuite_worker.pdbfixer_worker` process, which reads the source mmCIF and writes a
 separate prepared mmCIF plus a JSON result on stdout.
 
+The workflow stage handler executes the worker with the platform `LocalExecutor`. It verifies the source artifact hash, stores the prepared mmCIF, request, stdout report and stderr logs in the content-addressed artifact store, and returns a normalized `PreparedReceptor` contract. The configured chain IDs and pH are part of the stage parameters/cache key.
+
 The request explicitly names topology chain IDs, pH, whether internal sequence gaps may
 be modelled, and whether waters are retained. The worker filters other chains before
 preparation. It reports terminal and internal sequence gaps, whether each gap was

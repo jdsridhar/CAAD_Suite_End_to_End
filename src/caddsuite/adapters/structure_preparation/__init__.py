@@ -1,0 +1,1 @@
+"""Structure-preparation engine adapters."""
