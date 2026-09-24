@@ -177,7 +177,9 @@ class Complex:
 
 class Parameterization:
     id: ULID
-    ff_family: Literal["charmm", "amber", "openff"]
+    ff_family: Literal["charmm", "amber", "openff"]  # primary profile family
+    compatibility_profile_id: str | None                 # exact approved component combination
+    component_force_fields: dict[ForceFieldComponent, ComponentForceField]
     protein_ff: str                                       # "CHARMM36m" | "ff14SB" | "ff19SB"
     ligand_method: str                                    # "CGenFF (via CHARMM-GUI)" | "GAFF2" | "OpenFF Sage 2.x"
     ligand_charge_model: str                              # "CGenFF" | "AM1-BCC" | "RESP(HF/6-31G*)"
@@ -203,7 +205,7 @@ class MDStage:
     integrator: str; timestep_fs: float | None; n_steps: int | None; length_ns: float | None
     temperature_K: float | None; thermostat: str | None
     pressure_bar: float | None; barostat: str | None
-    constraints: str | None; hmr: bool
+    constraints: str | None; hmr: bool | None
     nonbonded: dict                                       # cutoffs, modifier (force-switch), PME
     restraints: str | None
 

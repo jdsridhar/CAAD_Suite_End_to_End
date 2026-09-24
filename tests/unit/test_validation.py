@@ -92,6 +92,7 @@ def test_default_registry_contains_audit_rules() -> None:
         "DOCK.BLIND_BOX",
         "DOCK.LARGE_SEARCH_SPACE",
         "MD.SEGMENT_LENGTH",
+        "FF.FAMILY_CONSISTENCY",
         "MMGBSA.TEMPERATURE_MISMATCH",
         "MMGBSA.CORRELATED_SAMPLES",
     }

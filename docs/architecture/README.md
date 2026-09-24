@@ -45,4 +45,6 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [AutoDock4 adapter proof of extensibility](AUTODOCK4_ADAPTER.md)
 - [Docking pose to coordinate complex](COMPLEX_ASSEMBLY.md)
 - [ADMET rules adapter and ML evaluation](ADMET_ADAPTER.md)
-- [Phase 6.1 system-builder audit](SYSTEM_BUILDER_AUDIT.md)
+- [Phase 6.1/6.2 system-builder audit and CHARMM-GUI import](SYSTEM_BUILDER_AUDIT.md)
+- [Force-field compatibility profiles and `FF.FAMILY_CONSISTENCY`](FORCE_FIELD_COMPATIBILITY.md)
+- [G-MD-3/4 CHARMM-GUI bundle validation](../validation/G-MD-3.md)

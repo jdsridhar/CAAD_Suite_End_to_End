@@ -417,7 +417,7 @@ Rules are registered per **stage kind** and per **edge** (e.g. `docking → syst
 | `LIG.PROTONATION_RECORDED` | SCI-09 | Every 3D ligand form records method, pH, tool and version |
 | `LIG.PARENT_CONSISTENCY` | SCI-10 | All stages of a candidate use the registered parent (InChIKey) or a declared form of it |
 | `REC.SEQRES_GAPS` | SCI-11 | Missing internal residues detected from the sequence and reported (modelled or not, by policy) |
-| `FF.FAMILY_CONSISTENCY` | Req. §14 | Protein FF, ligand parameters, water and ions come from a compatible family |
+| `FF.FAMILY_CONSISTENCY` | Req. §14 | Exact component assignments must match a registered profile; unsupported/unknown combinations require a decision |
 | `MD.SEGMENT_LENGTH` | SCI-18 | `nsteps × dt` checked against the declared segment length |
 
 ---
@@ -440,13 +440,13 @@ flowchart TB
 
 **Compatibility is data, not an assumption:**
 
-| Force-field family | Protein | Ligand | Water | Ions | Non-bonded notes | Builders | MD engines |
-|---|---|---|---|---|---|---|---|
-| CHARMM | CHARMM36m | CGenFF | CHARMM TIP3P | CHARMM (POT/SOD/CLA) | force-switch 1.0–1.2 nm | CHARMM-GUI import | GROMACS, NAMD, OpenMM (bundle provides inputs) |
-| AMBER | ff14SB / ff19SB | GAFF2 (AM1-BCC) | TIP3P / OPC (ff19SB→OPC) | Joung–Cheatham / Li–Merz | cut-off 0.9–1.0 nm + PME | AmberTools tleap (+ParmEd/acpype for GROMACS) | GROMACS, OpenMM, NAMD (prmtop), AMBER |
-| OpenFF (later) | ff14SB | Sage 2.x | TIP3P/OPC | as above | per OpenFF docs | OpenFF Interchange | GROMACS, OpenMM, AMBER |
+| Compatibility profile | Protein | Ligand | Water | Ions | Topology/preparation | State |
+|---|---|---|---|---|---|---|
+| Audited CHARMM-GUI import declaration | CHARMM36m | CGenFF | CHARMM TIP3P | CHARMM set | GROMACS bundle importer | Implemented; checks declarations/file consistency, not physical accuracy |
+| AmberTools proposal | ff14SB | GAFF2 + AM1-BCC | Explicit Amber-compatible selection | Explicit Amber-compatible selection | tleap; ParmEd-to-GROMACS conversion gated on energy checks | Planned, not executable yet |
+| OpenFF/Amber proposal | Profile-specific Amber protein + OpenFF ligand | Sage | Explicitly selected | Explicitly selected | Interchange conversion gated per output engine | Research candidate; not enabled |
 
-Mixing rows (e.g. CGenFF ligand with ff14SB protein) produces `FF.FAMILY_CONSISTENCY` = BLOCKER. MM/GBSA radii choice (e.g. mbondi2 with igb=5) is validated against the family and reported as a limitation for CHARMM systems.
+An absent or unknown profile yields `DECISION_REQUIRED`. A declaration contradicting its selected profile is a blocker. A deliberate mixed-family parameterization may be valid only when a profile records the exact component combination and profile-specific evidence; a family label or topology parser success is not proof. See `docs/architecture/FORCE_FIELD_COMPATIBILITY.md`. MM/GBSA radii compatibility remains a separate Phase 9 validation task.
 
 ---
 

@@ -39,3 +39,7 @@ Rule count or complexity calls for a declarative rule engine. Until then, rules 
 
 ## Learning notes
 **Fail-safe defaults** and **explicit uncertainty** are scientific-software virtues. In interviews, connect this to reproducibility and to the difference between a crash (visible) and a silent error (dangerous).
+
+## 2026-09-24 implementation note — force-field compatibility profiles
+
+`FF.FAMILY_CONSISTENCY` is implemented as a versioned rule over an explicit compatibility-profile registry. A profile identifies protein, ligand, water and ion force fields, ligand charge model and topology format. An exact supported profile can pass; declarations contradicting the selected profile block; absent, unknown or disabled profiles require a recorded scientific decision. This avoids treating a family string as proof of compatibility. The built-in CHARMM-GUI profile checks declared component identities and imported GROMACS format consistency only; it does not establish parameter accuracy or simulation stability.

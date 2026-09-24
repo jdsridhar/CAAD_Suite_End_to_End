@@ -96,9 +96,16 @@
           "title": "Constraints"
         },
         "hmr": {
-          "default": false,
-          "title": "Hmr",
-          "type": "boolean"
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hmr"
         },
         "integrator": {
           "minLength": 1,

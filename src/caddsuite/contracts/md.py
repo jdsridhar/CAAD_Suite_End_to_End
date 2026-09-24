@@ -39,6 +39,23 @@ class ForceFieldFamily(StrEnum):
     OPENFF = "openff"
 
 
+class ForceFieldComponent(StrEnum):
+    """Parameterized parts may use different families only under an explicit profile."""
+
+    PROTEIN = "protein"
+    LIGAND = "ligand"
+    WATER = "water"
+    IONS = "ions"
+
+
+class ComponentForceField(ContractModel):
+    """Force-field identity assigned to one physical system component."""
+
+    family: ForceFieldFamily
+    name: NonEmptyStr
+    version: NonEmptyStr | None = None
+
+
 class Parameterization(VersionedContract):
     """Which force field, ligand parameters, charges, water and ions: never implicit."""
 
@@ -52,6 +69,10 @@ class Parameterization(VersionedContract):
     water_model: NonEmptyStr
     ion_parameters: NonEmptyStr
     tool: SoftwareRef
+    compatibility_profile_id: NonEmptyStr | None = None
+    component_force_fields: dict[ForceFieldComponent, ComponentForceField] = Field(
+        default_factory=dict
+    )
     quality: dict[str, JsonValue] = Field(default_factory=dict)  # e.g. CGenFF penalties
     artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
 
@@ -107,7 +128,7 @@ class MDStage(ContractModel):
     pressure_bar: PositiveFloat | None = None
     barostat: str | None = None
     constraints: str | None = None
-    hmr: bool = False
+    hmr: bool | None = None
     nonbonded: dict[str, JsonValue] = Field(default_factory=dict)
     restraints: str | None = None
 

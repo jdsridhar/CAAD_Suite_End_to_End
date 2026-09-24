@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 6 — Complex preparation + system building |
-| **Last completed** | Phase 6.1 SystemBuilder port and pose-validation gate (2026-09-24) |
-| **Current task** | [-] 6.2 CHARMM-GUI bundle import and protocol normalization |
-| **Next task** | 6.3 force-field family compatibility table and rule |
+| **Last completed** | Phase 6.3 force-field compatibility profiles and rule (2026-09-24) |
+| **Current task** | [-] 6.4 read-only AmberTools/tleap and ParmEd audit before adapter design |
+| **Next task** | 6.5 Phase 6 gate (G-MD-3/4 + compatibility validators) |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -186,10 +186,11 @@ When the user says **CONTINUE**:
 ## Phase 6 — Complex preparation + system building `[-]`
 
 - [x] 6.1 `SystemBuilder` port; pose validation rules (clashes, stereo, bond orders, H completeness). Full gate passes: 275 passed, 5 optional engine-only skips; Ruff, format, strict mypy (95 files), import-linter and schemas.
-- [-] 6.2 `adapters.system_builders.charmm_gui_import` (bundle ingest, protocol normalization from `.mdp`, selections verified — G-MD-3/4)
-- [ ] 6.3 FF-family compatibility table + `FF.FAMILY_CONSISTENCY` rule
-- [ ] 6.4 `adapters.system_builders.amber_tleap` (ff14SB/GAFF2/AM1-BCC; ParmEd → GROMACS with single-point energy cross-check) — Q4
-- [ ] 6.5 **Gate:** G-MD-3/4 green; validators active
+- [x] 6.2 `adapters.system_builders.charmm_gui_import`: hash-checked bundle ingest, recursive confined include closure, topology/GRO count checks, explicit ligand/protein selection checks, MDP normalization, raw artifact retention. G-MD-3/4 read-only integration passes for 2M2D_LIG/STD and 5NIU_LIG/STD; stages derive 0.125 ns equilibration and 1 ns production, and 4 fs HMR remains explicitly unverified. See `docs/validation/G-MD-3.md`.
+- [x] 6.3 typed component force-field assignments, extendable profile registry, and active `FF.FAMILY_CONSISTENCY` rule. Exact audited CHARMM profile passes; contradictions block; absent/unknown/disabled profiles require decision. Updated ADR-0011 to avoid a blanket mixed-family prohibition while keeping unsupported profiles closed.
+- [-] 6.4 `adapters.system_builders.amber_tleap` (ff14SB/GAFF2/AM1-BCC; ParmEd → GROMACS with single-point energy cross-check) — first task: read-only runtime and workflow audit; do not execute or alter the existing gmxMMPBSA environment. Q4.
+- [ ] 6.5 **Gate:** G-MD-3/4 green; force-field profile validation active; Amber build + conversion regression green.
+  - **Phase 6.2/6.3 quality gate:** 289 passed, 5 skipped with user MD data enabled; Ruff, formatting, strict mypy (99 source files), import-linter and schema checks pass.
 
 ## Phase 7 — MD migration (GROMACS) `[ ]`
 

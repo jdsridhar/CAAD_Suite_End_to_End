@@ -35,6 +35,50 @@
       "title": "ArtifactRef",
       "type": "object"
     },
+    "ComponentForceField": {
+      "additionalProperties": false,
+      "description": "Force-field identity assigned to one physical system component.",
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/ForceFieldFamily"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        }
+      },
+      "required": [
+        "family",
+        "name"
+      ],
+      "title": "ComponentForceField",
+      "type": "object"
+    },
+    "ForceFieldComponent": {
+      "description": "Parameterized parts may use different families only under an explicit profile.",
+      "enum": [
+        "protein",
+        "ligand",
+        "water",
+        "ions"
+      ],
+      "title": "ForceFieldComponent",
+      "type": "string"
+    },
     "ForceFieldFamily": {
       "enum": [
         "charmm",
@@ -125,6 +169,29 @@
         "$ref": "#/$defs/ArtifactRef"
       },
       "title": "Artifacts",
+      "type": "object"
+    },
+    "compatibility_profile_id": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compatibility Profile Id"
+    },
+    "component_force_fields": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ComponentForceField"
+      },
+      "propertyNames": {
+        "$ref": "#/$defs/ForceFieldComponent"
+      },
+      "title": "Component Force Fields",
       "type": "object"
     },
     "ff_family": {

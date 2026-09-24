@@ -5,7 +5,7 @@
 ## What exists today
 
 - The migrated `Complex` contract and `structure.complex_builder` assemble prepared receptor coordinates and the normalized docking pose. Its docstring explicitly says this is a coordinate complex, not force-field assignment or topology readiness.
-- At the beginning of this audit there was no `SystemBuilder` port, system-builder adapter, force-field compatibility registry, or pose-validation service. The port and initial pose checks are now implemented as described below; the importer and compatibility table remain Phase 6.2/6.3 work.
+- At the beginning of this audit there was no `SystemBuilder` port, system-builder adapter, force-field compatibility registry, or pose-validation service. The port, pose checks, and a conservative CHARMM-GUI importer are now implemented as described below; the explicit compatibility registry is Phase 6.3.
 - Existing `Parameterization`, `MDSystem`, `BoxSpec`, and `AtomSelection` contracts represented major outputs. Phase 6.1 adds versioned request/result contracts linking the complex, compound, form, target, pose, parameterization, system, protocol and artifacts.
 - The frozen MD app has no automatic system-building script. Its documented workflow requires a person to prepare the protein-ligand system in CHARMM-GUI, download a GROMACS bundle, then upload/copy the files into the project's `gromacs/` folder.
 - `md_run_segment.sh` consumes `step3_input.gro`, `topol.top`, `index.ndx`, three CHARMM-GUI `.mdp` files and the included `toppar/` tree. It runs minimization, equilibration and segmented production; it does not protonate, parameterize, solvate or construct the topology.
@@ -47,9 +47,17 @@ The 2M2D_LIG production MDP specifies `dt = 0.004 ps`, `nsteps = 250000` (1 ns p
 - Bounded contract and chemistry/coordinate tests pass (8 focused tests). Full repository gate passes: 275 passed, 5 optional engine-only skips; Ruff, formatting, strict mypy (95 files), import-linter and schemas pass.
 - The prepared user bundles were inspected read-only; no user data was copied into tests or modified.
 
-Topology include closure, atom/molecule count checks, force-field compatibility and actual CHARMM-GUI import remain Phase 6.2/6.3. AmberTools execution remains Phase 6.4. No engine was invoked in Phase 6.1.
+Topology include closure, atom/molecule count checks, explicit selections, and protocol normalization are implemented in the Phase 6.2 CHARMM-GUI importer. The read-only user bundles pass G-MD-3/4 (see `docs/validation/G-MD-3.md`). Force-field family compatibility is still a separate Phase 6.3 gate; AmberTools execution remains Phase 6.4. No GROMACS engine was invoked for bundle import.
 
 ## Learning note
 
 A prepared coordinate complex answers “which atoms and coordinates are in this pose?” A parameterized MD system additionally answers “what force-field terms, charges, solvent/ions, boundary conditions and topology define its Hamiltonian?” These are separate scientific objects. The system-builder adapter is the explicit boundary that converts a coordinate-level complex into an engine-ready model and must expose the decisions that make that conversion valid.
 
+
+## Phase 6.2 importer and regression evidence
+
+- `adapters.system_builders.charmm_gui_import` verifies SHA-256 for every registered source file, confines recursive quoted topology includes to the bundle, and rejects missing/unhandled syntax. It checks topology/GRO total atom counts, explicit ligand residue and index identity, ligand topology/index/linked-complex atom counts, protein topology/index counts, non-overlap, and positive box volume.
+- The importer requires declared CHARMM family, protein and ligand parameterization, charge model, water and ion choices. It retains original artifact references and normalizes MDP timestep (`ps` to `fs`), `nsteps × dt` duration, ensemble/production role, thermostat, pressure/barostat and selected nonbonded settings. It does not execute GROMACS or regenerate parameters.
+- The 4 fs production stages emit `MD.HMR_UNVERIFIED`: a timestep is not proof that hydrogen masses were repartitioned. The normalized `MDStage.hmr` field is nullable to distinguish unknown from explicitly false.
+- Unit tests use synthetic bundles. The opt-in `legacy_data` integration regression imports all four read-only prepared bundles, including 5NIU's two-chain PROA/PROB protein selection. It is enabled with `CADDSUITE_MDSUITE_DATA=/home/sridhar/mdsuite_data`; source data are not checked into Git. Results and limitations are recorded in `docs/validation/G-MD-3.md`.
+- The reader currently supports the audited CHARMM-GUI GROMACS bundle conventions only. GROMACS remains responsible for its authoritative topology preprocessing and validation before any simulation.

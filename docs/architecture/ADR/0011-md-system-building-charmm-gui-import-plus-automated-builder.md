@@ -15,7 +15,7 @@ Introduce a **`SystemBuilder` port** with two adapters:
 1. **`charmm_gui_import`** (Phase 6): ingests a CHARMM-GUI bundle (GROMACS, and later NAMD/OpenMM folders from the same bundle). It normalizes the protocol from the `.mdp` files, resolves and verifies receptor/ligand selections, records CGenFF penalty scores when present, and links the bundle to the originating pose/complex through a recorded **manual step** in provenance. This keeps your validated path and makes it traceable.
 2. **`amber_tleap`** (Phase 6/7): a **fully automated** builder using ff14SB (or ff19SB+OPC) for the protein, GAFF2 with AM1-BCC charges for the ligand (antechamber/sqm), and TIP3P + Joung–Cheatham ions, with a solvated, neutralized box. Topologies go to GROMACS via ParmEd (validated by single-point energy comparison), and natively to OpenMM, NAMD and AMBER.
 
-The ligand protonation state is an **explicit upstream decision** (Q3), never implied by the builder. The force-field family consistency rule (ADR-0010) forbids mixing families.
+The ligand protonation state is an **explicit upstream decision** (Q3), never implied by the builder. No component combination may be assumed interoperable from labels alone. A mixed-family system may be supported only by an explicit compatibility profile that records component force fields, charge model, water/ions, topology format and the validation scope.
 
 ## Alternatives considered
 | Option | Pros | Cons |
@@ -33,4 +33,10 @@ The ligand protonation state is an **explicit upstream decision** (Q3), never im
 Q2/Q4 are answered; OpenFF protein support matures; a CGenFF license becomes available for automation.
 
 ## Learning notes
-Parameterization is the scientific heart of the Docking→MD handoff. A force field is a *consistent set*: protein, ligand, water and ions are fitted together. Mixing families invalidates the model, which is why "compatibility is data" (ADR-0010).
+Parameterization is the scientific heart of the Docking→MD handoff. Protein, ligand, water and ions have coupled conventions and must not be treated as freely interchangeable. Some documented workflows intentionally combine component force fields, but that does not make every cross-family combination valid. Compatibility is an explicit, evidence-bearing profile (ADR-0010), and unsupported combinations pause for review.
+
+## 2026-09-24 clarification — component profiles, not a family-name shortcut
+
+The original phrase “forbids mixing families” was too broad. GROMACS documentation warns against arbitrary mixing because independent force fields may not be mutually parameterized. OpenFF documentation also demonstrates specific mixed protein/ligand constructions while warning that combined systems can show substantial energy discrepancies. Therefore this platform does not globally prohibit every mixed-family system or automatically approve one: it requires a registered, exact component profile and profile-specific validation evidence. The current built-in profile covers the audited CHARMM-GUI GROMACS declaration only. The future AmberTools/GAFF2 and OpenFF/Amber profiles must be added after their own checks.
+
+Primary references: [GROMACS guidance on force-field consistency](https://manual.gromacs.org/2024.1/how-to/special.html), [AmberTools/GAFF tutorial](https://ambermd.org/tutorials/basic/tutorial5/index.php), [OpenFF protein-ligand Interchange example and caveats](https://docs.openforcefield.org/en/latest/examples/openforcefield/openff-interchange/protein_ligand/protein_ligand.html).
