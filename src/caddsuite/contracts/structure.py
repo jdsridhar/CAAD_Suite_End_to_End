@@ -164,7 +164,17 @@ class BindingSite(VersionedContract):
     size_A: PositiveVector3
     padding_A: NonNegativeFloat | None = None
     min_size_A: PositiveFloat | None = None
+    source_structure: ArtifactRef | None = None
+    source_receptor: ArtifactRef | None = None
     volume_A3: PositiveFloat
+
+    @model_validator(mode="after")
+    def _one_source_artifact(self) -> BindingSite:
+        if self.source_structure is not None and self.source_receptor is not None:
+            raise ValueError(
+                "binding site cannot cite both a source structure and prepared receptor"
+            )
+        return self
 
     @model_validator(mode="before")
     @classmethod

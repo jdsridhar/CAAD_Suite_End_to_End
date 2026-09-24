@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 4 — Docking migration |
-| **Last completed** | Phase 4.5 sequence-aware protein preparation worker and normalized stage handler (2026-09-24) |
-| **Current task** | [-] 4.6 binding-site definition and blind-box validation |
+| **Last completed** | Phase 4.6 binding-site geometry and blind-box validation (2026-09-24) |
+| **Current task** | [-] 4.7 AutoDock Vina adapter migration |
 | **Next task** | Phase 4.7 AutoDock Vina adapter migration |
 | **Blocking questions** | No Phase 3 blockers. |
 
@@ -141,8 +141,12 @@ When the user says **CONTINUE**:
   - [x] Refuse overwriting existing outputs; test source/output digest mismatch and structured worker errors.
   - [x] End-to-end handler test verifies LocalExecutor logs and content-addressed structure/request/report artifacts.
   - [x] Internal-gap regression dynamically removes 5NIU chain-A residue 50 while retaining entity sequence; worker reports and models the internal gap.
-- [-] 4.6 `structure.binding_site` (bbox centre — SCI-16; site method recorded — SCI-05) + `DOCK.BLIND_BOX` rule
-- [ ] 4.7 `adapters.docking.vina` (Meeko prep, plan/normalize, per-job CPU, normalized SDF poses via template transfer)
+- [x] 4.6 `structure.binding_site` (bbox centre — SCI-16; site method recorded — SCI-05) + `DOCK.BLIND_BOX` rule
+  - [x] Reference-ligand box uses atom bounding-box midpoint and configurable two-sided padding/minimum size; legacy centroid shift corrected (SCI-16).
+  - [x] Deterministic model-1/alternate-location handling and source-hash verification; site retains source artifact and method.
+  - [x] Whole-protein and manual-coordinate site definitions preserve distinct methods and artifacts.
+  - [x] Blind search emits DOCK.BLIND_BOX decision request; large search-space warning remains active.
+- [-] 4.7 `adapters.docking.vina` (Meeko prep, plan/normalize, per-job CPU, normalized SDF poses via template transfer)
 - [ ] 4.8 `structure.complex_builder` (from `build_complex.py`, no shell)
 - [ ] 4.9 **PoC second docking engine** (AutoDock4 from autopilot if Q1 allows; else GNINA) with **zero core diffs**
 - [ ] 4.10 **Gate:** G-DOCK-1/2 regression green; G-DOCK-4 re-docking RMSD reported; PoC merged without core changes
@@ -321,6 +325,7 @@ When the user says **CONTINUE**:
 | 2026-09-24 | Phase 3.11 in progress: durable normalized-result cache (migration 0003), compiled gate/failure/retry policy preservation, and process recovery/cancellation tests added. Full gate: 182 tests pass; Ruff, strict mypy, import-linter and schemas pass. Remaining: cohesive fake-adapter scheduler run loop for fan-out, gates, cache reuse and failure isolation. |
 | 2026-09-24 | Phase 4.4 RCSB mmCIF source and structure-selection adapter committed and pushed as d27bc59; raw source and entity sequences retained, chain/ligand ambiguity produces explicit decisions, and the 5NIU fixture hash is pinned. Starting Phase 4.5 protein preparation. |
 | 2026-09-24 | Phase 4.5 complete: isolated PDBFixer worker, confined request builder, argv-only planner, hash-checked PreparedReceptor normalization, and LocalExecutor stage handler with content-addressed output/request/log artifacts. Core gate: 225 passed, 4 engine-marked tests skipped; 7 focused tests pass with cadd enabled (PDBFixer 1.12.0 / OpenMM 8.4), including terminal-gap reporting, internal-gap reconstruction, overwrite refusal, and artifact registration. Runtime plugin-discovery assembly is deferred to the API/application phase. Starting 4.6 binding-site definition. |
+| 2026-09-24 | Phase 4.6 complete: reference-ligand, whole-protein blind, and user-coordinate site builders implemented. 5NIU 8YZ golden now pins bbox midpoint (6.2435, 13.235, 189.6215 A) and dimensions (28.341, 22, 22 A); source artifact hash and method are preserved. Blind builder triggers existing DOCK.BLIND_BOX decision rule; large-volume warning has 8J3V coverage. Full quality gate: 229 passed, 4 engine-specific tests skipped; Ruff, formatting, strict mypy (80 source files), import-linter, and schemas pass. Starting 4.7 Vina adapter. |
 | 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |
 | 2026-09-23 | Phase 4.2 complete: implemented RDKit neutral-parent standardization with explicit policy/provenance, deterministic seeded conformer embedding with artifact digest verification, project/InChIKey registry deduplication with preservation of every raw submission, and migration 0004. Golden RC8/RC34 identities match; full gate passes (203 tests, Ruff, format, strict mypy 70 files, import-linter, schemas). Frozen 143-file source baseline and docking fixture SHA manifest verified. Starting 4.3 protonation adapter. |
 | 2026-09-24 | Phase 3.11 complete: engine-neutral scheduler now resolves bindings, dynamically fans out by stable subject identity, evaluates restricted gates, retries configured error codes, isolates per-subject failures, persists/reuses task instances, and caches normalized outputs across runs. Crash-resume requires handler reconciliation for RUNNING/INTERRUPTED work; no duplicate process is launched without confirmation. Full gate: 186 tests; Ruff, formatting, strict mypy (67 files), import-linter, and schemas pass. Starting Phase 4.1 legacy docking golden fixtures. |

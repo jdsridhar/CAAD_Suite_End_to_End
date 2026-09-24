@@ -37,3 +37,5 @@ The runtime scheduling model, restart contract, and current limits are documente
 Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](CHEMISTRY_STANDARDIZATION.md), [PROTONATION.md](PROTONATION.md), and [STRUCTURE_SOURCE.md](STRUCTURE_SOURCE.md).
 
 - [Protein preparation boundary](PROTEIN_PREPARATION.md)
+
+- [Binding-site definitions](BINDING_SITE.md)
