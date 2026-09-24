@@ -67,3 +67,68 @@ def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path)
         }
     ]
     assert result["output_atom_count"] > 0
+
+
+def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
+    import shlex
+
+    lines = FIXTURE.read_text(encoding="utf-8").splitlines()
+    header_start = next(i for i, line in enumerate(lines) if line.strip() == "_atom_site.group_PDB")
+    headers = []
+    for line in lines[header_start:]:
+        if not line.startswith("_atom_site."):
+            break
+        headers.append(line)
+    positions = {name.strip(): index for index, name in enumerate(headers)}
+    target_label_chain = "A"
+    target_sequence_index = "50"
+    filtered = list(lines[:header_start]) + headers
+    removed = 0
+    for line in lines[header_start + len(headers) :]:
+        if line.startswith(("ATOM ", "HETATM ")):
+            fields = shlex.split(line)
+            if (
+                fields[positions["_atom_site.label_asym_id"]] == target_label_chain
+                and fields[positions["_atom_site.label_seq_id"]] == target_sequence_index
+            ):
+                removed += 1
+                continue
+        filtered.append(line)
+    assert removed > 0
+    damaged = tmp_path / "internal-gap.cif"
+    damaged.write_text("\n".join(filtered) + "\n", encoding="utf-8")
+    output = tmp_path / "prepared-gap.cif"
+    request = tmp_path / "gap-request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "input_mmcif": str(damaged),
+                "output_mmcif": str(output),
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+                "fill_internal_gaps": True,
+                "keep_water": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    environment = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    run = subprocess.run(
+        [str(PYFIXER_PYTHON), str(WORKER), "--request", str(request)],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    assert run.returncode == 0, run.stderr
+    result = json.loads(run.stdout)["result"]
+    internal = [
+        gap
+        for gap in result["missing_residues"]
+        if gap["chain_id"] == "A" and gap["position"] == "internal"
+    ]
+    assert internal
+    assert all(gap["modelled"] for gap in internal)
+    assert result["output_residue_count"] == 126

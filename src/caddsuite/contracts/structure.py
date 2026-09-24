@@ -108,6 +108,13 @@ class GapRecord(ContractModel):
     modelled: bool
 
 
+class ResidueReplacement(ContractModel):
+    chain_id: NonEmptyStr
+    residue_id: NonEmptyStr
+    original_name: NonEmptyStr
+    replacement_name: NonEmptyStr
+
+
 class PreparedReceptor(VersionedContract):
     schema_version: str = "prepared_receptor/1.0"
 
@@ -119,6 +126,12 @@ class PreparedReceptor(VersionedContract):
     removed: tuple[ComponentRecord, ...] = ()
     kept: tuple[ComponentRecord, ...] = ()
     missing_residues: tuple[GapRecord, ...] = ()
+    selected_chain_ids: tuple[str, ...] = ()
+    nonstandard_replacements: tuple[ResidueReplacement, ...] = ()
+    supporting_software: tuple[SoftwareRef, ...] = ()
+    missing_heavy_atom_count: Annotated[int, Field(ge=0)] = 0
+    output_atom_count: Annotated[int, Field(ge=1)] | None = None
+    output_residue_count: Annotated[int, Field(ge=1)] | None = None
     artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
 
 

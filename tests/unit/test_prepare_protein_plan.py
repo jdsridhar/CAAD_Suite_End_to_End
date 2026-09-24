@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
+from caddsuite.contracts.base import ArtifactRef
+from caddsuite.contracts.structure import Structure, StructureSource
+from caddsuite.domain.identity import new_ulid
 from caddsuite.structure.prepare_protein import (
+    ProteinPreparationError,
+    normalize_pdbfixer_result,
     plan_pdbfixer_command,
     write_pdbfixer_request,
 )
@@ -67,4 +72,68 @@ def test_request_rejects_output_outside_workdir_and_duplicate_chains(tmp_path: P
             work_dir=work,
             selected_chain_ids=("A", "A"),
             ph=7.4,
+        )
+
+
+def _artifact(role: str, sha256: str) -> ArtifactRef:
+    return ArtifactRef(artifact_id=new_ulid(), role=role, sha256=sha256)
+
+
+def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
+    input_digest = "a" * 64
+    output_digest = "b" * 64
+    structure = Structure(
+        id=new_ulid(),
+        target_id=new_ulid(),
+        source=StructureSource.LOCAL,
+        raw=_artifact("raw_structure_mmcif", input_digest),
+    )
+    response = {
+        "ok": True,
+        "result": {
+            "protocol": "caddsuite.pdbfixer-worker/1",
+            "input_sha256": input_digest,
+            "output_sha256": output_digest,
+            "pdbfixer_version": "1.12.0",
+            "openmm_version": "8.4",
+            "selected_chain_ids": ["A"],
+            "ph": 7.4,
+            "missing_residues": [
+                {
+                    "chain_id": "A",
+                    "residue_names": ["HIS", "HIS"],
+                    "position": "c_terminal",
+                    "modelled": False,
+                }
+            ],
+            "nonstandard_replacements": [],
+            "removed_components": [],
+            "missing_heavy_atom_count": 4,
+            "output_atom_count": 100,
+            "output_residue_count": 10,
+        },
+    }
+    result = normalize_pdbfixer_result(
+        response,
+        structure=structure,
+        selected_chain_ids=("A",),
+        ph=7.4,
+        prepared_artifact=_artifact("prepared_receptor_mmcif", output_digest),
+        report_artifact=_artifact("worker_report", "c" * 64),
+    )
+    assert result.structure_id == structure.id
+    assert result.selected_chain_ids == ("A",)
+    assert result.missing_residues[0].missing == ("HIS", "HIS")
+    assert result.missing_residues[0].modelled is False
+    assert result.artifacts["prepared_structure"].sha256 == output_digest
+    assert result.supporting_software[0].name == "OpenMM"
+
+    with pytest.raises(ProteinPreparationError, match="artifact digest"):
+        normalize_pdbfixer_result(
+            response,
+            structure=structure,
+            selected_chain_ids=("A",),
+            ph=7.4,
+            prepared_artifact=_artifact("prepared_receptor_mmcif", "d" * 64),
+            report_artifact=_artifact("worker_report", "c" * 64),
         )

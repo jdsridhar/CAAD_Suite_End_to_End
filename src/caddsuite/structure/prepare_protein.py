@@ -10,6 +10,16 @@ import os
 from pathlib import Path
 from typing import Any
 
+from caddsuite.contracts.base import ArtifactRef, SoftwareRef
+from caddsuite.contracts.structure import (
+    ComponentRecord,
+    GapRecord,
+    PreparedReceptor,
+    ResidueReplacement,
+    Structure,
+)
+from caddsuite.domain.enums import LicenseClass, SoftwareKind
+from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import CommandSpec
 
 
@@ -85,4 +95,114 @@ def plan_pdbfixer_command(
     return CommandSpec(
         argv=(str(python), str(worker), "--request", str(request)),
         cwd=cwd,
+    )
+
+
+class ProteinPreparationError(ValueError):
+    """Worker output failed validation or disagreed with its source/artifact hashes."""
+
+
+def normalize_pdbfixer_result(
+    response: dict[str, Any],
+    *,
+    structure: Structure,
+    selected_chain_ids: tuple[str, ...],
+    ph: float,
+    prepared_artifact: ArtifactRef,
+    report_artifact: ArtifactRef,
+) -> PreparedReceptor:
+    """Validate worker metadata and map engine output into the common receptor contract."""
+    if response.get("ok") is not True or not isinstance(response.get("result"), dict):
+        raise ProteinPreparationError(
+            f"PDBFixer worker failed: {response.get('error_type', 'unknown')}: "
+            f"{response.get('error', 'no structured error was returned')}"
+        )
+    result = response["result"]
+    if result.get("protocol") != "caddsuite.pdbfixer-worker/1":
+        raise ProteinPreparationError("unsupported PDBFixer worker protocol")
+    if sorted(selected_chain_ids) != result.get("selected_chain_ids"):
+        raise ProteinPreparationError("worker selected chain IDs differ from the request")
+    if float(result.get("ph", -1)) != ph:
+        raise ProteinPreparationError("worker pH differs from the request")
+    if not structure.raw.sha256:
+        raise ProteinPreparationError("source structure artifact has no digest")
+    if result.get("input_sha256") != structure.raw.sha256:
+        raise ProteinPreparationError(
+            "worker input digest differs from the source structure artifact"
+        )
+    output_digest = result.get("output_sha256")
+    if not output_digest or prepared_artifact.sha256 != output_digest:
+        raise ProteinPreparationError("prepared artifact digest differs from worker output digest")
+
+    try:
+        gaps = tuple(
+            GapRecord(
+                chain=str(gap["chain_id"]),
+                missing=tuple(str(name) for name in gap["residue_names"]),
+                position=gap["position"],
+                modelled=bool(gap["modelled"]),
+            )
+            for gap in result["missing_residues"]
+        )
+        replacements = tuple(
+            ResidueReplacement(
+                chain_id=str(item["chain_id"]),
+                residue_id=str(item["residue_id"]),
+                original_name=str(item["from"]),
+                replacement_name=str(item["to"]),
+            )
+            for item in result["nonstandard_replacements"]
+        )
+        removed = tuple(
+            ComponentRecord(
+                resname=str(item["name"]),
+                chain=str(item["chain_id"]),
+                resseq=str(item["residue_id"]),
+                category="other",
+                n_atoms=0,
+            )
+            for item in result["removed_components"]
+        )
+        fixer = SoftwareRef(
+            name="PDBFixer",
+            version=str(result["pdbfixer_version"]),
+            kind=SoftwareKind.LIBRARY,
+            license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+        )
+        openmm = SoftwareRef(
+            name="OpenMM",
+            version=str(result["openmm_version"]),
+            kind=SoftwareKind.LIBRARY,
+            license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+        )
+        missing_heavy_atom_count = int(result["missing_heavy_atom_count"])
+        atom_count = int(result["output_atom_count"])
+        residue_count = int(result["output_residue_count"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ProteinPreparationError(f"malformed PDBFixer worker result: {exc}") from exc
+    if (
+        min(missing_heavy_atom_count, atom_count, residue_count) < 0
+        or not atom_count
+        or not residue_count
+    ):
+        raise ProteinPreparationError("worker returned invalid output atom/residue counts")
+    return PreparedReceptor(
+        id=new_ulid(),
+        structure_id=structure.id,
+        protocol=fixer,
+        supporting_software=(openmm,),
+        ph=ph,
+        protonation_method="PDBFixer standard-residue templates; pH-aware hydrogen addition",
+        removed=removed,
+        missing_residues=gaps,
+        selected_chain_ids=selected_chain_ids,
+        nonstandard_replacements=replacements,
+        missing_heavy_atom_count=missing_heavy_atom_count,
+        output_atom_count=atom_count,
+        output_residue_count=residue_count,
+        artifacts={
+            "source_structure": structure.raw,
+            "prepared_structure": prepared_artifact,
+            "worker_report": report_artifact,
+        },
     )

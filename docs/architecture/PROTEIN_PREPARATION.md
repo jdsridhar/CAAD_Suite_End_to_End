@@ -12,7 +12,7 @@ be modelled, and whether waters are retained. The worker filters other chains be
 preparation. It reports terminal and internal sequence gaps, whether each gap was
 modelled, nonstandard residue replacements, removed heterogens, missing heavy-atom
 counts, output atom/residue counts, input/output SHA-256, and PDBFixer/OpenMM versions.
-The source mmCIF stays untouched.
+The source mmCIF stays untouched. Core normalization rejects a missing/mismatched input digest, output digest mismatch, protocol mismatch, chain mismatch, or pH mismatch before constructing the versioned `PreparedReceptor` result. Its schema records the source, prepared structure and worker report artifact references.
 
 Terminal sequence tails are reported and left unmodelled, matching the legacy policy.
 Internal missing residues are modelled by PDBFixer when enabled. Missing side-chain atoms
@@ -39,8 +39,10 @@ must record its own format and identifier limitations.
 The worker was executed against the checked-in 5NIU mmCIF using PDBFixer 1.12.0 and
 OpenMM 8.4 in the pre-existing `cadd` environment. Selecting chain A completed,
 reported its two unmodelled C-terminal histidines, and produced a hashed prepared mmCIF.
-That fixture has no internal missing segment, so internal gap modelling still needs a
-purpose-built scientific fixture before being claimed validated.
+A regression test derives an internal-gap case by removing chain-A residue 50 from the
+5NIU atom-site records while retaining the deposited entity sequence. PDBFixer reports the
+gap as internal, models it, and restores the expected chain residue count. This validates a
+small fixture case, not general loop-placement accuracy.
 
 ## Learning notes
 

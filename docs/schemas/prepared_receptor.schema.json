@@ -160,6 +160,39 @@
       "title": "LicenseClass",
       "type": "string"
     },
+    "ResidueReplacement": {
+      "additionalProperties": false,
+      "properties": {
+        "chain_id": {
+          "minLength": 1,
+          "title": "Chain Id",
+          "type": "string"
+        },
+        "original_name": {
+          "minLength": 1,
+          "title": "Original Name",
+          "type": "string"
+        },
+        "replacement_name": {
+          "minLength": 1,
+          "title": "Replacement Name",
+          "type": "string"
+        },
+        "residue_id": {
+          "minLength": 1,
+          "title": "Residue Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chain_id",
+        "residue_id",
+        "original_name",
+        "replacement_name"
+      ],
+      "title": "ResidueReplacement",
+      "type": "object"
+    },
     "SoftwareKind": {
       "description": "Role a piece of software plays in a provenance record.",
       "enum": [
@@ -240,6 +273,12 @@
       "title": "Kept",
       "type": "array"
     },
+    "missing_heavy_atom_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Missing Heavy Atom Count",
+      "type": "integer"
+    },
     "missing_residues": {
       "default": [],
       "items": {
@@ -247,6 +286,40 @@
       },
       "title": "Missing Residues",
       "type": "array"
+    },
+    "nonstandard_replacements": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ResidueReplacement"
+      },
+      "title": "Nonstandard Replacements",
+      "type": "array"
+    },
+    "output_atom_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Atom Count"
+    },
+    "output_residue_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Residue Count"
     },
     "ph": {
       "maximum": 14,
@@ -275,10 +348,26 @@
       "title": "Schema Version",
       "type": "string"
     },
+    "selected_chain_ids": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Selected Chain Ids",
+      "type": "array"
+    },
     "structure_id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "Structure Id",
       "type": "string"
+    },
+    "supporting_software": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SoftwareRef"
+      },
+      "title": "Supporting Software",
+      "type": "array"
     }
   },
   "required": [
