@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 4 — Docking migration |
-| **Last completed** | Phase 4.4 RCSB mmCIF source and structure selection (2026-09-24) |
-| **Current task** | [-] 4.5 sequence-aware protein preparation worker |
-| **Next task** | Phase 4.6 binding-site definition and blind-box rule |
+| **Last completed** | Phase 4.5 sequence-aware protein preparation worker and normalized stage handler (2026-09-24) |
+| **Current task** | [-] 4.6 binding-site definition and blind-box validation |
+| **Next task** | Phase 4.7 AutoDock Vina adapter migration |
 | **Blocking questions** | No Phase 3 blockers. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -131,17 +131,17 @@ When the user says **CONTINUE**:
   - [x] Reject malformed, empty, possibly truncated, and altered heavy-atom connectivity results; allow explicit single-form selection or run-all.
   - [x] Version/parameters recorded; dependency lock documents RDKit 2025 series constraint and upstream limitations in docs/architecture/PROTONATION.md and ADR-0016.
 - [x] 4.4 `adapters.structure_sources.rcsb` + `structure.split` (keep SEQRES; candidate ligands; DECISION_REQUIRED on ambiguity — SCI-11, SCI-24)
-- [-] 4.5 `structure.prepare_protein` (PDBFixer protocol, sequence-aware gaps)
+- [x] 4.5 `structure.prepare_protein` (PDBFixer protocol, sequence-aware gaps)
   - [x] Isolated stdlib JSON worker in the existing `cadd` environment; raw mmCIF remains immutable.
   - [x] Core request writer confines new request/output files to the stage work directory; argv-only command plan.
   - [x] Worker reports chains, pH, gaps, replacements, removed heterogens, counts, versions and hashes.
   - [x] Hash/protocol/pH/chain checks normalize worker output to versioned `PreparedReceptor`.
   - [x] Real 5NIU chain-A test passes using PDBFixer 1.12.0 and OpenMM 8.4; terminal His tail remains unmodelled.
   - [x] Stage handler executes through `LocalExecutor`; verifies the source digest and registers prepared mmCIF, request, stdout report, and stderr artifacts.
-  - [ ] Register handler/capability in plugin discovery and complete failure-path conformance tests.
+  - [x] Refuse overwriting existing outputs; test source/output digest mismatch and structured worker errors.
+  - [x] End-to-end handler test verifies LocalExecutor logs and content-addressed structure/request/report artifacts.
   - [x] Internal-gap regression dynamically removes 5NIU chain-A residue 50 while retaining entity sequence; worker reports and models the internal gap.
-  - [ ] Complete adapter/error conformance tests.
-- [ ] 4.6 `structure.binding_site` (bbox centre — SCI-16; site method recorded — SCI-05) + `DOCK.BLIND_BOX` rule
+- [-] 4.6 `structure.binding_site` (bbox centre — SCI-16; site method recorded — SCI-05) + `DOCK.BLIND_BOX` rule
 - [ ] 4.7 `adapters.docking.vina` (Meeko prep, plan/normalize, per-job CPU, normalized SDF poses via template transfer)
 - [ ] 4.8 `structure.complex_builder` (from `build_complex.py`, no shell)
 - [ ] 4.9 **PoC second docking engine** (AutoDock4 from autopilot if Q1 allows; else GNINA) with **zero core diffs**
@@ -221,7 +221,7 @@ When the user says **CONTINUE**:
 
 ## Phase 13 — API + UI `[ ]`
 
-- [ ] 13.1 FastAPI app (REST + SSE; token + Origin check; validated uploads)
+- [ ] 13.1 FastAPI app (REST + SSE; token + Origin check; validated uploads); construct configured stage handlers from discovered engine capabilities
 - [ ] 13.2 OpenAPI → TypeScript client
 - [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
@@ -320,7 +320,7 @@ When the user says **CONTINUE**:
 |---|---|
 | 2026-09-24 | Phase 3.11 in progress: durable normalized-result cache (migration 0003), compiled gate/failure/retry policy preservation, and process recovery/cancellation tests added. Full gate: 182 tests pass; Ruff, strict mypy, import-linter and schemas pass. Remaining: cohesive fake-adapter scheduler run loop for fan-out, gates, cache reuse and failure isolation. |
 | 2026-09-24 | Phase 4.4 RCSB mmCIF source and structure-selection adapter committed and pushed as d27bc59; raw source and entity sequences retained, chain/ligand ambiguity produces explicit decisions, and the 5NIU fixture hash is pinned. Starting Phase 4.5 protein preparation. |
-| 2026-09-24 | Phase 4.5 checkpoint: isolated PDBFixer worker, safe request/argv plan, normalized PreparedReceptor, and LocalExecutor handler with content-addressed source/output/request/log artifacts. Core gate: 225 passed, 3 engine-marked tests skipped; 6 focused tests pass with cadd enabled, including internal-gap reconstruction. PDBFixer 1.12.0 / OpenMM 8.4. Remaining: plugin capability registration and failure-path conformance. |
+| 2026-09-24 | Phase 4.5 complete: isolated PDBFixer worker, confined request builder, argv-only planner, hash-checked PreparedReceptor normalization, and LocalExecutor stage handler with content-addressed output/request/log artifacts. Core gate: 225 passed, 4 engine-marked tests skipped; 7 focused tests pass with cadd enabled (PDBFixer 1.12.0 / OpenMM 8.4), including terminal-gap reporting, internal-gap reconstruction, overwrite refusal, and artifact registration. Runtime plugin-discovery assembly is deferred to the API/application phase. Starting 4.6 binding-site definition. |
 | 2026-09-24 | Phase 4.1 golden fixture collection complete: curated G-DOCK-1 RC34/RC8 vs 5NIU input and output artifacts, version/parameter metadata, and fixture hashes. Nine standard-library pytest checks pin job normalization, salt-stripped SMILES, ETKDG output bytes and atom counts, reference-ligand box, Vina scores/LE, and pose-to-complex coordinate fidelity. Full suite: 195 tests; Ruff, format, strict mypy (67 source files), import-linter and schemas pass. Frozen 143-file legacy baseline is verified unchanged. Starting 4.2 standardization/embedding migration. |
 | 2026-09-23 | Phase 4.2 complete: implemented RDKit neutral-parent standardization with explicit policy/provenance, deterministic seeded conformer embedding with artifact digest verification, project/InChIKey registry deduplication with preservation of every raw submission, and migration 0004. Golden RC8/RC34 identities match; full gate passes (203 tests, Ruff, format, strict mypy 70 files, import-linter, schemas). Frozen 143-file source baseline and docking fixture SHA manifest verified. Starting 4.3 protonation adapter. |
 | 2026-09-24 | Phase 3.11 complete: engine-neutral scheduler now resolves bindings, dynamically fans out by stable subject identity, evaluates restricted gates, retries configured error codes, isolates per-subject failures, persists/reuses task instances, and caches normalized outputs across runs. Crash-resume requires handler reconciliation for RUNNING/INTERRUPTED work; no duplicate process is launched without confirmation. Full gate: 186 tests; Ruff, formatting, strict mypy (67 files), import-linter, and schemas pass. Starting Phase 4.1 legacy docking golden fixtures. |

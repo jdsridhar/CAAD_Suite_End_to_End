@@ -132,3 +132,35 @@ def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
     assert internal
     assert all(gap["modelled"] for gap in internal)
     assert result["output_residue_count"] == 126
+
+
+def test_worker_refuses_to_overwrite_an_existing_artifact(tmp_path: Path) -> None:
+    output = tmp_path / "protected.cif"
+    output.write_text("existing scientific artifact", encoding="utf-8")
+    request = tmp_path / "overwrite-request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "input_mmcif": str(FIXTURE),
+                "output_mmcif": str(output),
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+            }
+        ),
+        encoding="utf-8",
+    )
+    environment = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    run = subprocess.run(
+        [str(PYFIXER_PYTHON), str(WORKER), "--request", str(request)],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert run.returncode == 2
+    response = json.loads(run.stderr)
+    assert response["ok"] is False
+    assert response["error_type"] == "FileExistsError"
+    assert output.read_text(encoding="utf-8") == "existing scientific artifact"
