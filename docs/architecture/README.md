@@ -104,3 +104,6 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0035: Structured scientific report contract](ADR/0035-structured-scientific-report-contract.md)
 
 - [Structured scientific report assembly](SCIENTIFIC_REPORTING.md)
+
+- [Scientific report output renderers](REPORT_RENDERING.md)
+- [ADR-0036: Report format renderers](ADR/0036-report-format-renderers.md)

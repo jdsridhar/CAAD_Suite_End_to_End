@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 12 — Reporting |
-| **Current task** | [-] 12.3 HTML, JSON and CSV renderers; PDF backend evaluation |
-| **Next task** | Render the assembled ScientificReport while preserving its evidence links and section states |
-| **Last completed** | 12.1 report content schema and 12.2 provenance/validation-based report assembly; latest full gate 532 passed, 25 skipped. |
+| **Current task** | [-] 12.4 Evidence and transparent ranking scheme |
+| **Next task** | Define configurable evidence aggregation that preserves raw measures and exposes weights/contributions |
+| **Last completed** | 12.1 report schema, 12.2 provenance assembly, 12.3 renderers; full gate 534 passed, 25 skipped, strict mypy 173 files. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -343,7 +343,11 @@ When the user says **CONTINUE**:
   - [x] Classify docking, MD, trajectory, MM/PBSA/GBSA and QM methods; leave result sections not_run without normalized evidence.
   - [x] Carry validation issue messages into limitations and preserve the experimental-validation disclaimer.
   - [x] Add report builder test and scientific reporting architecture documentation.
-- [-] 12.3 Renderers: HTML, PDF, JSON, CSV; figure pipeline
+- [x] 12.3 Renderers: HTML, PDF, JSON, CSV; figure pipeline
+  - [x] Standard-library HTML/JSON/CSV renderers and optional ReportLab PDF renderer consume ScientificReport.
+  - [x] Preserve section states, report data, limitations and attempt/artifact references in each format.
+  - [x] Escape HTML/PDF text; explicit error if the optional PDF dependency is absent.
+  - [x] Document rendering choice and no-science-in-presentation boundary; plot artifacts remain future work.
 - [ ] 12.4 Evidence + ranking scheme (explicit criteria, weights, contributions; fixed disclaimer)
 - [ ] 12.5 **Gate:** demo report reviewed
 

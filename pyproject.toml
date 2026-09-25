@@ -32,6 +32,7 @@ protonation = ["dimorphite-dl==2.0.2"]
 structure = ["biopython>=1.83,<2"]
 analysis = ["MDAnalysis==2.10.0"]
 visualization = ["matplotlib>=3.8,<4"]
+reporting = ["reportlab>=4,<6"]
 volumetric = ["numpy>=1.26,<3", "scipy>=1.12,<2", "scikit-image>=0.22,<1", "pyvista>=0.44,<1"]
 dev = [
     "pytest>=8",
@@ -108,6 +109,10 @@ exclude = ["src/caddsuite/storage/migrations/"]
 [[tool.mypy.overrides]]
 module = ["rdkit.*"]
 ignore_missing_imports = true
+[[tool.mypy.overrides]]
+module = ["reportlab.*"]
+ignore_missing_imports = true
+
 
 # ----------------------------------------------------------------------------- import-linter
 # Architectural fitness functions: the layering rules of TARGET_ARCHITECTURE §3,
