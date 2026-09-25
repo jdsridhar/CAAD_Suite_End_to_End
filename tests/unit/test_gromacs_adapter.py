@@ -558,7 +558,9 @@ def test_index_newline_normalization_is_append_only_and_idempotent():
     assert already_normalized == b"[ LIG ]\n1 2\n"
 
 
-def test_grompp_warning_classifier_separates_index_warning_from_notes_and_other_warnings():
+def test_grompp_warning_classifier_separates_index_warning_from_notes_and_other_warnings(
+    tmp_path: Path,
+):
     index_issues = classify_grompp_warnings(
         b"Warning: file does not end with a newline, last line:\n49681 49682 \n"
         b"NOTE 1 [file run.mdp]: this note is not a warning\n",
@@ -578,6 +580,18 @@ def test_grompp_warning_classifier_separates_index_warning_from_notes_and_other_
     assert generic_issues[0].code == "MD.GROMACS_WARNING_BLOCKED"
     assert "Atom type mismatch" in generic_issues[0].message
     assert classify_grompp_warnings("NOTE 1 [file run.mdp]: no warning", "") == ()
+
+    adapter = GromacsMDAdapter()
+    context = _context(tmp_path, **_common())
+    execution_issues = adapter.validate_execution_step(
+        context, 0, b"", b"WARNING 1 [file system.top, line 22]:\n  Atom type mismatch detected\n"
+    )
+    assert len(execution_issues) == 1
+    assert execution_issues[0].code == "MD.GROMACS_WARNING_BLOCKED"
+    assert (
+        adapter.validate_execution_step(context, 1, b"", b"WARNING 1 ignored by grompp only\n")
+        == ()
+    )
 
 
 def test_gromacs_progress_parses_carriage_returns_and_both_eta_formats():

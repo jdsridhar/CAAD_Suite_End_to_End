@@ -9,7 +9,7 @@
 | **Current phase** | Phase 11 — Provenance |
 | **Last completed** | Phase 10 gate: Psi4 regressions + PySCF second-engine plugin; engine-enabled suite 494 passed, 22 optional skips; legacy baseline 143/143 (2026-09-25) |
 | **Current task** | [-] 11.1 Audit and complete per-attempt provenance capture |
-| **Next task** | Complete the Vina runtime integration test and expose the existing MD execution provider through CLI/runtime, with provenance evidence |
+| **Next task** | Implement the MD execution-stage handler using the normalized MDStageResult and adapter-owned post-step validation; prove it with a short real engine run through LocalWorkflowRuntime |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED

@@ -65,6 +65,10 @@ class MDExecutionEngine(Protocol):
 
     def plan_stage(self, context: AdapterContext) -> ExecutionPlan: ...
 
+    def validate_execution_step(
+        self, context: AdapterContext, step_index: int, stdout: bytes, stderr: bytes
+    ) -> tuple[ValidationIssue, ...]: ...
+
     def progress(
         self,
         stage_log: bytes | str,

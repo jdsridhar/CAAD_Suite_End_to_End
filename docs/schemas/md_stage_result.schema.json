@@ -1,0 +1,199 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "MDStageKind": {
+      "enum": [
+        "minimization",
+        "nvt",
+        "npt",
+        "production"
+      ],
+      "title": "MDStageKind",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/md_stage_result/1.0",
+  "additionalProperties": false,
+  "description": "Normalized result for one completed MD protocol stage or segment.",
+  "properties": {
+    "adapter": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minProperties": 1,
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "engine": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "runtime_seconds": {
+      "minimum": 0,
+      "title": "Runtime Seconds",
+      "type": "number"
+    },
+    "schema_version": {
+      "default": "md_stage_result/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "segment_index": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Segment Index",
+      "type": "integer"
+    },
+    "stage_index": {
+      "minimum": 0,
+      "title": "Stage Index",
+      "type": "integer"
+    },
+    "stage_input_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Stage Input Id",
+      "type": "string"
+    },
+    "stage_kind": {
+      "$ref": "#/$defs/MDStageKind"
+    },
+    "system_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "System Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "system_id",
+    "stage_input_id",
+    "stage_index",
+    "stage_kind",
+    "engine",
+    "adapter",
+    "parameters",
+    "runtime_seconds",
+    "artifacts"
+  ],
+  "title": "MDStageResult",
+  "type": "object"
+}

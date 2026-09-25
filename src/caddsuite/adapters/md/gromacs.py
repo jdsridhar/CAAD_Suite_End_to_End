@@ -353,6 +353,20 @@ class GromacsMDAdapter:
         expected = (f"{prefix}.tpr", f"{prefix}.gro", f"{prefix}.log")
         return ExecutionPlan(commands=tuple(commands), expected_outputs=expected)
 
+    def validate_execution_step(
+        self, context: AdapterContext, step_index: int, stdout: bytes, stderr: bytes
+    ) -> tuple[ValidationIssue, ...]:
+        raw = context.parameters.get("gromacs")
+        if not isinstance(raw, dict):
+            return ()
+        try:
+            parameters = GromacsStagePlanParameters.model_validate(raw)
+        except ValueError:
+            return ()
+        if step_index == 0 and parameters.resume_checkpoint_path is None:
+            return classify_grompp_warnings(stdout, stderr)
+        return ()
+
     def progress(
         self,
         stage_log: bytes | str,

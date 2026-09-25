@@ -176,6 +176,12 @@ class OpenMMMDAdapter:
             ),
         )
 
+    def validate_execution_step(
+        self, context: AdapterContext, step_index: int, stdout: bytes, stderr: bytes
+    ) -> tuple[ValidationIssue, ...]:
+        del context, step_index, stdout, stderr
+        return ()
+
     def progress(
         self,
         stage_log: bytes | str,

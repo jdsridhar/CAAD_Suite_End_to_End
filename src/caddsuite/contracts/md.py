@@ -231,6 +231,30 @@ class MDStageInput(VersionedContract):
         return self
 
 
+class MDStageResult(VersionedContract):
+    """Normalized result for one completed MD protocol stage or segment."""
+
+    schema_version: str = "md_stage_result/1.0"
+    id: ULIDStr
+    system_id: ULIDStr
+    stage_input_id: ULIDStr
+    stage_index: Annotated[int, Field(ge=0)]
+    segment_index: Annotated[int, Field(ge=1)] = 1
+    stage_kind: MDStageKind
+    engine: SoftwareRef
+    adapter: SoftwareRef
+    parameters: dict[str, JsonValue]
+    runtime_seconds: NonNegativeFloat
+    artifacts: dict[str, ArtifactRef] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _outputs_are_hash_linked(self) -> MDStageResult:
+        missing = sorted(role for role, ref in self.artifacts.items() if ref.sha256 is None)
+        if missing:
+            raise ValueError(f"MD stage outputs must be hashed; missing SHA-256: {missing}")
+        return self
+
+
 class Trajectory(VersionedContract):
     schema_version: str = "trajectory/1.0"
 

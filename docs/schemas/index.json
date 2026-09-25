@@ -16,6 +16,7 @@
   "interaction_profile": "interaction_profile/1.1",
   "md_simulation": "md_simulation/1.0",
   "md_stage_input": "md_stage_input/1.0",
+  "md_stage_result": "md_stage_result/1.0",
   "md_system": "md_system/1.0",
   "mep_render_request": "mep_render_request/1.0",
   "parameterization": "parameterization/1.0",
