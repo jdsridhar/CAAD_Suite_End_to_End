@@ -7,9 +7,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from caddsuite.api.provenance import create_app
+from caddsuite.application.handlers import StageHandlerRegistration, StageHandlerRegistry
 from caddsuite.contracts.base import ArtifactRef
+from caddsuite.contracts.evidence import Candidate
 from caddsuite.contracts.execution import AttemptArtifact, AttemptStatus
 from caddsuite.domain.enums import TaskState
+from caddsuite.domain.identity import new_ulid
 from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 from caddsuite.storage.attempts import TaskAttemptStore
@@ -17,6 +20,8 @@ from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
 from caddsuite.storage.paths import artifacts_root, database_path
 from caddsuite.storage.task_state import TaskStateStore
+from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
+from caddsuite.workflow.scheduler import TaskInvocation
 from tests.unit.test_attempt_store import _running_attempt
 
 
@@ -118,6 +123,99 @@ def test_provenance_api_authenticates_and_returns_project_and_run_graphs(tmp_pat
         assert drift.json()["warnings"] == []
         missing = client.get("/v1/provenance/attempts/no-such-attempt", headers=headers)
         assert missing.status_code == 404
+
+
+class _EchoCandidateHandler:
+    adapter_id = "tests.echo_candidate"
+    adapter_version = "1.0.0"
+    engine_version = "test"
+
+    def subject_key(self, _scope: str, value: object) -> str:
+        return "candidate"
+
+    def artifact_hashes(self, _inputs: object) -> dict[str, str]:
+        return {}
+
+    def gate_context(self, _inputs: object) -> tuple[dict[str, object], frozenset[str]]:
+        return {}, frozenset()
+
+    def execute(self, invocation: TaskInvocation) -> Candidate:
+        value = invocation.inputs["candidate"][0]
+        assert isinstance(value, Candidate)
+        return value
+
+
+class _EchoCandidatePlugin:
+    plugin_id = "tests.echo_candidate"
+    version = "1.0.0"
+
+    def registrations(self) -> tuple[StageHandlerRegistration, ...]:
+        return (
+            StageHandlerRegistration(
+                capability=StageCapability(
+                    kind="test.echo_candidate",
+                    inputs=(CapabilityInput(name="candidate", contracts=("candidate/1.0",)),),
+                    outputs=("candidate/1.0",),
+                ),
+                factory=lambda _stage, _services: _EchoCandidateHandler(),
+            ),
+        )
+
+
+def test_api_executes_normalized_workflow_and_persists_run_state(tmp_path: Path) -> None:
+    migrate.upgrade(database_path(tmp_path))
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        project = ProjectRow(slug="api-execute", name="API execute")
+        session.add(project)
+        session.flush()
+        project_id = project.id
+    engine.dispose()
+
+    workflow = {
+        "schema": "caddsuite.workflow/1",
+        "name": "Echo candidate",
+        "inputs": {"candidate": {"contract": "candidate/1.0"}},
+        "stages": [
+            {
+                "id": "echo",
+                "kind": "test.echo_candidate",
+                "input_contracts": {"candidate": "candidate/1.0"},
+                "input_bindings": {"candidate": "$candidate"},
+                "output_contract": "candidate/1.0",
+                "params": {},
+            }
+        ],
+        "outputs": {"candidate": "echo"},
+    }
+    candidate = Candidate(id=new_ulid(), compound_id=new_ulid(), project_id=project_id)
+    run_id = str(new_ulid())
+    app = create_app(
+        data_root=tmp_path,
+        token="test-secret",  # noqa: S106
+        stage_registry=StageHandlerRegistry([_EchoCandidatePlugin()]),
+    )
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        response = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/execute",
+            headers=headers,
+            json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "succeeded"
+        assert response.json()["tasks"][0]["state"] == "succeeded"
+        status_response = client.get(
+            f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+        )
+        assert status_response.json()["status"] == "succeeded"
+        repeated = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/execute",
+            headers=headers,
+            json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
+        )
+        assert repeated.status_code == 409
 
 
 def _docking_workflow_payload() -> dict[str, object]:

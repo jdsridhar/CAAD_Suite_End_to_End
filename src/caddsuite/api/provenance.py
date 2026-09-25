@@ -1,4 +1,4 @@
-"""Authenticated read-only HTTP endpoints for workflow provenance."""
+"""Authenticated HTTP API for local workflow execution and provenance."""
 
 from __future__ import annotations
 
@@ -52,8 +52,9 @@ def create_app(
     data_root: Path | None = None,
     token: str,
     allowed_origins: tuple[str, ...] = (),
+    stage_registry: StageHandlerRegistry | None = None,
 ) -> FastAPI:
-    """Build a provenance API; callers must provide a per-install bearer token."""
+    """Build the local workflow API; callers must provide a per-install bearer token."""
     if not token or not token.strip():
         raise ValueError("API bearer token must be configured")
     root = resolve_data_root(data_root)
@@ -102,7 +103,7 @@ def create_app(
         except ValueError as exc:
             raise HTTPException(status_code=422, detail="run_id must be a valid ULID") from exc
         try:
-            registry = StageHandlerRegistry.discover()
+            registry = stage_registry or StageHandlerRegistry.discover()
             compiled = registry.compile(request.workflow)
         except StageHandlerDiscoveryError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -269,7 +270,7 @@ def create_app(
         _: None = Depends(authenticate),
     ) -> dict[str, object]:
         try:
-            registry = StageHandlerRegistry.discover()
+            registry = stage_registry or StageHandlerRegistry.discover()
             compiled = registry.compile(workflow)
         except StageHandlerDiscoveryError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
