@@ -6,14 +6,16 @@ import hashlib
 import hmac
 import json
 import logging
-from collections.abc import AsyncIterator
+import time
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import JsonValue
 from sqlalchemy import select
 
@@ -333,6 +335,78 @@ def create_app(
                     for task in tasks
                 ],
             }
+
+    @app.get("/v1/projects/{project_id}/runs/{run_id}/events")
+    def stream_project_run_events(
+        project_id: str,
+        run_id: str,
+        max_seconds: Annotated[float, Query(ge=1, le=3600)] = 300,
+        _: None = Depends(authenticate),
+    ) -> StreamingResponse:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} was not found")
+            if (
+                session.scalar(
+                    select(WorkflowRunRow).where(
+                        WorkflowRunRow.id == run_id, WorkflowRunRow.project_id == project_id
+                    )
+                )
+                is None
+            ):
+                raise HTTPException(status_code=404, detail=f"run {run_id!r} was not found")
+
+        def events() -> Iterator[str]:
+            deadline = time.monotonic() + max_seconds
+            previous: str | None = None
+            while True:
+                with sessions() as session:
+                    run = session.scalar(
+                        select(WorkflowRunRow).where(
+                            WorkflowRunRow.id == run_id, WorkflowRunRow.project_id == project_id
+                        )
+                    )
+                    if run is None:
+                        return
+                    tasks = session.scalars(
+                        select(TaskRow)
+                        .where(TaskRow.run_id == run_id)
+                        .order_by(TaskRow.created_at, TaskRow.id)
+                    ).all()
+                    data = {
+                        "project_id": project_id,
+                        "run_id": run_id,
+                        "status": run.status,
+                        "tasks": [
+                            {
+                                "task_id": task.id,
+                                "stage_id": task.stage_id,
+                                "state": task.state,
+                                "version": task.version,
+                                "updated_at": (
+                                    task.updated_at.isoformat() if task.updated_at else None
+                                ),
+                            }
+                            for task in tasks
+                        ],
+                    }
+                encoded = json.dumps(data, sort_keys=True, separators=(",", ":"))
+                if encoded != previous:
+                    digest = hashlib.sha256(encoded.encode()).hexdigest()[:24]
+                    yield f"id: {digest}\nevent: run-status\ndata: {encoded}\n\n"
+                    previous = encoded
+                if data["status"] in {"succeeded", "failed", "stopped", "cancelled"}:
+                    return
+                if time.monotonic() >= deadline:
+                    yield "event: timeout\ndata: {}\n\n"
+                    return
+                time.sleep(1.0)
+
+        return StreamingResponse(
+            events(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/v1/provenance/attempts/{attempt_id}")
     def get_attempt_lineage(

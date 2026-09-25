@@ -173,6 +173,10 @@ def test_workflow_plan_status_and_run_submission_validation(tmp_path: Path) -> N
         assert status_response.status_code == 200
         assert status_response.json()["status"] == "succeeded"
         assert [row["stage_id"] for row in status_response.json()["tasks"]] == ["standardize"]
+        events = client.get(f"/v1/projects/{project_id}/runs/{run_id}/events", headers=headers)
+        assert events.status_code == 200
+        assert "event: run-status" in events.text
+        assert '"status":"succeeded"' in events.text
 
         capabilities = client.get("/v1/workflows/capabilities", headers=headers)
         assert capabilities.status_code == 200

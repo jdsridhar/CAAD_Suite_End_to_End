@@ -9,7 +9,7 @@
 | **Current phase** | Phase 13 — API + UI |
 | **Current task** | [-] 13.1 durable workflow execution, cancellation and job event lifecycle |
 | **Next task** | Move local API execution under a restart-aware worker supervisor and expose task progress events |
-| **Last completed** | Phase 12 report gate; Phase 13 authenticated capability, plan, status and synchronous LocalWorkflowRuntime submission with normalized input/artifact validation. Full gate: 538 passed, 25 skipped, strict mypy 174 files. |
+| **Last completed** | Phase 12 report gate; Phase 13 capability, plan, project-scoped status, synchronous LocalWorkflowRuntime submission and bounded SSE; full gate 538 passed, 25 skipped, strict mypy 174 files. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -366,6 +366,7 @@ When the user says **CONTINUE**:
   - [x] Expose project-scoped persisted run/task status.
   - [x] Accept normalized contract inputs, validate schemas and registered artifact hashes, and execute through LocalWorkflowRuntime.
   - [x] Use caller-selected run ULID for polling; finalize success/failure/stopped status.
+  - [x] Stream bounded run/task status snapshots over authenticated SSE with reconnectable latest-state snapshots.
   - [ ] Durable background ownership/restart recovery, cancellation and SSE remain.
   - [ ] Add bounded uploads for new inputs and browser integration.
 - [ ] 13.2 OpenAPI → TypeScript client
