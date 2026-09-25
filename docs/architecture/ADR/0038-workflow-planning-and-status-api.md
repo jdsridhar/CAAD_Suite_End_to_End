@@ -3,6 +3,6 @@
 - **Status:** Accepted
 - **Date:** 2026-09-26
 - **Context:** The application API needs engine capability discovery and project-scoped execution visibility while preserving the core compiler/runtime boundaries.
-- **Decision:** Expose authenticated read-only installed capabilities, a JSON workflow compile/plan endpoint, and a project-scoped run/task status endpoint. Planning compiles against discovered adapters but never constructs handlers or executes commands.
-- **Consequences:** Clients can validate engine choice and monitor persisted task states. HTTP run submission, durable worker supervision, cancellation, event streaming and bounded uploads remain follow-up work; the CLI is the current execution interface.
+- **Decision:** Expose authenticated installed capabilities, a JSON workflow compile/plan endpoint, a project-scoped run/task status endpoint, and synchronous local workflow submission through LocalWorkflowRuntime. Planning compiles against discovered adapters but never constructs handlers or executes commands. Submission accepts normalized contracts and only already-registered, hash-verified artifacts; it accepts no user filesystem paths or command strings.
+- **Consequences:** Clients can validate engine choice and monitor persisted task states. Synchronous HTTP execution can exceed proxy timeouts. Durable background worker supervision across restarts, cancellation, event streaming and bounded artifact uploads remain follow-up work; the CLI remains suitable for long runs.
 - **Validation:** API tests cover auth, plugin capability output, successful Vina plan compilation, project-scoped run status, and the existing provenance queries.

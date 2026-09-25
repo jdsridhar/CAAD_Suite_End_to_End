@@ -120,6 +120,81 @@ def test_provenance_api_authenticates_and_returns_project_and_run_graphs(tmp_pat
         assert missing.status_code == 404
 
 
+def _docking_workflow_payload() -> dict[str, object]:
+    return {
+        "schema": "caddsuite.workflow/1",
+        "name": "Docking plan",
+        "inputs": {
+            "compound": {"contract": "compound/1.0"},
+            "form": {"contract": "compound_form/1.0"},
+            "conformer": {"contract": "conformer/1.1"},
+            "receptor": {"contract": "prepared_receptor/1.0"},
+            "target": {"contract": "structure/1.0"},
+            "site": {"contract": "binding_site/1.0"},
+        },
+        "stages": [
+            {
+                "id": "dock",
+                "kind": "docking",
+                "engine": "vina",
+                "for_each": "compound",
+                "input_contracts": {
+                    "compound": "compound/1.0",
+                    "form": "compound_form/1.0",
+                    "conformer": "conformer/1.1",
+                    "receptor": "prepared_receptor/1.0",
+                    "target_structure": "structure/1.0",
+                    "site": "binding_site/1.0",
+                },
+                "input_bindings": {
+                    "compound": "$compound",
+                    "form": "$form",
+                    "conformer": "$conformer",
+                    "receptor": "$receptor",
+                    "target_structure": "$target",
+                    "site": "$site",
+                },
+                "output_contract": "docking_result/1.0",
+                "params": {},
+            }
+        ],
+        "outputs": {"result": "dock"},
+    }
+
+
+def test_workflow_plan_status_and_run_submission_validation(tmp_path: Path) -> None:
+    project_id, run_id, _attempt_id = _seed_project_run(tmp_path)
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        status_response = client.get(
+            f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+        )
+        assert status_response.status_code == 200
+        assert status_response.json()["status"] == "succeeded"
+        assert [row["stage_id"] for row in status_response.json()["tasks"]] == ["standardize"]
+
+        capabilities = client.get("/v1/workflows/capabilities", headers=headers)
+        assert capabilities.status_code == 200
+        assert any(
+            item["kind"] == "docking" and item["engine"] == "vina"
+            for item in capabilities.json()["capabilities"]
+        )
+
+        workflow = _docking_workflow_payload()
+        plan = client.post("/v1/workflows/plan", headers=headers, json=workflow)
+        assert plan.status_code == 200, plan.text
+        assert plan.json()["task_order"] == ["dock"]
+
+        rejected = client.post(
+            f"/v1/projects/{project_id}/runs/01ARZ3NDEKTSV4RRFFQ69G5FAV/execute",
+            headers=headers,
+            json={"workflow": workflow, "inputs": {}},
+        )
+        assert rejected.status_code == 422
+        assert "inputs must exactly match" in rejected.json()["detail"]
+
+
 def test_provenance_api_requires_nonempty_token(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="token must be configured"):
         create_app(data_root=tmp_path, token="")

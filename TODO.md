@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 13 — Reporting |
-| **Current task** | [-] 13.1 Workflow execution API and job lifecycle endpoints |
-| **Next task** | Expose validated runtime execution and job status through authenticated application endpoints |
-| **Last completed** | Phase 12 report model, provenance assembly, four renderers, transparent ranking, and real Vina report gate; Phase 13 capability/plan/status API; full gate 537 passed, 25 skipped. |
+| **Current phase** | Phase 13 — API + UI |
+| **Current task** | [-] 13.1 durable workflow execution, cancellation and job event lifecycle |
+| **Next task** | Move local API execution under a restart-aware worker supervisor and expose task progress events |
+| **Last completed** | Phase 12 report gate; Phase 13 authenticated capability, plan, status and synchronous LocalWorkflowRuntime submission with normalized input/artifact validation. Full gate: 538 passed, 25 skipped, strict mypy 174 files. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -330,7 +330,7 @@ When the user says **CONTINUE**:
   - [x] Extend real Vina stage integration to query upstream lineage and hash-verify every used/generated artifact.
   - [x] Record demo evidence and explicit single-stage scope; cross-stage Docking-to-MD-to-QM remains unvalidated.
   - [x] Real Vina/Meeko, complex assembly, and 8YZ redocking integration passed in 161.18 s; the G-DOCK-4 <2 A target remains unmet.
-## Phase 12 — Reporting `[-]`
+## Phase 12 — Reporting `[x]`
 
 - [x] 12.1 Report model + sections (all 28 requested topics, present when the stage ran)
   - [x] Add ScientificReport and typed section/status contracts separate from rendered ReportBundle artifacts.
@@ -361,11 +361,13 @@ When the user says **CONTINUE**:
 
 ## Phase 13 — API + UI `[-]`
 
-- [-] 13.1 Application runtime + StageHandlerRegistry; implement authenticated workflow API incrementally.
+- [-] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
-  - [x] Expose project-scoped persisted run/task status; test project ownership and authenticated access.
-  - [ ] Add durable workflow execution submission, restart/recovery ownership, cancellation, and event updates.
-  - [ ] Add bounded, validated artifact uploads and browser integration.
+  - [x] Expose project-scoped persisted run/task status.
+  - [x] Accept normalized contract inputs, validate schemas and registered artifact hashes, and execute through LocalWorkflowRuntime.
+  - [x] Use caller-selected run ULID for polling; finalize success/failure/stopped status.
+  - [ ] Durable background ownership/restart recovery, cancellation and SSE remain.
+  - [ ] Add bounded uploads for new inputs and browser integration.
 - [ ] 13.2 OpenAPI → TypeScript client
 - [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
