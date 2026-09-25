@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event
+from time import monotonic, sleep
 
 import pytest
 from fastapi.testclient import TestClient
@@ -203,19 +205,116 @@ def test_api_executes_normalized_workflow_and_persists_run_state(tmp_path: Path)
             headers=headers,
             json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
         )
-        assert response.status_code == 200, response.text
-        assert response.json()["status"] == "succeeded"
-        assert response.json()["tasks"][0]["state"] == "succeeded"
+        assert response.status_code == 202, response.text
+        assert response.json()["status"] == "queued"
+        deadline = monotonic() + 5
         status_response = client.get(
             f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
         )
+        while status_response.json()["status"] not in {"succeeded", "failed"}:
+            assert monotonic() < deadline, status_response.json()
+            sleep(0.01)
+            status_response = client.get(
+                f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+            )
         assert status_response.json()["status"] == "succeeded"
+        assert status_response.json()["submission"]["state"] == "succeeded"
+        assert status_response.json()["tasks"][0]["state"] == "succeeded"
         repeated = client.post(
             f"/v1/projects/{project_id}/runs/{run_id}/execute",
             headers=headers,
             json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
         )
         assert repeated.status_code == 409
+
+
+class _BlockingCandidateHandler(_EchoCandidateHandler):
+    started = Event()
+    release = Event()
+
+    def execute(self, invocation: TaskInvocation) -> Candidate:
+        self.started.set()
+        if not self.release.wait(timeout=5):
+            raise TimeoutError("test handler was not released")
+        return super().execute(invocation)
+
+
+class _BlockingCandidatePlugin(_EchoCandidatePlugin):
+    plugin_id = "tests.blocking_candidate"
+
+    def registrations(self) -> tuple[StageHandlerRegistration, ...]:
+        registration = super().registrations()[0]
+        capability = registration.capability.model_copy(update={"kind": "test.blocking_candidate"})
+        return (
+            StageHandlerRegistration(
+                capability=capability,
+                factory=lambda _stage, _services: _BlockingCandidateHandler(),
+            ),
+        )
+
+
+def test_api_cancel_is_cooperative_at_stage_boundary(tmp_path: Path) -> None:
+    _BlockingCandidateHandler.started = Event()
+    _BlockingCandidateHandler.release = Event()
+    migrate.upgrade(database_path(tmp_path))
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        project = ProjectRow(slug="api-cancel", name="API cancel")
+        session.add(project)
+        session.flush()
+        project_id = project.id
+    engine.dispose()
+
+    workflow = {
+        "schema": "caddsuite.workflow/1",
+        "name": "Cancelable echo",
+        "inputs": {"candidate": {"contract": "candidate/1.0"}},
+        "stages": [
+            {
+                "id": "echo",
+                "kind": "test.blocking_candidate",
+                "input_contracts": {"candidate": "candidate/1.0"},
+                "input_bindings": {"candidate": "$candidate"},
+                "output_contract": "candidate/1.0",
+                "params": {},
+            }
+        ],
+        "outputs": {"candidate": "echo"},
+    }
+    candidate = Candidate(id=new_ulid(), compound_id=new_ulid(), project_id=project_id)
+    run_id = str(new_ulid())
+    app = create_app(
+        data_root=tmp_path,
+        token="test-secret",  # noqa: S106
+        stage_registry=StageHandlerRegistry([_BlockingCandidatePlugin()]),
+    )
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        submitted = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/execute",
+            headers=headers,
+            json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
+        )
+        assert submitted.status_code == 202
+        assert _BlockingCandidateHandler.started.wait(timeout=3)
+        cancellation = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/cancel", headers=headers
+        )
+        assert cancellation.status_code == 202
+        _BlockingCandidateHandler.release.set()
+        deadline = monotonic() + 3
+        status_response = client.get(
+            f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+        )
+        while status_response.json()["status"] not in {"stopped", "failed"}:
+            assert monotonic() < deadline, status_response.json()
+            sleep(0.01)
+            status_response = client.get(
+                f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+            )
+        assert status_response.json()["status"] == "stopped"
+        assert status_response.json()["submission"]["cancel_requested"] is True
 
 
 def _docking_workflow_payload() -> dict[str, object]:

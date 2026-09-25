@@ -561,3 +561,23 @@ def test_scheduler_rejects_wrong_contract_without_caching_it(scheduler_env) -> N
     assert task_record.cache_key is not None
     assert cache.get(task_record.cache_key) is None
     assert not any(task.stage_id == "downstream" for task in outcome.tasks)
+
+
+def test_scheduler_honors_cancellation_before_starting_a_stage(scheduler_env) -> None:
+    tasks, cache, run_id, _second_run_id, _project_id, attempt_store, _sessions = scheduler_env
+    scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=cache,
+        handlers={},
+        attempt_store=attempt_store,
+    )
+
+    outcome = scheduler.run(
+        _compiled(gate=True),
+        run_id=run_id,
+        inputs={"ligands": (_form(new_ulid(), "cancel-me"),)},
+        cancel_check=lambda: True,
+    )
+
+    assert outcome.stopped
+    assert outcome.tasks == ()

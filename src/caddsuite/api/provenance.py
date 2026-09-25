@@ -6,12 +6,13 @@ import hashlib
 import hmac
 import json
 import logging
+import secrets
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +21,7 @@ from pydantic import JsonValue
 from sqlalchemy import select
 
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
+from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.application.version_drift import version_drift
 from caddsuite.contracts.base import ArtifactRef, ContractModel, VersionedContract, load_contract
@@ -27,7 +29,13 @@ from caddsuite.domain.identity import ULIDStr
 from caddsuite.storage.artifacts import ArtifactStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
-from caddsuite.storage.models import ArtifactRow, ProjectRow, TaskRow, WorkflowRunRow
+from caddsuite.storage.models import (
+    ArtifactRow,
+    ProjectRow,
+    RunSubmissionRow,
+    TaskRow,
+    WorkflowRunRow,
+)
 from caddsuite.storage.paths import artifacts_root, database_path, resolve_data_root
 from caddsuite.storage.provenance_graph import (
     ProvenanceNodeNotFound,
@@ -64,9 +72,18 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        queue = RunSubmissionQueue(sessions)
+        supervisor = LocalRunSupervisor(
+            queue,
+            execute_submission,
+            worker_id=secrets.token_hex(16),
+        )
+        supervisor.start()
+        app.state.run_supervisor = supervisor
         try:
             yield
         finally:
+            supervisor.stop()
             engine.dispose()
 
     app = FastAPI(title="CADD Suite API", version="0.1.0", lifespan=lifespan)
@@ -91,7 +108,65 @@ def create_app(
         if origin is not None and origin not in origins:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origin not allowed")
 
-    @app.post("/v1/projects/{project_id}/runs/{run_id}/execute")
+    def execute_submission(
+        stable_run_id: str,
+        payload: dict[str, Any],
+        cancel_requested: Callable[[], bool],
+    ) -> str:
+        request = WorkflowRunSubmission.model_validate(payload)
+        registry = stage_registry or StageHandlerRegistry.discover()
+        compiled = registry.compile(request.workflow)
+        parsed = _parse_workflow_inputs(request)
+        artifact_store = ArtifactStore(artifacts_root(root))
+        with sessions() as session:
+            for reference in _artifact_refs(parsed):
+                row = session.get(ArtifactRow, str(reference.artifact_id))
+                if (
+                    row is None
+                    or (reference.sha256 is not None and reference.sha256 != row.sha256)
+                    or not artifact_store.verify(row.sha256)
+                ):
+                    raise ValueError(
+                        f"workflow input artifact {reference.artifact_id!r} is missing "
+                        "or failed hash verification"
+                    )
+        with sessions.begin() as session:
+            run = session.get(WorkflowRunRow, stable_run_id)
+            if run is None:
+                raise RuntimeError(f"queued workflow run {stable_run_id!r} is missing")
+            run.status = "running"
+            run.started_at = datetime.now(UTC)
+        if cancel_requested():
+            return "stopped"
+        try:
+            with LocalWorkflowRuntime.open(
+                data_root=root,
+                handlers=lambda services: registry.build_handlers(request.workflow, services),
+            ) as runtime:
+                outcome = runtime.run(
+                    compiled,
+                    run_id=stable_run_id,
+                    inputs=parsed,
+                    cancel_check=cancel_requested,
+                )
+            run_status = (
+                "failed" if outcome.failures else "stopped" if outcome.stopped else "succeeded"
+            )
+            with sessions.begin() as session:
+                run = session.get(WorkflowRunRow, stable_run_id)
+                if run is not None:
+                    run.status = run_status
+                    run.finished_at = datetime.now(UTC)
+            return run_status
+        except Exception:
+            with sessions.begin() as session:
+                run = session.get(WorkflowRunRow, stable_run_id)
+                if run is not None and run.status == "running":
+                    run.status = "failed"
+                    run.finished_at = datetime.now(UTC)
+            raise
+
+    @app.post("/v1/projects/{project_id}/runs/{run_id}/execute", status_code=202)
     def execute_workflow(
         project_id: str,
         run_id: str,
@@ -107,144 +182,70 @@ def create_app(
             compiled = registry.compile(request.workflow)
         except StageHandlerDiscoveryError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except (ValueError, WorkflowCompileError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        del compiled  # Compilation above validates capabilities before any persistent write.
+        try:
+            parsed = _parse_workflow_inputs(request)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-        declarations = {name: item.contract for name, item in request.workflow.inputs.items()}
-        if set(request.inputs) != set(declarations):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "inputs must exactly match workflow declarations; "
-                    f"expected {sorted(declarations)}, got {sorted(request.inputs)}"
-                ),
-            )
-        parsed: dict[str, VersionedContract | tuple[VersionedContract, ...]] = {}
+        workflow_payload = request.workflow.model_dump(mode="json", by_alias=True)
+        request_payload = request.model_dump(mode="json", by_alias=True)
+        workflow_hash = hashlib.sha256(
+            json.dumps(workflow_payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        config_hash = hashlib.sha256(
+            json.dumps(request_payload["inputs"], sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
         artifact_store = ArtifactStore(artifacts_root(root))
-        for name, declaration in declarations.items():
-            raw_values = request.inputs[name]
-            values = raw_values if isinstance(raw_values, list) else [raw_values]
-            if not values:
-                raise HTTPException(
-                    status_code=422, detail=f"input {name!r} cannot be an empty list"
-                )
-            contracts = []
-            for value in values:
-                if not isinstance(value, dict):
-                    raise HTTPException(
-                        status_code=422, detail=f"input {name!r} must be a contract object"
-                    )
-                try:
-                    contract = load_contract(value)
-                except (TypeError, ValueError) as exc:
-                    raise HTTPException(
-                        status_code=422, detail=f"invalid input {name!r}: {exc}"
-                    ) from exc
-                if contract.schema_id() != declaration:
+        with sessions.begin() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} was not found")
+            if session.get(WorkflowRunRow, stable_run_id) is not None:
+                raise HTTPException(status_code=409, detail=f"run {stable_run_id!r} already exists")
+            for reference in _artifact_refs(parsed):
+                row = session.get(ArtifactRow, str(reference.artifact_id))
+                if row is None:
                     raise HTTPException(
                         status_code=422,
-                        detail=f"input {name!r} requires {declaration}, got {contract.schema_id()}",
+                        detail=f"input artifact {reference.artifact_id!r} is not registered",
                     )
-                contracts.append(contract)
-            parsed[name] = tuple(contracts) if isinstance(raw_values, list) else contracts[0]
-        run_created = False
-        try:
-            with sessions() as session:
-                if session.get(ProjectRow, project_id) is None:
+                if reference.sha256 is not None and reference.sha256 != row.sha256:
                     raise HTTPException(
-                        status_code=404, detail=f"project {project_id!r} was not found"
+                        status_code=422,
+                        detail=f"input artifact {reference.artifact_id!r} hash does not match",
                     )
-                if session.get(WorkflowRunRow, stable_run_id) is not None:
+                if not artifact_store.verify(row.sha256):
                     raise HTTPException(
-                        status_code=409, detail=f"run {stable_run_id!r} already exists"
+                        status_code=422,
+                        detail=f"input artifact {reference.artifact_id!r} failed hash verification",
                     )
-                for reference in _artifact_refs(parsed):
-                    row = session.get(ArtifactRow, str(reference.artifact_id))
-                    if row is None:
-                        raise HTTPException(
-                            status_code=422,
-                            detail=f"input artifact {reference.artifact_id!r} is not registered",
-                        )
-                    if reference.sha256 is not None and reference.sha256 != row.sha256:
-                        raise HTTPException(
-                            status_code=422,
-                            detail=f"input artifact {reference.artifact_id!r} hash does not match",
-                        )
-                    if not artifact_store.verify(row.sha256):
-                        raise HTTPException(
-                            status_code=422,
-                            detail=(
-                                f"input artifact {reference.artifact_id!r} failed hash verification"
-                            ),
-                        )
-
-            workflow_payload = request.workflow.model_dump(mode="json", by_alias=True)
-            input_payload = request.model_dump(mode="json")["inputs"]
-            workflow_hash = hashlib.sha256(
-                json.dumps(workflow_payload, sort_keys=True, separators=(",", ":")).encode()
-            ).hexdigest()
-            config_hash = hashlib.sha256(
-                json.dumps(input_payload, sort_keys=True, separators=(",", ":")).encode()
-            ).hexdigest()
-            with LocalWorkflowRuntime.open(
-                data_root=root,
-                handlers=lambda services: registry.build_handlers(request.workflow, services),
-            ) as runtime:
-                with runtime.sessions.begin() as session:
-                    run = WorkflowRunRow(
-                        id=stable_run_id,
-                        project_id=project_id,
-                        accession="RUN-" + stable_run_id,
-                        workflow_hash=workflow_hash,
-                        config_hash=config_hash,
-                        status="running",
-                        started_at=datetime.now(UTC),
-                    )
-                    session.add(run)
-                run_created = True
-                outcome = runtime.run(compiled, run_id=stable_run_id, inputs=parsed)
-                run_status = (
-                    "failed" if outcome.failures else "stopped" if outcome.stopped else "succeeded"
+            session.add(
+                WorkflowRunRow(
+                    id=stable_run_id,
+                    project_id=project_id,
+                    accession="RUN-" + stable_run_id,
+                    workflow_hash=workflow_hash,
+                    config_hash=config_hash,
+                    status="queued",
                 )
-                with runtime.sessions.begin() as session:
-                    stored_run = session.get(WorkflowRunRow, stable_run_id)
-                    if stored_run is not None:
-                        stored_run.status = run_status
-                        stored_run.finished_at = datetime.now(UTC)
-                return {
-                    "project_id": project_id,
-                    "run_id": stable_run_id,
-                    "status": run_status,
-                    "tasks": [
-                        {
-                            "task_id": task.task_id,
-                            "stage_id": task.stage_id,
-                            "subject_id": task.subject_id,
-                            "state": task.state.value,
-                            "cache_hit": task.cache_hit,
-                            "error": task.error,
-                        }
-                        for task in outcome.tasks
-                    ],
-                }
-        except HTTPException:
-            raise
-        except Exception as exc:
-            if run_created:
-                try:
-                    with sessions.begin() as session:
-                        failed_run = session.get(WorkflowRunRow, stable_run_id)
-                        if failed_run is not None and failed_run.status == "running":
-                            failed_run.status = "failed"
-                            failed_run.finished_at = datetime.now(UTC)
-                except Exception:
-                    logger.exception(
-                        "could not persist failed state for API workflow run %s", stable_run_id
-                    )
-            raise HTTPException(
-                status_code=500,
-                detail="workflow execution failed during runtime initialization or supervision",
-            ) from exc
+            )
+            session.flush()
+            session.add(
+                RunSubmissionRow(
+                    run_id=stable_run_id,
+                    payload=request_payload,
+                    state="queued",
+                    submitted_at=datetime.now(UTC),
+                )
+            )
+        return {
+            "project_id": project_id,
+            "run_id": stable_run_id,
+            "status": "queued",
+            "status_url": f"/v1/projects/{project_id}/runs/{stable_run_id}/status",
+        }
 
     @app.get("/v1/workflows/capabilities")
     def get_workflow_capabilities(
@@ -294,6 +295,31 @@ def create_app(
             ],
         }
 
+    @app.post("/v1/projects/{project_id}/runs/{run_id}/cancel", status_code=202)
+    def cancel_project_run(
+        project_id: str,
+        run_id: str,
+        _: None = Depends(authenticate),
+    ) -> dict[str, object]:
+        with sessions() as session:
+            run = session.scalar(
+                select(WorkflowRunRow).where(
+                    WorkflowRunRow.id == run_id, WorkflowRunRow.project_id == project_id
+                )
+            )
+            if run is None:
+                raise HTTPException(status_code=404, detail=f"run {run_id!r} was not found")
+            if run.status in {"succeeded", "failed", "stopped", "cancelled"}:
+                raise HTTPException(status_code=409, detail="workflow run is already terminal")
+        if not RunSubmissionQueue(sessions).request_cancel(run_id):
+            raise HTTPException(status_code=409, detail="workflow submission cannot be cancelled")
+        return {
+            "project_id": project_id,
+            "run_id": run_id,
+            "status": "cancellation_requested",
+            "detail": "Cancellation takes effect at the next safe workflow boundary.",
+        }
+
     @app.get("/v1/projects/{project_id}/runs/{run_id}/status")
     def get_project_run_status(
         project_id: str,
@@ -316,6 +342,7 @@ def create_app(
                 .where(TaskRow.run_id == run_id)
                 .order_by(TaskRow.created_at, TaskRow.id)
             ).all()
+            submission = session.get(RunSubmissionRow, run_id)
             return {
                 "project_id": project_id,
                 "run_id": run.id,
@@ -323,6 +350,18 @@ def create_app(
                 "status": run.status,
                 "started_at": run.started_at.isoformat() if run.started_at else None,
                 "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                "submission": (
+                    {
+                        "state": submission.state,
+                        "heartbeat_at": (
+                            submission.heartbeat_at.isoformat() if submission.heartbeat_at else None
+                        ),
+                        "cancel_requested": submission.cancel_requested,
+                        "error": submission.error,
+                    }
+                    if submission is not None
+                    else None
+                ),
                 "tasks": [
                     {
                         "task_id": task.id,
@@ -374,10 +413,25 @@ def create_app(
                         .where(TaskRow.run_id == run_id)
                         .order_by(TaskRow.created_at, TaskRow.id)
                     ).all()
+                    submission = session.get(RunSubmissionRow, run_id)
                     data = {
                         "project_id": project_id,
                         "run_id": run_id,
                         "status": run.status,
+                        "submission": (
+                            {
+                                "state": submission.state,
+                                "heartbeat_at": (
+                                    submission.heartbeat_at.isoformat()
+                                    if submission.heartbeat_at
+                                    else None
+                                ),
+                                "cancel_requested": submission.cancel_requested,
+                                "error": submission.error,
+                            }
+                            if submission is not None
+                            else None
+                        ),
                         "tasks": [
                             {
                                 "task_id": task.id,
@@ -451,6 +505,38 @@ def create_app(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return app
+
+
+def _parse_workflow_inputs(
+    request: WorkflowRunSubmission,
+) -> dict[str, VersionedContract | tuple[VersionedContract, ...]]:
+    declarations = {name: item.contract for name, item in request.workflow.inputs.items()}
+    if set(request.inputs) != set(declarations):
+        raise ValueError(
+            "inputs must exactly match workflow declarations; "
+            f"expected {sorted(declarations)}, got {sorted(request.inputs)}"
+        )
+    parsed: dict[str, VersionedContract | tuple[VersionedContract, ...]] = {}
+    for name, declaration in declarations.items():
+        raw_values = request.inputs[name]
+        values = raw_values if isinstance(raw_values, list) else [raw_values]
+        if not values:
+            raise ValueError(f"input {name!r} cannot be an empty list")
+        contracts: list[VersionedContract] = []
+        for value in values:
+            if not isinstance(value, dict):
+                raise ValueError(f"input {name!r} must be a contract object")
+            try:
+                contract = load_contract(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"invalid input {name!r}: {exc}") from exc
+            if contract.schema_id() != declaration:
+                raise ValueError(
+                    f"input {name!r} requires {declaration}, got {contract.schema_id()}"
+                )
+            contracts.append(contract)
+        parsed[name] = tuple(contracts) if isinstance(raw_values, list) else contracts[0]
+    return parsed
 
 
 def _artifact_refs(value: object) -> tuple[ArtifactRef, ...]:

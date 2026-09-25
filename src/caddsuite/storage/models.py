@@ -154,6 +154,25 @@ class WorkflowRunRow(Base):
     finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
 
 
+class RunSubmissionRow(Base):
+    """Durable API submission and single-worker lease for one workflow run."""
+
+    __tablename__ = "run_submissions"
+
+    run_id: Mapped[str] = mapped_column(ForeignKey("workflow_runs.id"), primary_key=True)
+    payload: Mapped[dict[str, Any]]
+    state: Mapped[str] = mapped_column(String(24), default="queued", nullable=False, index=True)
+    worker_id: Mapped[str | None] = mapped_column(String(64))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+    cancel_requested: Mapped[bool] = mapped_column(
+        default=False, server_default="0", nullable=False
+    )
+    submitted_at: Mapped[datetime] = _created()
+    started_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+    finished_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
+    error: Mapped[str | None] = mapped_column(Text)
+
+
 class TaskRow(Base):
     __tablename__ = "tasks"
     __table_args__ = (Index("ix_tasks_run_stage", "run_id", "stage_id"),)

@@ -133,13 +133,16 @@ class LocalWorkflowRuntime:
         *,
         run_id: str,
         inputs: Mapping[str, VersionedContract | tuple[VersionedContract, ...]],
+        cancel_check: Callable[[], bool] | None = None,
     ) -> WorkflowOutcome:
         """Execute with durable task and per-attempt provenance stores always attached."""
         configured = {task.stage_id for task in workflow.tasks}
         missing = configured - self.handlers.keys()
         if missing:
             raise ValueError(f"no handler configured for workflow stages: {sorted(missing)}")
-        return self._scheduler.run(workflow, run_id=run_id, inputs=inputs)
+        return self._scheduler.run(
+            workflow, run_id=run_id, inputs=inputs, cancel_check=cancel_check
+        )
 
     def close(self) -> None:
         self.engine.dispose()

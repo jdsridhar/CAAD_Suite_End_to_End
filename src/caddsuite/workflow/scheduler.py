@@ -183,13 +183,16 @@ class WorkflowScheduler:
         *,
         run_id: str,
         inputs: Mapping[str, VersionedContract | Sequence[VersionedContract]],
+        cancel_check: Callable[[], bool] | None = None,
     ) -> WorkflowOutcome:
         values: dict[str, tuple[ProducedValue, ...]] = {}
         outcomes: list[TaskOutcome] = []
         stopped = False
 
+        should_cancel = cancel_check or (lambda: False)
         for task in workflow.tasks:
-            if stopped:
+            if stopped or should_cancel():
+                stopped = True
                 break
             handler = self._handlers.get(task.stage_id)
             if handler is None:
@@ -218,6 +221,9 @@ class WorkflowScheduler:
             executions = self._materialize(task, handler, bound)
             stage_values: list[ProducedValue] = []
             for subject_id, stage_inputs in executions:
+                if should_cancel():
+                    stopped = True
+                    break
                 outcome, produced = self._run_one(
                     task, handler, run_id=run_id, subject_id=subject_id, inputs=stage_inputs
                 )
@@ -229,6 +235,8 @@ class WorkflowScheduler:
                     break
             values[task.stage_id] = tuple(stage_values)
 
+        if should_cancel():
+            stopped = True
         outputs = {name: values.get(stage_id, ()) for name, stage_id in workflow.outputs}
         return WorkflowOutcome(tuple(outcomes), outputs, stopped)
 

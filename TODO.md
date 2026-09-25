@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.1 durable workflow execution, cancellation and job event lifecycle; supervisor recovery boundary documented in ADR-0039 |
-| **Next task** | Implement persistent run submission/claim and recovery-aware local worker ownership |
-| **Last completed** | Phase 12 report gate; Phase 13 capability, plan, project-scoped status, normalized API execution with injected test adapter, and bounded SSE; full gate 539 passed, 25 skipped, strict mypy 174 files. Frozen legacy source verification is currently unavailable: the original Suites path is absent in this WSL session; the committed manifest exists but its referenced files are not present here. |
+| **Current task** | [-] 13.1 active child-process cancellation and bounded input uploads; local durable queue/scheduler cancellation are implemented |
+| **Next task** | Implement process-aware active-child termination/confirmation, then bounded artifact upload API |
+| **Last completed** | Phase 12 report gate; Phase 13 capability/plan API, durable queued execution with worker leases and restart recovery, cooperative scheduler cancellation, scoped status/SSE, and injected-adapter API regressions; full gate 546 passed, 25 skipped, strict mypy 175 files. Frozen legacy source verification is currently unavailable: the original Suites path is absent in this WSL session; the committed manifest exists but its referenced files are not present here. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -367,6 +367,9 @@ When the user says **CONTINUE**:
   - [x] Accept normalized contract inputs, validate schemas and registered artifact hashes, and execute through LocalWorkflowRuntime.
   - [x] Use caller-selected run ULID for polling; finalize success/failure/stopped status.
   - [x] Stream bounded run/task status snapshots over authenticated SSE with reconnectable latest-state snapshots.
+  - [x] Persist normalized submissions, atomically claim/lease work, heartbeat, and requeue expired owners; handler recovery remains authoritative on restart.
+  - [x] Return 202 for API submission and expose worker lifecycle/error state through status/SSE.
+  - [x] Add cancellation requests honored at safe scheduler boundaries. Active engine process termination/confirmation remains pending.
   - [x] Document conservative worker restart/cancellation semantics in API_RUNTIME.md and ADR-0039.
   - [ ] Add bounded uploads for new inputs and browser integration.
 - [ ] 13.2 OpenAPI → TypeScript client
@@ -465,6 +468,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-26 | Phase 13.1 durable local API worker slice: added migration 0006 with normalized submissions, compare-and-swap worker claims, lease heartbeats and stale-owner requeue; API execution now returns 202, with task/run/submission status and SSE snapshots. Added safe-boundary cancellation requests, with active child process termination still pending. Restart recovery, API queue/cancel integration and scheduler cancellation tests pass. Full gate: 546 passed, 25 optional skips; Ruff/format, strict mypy 175 files, import-linter (4 kept/0 broken), and schema freshness pass. Legacy checksum source files remain unavailable in this WSL session. |
 | 2026-09-26 | Phase 13 API execution smoke regression: added injected fake stage-handler workflow through authenticated HTTP submission, verified normalized execution persistence, polling, and duplicate-run rejection. Focused API suite: 4 passed; repository gate: 539 passed, 25 skipped, strict mypy 174 files. Corrected API guide to describe synchronous request-bound execution and documented recovery-safe supervisor constraints in ADR-0039. Frozen legacy source is absent from this WSL session; manifest checks cannot be repeated here. Commit 269ed37 pushed. |
 | 2026-09-26 | Vina runtime integration complete: the existing 5NIU/RC8 workflow now executes via installed plugin discovery, compiled capability, LocalWorkflowRuntime and scheduler, producing normalized DockingResult plus successful TaskAttempt with four successful argv/log steps, engine version, resource request and artifact lineage. Existing complex checks and G-DOCK-4 8YZ redocking remain in the same real integration; it passed in 163.59 s, but its <2 A accuracy criterion remains unmet. This exposed a general scheduler fan-out bug: shared non-fan-out inputs were incorrectly sent to subject_key; corrected identity assignment to declared fan-out ports only. Full repository gate after correction: 517 passed, 25 skipped; Ruff, formatting, strict mypy 167 files, import-linter and schemas pass. Original legacy checksum manifest remains 143/143. Starting 11.3 legacy importers. |
 | 2026-09-26 | Phase 11.2 API scope added: read-only run/project graph aggregation and authenticated FastAPI routes for attempt/run/project provenance. Bearer authentication is mandatory; configured browser Origins are checked, and no server socket is started by the app factory. Added API guide and tests for auth, origin rejection, 404 and scoped queries. API/storage/CLI tests pass, including populated attempt, run and project graphs. Full repository gate: 517 passed, 25 skipped; strict mypy 167 files; Ruff, format, import-linter and schema checks pass. Frozen legacy manifest verifies 143/143 against the original Suites directory. Vina runtime evidence remains the next Phase 11 task. |
