@@ -116,3 +116,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [Workflow capability, plan and status API](API_RUNTIME.md)
 
 - [ADR-0038: Workflow planning and status API](ADR/0038-workflow-planning-and-status-api.md)
+
+- [ADR-0039: Durable local run supervision](ADR/0039-durable-local-run-supervision.md)

@@ -1,0 +1,8 @@
+# ADR-0039: Durable local run supervision
+
+- **Status:** Accepted
+- **Date:** 2026-09-26
+- **Context:** The first authenticated API execution route runs `LocalWorkflowRuntime` inside the HTTP request worker. A disconnected client or proxy timeout does not stop a calculation, but API process restart loses API-level ownership. Task states, attempts, process identities, and handler recovery hooks already persist independently.
+- **Decision:** Add a durable local run supervisor that claims persisted submissions and reports lifecycle through the existing database records. It must reconcile task attempts through handler-owned recovery and the executor's persisted process identity. The supervisor must not relaunch a RUNNING/INTERRUPTED scientific task unless the handler confirms the previous execution is no longer active. Cancellation will be cooperative at workflow boundaries and process-aware for an active child. Existing bounded SSE remains a status snapshot channel, not an event log.
+- **Consequences:** Long-running work no longer depends on an open HTTP request after the supervisor is implemented. Restart behavior remains engine-aware and conservative. Unknown process outcomes stay visible for explicit resolution instead of being silently retried. HTTP stays outside scientific adapters. Bounded uploads will stage and hash artifacts before submission.
+- **Validation plan:** Simulate supervisor restart with pending, safely recoverable, and ambiguous running tasks; prove no duplicate process start; exercise cancellation during an idle boundary and active child process; verify status/SSE project scoping and artifact hashes. These checks are pending implementation.
