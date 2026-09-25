@@ -18,7 +18,7 @@ caddsuite logs ARTIFACT_ID [--tail-bytes N] [--data-root PATH]
 
 The data root defaults to `~/caddsuite_data`; set `CADDSUITE_DATA_ROOT` or pass `--data-root` to select another Linux-native location.
 
-`workflow validate` checks the declarative workflow structure without requiring scientific engines. `run --plan-only` prints the declared stage plan. Actual runs remain plan-only until the initial engine adapters and a plugin-backed StageHandler/input loader are wired into the CLI. The scheduler itself is implemented and integration-tested with fake handlers; the CLI will not create a scientific run that cannot execute its selected engines.
+`workflow validate` checks the declarative workflow structure without requiring scientific engines. `run --plan-only` prints the declared stage plan. Actual execution requires a project ID and normalized-contract inputs manifest. The CLI validates the workflow against discovered stage capabilities, registers hash-verified input files, creates a WorkflowRun, and invokes LocalWorkflowRuntime. Unsupported or unavailable stages fail before the run starts.
 
 `compound import` will be added with Phase 4 chemical standardization. The import command must create a reproducible neutral-parent identity and preserve the selected calculation form, so storing a raw SMILES as if it were a standardized compound would be misleading.
 
@@ -59,3 +59,11 @@ caddsuite decide TASK_ULID \
 The decision payload, selected option, user, timestamp, scope, and rationale are recorded in SQLite in the same transaction that moves the task from `AWAITING_DECISION` to `READY`. A stale task version is rejected. The selected scope is recorded; applying project-wide or run-wide standing decisions to future prompts is not implemented yet.
 
 `status` displays persisted run and task states. `logs` reads the tail of a stored `text/plain` artifact by artifact ID; it does not search by filename.
+
+## Executing with normalized inputs
+
+An actual workflow run requires a project ID and an inputs JSON manifest. The manifest has an inputs object containing one versioned contract per workflow input (or a list for batch inputs), and an optional artifacts object mapping each referenced artifact ID to a file path. Relative paths resolve beside the manifest. The CLI validates contract types, hashes and registers attached files in content-addressed storage, then calls the same local workflow runtime used by the API.
+
+Example invocation: caddsuite run qm-workflow.yaml --project PROJECT_ID --inputs inputs.json
+
+The initial built-in workflow provider supports one QM calculation per stage invocation through Psi4 or PySCF. Compound fan-out and docking/MD stage providers remain in progress. Real ethanol single-point integrations verify execution and provenance plumbing; they do not validate binding or biological activity.

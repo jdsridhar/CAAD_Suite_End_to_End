@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import UTC, datetime
@@ -150,36 +151,121 @@ def register_commands(app: typer.Typer) -> None:
         plan_only: Annotated[
             bool, typer.Option("--plan-only", help="Display the declared stages; do not execute.")
         ] = False,
+        project_id: Annotated[
+            str | None, typer.Option("--project", help="Project ID for the run.")
+        ] = None,
+        inputs_file: Annotated[
+            Path | None, typer.Option("--inputs", help="JSON normalized-contract input manifest.")
+        ] = None,
+        data_root: RootOption = None,
     ) -> None:
-        """Inspect a workflow; execution waits for the engine registry and scheduler."""
+        """Compile a workflow or execute it with validated normalized-contract inputs."""
         try:
             workflow = WorkflowDefinition.from_yaml(workflow_file)
         except (OSError, ValueError) as exc:
             _fail(str(exc))
-        if not plan_only:
-            _fail(
-                "Execution is not enabled yet; use --plan-only while plugins and the"
-                " scheduler are integrated."
+        if plan_only:
+            typer.echo(
+                json.dumps(
+                    {
+                        "plan_only": True,
+                        "workflow": workflow.name,
+                        "stages": [
+                            {
+                                "id": s.id,
+                                "kind": s.kind,
+                                "engine": s.engine,
+                                "enabled": s.enabled,
+                                "needs": list(s.needs),
+                            }
+                            for s in workflow.stages
+                        ],
+                    },
+                    indent=2,
+                )
             )
-        typer.echo(
-            json.dumps(
-                {
-                    "plan_only": True,
-                    "workflow": workflow.name,
-                    "stages": [
+            return
+        if project_id is None or inputs_file is None:
+            _fail("execution requires --project PROJECT_ID and --inputs INPUTS.json")
+
+        from caddsuite.application.handlers import StageHandlerRegistry
+        from caddsuite.application.runtime import LocalWorkflowRuntime
+        from caddsuite.cli.input_loader import load_workflow_inputs
+        from caddsuite.domain.identity import new_ulid
+
+        try:
+            registry = StageHandlerRegistry.discover()
+            compiled = registry.compile(workflow)
+            root = resolve_data_root(data_root)
+            runtime = LocalWorkflowRuntime.open(
+                data_root=root,
+                handlers=lambda services: registry.build_handlers(workflow, services),
+            )
+            try:
+                with runtime.sessions() as session:
+                    project = session.get(ProjectRow, project_id)
+                if project is None:
+                    _fail(f"project {project_id!r} was not found")
+                declarations = {name: item.contract for name, item in workflow.inputs.items()}
+                values = load_workflow_inputs(
+                    inputs_file,
+                    declarations=declarations,
+                    sessions=runtime.sessions,
+                    artifacts=runtime.services.artifacts,
+                )
+
+                def digest(payload: bytes) -> str:
+                    return hashlib.sha256(payload).hexdigest()
+
+                with runtime.sessions.begin() as session:
+                    run_row = WorkflowRunRow(
+                        project_id=project_id,
+                        accession="RUN-" + new_ulid(),
+                        workflow_hash=digest(workflow_file.read_bytes()),
+                        config_hash=digest(inputs_file.read_bytes()),
+                        status="running",
+                        started_at=datetime.now(UTC),
+                    )
+                    session.add(run_row)
+                    session.flush()
+                    run_id = run_row.id
+                outcome = runtime.run(compiled, run_id=run_id, inputs=values)
+                status_value = (
+                    "failed" if outcome.failures else "stopped" if outcome.stopped else "succeeded"
+                )
+                with runtime.sessions.begin() as session:
+                    stored_run = session.get(WorkflowRunRow, run_id)
+                    if stored_run is not None:
+                        stored_run.status = status_value
+                        stored_run.finished_at = datetime.now(UTC)
+                typer.echo(
+                    json.dumps(
                         {
-                            "id": s.id,
-                            "kind": s.kind,
-                            "engine": s.engine,
-                            "enabled": s.enabled,
-                            "needs": list(s.needs),
-                        }
-                        for s in workflow.stages
-                    ],
-                },
-                indent=2,
-            )
-        )
+                            "run_id": run_id,
+                            "status": status_value,
+                            "tasks": [
+                                {
+                                    "stage_id": item.stage_id,
+                                    "task_id": item.task_id,
+                                    "state": item.state.value,
+                                    "subject_id": item.subject_id,
+                                    "error": item.error,
+                                    "cache_hit": item.cache_hit,
+                                }
+                                for item in outcome.tasks
+                            ],
+                        },
+                        indent=2,
+                    )
+                )
+                if outcome.failures:
+                    raise typer.Exit(code=1)
+            finally:
+                runtime.close()
+        except typer.Exit:
+            raise
+        except Exception as exc:
+            _fail(f"workflow execution could not start or complete: {exc}")
 
     @app.command()
     def status(

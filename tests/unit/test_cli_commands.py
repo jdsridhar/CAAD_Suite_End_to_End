@@ -52,7 +52,7 @@ def test_workflow_validate_and_plan_only_do_not_execute(repo_root: Path) -> None
 
     actual = runner.invoke(app, ["run", str(workflow)])
     assert actual.exit_code == 2
-    assert "Execution is not enabled yet" in actual.output
+    assert "requires --project PROJECT_ID and --inputs INPUTS.json" in actual.output
 
 
 def test_doctor_reports_missing_database_without_creating_it(tmp_path: Path) -> None:
