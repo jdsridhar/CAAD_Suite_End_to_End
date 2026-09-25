@@ -558,6 +558,18 @@ def test_index_newline_normalization_is_append_only_and_idempotent():
     assert already_normalized == b"[ LIG ]\n1 2\n"
 
 
+def test_gromacs_adapter_maps_hash_linked_stage_artifacts_to_safe_paths(tmp_path: Path) -> None:
+    params = _common(resource_mode="cpu", gpu_ids=())
+    context = _context(tmp_path, **params)
+    adapter = GromacsMDAdapter()
+    mapped = adapter.stage_input_artifacts(context)
+    stage_input = context.inputs["stage_input"]
+    assert isinstance(stage_input, MDStageInput)
+    assert mapped[params["topology_path"]] == stage_input.artifacts["topology"]
+    assert mapped[params["mdp_path"]] == stage_input.artifacts["md_parameters"]
+    assert mapped[params["coordinates_path"]] == stage_input.artifacts["coordinates"]
+
+
 def test_grompp_warning_classifier_separates_index_warning_from_notes_and_other_warnings(
     tmp_path: Path,
 ):

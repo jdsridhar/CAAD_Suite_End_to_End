@@ -13,7 +13,7 @@ from typing import Annotated, Literal, NoReturn
 
 from pydantic import Field, StrictInt, field_validator, model_validator
 
-from caddsuite.contracts.base import ContractModel, NonEmptyStr, PositiveFloat
+from caddsuite.contracts.base import ArtifactRef, ContractModel, NonEmptyStr, PositiveFloat
 from caddsuite.contracts.md import MDStage, MDStageInput, MDStageKind
 from caddsuite.contracts.system import SystemBuildResult
 from caddsuite.ports.adapters import AdapterContext, CommandStep, ExecutionPlan
@@ -352,6 +352,31 @@ class GromacsMDAdapter:
         )
         expected = (f"{prefix}.tpr", f"{prefix}.gro", f"{prefix}.log")
         return ExecutionPlan(commands=tuple(commands), expected_outputs=expected)
+
+    def stage_input_artifacts(self, context: AdapterContext) -> dict[str, ArtifactRef]:
+        build, parameters, _stage = self._resolve(context)
+        stage_input = context.inputs["stage_input"]
+        if not isinstance(stage_input, MDStageInput):
+            _fail("MD.GROMACS_STAGE_INPUT_MISSING", "input stage_input is invalid")
+        bindings = dict(build.system.engine_inputs["gromacs"])
+        bindings[parameters.topology_path] = stage_input.artifacts["topology"]
+        if parameters.resume_checkpoint_path is not None:
+            bindings[f"{parameters.output_prefix}.tpr"] = stage_input.artifacts["tpr"]
+            bindings[parameters.resume_checkpoint_path] = stage_input.artifacts["resume_checkpoint"]
+        else:
+            if parameters.mdp_path is None or parameters.coordinates_path is None:
+                _fail("MD.GROMACS_INPUT_MISSING", "fresh-stage input paths are incomplete")
+            bindings[parameters.mdp_path] = stage_input.artifacts["md_parameters"]
+            bindings[parameters.coordinates_path] = stage_input.artifacts["coordinates"]
+            optional = (
+                (parameters.index_path, "index"),
+                (parameters.reference_coordinates_path, "reference_coordinates"),
+                (parameters.previous_checkpoint_path, "previous_checkpoint"),
+            )
+            for path, role in optional:
+                if path is not None:
+                    bindings[path] = stage_input.artifacts[role]
+        return bindings
 
     def validate_execution_step(
         self, context: AdapterContext, step_index: int, stdout: bytes, stderr: bytes

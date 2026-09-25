@@ -28,7 +28,7 @@ from caddsuite.adapters.docking.vina import (
 )
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
 from caddsuite.contracts.docking import DockingResult, DockingRun, DockingScore, Pose
-from caddsuite.contracts.execution import ResourceRequest
+from caddsuite.contracts.execution import ResourceRequest, SoftwareEnvironment
 from caddsuite.contracts.registry import Compound, CompoundForm, Conformer
 from caddsuite.contracts.structure import BindingSite, PreparedReceptor, Structure
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
@@ -63,6 +63,7 @@ class VinaDockingHandler:
         artifact_store: ArtifactStore,
         sessions: sessionmaker[Session],
         memory_MiB: int | None = None,
+        software_environment: SoftwareEnvironment | None = None,
     ) -> None:
         self.vina_executable = vina_executable.resolve(strict=True)
         self.meeko_python = meeko_python.resolve(strict=True)
@@ -78,6 +79,7 @@ class VinaDockingHandler:
         self.artifact_store = artifact_store
         self.sessions = sessions
         self.memory_MiB = memory_MiB
+        self.software_environment = software_environment
         self.work_root.mkdir(parents=True, exist_ok=True)
         self.log_root.mkdir(parents=True, exist_ok=True)
 

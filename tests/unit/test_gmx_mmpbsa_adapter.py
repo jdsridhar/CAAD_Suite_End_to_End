@@ -9,8 +9,6 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from test_binding_energy_request import _request_data
-from test_gmx_mmpbsa_results import _report_pair
 
 from caddsuite.adapters.binding_energy.gmx_mmpbsa import (
     GromacsMMPBSAAdapter,
@@ -29,6 +27,8 @@ from caddsuite_worker.gmx_mmpbsa_worker import (
 from caddsuite_worker.gmx_mmpbsa_worker import (
     _run as run_worker,
 )
+from tests.unit.test_binding_energy_request import _request_data
+from tests.unit.test_gmx_mmpbsa_results import _report_pair
 
 
 def _stage(tmp_path: Path) -> tuple[BindingEnergyRequest, dict[str, Path]]:

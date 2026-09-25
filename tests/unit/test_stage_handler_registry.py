@@ -10,6 +10,7 @@ from caddsuite.application.handlers import (
     StageHandlerRegistration,
     StageHandlerRegistry,
 )
+from caddsuite.application.md_stage_plugin import MDStagePlugin
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.application.vina_stage_plugin import VinaStagePlugin
 from caddsuite.contracts.base import VersionedContract
@@ -159,3 +160,19 @@ def test_vina_plugin_exposes_prepared_scientific_inputs_and_normalized_result() 
 def test_installed_entry_point_discovers_vina_without_probing_engine() -> None:
     registry = StageHandlerRegistry.discover()
     assert registry.snapshot().capabilities.resolve("docking", "vina") is not None
+
+
+def test_md_plugin_registers_two_engine_capabilities_with_common_contracts() -> None:
+    registry = StageHandlerRegistry([MDStagePlugin()])
+    snapshot = registry.snapshot()
+    for engine in ("gromacs", "openmm"):
+        capability = snapshot.capabilities.resolve("molecular_dynamics", engine)
+        assert capability is not None
+        assert {item.name for item in capability.inputs} == {"system_build", "stage_input"}
+        assert capability.outputs == ("md_stage_result/1.0",)
+
+
+def test_installed_entry_point_discovers_md_providers_without_probing_engines() -> None:
+    registry = StageHandlerRegistry.discover()
+    assert registry.snapshot().capabilities.resolve("molecular_dynamics", "gromacs")
+    assert registry.snapshot().capabilities.resolve("molecular_dynamics", "openmm")

@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 11 — Provenance |
-| **Last completed** | Phase 10 gate: Psi4 regressions + PySCF second-engine plugin; engine-enabled suite 494 passed, 22 optional skips; legacy baseline 143/143 (2026-09-25) |
-| **Current task** | [-] 11.1 Audit and complete per-attempt provenance capture |
-| **Next task** | Implement the MD execution-stage handler using the normalized MDStageResult and adapter-owned post-step validation; prove it with a short real engine run through LocalWorkflowRuntime |
+| **Last completed** | Phase 11.1 per-attempt provenance foundation; QM and GROMACS runtime attempts capture parameters, software, environment locks, argv/logs, resources, and artifact lineage. Latest full gate: 514 passed, 25 skipped (2026-09-26) |
+| **Current task** | [-] 11.2 Provenance graph queries via CLI/API |
+| **Next task** | Add Vina execution-through-runtime evidence; then implement 11.2 provenance graph queries via CLI/API |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -291,7 +291,7 @@ When the user says **CONTINUE**:
 
 ## Phase 11 — Provenance [-]
 
-- [-] 11.1 Complete per-attempt provenance capture (argv, environment snapshot, host, resources, seeds, versions, Git and artifacts).
+- [x] 11.1 Complete per-attempt provenance capture (argv, environment snapshot, host, resources, seeds, versions, Git and artifacts).
   - [x] Audit existing HostInfo, PlatformRef, environment snapshots, executor records and attempt/agent/artifact schema. Documented gaps and migration boundary in docs/architecture/PROVENANCE_AUDIT.md.
   - [x] Preserve sanitized explicit process-environment overrides in StepRecord; redact keys that suggest secrets; add regression coverage.
   - [x] Add versioned TaskAttempt contract and transactional start/finalize store for typed host/platform/resources/parameters, engine/software refs, environment, steps, errors and used/generated artifact links. Migration 0005 adds payload and indexed environment ID.
@@ -305,8 +305,9 @@ When the user says **CONTINUE**:
   - [x] Integration tests verify plugin discovery to capability compile to handler construction to runtime execution to automatic TaskAttempt persistence, including resource requests.
   - [x] Add generic QM port-backed stage plugin for Psi4/PySCF. The handler executes adapter plans through LocalExecutor, stores raw outputs, and returns normalized QMResult. Runtime captures the worker Conda explicit lock, resources, host, argv/logs, and used/generated artifact edges.
   - [x] Real PySCF ethanol single-point run through StageHandlerRegistry + LocalWorkflowRuntime: normalized result and successful TaskAttempt; environment lock, resource request and artifact edges persisted. This validates orchestration plumbing, not binding accuracy.
-  - [x] CLI run loads typed normalized-contract JSON inputs, ingests and hash-verifies artifact attachments, creates and updates WorkflowRun records, and invokes StageHandlerRegistry + LocalWorkflowRuntime. A real PySCF CLI single-point run and Psi4/PySCF application-level runs passed with successful attempt provenance. API execution and docking/MD stage providers remain. The QM provider currently executes one calculation per invocation.
+  - [x] CLI run loads typed normalized-contract JSON inputs, ingests and hash-verifies artifact attachments, creates and updates WorkflowRun records, and invokes StageHandlerRegistry + LocalWorkflowRuntime. A real PySCF CLI single-point run and Psi4/PySCF application-level runs passed with successful attempt provenance. Vina execution-through-runtime evidence and API execution remain. The QM provider currently executes one calculation per invocation.
   - [-] Add built-in Vina stage entry point exposing the audited handler through normalized compound/form/conformer/receptor/structure/site inputs and DockingResult output. Capability discovery and required-port contract tests pass; direct real Vina/Meeko preparation+docking+complex integration passes (168.42 s). Runtime attempt-provenance integration for Vina remains pending; current real integration invokes the handler directly.
+  - [x] Add built-in MD stage providers for GROMACS and OpenMM with adapter-owned artifact path mapping and post-step validation; `MDStageResult` records stage lineage, engine/adapter versions, effective parameters, runtime, and hashed outputs. GROMACS Conda prefix locks are captured as provenance artifacts.
 - [ ] 11.2 Provenance graph queries via CLI/API
 - [ ] 11.3 Legacy importers: docking projects + MD projects → provenance-partial records
 - [ ] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
@@ -322,7 +323,7 @@ When the user says **CONTINUE**:
 
 ## Phase 13 — API + UI `[ ]`
 
-- [-] 13.1 Application runtime + capability-aware StageHandlerRegistry are implemented and tested. Remaining: built-in engine factories, CLI/API composition, FastAPI REST/SSE security and validated uploads
+- [-] 13.1 Application runtime + StageHandlerRegistry are implemented; built-in QM, Vina, GROMACS, and OpenMM providers are registered. A real 50-step GROMACS production stage ran through registry -> LocalWorkflowRuntime, returned MDStageResult, and persisted successful TaskAttempt provenance and Conda lock. Remaining: Vina runtime execution evidence, REST/SSE API, security and validated uploads.
 - [ ] 13.2 OpenAPI → TypeScript client
 - [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes

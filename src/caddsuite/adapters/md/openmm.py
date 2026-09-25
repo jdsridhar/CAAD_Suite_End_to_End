@@ -8,7 +8,7 @@ from typing import Annotated, Literal, NoReturn
 
 from pydantic import Field, StrictInt, field_validator, model_validator
 
-from caddsuite.contracts.base import ContractModel, NonEmptyStr, PositiveFloat
+from caddsuite.contracts.base import ArtifactRef, ContractModel, NonEmptyStr, PositiveFloat
 from caddsuite.contracts.md import MDStage, MDStageInput, MDStageKind
 from caddsuite.contracts.system import SystemBuildResult
 from caddsuite.ports.adapters import AdapterContext, CommandStep, ExecutionPlan
@@ -175,6 +175,13 @@ class OpenMMMDAdapter:
                 for extension in ("dcd", "pdb", "csv", "result.json")
             ),
         )
+
+    def stage_input_artifacts(self, context: AdapterContext) -> dict[str, ArtifactRef]:
+        build, parameters, _stage, stage_input = self._resolve(context)
+        bindings = dict(build.system.engine_inputs["openmm"])
+        bindings[parameters.topology_path] = stage_input.artifacts["topology"]
+        bindings[parameters.coordinates_path] = stage_input.artifacts["coordinates"]
+        return bindings
 
     def validate_execution_step(
         self, context: AdapterContext, step_index: int, stdout: bytes, stderr: bytes

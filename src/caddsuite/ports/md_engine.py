@@ -6,11 +6,12 @@ needs the shared stage contracts, capability declaration, and returned execution
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Literal, Protocol
 
 from pydantic import Field, model_validator
 
-from caddsuite.contracts.base import ContractModel, NonEmptyStr
+from caddsuite.contracts.base import ArtifactRef, ContractModel, NonEmptyStr
 from caddsuite.contracts.md import MDStageKind
 from caddsuite.ports.adapters import AdapterContext, ExecutionPlan
 from caddsuite.validation.issues import ValidationIssue
@@ -62,6 +63,8 @@ class MDExecutionEngine(Protocol):
     capabilities: MDExecutionCapabilities
 
     def validate_stage(self, context: AdapterContext) -> tuple[ValidationIssue, ...]: ...
+
+    def stage_input_artifacts(self, context: AdapterContext) -> Mapping[str, ArtifactRef]: ...
 
     def plan_stage(self, context: AdapterContext) -> ExecutionPlan: ...
 

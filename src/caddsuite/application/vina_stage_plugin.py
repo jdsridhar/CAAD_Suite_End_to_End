@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic import Field
 
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
+from caddsuite.application.environment import capture_conda_environment
 from caddsuite.application.handlers import StageHandlerRegistration
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ContractModel
@@ -114,6 +115,7 @@ class VinaStagePlugin:
             artifact_store=services.artifacts,
             sessions=services.sessions,
             memory_MiB=settings.memory_MiB,
+            software_environment=capture_conda_environment(meeko_python.parent.parent, services),
         )
         return handler
 
