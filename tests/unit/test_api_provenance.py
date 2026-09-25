@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event
@@ -15,11 +16,12 @@ from caddsuite.contracts.evidence import Candidate
 from caddsuite.contracts.execution import AttemptArtifact, AttemptStatus
 from caddsuite.domain.enums import TaskState
 from caddsuite.domain.identity import new_ulid
+from caddsuite.execution.local import CommandSpec
 from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 from caddsuite.storage.attempts import TaskAttemptStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
-from caddsuite.storage.models import ProjectRow, WorkflowRunRow
+from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
 from caddsuite.storage.paths import artifacts_root, database_path
 from caddsuite.storage.task_state import TaskStateStore
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
@@ -228,34 +230,47 @@ def test_api_executes_normalized_workflow_and_persists_run_state(tmp_path: Path)
         assert repeated.status_code == 409
 
 
-class _BlockingCandidateHandler(_EchoCandidateHandler):
+class _ProcessCandidateHandler(_EchoCandidateHandler):
     started = Event()
-    release = Event()
+
+    def __init__(self, executor: object, log_dir: Path) -> None:
+        self.executor = executor
+        self.log_dir = log_dir
 
     def execute(self, invocation: TaskInvocation) -> Candidate:
         self.started.set()
-        if not self.release.wait(timeout=5):
-            raise TimeoutError("test handler was not released")
+        self.executor.start(
+            CommandSpec(
+                argv=(
+                    sys.executable,
+                    "-c",
+                    "import time; print('started', flush=True); time.sleep(30)",
+                ),
+                cwd=self.log_dir.parent,
+            ),
+            log_dir=self.log_dir,
+        ).wait(timeout=40)
         return super().execute(invocation)
 
 
-class _BlockingCandidatePlugin(_EchoCandidatePlugin):
-    plugin_id = "tests.blocking_candidate"
+class _ProcessCandidatePlugin(_EchoCandidatePlugin):
+    plugin_id = "tests.process_candidate"
 
     def registrations(self) -> tuple[StageHandlerRegistration, ...]:
         registration = super().registrations()[0]
-        capability = registration.capability.model_copy(update={"kind": "test.blocking_candidate"})
+        capability = registration.capability.model_copy(update={"kind": "test.process_candidate"})
         return (
             StageHandlerRegistration(
                 capability=capability,
-                factory=lambda _stage, _services: _BlockingCandidateHandler(),
+                factory=lambda _stage, services: _ProcessCandidateHandler(
+                    services.executor, services.run_root / "process-cancel"
+                ),
             ),
         )
 
 
-def test_api_cancel_is_cooperative_at_stage_boundary(tmp_path: Path) -> None:
-    _BlockingCandidateHandler.started = Event()
-    _BlockingCandidateHandler.release = Event()
+def test_api_cancel_terminates_active_local_process(tmp_path: Path) -> None:
+    _ProcessCandidateHandler.started = Event()
     migrate.upgrade(database_path(tmp_path))
     engine = create_db_engine(database_path(tmp_path))
     sessions = make_session_factory(engine)
@@ -268,26 +283,26 @@ def test_api_cancel_is_cooperative_at_stage_boundary(tmp_path: Path) -> None:
 
     workflow = {
         "schema": "caddsuite.workflow/1",
-        "name": "Cancelable echo",
+        "name": "Cancelable process",
         "inputs": {"candidate": {"contract": "candidate/1.0"}},
         "stages": [
             {
-                "id": "echo",
-                "kind": "test.blocking_candidate",
+                "id": "execute",
+                "kind": "test.process_candidate",
                 "input_contracts": {"candidate": "candidate/1.0"},
                 "input_bindings": {"candidate": "$candidate"},
                 "output_contract": "candidate/1.0",
                 "params": {},
             }
         ],
-        "outputs": {"candidate": "echo"},
+        "outputs": {"candidate": "execute"},
     }
     candidate = Candidate(id=new_ulid(), compound_id=new_ulid(), project_id=project_id)
     run_id = str(new_ulid())
     app = create_app(
         data_root=tmp_path,
         token="test-secret",  # noqa: S106
-        stage_registry=StageHandlerRegistry([_BlockingCandidatePlugin()]),
+        stage_registry=StageHandlerRegistry([_ProcessCandidatePlugin()]),
     )
     headers = {"Authorization": "Bearer test-secret"}
     with TestClient(app) as client:
@@ -297,13 +312,12 @@ def test_api_cancel_is_cooperative_at_stage_boundary(tmp_path: Path) -> None:
             json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
         )
         assert submitted.status_code == 202
-        assert _BlockingCandidateHandler.started.wait(timeout=3)
+        assert _ProcessCandidateHandler.started.wait(timeout=3)
         cancellation = client.post(
             f"/v1/projects/{project_id}/runs/{run_id}/cancel", headers=headers
         )
         assert cancellation.status_code == 202
-        _BlockingCandidateHandler.release.set()
-        deadline = monotonic() + 3
+        deadline = monotonic() + 5
         status_response = client.get(
             f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
         )
@@ -315,6 +329,11 @@ def test_api_cancel_is_cooperative_at_stage_boundary(tmp_path: Path) -> None:
             )
         assert status_response.json()["status"] == "stopped"
         assert status_response.json()["submission"]["cancel_requested"] is True
+        assert status_response.json()["tasks"][0]["state"] == "cancelled"
+        with app.state.sessions() as session:
+            attempt = session.query(TaskAttemptRow).one()
+            assert attempt.exit_status == "cancelled"
+            assert len(attempt.steps or []) == 1
 
 
 def _docking_workflow_payload() -> dict[str, object]:

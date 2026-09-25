@@ -26,6 +26,7 @@ from caddsuite.contracts.execution import (
     TaskAttempt,
 )
 from caddsuite.domain.enums import LicenseClass, SoftwareKind, TaskState
+from caddsuite.domain.errors import ExecutionCancelled
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.attempt_context import AttemptExecutionData, capture_attempt_execution
 from caddsuite.provenance.host import capture_host_info
@@ -228,6 +229,9 @@ class WorkflowScheduler:
                     task, handler, run_id=run_id, subject_id=subject_id, inputs=stage_inputs
                 )
                 outcomes.append(outcome)
+                if outcome.state is TaskState.CANCELLED:
+                    stopped = True
+                    break
                 if produced is not None:
                     stage_values.append(produced)
                 elif task.on_fail == "stop":
@@ -444,6 +448,21 @@ class WorkflowScheduler:
                 )
                 result = candidate
                 break
+            except ExecutionCancelled as exc:
+                error = str(exc)
+                self._finish_attempt(
+                    attempt,
+                    AttemptStatus.CANCELLED,
+                    execution_data,
+                    stage_id=task.stage_id,
+                )
+                record = self._transition(record, TaskState.CANCELLED, reason=error)
+                return (
+                    TaskOutcome(
+                        task.stage_id, record.id, record.state, subject_id, None, error=error
+                    ),
+                    None,
+                )
             except StageExecutionFailure as exc:
                 error = str(exc)
                 self._finish_attempt(

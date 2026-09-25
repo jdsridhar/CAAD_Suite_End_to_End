@@ -9,11 +9,13 @@ import time
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
+from threading import Event, Timer
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from caddsuite.domain.enums import TaskState
+from caddsuite.domain.errors import ExecutionCancelled
 from caddsuite.execution.local import CommandSpec, ExecutionError, LocalExecutor, ProcessRecord
 from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore
@@ -273,3 +275,32 @@ def test_step_record_captures_explicit_environment_and_redacts_secrets(
         "OMP_NUM_THREADS": "2",
     }
     assert "never-persist-this" not in repr(result.step.model_dump())
+
+
+def test_cancellation_callback_kills_process_and_captures_logs(
+    tmp_path: Path, executor: tuple[LocalExecutor, Path, sessionmaker[Session]]
+) -> None:
+    _base, log_dir, sessions = executor
+    cancellation = Event()
+    local = LocalExecutor(
+        ArtifactStore(tmp_path / "cancel-artifacts"),
+        sessions,
+        cancellation_check=cancellation.is_set,
+    )
+    command = local.start(
+        CommandSpec(argv=(sys.executable, "-c", "import time; time.sleep(30)"), cwd=tmp_path),
+        log_dir=log_dir,
+    )
+    timer = Timer(0.15, cancellation.set)
+    timer.start()
+    try:
+        with pytest.raises(ExecutionCancelled, match="process-group termination"):
+            command.wait(timeout=5)
+    finally:
+        timer.cancel()
+        timer.join(timeout=1)
+
+    assert command.poll() is not None
+    assert command._result is not None
+    assert command._result.exit_code != 0
+    assert local._artifacts.open(command._result.stderr.sha256).read() == b""

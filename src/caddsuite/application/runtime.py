@@ -91,6 +91,7 @@ class LocalWorkflowRuntime:
         data_root: Path | None = None,
         environment_resolver: EnvironmentResolver | None = None,
         resource_resolver: ResourceResolver | None = None,
+        cancellation_check: Callable[[], bool] | None = None,
     ) -> LocalWorkflowRuntime:
         """Initialize the local database/artifact stores, then compose trusted handlers."""
         root = resolve_data_root(data_root)
@@ -103,7 +104,9 @@ class LocalWorkflowRuntime:
             artifact_store = ArtifactStore(artifacts_root(root))
             run_root = root / "runs"
             run_root.mkdir(parents=True, exist_ok=True)
-            executor = LocalExecutor(artifact_store, sessions)
+            executor = LocalExecutor(
+                artifact_store, sessions, cancellation_check=cancellation_check
+            )
             services = LocalRuntimeServices(
                 data_root=root,
                 run_root=run_root,

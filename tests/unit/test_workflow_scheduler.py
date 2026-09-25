@@ -14,6 +14,7 @@ from caddsuite.contracts.base import ArtifactRef, VersionedContract
 from caddsuite.contracts.registry import CompoundForm, CompoundFormKind
 from caddsuite.contracts.reporting import ReportArtifact, ReportBundle
 from caddsuite.domain.enums import TaskState
+from caddsuite.domain.errors import ExecutionCancelled
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import CommandSpec, LocalExecutor
 from caddsuite.storage import migrate
@@ -581,3 +582,32 @@ def test_scheduler_honors_cancellation_before_starting_a_stage(scheduler_env) ->
 
     assert outcome.stopped
     assert outcome.tasks == ()
+
+
+def test_scheduler_records_cancelled_attempt_and_stops_workflow(scheduler_env) -> None:
+    tasks, cache, run_id, _second_run_id, project_id, attempts, sessions = scheduler_env
+
+    class CancelHandler(FakeHandler):
+        def execute(self, _invocation: TaskInvocation) -> VersionedContract:
+            raise ExecutionCancelled("process-group cancellation confirmed")
+
+    scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=cache,
+        handlers={"select": CancelHandler(project_id)},
+        attempt_store=attempts,
+    )
+    outcome = scheduler.run(
+        _compiled(gate=False),
+        run_id=run_id,
+        inputs={"ligands": (_form(project_id, "cancelled"),)},
+    )
+
+    assert outcome.stopped
+    assert outcome.tasks[0].state is TaskState.CANCELLED
+    assert not outcome.failures
+    with sessions() as session:
+        attempt_row = (
+            session.query(TaskAttemptRow).filter_by(task_id=outcome.tasks[0].task_id).one()
+        )
+    assert attempts.get(attempt_row.id).status.value == "cancelled"

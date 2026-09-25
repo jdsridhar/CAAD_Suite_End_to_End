@@ -11,7 +11,7 @@ import re
 import signal
 import subprocess
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from caddsuite.contracts.base import ArtifactRef
 from caddsuite.contracts.execution import StepRecord
+from caddsuite.domain.errors import ExecutionCancelled
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 
@@ -101,24 +102,59 @@ class RunningCommand:
     def wait(self, timeout: float | None = None) -> ExecutionResult:
         if self._result is not None:
             return self._result
-        if self._process is not None:
-            exit_code = self._process.wait(timeout=timeout)
+        cancellation_confirmed = False
+        if self._executor.cancellation_check is None:
+            if self._process is not None:
+                exit_code = self._process.wait(timeout=timeout)
+            else:
+                deadline = None if timeout is None else time.monotonic() + timeout
+                while _same_process_is_alive(self.record):
+                    if deadline is not None and time.monotonic() >= deadline:
+                        raise subprocess.TimeoutExpired(
+                            self.record.argv, timeout if timeout is not None else 0
+                        )
+                    time.sleep(0.1)
+                raise ExecutionError(
+                    "reattached process ended without an exit status; its outcome is unknown"
+                )
         else:
             deadline = None if timeout is None else time.monotonic() + timeout
-            while _same_process_is_alive(self.record):
+            while True:
+                if self._process is not None:
+                    polled_exit_code = self._process.poll()
+                    if polled_exit_code is not None:
+                        exit_code = polled_exit_code
+                        break
+                elif not _same_process_is_alive(self.record):
+                    raise ExecutionError(
+                        "reattached process ended without an exit status; its outcome is unknown"
+                    )
+                if self._executor.cancellation_check():
+                    self.cancel()
+                    cancellation_confirmed = True
+                    cancelled_exit_code = (
+                        self._process.returncode if self._process is not None else -signal.SIGTERM
+                    )
+                    if cancelled_exit_code is None:
+                        raise ExecutionError(
+                            "cancellation was requested but process exit is unknown"
+                        )
+                    exit_code = cancelled_exit_code
+                    break
                 if deadline is not None and time.monotonic() >= deadline:
                     raise subprocess.TimeoutExpired(
                         self.record.argv, timeout if timeout is not None else 0
                     )
-                time.sleep(0.1)
-            raise ExecutionError(
-                "reattached process ended without an exit status; its outcome is unknown"
-            )
+                time.sleep(0.2)
         self._result = self._executor._finalize(
             self.record,
             exit_code,
             self._elapsed(),
         )
+        if cancellation_confirmed:
+            raise ExecutionCancelled(
+                f"cancelled process {self.record.pid} after process-group termination"
+            )
         return self._result
 
     def cancel(self, *, grace_seconds: float = 5.0) -> None:
@@ -148,11 +184,18 @@ class RunningCommand:
 class LocalExecutor:
     """Run argv commands in isolated POSIX process groups and store their logs as artifacts."""
 
-    def __init__(self, artifacts: ArtifactStore, sessions: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        artifacts: ArtifactStore,
+        sessions: sessionmaker[Session],
+        *,
+        cancellation_check: Callable[[], bool] | None = None,
+    ) -> None:
         if os.name != "posix" or not Path("/proc").is_dir():
             raise RuntimeError("LocalExecutor currently requires a Linux /proc environment")
         self._artifacts = artifacts
         self._sessions = sessions
+        self.cancellation_check = cancellation_check
 
     def start(self, spec: CommandSpec, *, log_dir: Path) -> RunningCommand:
         argv, cwd, env = _validate_spec(spec)

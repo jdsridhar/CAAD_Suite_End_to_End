@@ -142,6 +142,7 @@ def create_app(
             with LocalWorkflowRuntime.open(
                 data_root=root,
                 handlers=lambda services: registry.build_handlers(request.workflow, services),
+                cancellation_check=cancel_requested,
             ) as runtime:
                 outcome = runtime.run(
                     compiled,
