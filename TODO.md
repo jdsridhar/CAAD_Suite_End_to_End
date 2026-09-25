@@ -287,6 +287,8 @@ When the user says **CONTINUE**:
 - [x] 10.9 **Gate:** real Psi4 G-DFT-1/3 and PySCF integration; engine-enabled suite 494 passed, 22 optional skips; default suite 484 passed, 29 skips; Ruff, strict mypy (152 source files), import-linter, schema freshness, diff check, frozen baseline 143/143 pass.
 
 
+- [x] 10.10 Register Psi4 as a built-in `caddsuite.qm_engines` plugin alongside PySCF; registry test discovers both engine IDs without importing engine runtimes into core. This proves same-port engine discovery only; Psi4 application-stage execution wiring remains in Phase 13.1. Focused registry tests: 3 passed.
+
 ## Phase 11 — Provenance [-]
 
 - [-] 11.1 Complete per-attempt provenance capture (argv, environment snapshot, host, resources, seeds, versions, Git and artifacts).
@@ -411,6 +413,8 @@ When the user says **CONTINUE**:
 - No Phase 3 implementation blocker. Apache-2.0 is selected, LICENSE and NOTICE are present, and main is published to the configured GitHub remote.
 
 ## Session log
+
+| 2026-09-25 | Registered the existing Psi4QMAdapter through the QM engine entry-point registry beside PySCF and extended discovery coverage to assert both engines are available. No scientific workflow or result contract changed; this verifies registry discovery, not an application-level Psi4 calculation. Quality gate: 496 passed, 29 optional skips; Ruff, format, strict mypy (158 files), import-linter, schemas, frozen legacy baseline (143/143) pass. |
 
 | Date | Session summary |
 |---|---|

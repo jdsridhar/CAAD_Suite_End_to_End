@@ -51,6 +51,7 @@ caddsuite = "caddsuite.cli.main:app"
 
 [project.entry-points."caddsuite.qm_engines"]
 pyscf = "caddsuite.adapters.qm.pyscf_plugin:plugin_factory"
+psi4 = "caddsuite.adapters.qm.psi4_plugin:plugin_factory"
 
 [tool.hatch.version]
 path = "src/caddsuite/__init__.py"

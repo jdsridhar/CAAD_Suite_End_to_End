@@ -39,6 +39,6 @@ def test_registry_rejects_duplicate_engine_ids() -> None:
         QMEngineRegistry((FakePlugin("test.one", first), FakePlugin("test.two", second)))
 
 
-def test_builtin_pyscf_plugin_is_discoverable_through_qm_engine_group() -> None:
+def test_builtin_qm_plugins_are_discoverable_through_qm_engine_group() -> None:
     registry = QMEngineRegistry.discover()
-    assert "caddsuite.qm.pyscf" in registry.snapshot().engines
+    assert {"caddsuite.qm.pyscf", "caddsuite.qm.psi4"} <= set(registry.snapshot().engines)
