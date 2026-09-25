@@ -1,0 +1,197 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ReportSectionName": {
+      "enum": [
+        "project",
+        "target",
+        "compound",
+        "input_structures",
+        "admet",
+        "docking_method",
+        "docking_results",
+        "selected_poses",
+        "interactions",
+        "md_method",
+        "md_parameters",
+        "rmsd",
+        "rmsf",
+        "trajectory_analyses",
+        "mm_pbsa_gbsa",
+        "dft_method",
+        "homo",
+        "lumo",
+        "homo_lumo_gap",
+        "dipole",
+        "mep",
+        "quantum_properties",
+        "integrated_evidence",
+        "limitations",
+        "reproducibility",
+        "software_versions",
+        "parameters",
+        "computational_environment"
+      ],
+      "title": "ReportSectionName",
+      "type": "string"
+    },
+    "ReportSectionStatus": {
+      "enum": [
+        "available",
+        "not_run",
+        "unavailable"
+      ],
+      "title": "ReportSectionStatus",
+      "type": "string"
+    },
+    "ScientificReportSection": {
+      "additionalProperties": false,
+      "description": "One report topic; absent calculations are explicit rather than fabricated.",
+      "properties": {
+        "artifacts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "title": "Artifacts",
+          "type": "array"
+        },
+        "data": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "$ref": "#/$defs/ReportSectionName"
+        },
+        "notes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "source_attempt_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "type": "string"
+          },
+          "title": "Source Attempt Ids",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/ReportSectionStatus"
+        }
+      },
+      "required": [
+        "name",
+        "status"
+      ],
+      "title": "ScientificReportSection",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/scientific_report/1.0",
+  "additionalProperties": false,
+  "description": "Structured scientific report content, independent of HTML/PDF/JSON renderers.",
+  "properties": {
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "interpretation_notice": {
+      "default": "Computational predictions prioritize candidates for review; they do not establish experimental activity or clinical efficacy.",
+      "title": "Interpretation Notice",
+      "type": "string"
+    },
+    "limitations": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "project_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Project Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "scientific_report/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/ScientificReportSection"
+      },
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "project_id",
+    "title",
+    "generated_at",
+    "sections"
+  ],
+  "title": "ScientificReport",
+  "type": "object"
+}

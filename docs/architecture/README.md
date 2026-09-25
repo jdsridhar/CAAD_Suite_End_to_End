@@ -100,3 +100,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 
 - [Software and environment version drift warnings](VERSION_DRIFT.md)
 - [ADR-0034: Provenance version drift warnings](ADR/0034-provenance-version-drift-warnings.md)
+
+- [ADR-0035: Structured scientific report contract](ADR/0035-structured-scientific-report-contract.md)

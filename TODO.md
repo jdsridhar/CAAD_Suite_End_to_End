@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 12 — Provenance |
-| **Current task** | [-] 12.1 Report model and artifact-aware sections |
-| **Next task** | Derive report content from normalized outputs and provenance; preserve explicit scientific limitations |
-| **Last completed** | Phase 11 provenance gate: legacy import, drift advisory endpoint, and real Vina artifact lineage query/hash verification. Cross-stage Docking-to-MD-to-QM remains future integration work. |
+| **Current phase** | Phase 12 — Reporting |
+| **Current task** | [-] 12.2 Methods text from provenance; limitations from validation evidence |
+| **Next task** | Implement report assembly and HTML/JSON/CSV renderers from a real run |
+| **Last completed** | 12.1 typed scientific report content contract and all 28 report topics; phase 11 provenance gate passed. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -319,24 +319,25 @@ When the user says **CONTINUE**:
   - [x] Add preview/import CLI, docs, ADR-0033, and exported JSON schema.
   - [x] Synthetic tests cover bounds, metadata, artifacts, provenance lineage and idempotence. Real source folders were only inventoried; no user project copied.
   - [x] Full gate: Ruff/format, strict mypy (170 files), import-linter (4 kept/0 broken), schema check; pytest 526 passed, 25 skipped. Frozen source manifest 143/143; git diff --check clean.
-- [-] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
+- [x] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
   - [x] Compare recorded software versions by software name, kind and role across project attempts; unknown versions are omitted.
   - [x] Compare captured environment lock hashes and link warnings to attempt IDs.
   - [x] Add authenticated read-only project endpoint; API verifies auth and empty-drift response.
   - [x] Document advisory semantics and limitations; tests cover version/environment drift and unrelated or unknown software.
   - [x] Full gate: Ruff/format, strict mypy (171 files), import-linter (4 kept/0 broken), schema check; pytest 528 passed, 25 skipped.
-  - [-] Review diff, commit and push.
+  - [x] Review diff, commit and push.
 - [x] 11.5 **Gate:** complete provenance chain for a demo run (single real Vina docking stage)
   - [x] Extend real Vina stage integration to query upstream lineage and hash-verify every used/generated artifact.
   - [x] Record demo evidence and explicit single-stage scope; cross-stage Docking-to-MD-to-QM remains unvalidated.
   - [x] Real Vina/Meeko, complex assembly, and 8YZ redocking integration passed in 161.18 s; the G-DOCK-4 <2 A target remains unmet.
-  - [-] Extend real Vina stage integration to query upstream lineage and hash-verify every used/generated artifact.
-  - [ ] Record the demo evidence and explicit single-stage scope; cross-stage Docking-to-MD-to-QM remains unvalidated.
-  - [ ] Full gate, frozen legacy manifest, review, commit and push.
-
 ## Phase 12 — Reporting `[-]`
 
-- [ ] 12.1 Report model + sections (all 28 items from req. §31, present when the stage ran)
+- [x] 12.1 Report model + sections (all 28 requested topics, present when the stage ran)
+  - [x] Add ScientificReport and typed section/status contracts separate from rendered ReportBundle artifacts.
+  - [x] Enumerate 28 report topics; represent not-run and unavailable explicitly.
+  - [x] Require data or artifacts for available sections and reject duplicate topics.
+  - [x] Add the computational-prediction disclaimer and export the JSON Schema.
+  - [x] Focused tests (3 passed), Ruff, format, strict mypy, schema freshness and diff check passed.
 - [ ] 12.2 Methods text generated from provenance; limitations from validation issues
 - [ ] 12.3 Renderers: HTML, PDF, JSON, CSV; figure pipeline
 - [ ] 12.4 Evidence + ranking scheme (explicit criteria, weights, contributions; fixed disclaimer)
