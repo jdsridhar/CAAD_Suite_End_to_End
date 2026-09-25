@@ -49,6 +49,9 @@ caddsuite = "caddsuite.cli.main:app"
 # They are added as each engine family is migrated (Phase 4 onwards).
 [project.entry-points."caddsuite.adapters"]
 
+[project.entry-points."caddsuite.stage_handlers"]
+qm = "caddsuite.application.qm_stage_plugin:plugin_factory"
+
 [project.entry-points."caddsuite.qm_engines"]
 pyscf = "caddsuite.adapters.qm.pyscf_plugin:plugin_factory"
 psi4 = "caddsuite.adapters.qm.psi4_plugin:plugin_factory"

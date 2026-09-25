@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -45,6 +46,7 @@ class QMTaskPlan:
     execution: ExecutionPlan
     timeout_seconds: int
     task_filename: str
+    output_roles: Mapping[str, str] = field(default_factory=dict)
 
 
 class QuantumChemistryEngine(Protocol):

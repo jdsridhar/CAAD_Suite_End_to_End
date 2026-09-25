@@ -7,7 +7,8 @@ Start with the audit, then read in this order:
 3. [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md): entities, accessions (`CMP0001_DOCK_001` …), normalized result contracts, units policy.
 4. [WORKFLOW_COMPILER.md](WORKFLOW_COMPILER.md): capability lookup, typed edges, deterministic task templates, and deferred fan-out.
 5. [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md): legacy → target mapping, golden datasets from your real results, phase gates, intentional-change log, risks.
-6. [`ADR/`](ADR/): the decisions and why they were made.
+6. [QM application runtime](QM_APPLICATION_RUNTIME.md): executing the QM port through the workflow and provenance layers.
+7. [`ADR/`](ADR/): the decisions and why they were made.
 
 ## Architecture Decision Records
 
@@ -92,3 +93,4 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0028: Scheduler-managed execution attempt provenance](ADR/0028-scheduler-attempt-provenance.md)
 
 - [ADR-0029: Local workflow application composition](ADR/0029-local-application-composition.md)
+- [ADR-0030: QM workflow stage runtime](ADR/0030-qm-stage-runtime.md)

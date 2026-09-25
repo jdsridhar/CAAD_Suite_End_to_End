@@ -188,6 +188,7 @@ class PySCFQMAdapter:
             ),
             timeout_seconds=config.timeout_seconds,
             task_filename=config.task_filename,
+            output_roles={"pyscf_final_geometry.xyz": "final_geometry"},
         )
 
     def normalize_result(

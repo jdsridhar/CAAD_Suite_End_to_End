@@ -9,7 +9,7 @@
 | **Current phase** | Phase 11 — Provenance |
 | **Last completed** | Phase 10 gate: Psi4 regressions + PySCF second-engine plugin; engine-enabled suite 494 passed, 22 optional skips; legacy baseline 143/143 (2026-09-25) |
 | **Current task** | [-] 11.1 Audit and complete per-attempt provenance capture |
-| **Next task** | Wire the CLI workflow run path to StageHandlerRegistry and LocalWorkflowRuntime; then finish Phase 11.1 with a real application-level provenance run |
+| **Next task** | Wire CLI workflow execution to StageHandlerRegistry and LocalWorkflowRuntime, including safe normalized input loading; then add docking and MD stage providers |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -303,7 +303,9 @@ When the user says **CONTINUE**:
   - [x] Add LocalWorkflowRuntime as the local application composition root; it initializes DB/artifact/executor services, constructs handlers through a factory, and always injects TaskAttemptStore. Environment and resource resolvers pass actual worker facts when known.
   - [x] Add entry-point StageHandlerRegistry to compile workflow definitions against plugin capabilities, require explicit engine choice for ambiguous stage kinds, and build only enabled handlers against shared runtime services.
   - [x] Integration tests verify plugin discovery to capability compile to handler construction to runtime execution to automatic TaskAttempt persistence, including resource requests.
-  - [-] CLI/API workflow execution still does not call the runtime; built-in factories for audited Vina/MD/QM workflows and one real application-level run remain required to close the gate.
+  - [x] Add generic QM port-backed stage plugin for Psi4/PySCF. The handler executes adapter plans through LocalExecutor, stores raw outputs, and returns normalized QMResult. Runtime captures the worker Conda explicit lock, resources, host, argv/logs, and used/generated artifact edges.
+  - [x] Real PySCF ethanol single-point run through StageHandlerRegistry + LocalWorkflowRuntime: normalized result and successful TaskAttempt; environment lock, resource request and artifact edges persisted. This validates orchestration plumbing, not binding accuracy.
+  - [-] CLI/API execution still does not invoke the runtime; normalized input deserialization and docking/MD providers remain required. A real application-level Psi4 run is also pending.
 - [ ] 11.2 Provenance graph queries via CLI/API
 - [ ] 11.3 Legacy importers: docking projects + MD projects → provenance-partial records
 - [ ] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
@@ -414,10 +416,9 @@ When the user says **CONTINUE**:
 
 ## Session log
 
-| 2026-09-25 | Registered the existing Psi4QMAdapter through the QM engine entry-point registry beside PySCF and extended discovery coverage to assert both engines are available. No scientific workflow or result contract changed; this verifies registry discovery, not an application-level Psi4 calculation. Quality gate: 496 passed, 29 optional skips; Ruff, format, strict mypy (158 files), import-linter, schemas, frozen legacy baseline (143/143) pass. |
-
 | Date | Session summary |
 |---|---|
+| 2026-09-25 | Added the built-in Psi4 engine registration, generic QM stage provider for Psi4/PySCF, declared output roles on QMTaskPlan, and default runtime capture of handler-provided environment and resources. Real Psi4 and PySCF ethanol single-point calculations passed through StageHandlerRegistry and LocalWorkflowRuntime, producing normalized QMResult and TaskAttempt with worker lock, resource request, command logs and artifact edges (2 focused engine integrations passed). Default full suite before adding the Psi4 case: 498 passed, 28 optional skips; static checks and 143/143 frozen legacy checksums pass. CLI and docking/MD provider integration remain incomplete. |
 | 2026-09-25 | Phase 11.1/13.1 composition advanced: added LocalWorkflowRuntime to initialize shared DB/artifact/LocalExecutor services and unconditionally inject TaskAttemptStore; added environment/resource resolvers. Added entry-point StageHandlerRegistry that compiles declared capabilities, requires explicit engine selection when ambiguous, and constructs enabled handlers with shared services. Runtime integration covers plugin discovery to execution to automatic attempt and resource persistence (5 focused tests pass). CLI remains plan-only and no production built-in handler factories are registered; a real application-level run is still required. ADR-0029, plugin development guide, provenance audit and learning notes updated. |
 | 2026-09-25 | Phase 11.1 scheduler integration advanced: WorkflowScheduler now persists one TaskAttempt per real execution/retry, including host/platform, adapter/engine, configured parameters, typed inputs/results, structured errors, and success/failed/unknown status. LocalExecutor command records and registered stdout/stderr artifacts flow through an invocation-local capture context. Recovery reconciles open attempts, and cache hits/skips produce none. Added ADR-0028, architecture audit updates and learning notes. Focused scheduler/store/executor suite: 13 passed; full gate pending. Application composition still needs to inject the store and resolve actual engine-worker environments/resources. |
 | 2026-09-25 | Continued Phase 11 provenance hardening: updated the CLI migration assertion to revision 0005; redaction now also masks environment names containing KEY, with GPG_KEY regression coverage. Full default gate: 490 passed, 29 optional skips; Ruff, strict mypy (153 files), import-linter, schemas and diff check pass. Automatic recorder wiring remains pending the application handler composition layer (13.1). |

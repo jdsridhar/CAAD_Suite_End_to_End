@@ -72,13 +72,15 @@ class LocalWorkflowRuntime:
         self.sessions = sessions
         self.services = services
         self.handlers = dict(handlers)
+        effective_environment_resolver = environment_resolver or _environment_from_handler
+        effective_resource_resolver = resource_resolver or _resources_from_handler
         self._scheduler = WorkflowScheduler(
             task_store=TaskStateStore(sessions),
             result_cache=ResultCache(sessions),
             handlers=self.handlers,
             attempt_store=TaskAttemptStore(sessions),
-            environment_resolver=environment_resolver,
-            resource_resolver=resource_resolver,
+            environment_resolver=effective_environment_resolver,
+            resource_resolver=effective_resource_resolver,
         )
 
     @classmethod
@@ -147,3 +149,18 @@ class LocalWorkflowRuntime:
 
     def __exit__(self, *_exc_info: object) -> None:
         self.close()
+
+
+def _environment_from_handler(handler: StageHandler) -> SoftwareEnvironment | None:
+    environment = getattr(handler, "software_environment", None)
+    return environment if isinstance(environment, SoftwareEnvironment) else None
+
+
+def _resources_from_handler(
+    handler: StageHandler, invocation: TaskInvocation
+) -> ResourceRequest | None:
+    resolver = getattr(handler, "resource_request", None)
+    if not callable(resolver):
+        return None
+    request = resolver(invocation)
+    return request if isinstance(request, ResourceRequest) else None

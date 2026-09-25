@@ -143,3 +143,11 @@ StageHandlerRegistry resolves workflow stage kind and selected engine using Stag
 This separates three jobs: the workflow definition says what scientific stages are requested, the plugin says how a selected engine implements one stage, and the runtime supplies common storage and execution services. It also gives the CLI, API and a headless script the same backend path.
 
 A deliberate limitation: the generic registry does not make existing engine-specific handlers interchangeable by itself. A Vina/GROMACS/Psi4 provider still needs a tested factory that reads configuration, probes the executable, and constructs its handler. The CLI still only displays workflow plans, so the real engine chain has not yet passed an application-level demo.
+
+## Phase 11.1 / 13.1 — Running the QM port as a workflow stage
+
+A scientific engine adapter and a workflow stage handler solve different integration problems. Psi4/PySCF adapters know their own input rules, worker command and result format. The generic QM stage handler connects those plans to the application’s content-addressed artifacts, safe local executor, task scheduler and provenance recorder. The normalized QMResult is what downstream stages should consume.
+
+The real PySCF runtime test is useful because it crosses those boundaries: typed inputs are compiled against capability declarations, a worker process is launched, the result is normalized, and a TaskAttempt captures environment and output lineage. The small ethanol single-point calculation checks execution plumbing and output contracts; it does not validate binding or biological activity.
+
+For interviews: explain why `QMEngineRegistry` and `StageHandlerRegistry` are separate. One discovers implementations of the QM scientific port; the other describes how an implementation participates in a workflow DAG.

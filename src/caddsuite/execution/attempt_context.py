@@ -45,3 +45,18 @@ def record_process_execution(step: StepRecord, stdout: ArtifactRef, stderr: Arti
             AttemptArtifact(artifact=stderr, direction="generated", role="stderr_log"),
         )
     )
+
+
+def record_generated_artifact(artifact: ArtifactRef, role: str | None = None) -> None:
+    """Attach an engine-produced artifact to the active workflow attempt."""
+    active = _ACTIVE.get()
+    if active is None:
+        return
+    edge = AttemptArtifact(
+        artifact=artifact, direction="generated", role=(role or artifact.role)[:64]
+    )
+    if all(
+        (item.artifact.artifact_id, item.role) != (edge.artifact.artifact_id, edge.role)
+        for item in active.generated_artifacts
+    ):
+        active.generated_artifacts.append(edge)

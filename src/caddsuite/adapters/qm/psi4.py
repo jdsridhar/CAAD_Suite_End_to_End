@@ -301,6 +301,7 @@ class Psi4QMAdapter:
             execution=ExecutionPlan(commands=(command,), expected_outputs=outputs),
             timeout_seconds=config.timeout_seconds,
             task_filename=config.task_filename,
+            output_roles={"psi4_calculation.final_geometry.xyz": "final_geometry"},
         )
 
     def normalize_result(
