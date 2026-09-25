@@ -93,3 +93,42 @@ def test_cli_provenance_reports_unknown_attempt(tmp_path: Path) -> None:
     result = runner.invoke(app, ["provenance", "missing-attempt", "--data-root", str(tmp_path)])
     assert result.exit_code == 2
     assert "task attempt 'missing-attempt' was not found" in result.output
+
+
+def test_cli_legacy_import_persists_partial_report_and_reuses_same_source(tmp_path: Path) -> None:
+    source = tmp_path / "legacy-docking"
+    source.mkdir()
+    (source / "project.conf").write_text("VINA_SEED=42\n", encoding="utf-8")
+    (source / "results.csv").write_text("name,score\nRC8,-8.1\n", encoding="utf-8")
+    data_root = tmp_path / "platform"
+
+    first = runner.invoke(
+        app,
+        ["legacy-import", str(source), "--kind", "docking", "--data-root", str(data_root)],
+    )
+    assert first.exit_code == 0, first.output
+    first_result = json.loads(first.output)
+    assert first_result["imported_file_count"] == 2
+    assert first_result["already_imported"] is False
+
+    repeated = runner.invoke(
+        app,
+        ["legacy-import", str(source), "--kind", "docking", "--data-root", str(data_root)],
+    )
+    assert repeated.exit_code == 0, repeated.output
+    repeated_result = json.loads(repeated.output)
+    assert repeated_result["already_imported"] is True
+    assert repeated_result["run_id"] == first_result["run_id"]
+
+
+def test_cli_legacy_import_plan_is_read_only(tmp_path: Path) -> None:
+    source = tmp_path / "legacy-dock-plan"
+    source.mkdir()
+    (source / "project.conf").write_text("VINA_SEED=42\n", encoding="utf-8")
+    (source / "jobs.csv").write_text("name,smiles,pdb_id,safe_id\n", encoding="utf-8")
+    result = runner.invoke(app, ["legacy-import-plan", str(source), "--kind", "docking"])
+    assert result.exit_code == 0, result.output
+    plan = json.loads(result.output)
+    assert plan["completeness"] == "partial"
+    assert plan["metadata"]["jobs.csv"]["row_count"] == 0
+    assert not (tmp_path / "caddsuite.db").exists()

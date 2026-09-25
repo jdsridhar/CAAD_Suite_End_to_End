@@ -7,12 +7,14 @@ import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, NoReturn
+from typing import Annotated, Literal, NoReturn
 
 import typer
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from caddsuite.application.legacy_import import plan_legacy_import
+from caddsuite.application.legacy_import_service import import_legacy_project
 from caddsuite.plugins.registry import PluginDiscoveryError, PluginRegistry
 from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore
@@ -377,6 +379,53 @@ def register_commands(app: typer.Typer) -> None:
                     typer.echo(stream.read(tail_bytes).decode("utf-8", errors="replace"), nl=False)
         finally:
             engine.dispose()
+
+    @app.command("legacy-import")
+    def legacy_import(
+        source_root: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+        kind: Annotated[Literal["docking", "md"], typer.Option("--kind")],
+        data_root: RootOption = None,
+    ) -> None:
+        """Import a legacy project and persist the import activity and partial provenance."""
+        root = resolve_data_root(data_root)
+        engine, sessions = _sessions(root)
+        try:
+            result = import_legacy_project(
+                source_root,
+                kind=kind,
+                sessions=sessions,
+                artifacts=ArtifactStore(artifacts_root(root)),
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            _fail(str(exc))
+        finally:
+            engine.dispose()
+        typer.echo(
+            json.dumps(
+                {
+                    "project_id": result.project_id,
+                    "run_id": result.run_id,
+                    "task_attempt_id": result.task_attempt_id,
+                    "source_manifest_sha256": result.report.source_manifest_sha256,
+                    "imported_file_count": len(result.report.imported_files),
+                    "omitted_file_count": len(result.report.omitted_files),
+                    "already_imported": result.already_imported,
+                },
+                indent=2,
+            )
+        )
+
+    @app.command("legacy-import-plan")
+    def legacy_import_plan(
+        source_root: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+        kind: Annotated[Literal["docking", "md"], typer.Option("--kind")],
+    ) -> None:
+        """Read-only inventory plan for importing an existing Docking Suite or MDSuite project."""
+        try:
+            plan = plan_legacy_import(source_root, kind=kind)
+        except (OSError, ValueError) as exc:
+            _fail(str(exc))
+        typer.echo(json.dumps(plan.to_dict(), indent=2))
 
     @app.command()
     def provenance(

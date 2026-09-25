@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LegacyImportedFile": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "relative_path": {
+          "minLength": 1,
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "relative_path",
+        "size_bytes",
+        "sha256",
+        "category",
+        "artifact"
+      ],
+      "title": "LegacyImportedFile",
+      "type": "object"
+    },
+    "LegacyOmittedFile": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "relative_path": {
+          "minLength": 1,
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "relative_path",
+        "size_bytes",
+        "reason"
+      ],
+      "title": "LegacyOmittedFile",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/legacy_import_report/1.0",
+  "additionalProperties": false,
+  "description": "Importer activity result; does not claim reconstructed historical run provenance.",
+  "properties": {
+    "completeness": {
+      "const": "partial",
+      "default": "partial",
+      "title": "Completeness",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "import_policy": {
+      "default": "bounded_allowlist_v1",
+      "minLength": 1,
+      "title": "Import Policy",
+      "type": "string"
+    },
+    "imported_at": {
+      "format": "date-time",
+      "title": "Imported At",
+      "type": "string"
+    },
+    "imported_files": {
+      "items": {
+        "$ref": "#/$defs/LegacyImportedFile"
+      },
+      "title": "Imported Files",
+      "type": "array"
+    },
+    "max_file_bytes": {
+      "exclusiveMinimum": 0,
+      "title": "Max File Bytes",
+      "type": "integer"
+    },
+    "max_total_bytes": {
+      "exclusiveMinimum": 0,
+      "title": "Max Total Bytes",
+      "type": "integer"
+    },
+    "metadata": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Metadata",
+      "type": "object"
+    },
+    "omitted_files": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/LegacyOmittedFile"
+      },
+      "title": "Omitted Files",
+      "type": "array"
+    },
+    "provenance_limitations": {
+      "default": [
+        "Historical inputs, exact commands, seeds, environment and stage lineage may be unavailable.",
+        "No target or compound identity is inferred from a folder name or filename.",
+        "Large trajectory and intermediate binary artifacts may be omitted by the import policy."
+      ],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Provenance Limitations",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "legacy_import_report/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_kind": {
+      "enum": [
+        "docking",
+        "md"
+      ],
+      "title": "Source Kind",
+      "type": "string"
+    },
+    "source_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Source Manifest Sha256",
+      "type": "string"
+    },
+    "source_name": {
+      "minLength": 1,
+      "title": "Source Name",
+      "type": "string"
+    },
+    "source_root": {
+      "minLength": 1,
+      "title": "Source Root",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "source_kind",
+    "source_name",
+    "source_root",
+    "source_manifest_sha256",
+    "max_file_bytes",
+    "max_total_bytes",
+    "imported_at",
+    "imported_files"
+  ],
+  "title": "LegacyImportReport",
+  "type": "object"
+}

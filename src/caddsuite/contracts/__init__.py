@@ -10,6 +10,7 @@ from caddsuite.contracts import (  # noqa: F401  (imported for registration side
     docking,
     evidence,
     execution,
+    legacy,
     md,
     properties,
     qm,

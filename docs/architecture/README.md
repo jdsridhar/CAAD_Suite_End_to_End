@@ -89,8 +89,11 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [G-MD-16 GROMACS hydrogen-bond count regression](../validation/G-MD-16.md)
 - [Per-attempt provenance audit](PROVENANCE_AUDIT.md)
 - [Provenance capture audit](PROVENANCE_AUDIT.md)
+- [Authenticated provenance query API](PROVENANCE_API.md)
+- [Legacy Docking/MD import and provenance limits](LEGACY_IMPORT.md)
 
 - [ADR-0028: Scheduler-managed execution attempt provenance](ADR/0028-scheduler-attempt-provenance.md)
 
 - [ADR-0029: Local workflow application composition](ADR/0029-local-application-composition.md)
 - [ADR-0030: QM workflow stage runtime](ADR/0030-qm-stage-runtime.md)
+- [ADR-0033: Bounded legacy imports with partial provenance](ADR/0033-legacy-imports-as-partial-provenance.md)
