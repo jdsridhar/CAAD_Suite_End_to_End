@@ -9,7 +9,7 @@
 | **Current phase** | Phase 13 — Reporting |
 | **Current task** | [-] 13.1 Workflow execution API and job lifecycle endpoints |
 | **Next task** | Expose validated runtime execution and job status through authenticated application endpoints |
-| **Last completed** | Phase 12 report model, provenance assembly, four renderers, transparent ranking, and real Vina report gate; validation gate pending. |
+| **Last completed** | Phase 12 report model, provenance assembly, four renderers, transparent ranking, and real Vina report gate; Phase 13 capability/plan/status API; full gate 537 passed, 25 skipped. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -361,7 +361,11 @@ When the user says **CONTINUE**:
 
 ## Phase 13 — API + UI `[-]`
 
-- [-] 13.1 Application runtime + StageHandlerRegistry are implemented; built-in QM, Vina, GROMACS, and OpenMM providers are registered. Real Vina docking and a 50-step GROMACS stage both ran through the registry/runtime and persisted successful attempt provenance. Authenticated read-only provenance REST queries exist. Remaining: workflow execution API, SSE, server lifecycle/binding, validated uploads and browser integration.
+- [-] 13.1 Application runtime + StageHandlerRegistry; implement authenticated workflow API incrementally.
+  - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
+  - [x] Expose project-scoped persisted run/task status; test project ownership and authenticated access.
+  - [ ] Add durable workflow execution submission, restart/recovery ownership, cancellation, and event updates.
+  - [ ] Add bounded, validated artifact uploads and browser integration.
 - [ ] 13.2 OpenAPI → TypeScript client
 - [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes

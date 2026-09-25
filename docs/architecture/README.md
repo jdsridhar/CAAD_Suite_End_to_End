@@ -112,3 +112,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0037: Transparent candidate ranking](ADR/0037-transparent-candidate-ranking.md)
 
 - [G-REPORT-1 real Docking report integration](../validation/G-REPORT-1.md)
+
+- [Workflow capability, plan and status API](API_RUNTIME.md)
+
+- [ADR-0038: Workflow planning and status API](ADR/0038-workflow-planning-and-status-api.md)
