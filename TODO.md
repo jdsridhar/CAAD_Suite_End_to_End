@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.2 OpenAPI-driven TypeScript client |
-| **Next task** | Generate and validate the typed client contract, then start the API-connected browser workflow |
+| **Current task** | [-] 13.3 React SPA: API-connected project and workflow screens |
+| **Next task** | Build the API-connected browser experience over the typed client; expose project, workflow, run, logs, decisions, and provenance |
 | **Last completed** | Phase 13.1 API/runtime gate: capability and planning APIs, durable queued execution and restart recovery, process-aware cancellation, bounded CAS uploads, scoped status/SSE; full gate 549 passed, 25 skipped, strict mypy 176 files. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -372,7 +372,7 @@ When the user says **CONTINUE**:
   - [x] Propagate cancellation into LocalExecutor process groups; confirm process termination, retain logs, and record CANCELLED attempt/task state. In-process handlers stop at the next scheduler boundary.
   - [x] Document conservative worker restart/cancellation semantics in API_RUNTIME.md and ADR-0039.
   - [x] Add bounded, streaming uploads for new inputs into CAS and return registered ArtifactRef contracts.
-- [-] 13.2 OpenAPI TypeScript client
+- [x] 13.2 OpenAPI-driven TypeScript client: export checked-in OpenAPI, generate TS paths/schemas with openapi-typescript, typed JSON transport with openapi-fetch, streaming upload helper; ADR-0040.
 - [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
 - [ ] 13.5 Dashboard (req. §30)
@@ -468,6 +468,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-26 | Phase 13.2 typed API client complete: reproducible FastAPI OpenAPI export, generated TypeScript schema, openapi-fetch path client, streamed upload helper, bearer auth security scheme, generation docs and ADR-0040. TypeScript typecheck passes; full gate 549 passed, 25 skipped, strict mypy 176 files. Current task is Phase 13.3 React SPA. |
 | 2026-09-26 | Phase 13.1 complete: durable HTTP submissions run under a lease-based local supervisor, with handler-authoritative recovery after expired ownership; status/SSE expose queued/running/terminal state. API cancellation reaches LocalExecutor-managed process groups, confirms termination, preserves logs, and records cancelled task/attempt provenance; in-process handlers stop at scheduler boundaries. Raw artifact uploads stream through a configurable bounded spool to CAS and return normalized ArtifactRefs; oversize uploads are rejected before registration and duplicate content deduplicates. Full gate: 549 passed, 25 skipped; strict mypy 176 source files, Ruff/format, 4 import contracts and schema freshness pass. Commit 848c8e1 contains cancellation; this commit records the project-linked upload API and Phase 13.1 closeout. Phase 13.2 typed API client is next. |
 | 2026-09-26 | Phase 13.1 durable local API worker slice: added migration 0006 with normalized submissions, compare-and-swap worker claims, lease heartbeats and stale-owner requeue; API execution now returns 202, with task/run/submission status and SSE snapshots. Added cancellation propagation through LocalExecutor-managed process groups with exit confirmation, retained logs, and CANCELLED task/attempt provenance; in-process stages stop at their next safe boundary. Restart recovery, API queue/cancel integration and scheduler cancellation tests pass. Full gate: 548 passed, 25 optional skips; Ruff/format, strict mypy 176 files, import-linter (4 kept/0 broken), and schema freshness pass. Legacy checksum source files remain unavailable in this WSL session. |
 | 2026-09-26 | Phase 13 API execution smoke regression: added injected fake stage-handler workflow through authenticated HTTP submission, verified normalized execution persistence, polling, and duplicate-run rejection. Focused API suite: 4 passed; repository gate: 539 passed, 25 skipped, strict mypy 174 files. Corrected API guide to describe synchronous request-bound execution and documented recovery-safe supervisor constraints in ADR-0039. Frozen legacy source is absent from this WSL session; manifest checks cannot be repeated here. Commit 269ed37 pushed. |

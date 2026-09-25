@@ -19,6 +19,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import JsonValue
 from sqlalchemy import select
 
@@ -54,6 +55,7 @@ _DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 _MAX_CONFIGURED_UPLOAD_BYTES = 1024 * 1024 * 1024
 _ROLE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
 _MEDIA_TYPE_PATTERN = re.compile(r"^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$")
+_BEARER_AUTH = HTTPBearer(auto_error=False)
 
 
 class WorkflowRunSubmission(ContractModel):
@@ -114,11 +116,14 @@ def create_app(
     )
 
     def authenticate(
-        authorization: Annotated[str | None, Header()] = None,
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER_AUTH)] = None,
         origin: Annotated[str | None, Header()] = None,
     ) -> None:
-        expected = f"Bearer {token}"
-        if authorization is None or not hmac.compare_digest(authorization, expected):
+        if (
+            credentials is None
+            or credentials.scheme.lower() != "bearer"
+            or not hmac.compare_digest(credentials.credentials, token)
+        ):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
         origins: frozenset[str] = app.state.allowed_origins
         if origin is not None and origin not in origins:

@@ -38,3 +38,7 @@ scratch/
 .DS_Store
 Thumbs.db
 *:Zone.Identifier
+
+# JavaScript dependencies and build output
+node_modules/
+dist/
