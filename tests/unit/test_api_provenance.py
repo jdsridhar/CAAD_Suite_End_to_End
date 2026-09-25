@@ -113,6 +113,9 @@ def test_provenance_api_authenticates_and_returns_project_and_run_graphs(tmp_pat
         assert project.status_code == 200
         assert project.json()["project_id"] == project_id
         assert project.json()["run_ids"] == [run_id]
+        drift = client.get(f"/v1/provenance/projects/{project_id}/version-drift", headers=headers)
+        assert drift.status_code == 200
+        assert drift.json()["warnings"] == []
         missing = client.get("/v1/provenance/attempts/no-such-attempt", headers=headers)
         assert missing.status_code == 404
 

@@ -7,7 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 11 — Provenance |
-| **Last completed** | Phase 11.2 provenance read queries via CLI and authenticated API; real Vina docking now runs through the stage registry/runtime and records attempt provenance. Latest full gate before scheduler correction: 517 passed, 25 skipped (2026-09-26) |
+| **Current task** | [-] 11.4 review, commit and push; then 11.5 demo provenance gate |
+| **Next task** | Build and inspect an end-to-end attempt/artifact provenance chain across a demo workflow |
+| **Last completed** | Phase 11.3 legacy project importers; Phase 11.4 advisory version/environment drift endpoint. Latest full gate: 528 passed, 25 skipped; strict mypy 171 files (2026-09-26) |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -310,14 +312,20 @@ When the user says **CONTINUE**:
   - [x] Add read-only upstream attempt/artifact traversal following generated artifact producers, with JSON output and missing-ID diagnostics.
   - [x] Expose upstream traversal as caddsuite provenance ATTEMPT_ID; storage and CLI unit checks pass.
   - [x] Add workflow-run and project-scoped graph queries, plus authenticated FastAPI endpoints for attempt, run and project lineage. Unauthorized requests, rejected browser origins, missing IDs and scoped results are covered. See docs/architecture/PROVENANCE_API.md.
-- [-] 11.3 Legacy importers: docking projects + MD projects -> provenance-partial records
+- [x] 11.3 Legacy importers: docking projects + MD projects -> provenance-partial records
   - [x] Audit actual Docking Suite and MDSuite project formats; real project plans recorded in ADR-0033.
   - [x] Add bounded allowlisted inventory planning, literal-only configuration parsing, path-escape checks, hashes, and explicit omission reasons.
   - [x] Add versioned partial-provenance report and content-addressed import service with a real present-day importer TaskAttempt; do not invent historical provenance or identities.
   - [x] Add preview/import CLI, docs, ADR-0033, and exported JSON schema.
   - [x] Synthetic tests cover bounds, metadata, artifacts, provenance lineage and idempotence. Real source folders were only inventoried; no user project copied.
   - [x] Full gate: Ruff/format, strict mypy (170 files), import-linter (4 kept/0 broken), schema check; pytest 526 passed, 25 skipped. Frozen source manifest 143/143; git diff --check clean.
-- [ ] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
+- [-] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
+  - [x] Compare recorded software versions by software name, kind and role across project attempts; unknown versions are omitted.
+  - [x] Compare captured environment lock hashes and link warnings to attempt IDs.
+  - [x] Add authenticated read-only project endpoint; API verifies auth and empty-drift response.
+  - [x] Document advisory semantics and limitations; tests cover version/environment drift and unrelated or unknown software.
+  - [x] Full gate: Ruff/format, strict mypy (171 files), import-linter (4 kept/0 broken), schema check; pytest 528 passed, 25 skipped.
+  - [-] Review diff, commit and push.
 - [ ] 11.5 **Gate:** complete provenance chain for a demo run
 
 ## Phase 12 — Reporting `[ ]`

@@ -97,3 +97,6 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0029: Local workflow application composition](ADR/0029-local-application-composition.md)
 - [ADR-0030: QM workflow stage runtime](ADR/0030-qm-stage-runtime.md)
 - [ADR-0033: Bounded legacy imports with partial provenance](ADR/0033-legacy-imports-as-partial-provenance.md)
+
+- [Software and environment version drift warnings](VERSION_DRIFT.md)
+- [ADR-0034: Provenance version drift warnings](ADR/0034-provenance-version-drift-warnings.md)

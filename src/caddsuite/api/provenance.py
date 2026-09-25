@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
+from caddsuite.application.version_drift import version_drift
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
 from caddsuite.storage.paths import database_path, resolve_data_root
@@ -73,6 +74,17 @@ def create_app(
     ) -> dict[str, object]:
         try:
             return run_lineage(sessions, run_id=run_id)
+        except ProvenanceNodeNotFound as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/v1/provenance/projects/{project_id}/version-drift")
+    def get_project_version_drift(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> dict[str, object]:
+        try:
+            graph = project_lineage(sessions, project_id=project_id)
+            return version_drift(graph["attempts"])
         except ProvenanceNodeNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
