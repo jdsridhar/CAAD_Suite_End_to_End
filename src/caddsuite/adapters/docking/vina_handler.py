@@ -28,6 +28,7 @@ from caddsuite.adapters.docking.vina import (
 )
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
 from caddsuite.contracts.docking import DockingResult, DockingRun, DockingScore, Pose
+from caddsuite.contracts.execution import ResourceRequest
 from caddsuite.contracts.registry import Compound, CompoundForm, Conformer
 from caddsuite.contracts.structure import BindingSite, PreparedReceptor, Structure
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
@@ -61,6 +62,7 @@ class VinaDockingHandler:
         executor: LocalExecutor,
         artifact_store: ArtifactStore,
         sessions: sessionmaker[Session],
+        memory_MiB: int | None = None,
     ) -> None:
         self.vina_executable = vina_executable.resolve(strict=True)
         self.meeko_python = meeko_python.resolve(strict=True)
@@ -75,8 +77,19 @@ class VinaDockingHandler:
         self.executor = executor
         self.artifact_store = artifact_store
         self.sessions = sessions
+        self.memory_MiB = memory_MiB
         self.work_root.mkdir(parents=True, exist_ok=True)
         self.log_root.mkdir(parents=True, exist_ok=True)
+
+    def resource_request(self, invocation: TaskInvocation) -> ResourceRequest | None:
+        if self.memory_MiB is None:
+            return None
+        raw = invocation.task.params.get("docking_parameters", invocation.task.params)
+        try:
+            parameters = VinaParameters.model_validate(raw)
+        except ValidationError:
+            return None
+        return ResourceRequest(cpu_cores=parameters.cpu_cores, memory_MiB=self.memory_MiB)
 
     def subject_key(self, scope: str, value: VersionedContract) -> str:
         if isinstance(value, Compound):
@@ -130,7 +143,10 @@ class VinaDockingHandler:
         site = self._input(invocation.inputs, "site", BindingSite)
         self._validate_inputs(compound, form, conformer, receptor, structure, site)
         try:
-            parameters = VinaParameters.model_validate(invocation.task.params)
+            raw_parameters = invocation.task.params.get(
+                "docking_parameters", invocation.task.params
+            )
+            parameters = VinaParameters.model_validate(raw_parameters)
         except ValidationError as exc:
             raise StageExecutionFailure("DOCKING.PARAMETERS_INVALID", str(exc)) from exc
 

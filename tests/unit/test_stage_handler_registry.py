@@ -11,6 +11,7 @@ from caddsuite.application.handlers import (
     StageHandlerRegistry,
 )
 from caddsuite.application.runtime import LocalRuntimeServices
+from caddsuite.application.vina_stage_plugin import VinaStagePlugin
 from caddsuite.contracts.base import VersionedContract
 from caddsuite.workflow.capabilities import StageCapability
 from caddsuite.workflow.definition import StageDefinition, WorkflowDefinition
@@ -133,3 +134,28 @@ def test_duplicate_stage_capability_is_rejected() -> None:
 
     with pytest.raises(StageHandlerDiscoveryError, match="duplicate stage-handler capability"):
         StageHandlerRegistry([DuplicatePlugin()])
+
+
+def test_vina_plugin_exposes_prepared_scientific_inputs_and_normalized_result() -> None:
+    registry = StageHandlerRegistry([VinaStagePlugin()])
+    capability = registry.snapshot().capabilities.resolve("docking", "vina")
+    assert capability is not None
+    assert {item.name: item.contracts for item in capability.inputs} == {
+        "compound": ("compound/1.0",),
+        "form": ("compound_form/1.0",),
+        "conformer": ("conformer/1.1",),
+        "receptor": ("prepared_receptor/1.0",),
+        "target_structure": ("structure/1.0",),
+        "site": ("binding_site/1.0",),
+    }
+    assert capability.outputs == ("docking_result/1.0",)
+    assert capability.iteration_contracts["compound"] == (
+        "compound/1.0",
+        "compound_form/1.0",
+        "conformer/1.1",
+    )
+
+
+def test_installed_entry_point_discovers_vina_without_probing_engine() -> None:
+    registry = StageHandlerRegistry.discover()
+    assert registry.snapshot().capabilities.resolve("docking", "vina") is not None
