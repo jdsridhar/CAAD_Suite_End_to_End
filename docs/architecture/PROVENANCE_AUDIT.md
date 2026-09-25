@@ -11,7 +11,7 @@
 
 ## Gaps found
 
-- WorkflowScheduler now creates and finalizes TaskAttempt rows when given a TaskAttemptStore; the API/application composition still needs to provide that store on all production runs.
+- WorkflowScheduler creates and finalizes TaskAttempt rows when given a TaskAttemptStore. LocalWorkflowRuntime is now the supported application composition root and always injects that store; the CLI/API do not yet execute through this runtime.
 - A typed TaskAttempt contract and TaskAttemptStore now create a running activity before launch and finalize status, structured error, command steps and artifact edges.
 - LocalExecutor previously discarded the explicit child-environment overrides when constructing StepRecord. It now stores those values and redacts variables with credential-like names. Inherited process environment is not copied wholesale.
 - TaskAttemptRow now stores the versioned contract payload plus an indexed environment ID. The store validates and persists the corresponding SoftwareEnvironment row; the ID is cross-validated instead of using an FK because the existing artifact producer/lock-artifact references otherwise create a table dependency cycle.
@@ -24,8 +24,8 @@
 1. Completed: preserve sanitized explicit environment overrides in StepRecord.
 2. Completed: add a versioned TaskAttempt contract and transactional begin/finalize service.
 3. Completed: add migration 0005 for the JSON contract payload and indexed environment identity; reuse existing attempt-agent and used/generated artifact edge tables.
-4. Partial: WorkflowScheduler now begins/finalizes attempts around every actual StageHandler.execute invocation and retry. It records host/platform, adapter/engine, configured parameters, available input/output ArtifactRefs, explicit process environment overrides, argv, exit status, and stored stdout/stderr artifacts. Cache hits and skipped stages create no execution attempt.
-5. Remaining: application composition must always inject TaskAttemptStore and resolve the actual engine-worker environment and requested resources. Add end-to-end tests with real stage handlers, including failed attempts and artifacts. Keep environment/resource fields unknown when not available.
+4. Partial: WorkflowScheduler begins/finalizes attempts around every actual StageHandler.execute invocation and retry; LocalWorkflowRuntime always composes the scheduler with TaskAttemptStore. It records host/platform, adapter/engine, configured parameters, available input/output ArtifactRefs, explicit process environment overrides, argv, exit status, and stored stdout/stderr artifacts. Cache hits and skipped stages create no execution attempt.
+5. Remaining: wire CLI/API workflow execution through LocalWorkflowRuntime and production StageHandlerRegistry providers; resolve actual engine-worker environments and requested resources. Add end-to-end tests with real stage handlers, including failed attempts and artifacts. Keep environment/resource fields unknown when not available.
 6. Later: add CLI/API provenance queries in Phase 11.2 and software snapshots for pip/system environments.
 
 ## Security and scientific limits

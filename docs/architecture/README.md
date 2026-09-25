@@ -90,3 +90,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [Provenance capture audit](PROVENANCE_AUDIT.md)
 
 - [ADR-0028: Scheduler-managed execution attempt provenance](ADR/0028-scheduler-attempt-provenance.md)
+
+- [ADR-0029: Local workflow application composition](ADR/0029-local-application-composition.md)

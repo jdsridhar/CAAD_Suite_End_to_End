@@ -132,3 +132,14 @@ LocalExecutor finishes a process and registers its stdout/stderr as content-addr
 A useful interview explanation: I put attempt boundaries in the workflow scheduler because that layer knows about retries and cache behavior. The local executor reports process facts through a context-local event scope, so execution mechanics remain engine-neutral and concurrent tasks keep their provenance separate.
 
 One limitation is intentionally visible: the scheduler cannot assume its environment is the scientific worker environment. A PSI4 adapter may launch a separate interpreter, and an MD stage may use another conda environment or a container. Application composition must resolve the real worker environment and resource request; unknown values stay unknown.
+
+
+## Phase 11.1 / 13.1  Application composition and handler plugins
+
+A composition root creates shared infrastructure once and passes it to the components that need it. Here, LocalWorkflowRuntime owns the SQLite session factory, content-addressed artifact store and LocalExecutor. Its scheduler is always built with TaskAttemptStore, so the supported application runtime cannot accidentally omit attempt persistence.
+
+StageHandlerRegistry resolves workflow stage kind and selected engine using StageCapability values from plugins. It constructs the enabled handlers with shared runtime services. The workflow compiler remains the place that verifies normalized input and output contract compatibility; each handler owns engine-specific preparation and execution.
+
+This separates three jobs: the workflow definition says what scientific stages are requested, the plugin says how a selected engine implements one stage, and the runtime supplies common storage and execution services. It also gives the CLI, API and a headless script the same backend path.
+
+A deliberate limitation: the generic registry does not make existing engine-specific handlers interchangeable by itself. A Vina/GROMACS/Psi4 provider still needs a tested factory that reads configuration, probes the executable, and constructs its handler. The CLI still only displays workflow plans, so the real engine chain has not yet passed an application-level demo.

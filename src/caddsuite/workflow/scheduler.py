@@ -21,6 +21,7 @@ from caddsuite.contracts.execution import (
     AttemptSoftware,
     AttemptStatus,
     ErrorRecord,
+    ResourceRequest,
     SoftwareEnvironment,
     TaskAttempt,
 )
@@ -162,6 +163,8 @@ class WorkflowScheduler:
         handlers: Mapping[str, StageHandler],
         attempt_store: TaskAttemptStore | None = None,
         environment_resolver: Callable[[StageHandler], SoftwareEnvironment | None] | None = None,
+        resource_resolver: Callable[[StageHandler, TaskInvocation], ResourceRequest | None]
+        | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._tasks = task_store
@@ -171,6 +174,7 @@ class WorkflowScheduler:
         self._host = capture_host_info() if attempt_store is not None else None
         self._platform = platform_ref() if attempt_store is not None else None
         self._environment_resolver = environment_resolver
+        self._resource_resolver = resource_resolver
         self._sleep = sleep
 
     def run(
@@ -503,6 +507,11 @@ class WorkflowScheduler:
             executor="local",
             host=self._host,
             platform=self._platform,
+            resources=(
+                self._resource_resolver(handler, invocation)
+                if self._resource_resolver is not None
+                else None
+            ),
             environment=(
                 self._environment_resolver(handler)
                 if self._environment_resolver is not None

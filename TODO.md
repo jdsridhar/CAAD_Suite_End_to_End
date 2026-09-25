@@ -9,7 +9,7 @@
 | **Current phase** | Phase 11 — Provenance |
 | **Last completed** | Phase 10 gate: Psi4 regressions + PySCF second-engine plugin; engine-enabled suite 494 passed, 22 optional skips; legacy baseline 143/143 (2026-09-25) |
 | **Current task** | [-] 11.1 Audit and complete per-attempt provenance capture |
-| **Next task** | 11.1 Application composition must always inject the attempt store and resolve worker environment/resources; then 11.2 provenance queries |
+| **Next task** | Wire the CLI workflow run path to StageHandlerRegistry and LocalWorkflowRuntime; then finish Phase 11.1 with a real application-level provenance run |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -298,7 +298,10 @@ When the user says **CONTINUE**:
   - [x] Capture LocalExecutor StepRecords and registered stdout/stderr ArtifactRefs through a context-local scope; confirm cache hits and skipped stages do not create attempts.
   - [x] Reconcile a persisted open attempt after handler recovery: completed work closes as succeeded; a confirmed-dead process closes as unknown before retry.
   - [x] Scheduler integration tests cover successful command/log capture, structured failure, crash recovery, and no new attempt on cache hit.
-  - [-] Application composition must always inject TaskAttemptStore and resolve the actual worker environment and requested resources. Keep these unknown if unavailable; do not infer the engine environment from the scheduler process.
+  - [x] Add LocalWorkflowRuntime as the local application composition root; it initializes DB/artifact/executor services, constructs handlers through a factory, and always injects TaskAttemptStore. Environment and resource resolvers pass actual worker facts when known.
+  - [x] Add entry-point StageHandlerRegistry to compile workflow definitions against plugin capabilities, require explicit engine choice for ambiguous stage kinds, and build only enabled handlers against shared runtime services.
+  - [x] Integration tests verify plugin discovery to capability compile to handler construction to runtime execution to automatic TaskAttempt persistence, including resource requests.
+  - [-] CLI/API workflow execution still does not call the runtime; built-in factories for audited Vina/MD/QM workflows and one real application-level run remain required to close the gate.
 - [ ] 11.2 Provenance graph queries via CLI/API
 - [ ] 11.3 Legacy importers: docking projects + MD projects → provenance-partial records
 - [ ] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
@@ -314,7 +317,7 @@ When the user says **CONTINUE**:
 
 ## Phase 13 — API + UI `[ ]`
 
-- [ ] 13.1 FastAPI app (REST + SSE; token + Origin check; validated uploads); construct configured stage handlers from discovered engine capabilities
+- [-] 13.1 Application runtime + capability-aware StageHandlerRegistry are implemented and tested. Remaining: built-in engine factories, CLI/API composition, FastAPI REST/SSE security and validated uploads
 - [ ] 13.2 OpenAPI → TypeScript client
 - [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
@@ -411,6 +414,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-25 | Phase 11.1/13.1 composition advanced: added LocalWorkflowRuntime to initialize shared DB/artifact/LocalExecutor services and unconditionally inject TaskAttemptStore; added environment/resource resolvers. Added entry-point StageHandlerRegistry that compiles declared capabilities, requires explicit engine selection when ambiguous, and constructs enabled handlers with shared services. Runtime integration covers plugin discovery to execution to automatic attempt and resource persistence (5 focused tests pass). CLI remains plan-only and no production built-in handler factories are registered; a real application-level run is still required. ADR-0029, plugin development guide, provenance audit and learning notes updated. |
 | 2026-09-25 | Phase 11.1 scheduler integration advanced: WorkflowScheduler now persists one TaskAttempt per real execution/retry, including host/platform, adapter/engine, configured parameters, typed inputs/results, structured errors, and success/failed/unknown status. LocalExecutor command records and registered stdout/stderr artifacts flow through an invocation-local capture context. Recovery reconciles open attempts, and cache hits/skips produce none. Added ADR-0028, architecture audit updates and learning notes. Focused scheduler/store/executor suite: 13 passed; full gate pending. Application composition still needs to inject the store and resolve actual engine-worker environments/resources. |
 | 2026-09-25 | Continued Phase 11 provenance hardening: updated the CLI migration assertion to revision 0005; redaction now also masks environment names containing KEY, with GPG_KEY regression coverage. Full default gate: 490 passed, 29 optional skips; Ruff, strict mypy (153 files), import-linter, schemas and diff check pass. Automatic recorder wiring remains pending the application handler composition layer (13.1). |
 | 2026-09-25 | Phase 11.1 provenance foundation in progress: audited existing capture and schema; LocalExecutor now preserves redacted explicit environment overrides. Added versioned TaskAttempt contract, indexed environment identity/payload migration 0005 and transactional begin/finalize store covering software/environment records, parameters, command steps, errors and PROV artifact edges. Nine persistence/migration tests pass. Remaining gate is automatic wiring from application stage handlers; this is coordinated with Phase 13.1 handler composition. |
