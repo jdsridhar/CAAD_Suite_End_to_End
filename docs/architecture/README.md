@@ -107,3 +107,6 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 
 - [Scientific report output renderers](REPORT_RENDERING.md)
 - [ADR-0036: Report format renderers](ADR/0036-report-format-renderers.md)
+
+- [Transparent candidate evidence ranking](CANDIDATE_RANKING.md)
+- [ADR-0037: Transparent candidate ranking](ADR/0037-transparent-candidate-ranking.md)

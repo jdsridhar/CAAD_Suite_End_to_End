@@ -117,7 +117,10 @@ class RankingScheme(ContractModel):
 
 class CriterionContribution(ContractModel):
     criterion: NonEmptyStr
+    evidence_id: ULIDStr | None = None
     raw_value: float | None = None
+    unit: str | None = None
+    uncertainty: NonNegativeFloat | None = None
     normalized: float | None = None
     weight: PositiveFloat
     contribution: float | None = None

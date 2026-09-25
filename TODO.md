@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 12 — Reporting |
-| **Current task** | [-] 12.4 Evidence and transparent ranking scheme |
-| **Next task** | Define configurable evidence aggregation that preserves raw measures and exposes weights/contributions |
-| **Last completed** | 12.1 report schema, 12.2 provenance assembly, 12.3 renderers; full gate 534 passed, 25 skipped, strict mypy 173 files. |
+| **Current task** | [-] 12.5 demo report validation and review |
+| **Next task** | Assemble and render a report from a recorded scientific workflow and inspect completeness/limitations |
+| **Last completed** | Phase 12 report schema, provenance builder, four format renderers, and transparent weighted/Pareto/lexicographic ranking; full gate 537 passed, 25 skipped, strict mypy 174 files. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -348,8 +348,13 @@ When the user says **CONTINUE**:
   - [x] Preserve section states, report data, limitations and attempt/artifact references in each format.
   - [x] Escape HTML/PDF text; explicit error if the optional PDF dependency is absent.
   - [x] Document rendering choice and no-science-in-presentation boundary; plot artifacts remain future work.
-- [ ] 12.4 Evidence + ranking scheme (explicit criteria, weights, contributions; fixed disclaimer)
-- [ ] 12.5 **Gate:** demo report reviewed
+- [x] 12.4 Evidence + ranking scheme (explicit criteria, weights, contributions; fixed disclaimer)
+  - [x] Implement weighted sum, Pareto and lexicographic aggregation; no scalar score for Pareto/lexicographic rankings.
+  - [x] Implement direction-aware rank, min-max, z-score and threshold normalization; configure missing evidence behavior.
+  - [x] Preserve raw value, unit, uncertainty, evidence ID, normalized value, weight and contribution.
+  - [x] Reject nonfinite/nonnumeric inputs, mixed units, evidence direction conflicts and duplicate values.
+  - [x] Document score interpretation, tie behavior, limitations and computational-only status.
+- [-] 12.5 **Gate:** demo report reviewed
 
 ## Phase 13 — API + UI `[ ]`
 
