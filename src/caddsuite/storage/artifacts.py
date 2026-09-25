@@ -31,7 +31,7 @@ import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -40,6 +40,12 @@ from caddsuite.storage.models import ArtifactRow
 
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 CHUNK_BYTES = 1024 * 1024
+
+
+class BinaryReadable(Protocol):
+    """Minimal binary stream accepted by incremental artifact ingestion."""
+
+    def read(self, size: int = -1) -> bytes: ...
 
 
 class ArtifactIntegrityError(RuntimeError):
@@ -79,9 +85,13 @@ class ArtifactStore:
 
     def put_file(self, source: Path) -> StoredBlob:
         with source.open("rb") as stream:
-            return self._ingest(stream)
+            return self.put_stream(stream)
 
-    def _ingest(self, stream: BinaryIO) -> StoredBlob:
+    def put_stream(self, stream: BinaryReadable) -> StoredBlob:
+        """Ingest a seeked binary stream without loading its contents into memory."""
+        return self._ingest(stream)
+
+    def _ingest(self, stream: BinaryReadable) -> StoredBlob:
         digest = hashlib.sha256()
         size = 0
         fd, tmp_name = tempfile.mkstemp(dir=self._tmp, prefix="ingest-")

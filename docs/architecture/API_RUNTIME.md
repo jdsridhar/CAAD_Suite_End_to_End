@@ -6,6 +6,7 @@ The authenticated API exposes:
 
 - `GET /v1/workflows/capabilities`: installed stage-handler identities and normalized port capabilities.
 - `POST /v1/workflows/plan`: compile a JSON `WorkflowDefinition` against installed capabilities and return its deterministic task order, dependencies, and contracts.
+- `POST /v1/projects/{project_id}/artifacts`: stream a raw file body into CAS with a configurable 100 MiB default limit; registers a project-artifact role link, and returns a hash-verified `ArtifactRef`. Set `X-Filename`, `X-Artifact-Role`, and `Content-Type` headers.
 - `POST /v1/projects/{project_id}/runs/{run_id}/execute`: validate normalized contract inputs and registered artifact hashes, persist a run submission, and return `202 queued`; a local supervisor executes it through `LocalWorkflowRuntime`.
 - `POST /v1/projects/{project_id}/runs/{run_id}/cancel`: persist a cancellation request; LocalExecutor-managed process groups are stopped and confirmed, while in-process stages stop at the next safe boundary.
 - `GET /v1/projects/{project_id}/runs/{run_id}/status`: persisted run and task lifecycle state, scoped to the requested project.
@@ -20,7 +21,7 @@ The current application runtime persists the normalized request in `run_submissi
 
 Cancellation propagates to LocalExecutor-managed children. The executor verifies the recorded process identity, sends termination to its isolated process group, confirms exit, captures stdout/stderr, and records a CANCELLED attempt/task. Handlers doing in-process work without a LocalExecutor process stop at the next safe scheduler boundary. Bounded SSE remains a snapshot transport and does not promise durable event replay; durable events can be added if the UI later needs event history.
 
-This design keeps scientific handlers and engine adapters independent of HTTP. It builds on the existing task state machine, attempt provenance, `LocalExecutor` process identity checks, and handler recovery hook. Upload handling stays a separate bounded-input concern and must stage bytes into the artifact store before a workflow can reference them.
+This design keeps scientific handlers and engine adapters independent of HTTP. It builds on the existing task state machine, attempt provenance, `LocalExecutor` process identity checks, and handler recovery hook. Uploads are streamed into a bounded spool and then into CAS before the API returns an artifact reference; workflow submission accepts only that registered reference. The default per-upload limit is 100 MiB and is configurable up to 1 GiB when creating the API.
 
 ## Design notes
 

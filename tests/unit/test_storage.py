@@ -48,7 +48,7 @@ def _project(session: Session, slug: str = "pparg-demo") -> ProjectRow:
 
 
 def test_upgrade_reaches_head(db_path: Path) -> None:
-    assert migrate.current_revision(db_path) == "0006"
+    assert migrate.current_revision(db_path) == "0007"
 
 
 def test_models_match_migrations(db_path: Path) -> None:

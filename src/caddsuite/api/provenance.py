@@ -6,7 +6,9 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import secrets
+import tempfile
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager
@@ -14,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import JsonValue
@@ -26,11 +28,12 @@ from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.application.version_drift import version_drift
 from caddsuite.contracts.base import ArtifactRef, ContractModel, VersionedContract, load_contract
 from caddsuite.domain.identity import ULIDStr
-from caddsuite.storage.artifacts import ArtifactStore
+from caddsuite.storage.artifacts import ArtifactStore, register_blob
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
 from caddsuite.storage.models import (
     ArtifactRow,
+    ProjectArtifactRow,
     ProjectRow,
     RunSubmissionRow,
     TaskRow,
@@ -47,6 +50,11 @@ from caddsuite.workflow.definition import WorkflowDefinition
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+_MAX_CONFIGURED_UPLOAD_BYTES = 1024 * 1024 * 1024
+_ROLE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+_MEDIA_TYPE_PATTERN = re.compile(r"^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$")
+
 
 class WorkflowRunSubmission(ContractModel):
     """Normalized workflow definition and contract JSON for a local API run."""
@@ -61,10 +69,13 @@ def create_app(
     token: str,
     allowed_origins: tuple[str, ...] = (),
     stage_registry: StageHandlerRegistry | None = None,
+    max_upload_bytes: int = _DEFAULT_MAX_UPLOAD_BYTES,
 ) -> FastAPI:
     """Build the local workflow API; callers must provide a per-install bearer token."""
     if not token or not token.strip():
         raise ValueError("API bearer token must be configured")
+    if not 1 <= max_upload_bytes <= _MAX_CONFIGURED_UPLOAD_BYTES:
+        raise ValueError("max_upload_bytes must be between 1 byte and 1 GiB")
     root = resolve_data_root(data_root)
     upgrade(database_path(root))
     engine = create_db_engine(database_path(root))
@@ -94,7 +105,12 @@ def create_app(
         allow_origins=list(allowed_origins),
         allow_credentials=False,
         allow_methods=["GET", "POST"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Artifact-Role",
+            "X-Filename",
+        ],
     )
 
     def authenticate(
@@ -166,6 +182,92 @@ def create_app(
                     run.status = "failed"
                     run.finished_at = datetime.now(UTC)
             raise
+
+    @app.post(
+        "/v1/projects/{project_id}/artifacts",
+        status_code=201,
+        description=(
+            "Stream one raw artifact into the content-addressed store. "
+            "The request body is limited by the configured max_upload_bytes."
+        ),
+    )
+    async def upload_project_artifact(
+        project_id: str,
+        request: Request,
+        _: None = Depends(authenticate),
+    ) -> dict[str, object]:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} was not found")
+
+        role = request.headers.get("x-artifact-role", "input")
+        if not _ROLE_PATTERN.fullmatch(role):
+            raise HTTPException(status_code=422, detail="X-Artifact-Role is invalid")
+        media_type = request.headers.get("content-type", "application/octet-stream")
+        media_type = media_type.split(";", maxsplit=1)[0].strip().lower()
+        if len(media_type) > 127 or not _MEDIA_TYPE_PATTERN.fullmatch(media_type):
+            raise HTTPException(status_code=422, detail="Content-Type is invalid")
+        supplied_name = request.headers.get("x-filename", "upload.bin")
+        filename = supplied_name.replace(chr(92), "/").rsplit("/", maxsplit=1)[-1]
+        if (
+            not filename
+            or len(filename) > 255
+            or any(ord(character) < 32 or ord(character) == 127 for character in filename)
+        ):
+            raise HTTPException(status_code=422, detail="X-Filename is invalid")
+
+        size_bytes = 0
+        store = ArtifactStore(artifacts_root(root))
+        try:
+            spool_limit = min(max_upload_bytes, 2 * 1024 * 1024)
+            with tempfile.SpooledTemporaryFile(max_size=spool_limit) as spool:
+                async for chunk in request.stream():
+                    size_bytes += len(chunk)
+                    if size_bytes > max_upload_bytes:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=f"artifact exceeds the {max_upload_bytes}-byte upload limit",
+                        )
+                    spool.write(chunk)
+                if size_bytes == 0:
+                    raise HTTPException(status_code=422, detail="artifact body is empty")
+                spool.seek(0)
+                blob = store.put_stream(spool)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.exception("project artifact upload failed for project %s", project_id)
+            raise HTTPException(status_code=400, detail="could not read artifact upload") from exc
+
+        with sessions.begin() as session:
+            artifact = register_blob(
+                session,
+                blob,
+                kind="input",
+                media_type=media_type,
+                original_name=filename,
+            )
+            project_link = session.get(ProjectArtifactRow, (project_id, artifact.id, role))
+            if project_link is None:
+                session.add(
+                    ProjectArtifactRow(
+                        project_id=project_id,
+                        artifact_id=artifact.id,
+                        role=role,
+                    )
+                )
+            reference = ArtifactRef(
+                artifact_id=artifact.id,
+                role=role,
+                sha256=artifact.sha256,
+            )
+        return {
+            "project_id": project_id,
+            "artifact": reference.model_dump(mode="json"),
+            "size_bytes": blob.size_bytes,
+            "sha256": blob.sha256,
+            "created": blob.created,
+        }
 
     @app.post("/v1/projects/{project_id}/runs/{run_id}/execute", status_code=202)
     def execute_workflow(

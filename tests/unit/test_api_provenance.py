@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -8,6 +9,7 @@ from time import monotonic, sleep
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from caddsuite.api.provenance import create_app
 from caddsuite.application.handlers import StageHandlerRegistration, StageHandlerRegistry
@@ -21,7 +23,13 @@ from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 from caddsuite.storage.attempts import TaskAttemptStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
-from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
+from caddsuite.storage.models import (
+    ArtifactRow,
+    ProjectArtifactRow,
+    ProjectRow,
+    TaskAttemptRow,
+    WorkflowRunRow,
+)
 from caddsuite.storage.paths import artifacts_root, database_path
 from caddsuite.storage.task_state import TaskStateStore
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
@@ -413,6 +421,57 @@ def test_workflow_plan_status_and_run_submission_validation(tmp_path: Path) -> N
         )
         assert rejected.status_code == 422
         assert "inputs must exactly match" in rejected.json()["detail"]
+
+
+def test_project_artifact_upload_streams_to_cas_with_size_limit(tmp_path: Path) -> None:
+    project_id, _run_id, _attempt_id = _seed_project_run(tmp_path)
+    app = create_app(data_root=tmp_path, token="test-secret", max_upload_bytes=16)  # noqa: S106
+    headers = {
+        "Authorization": "Bearer test-secret",
+        "Content-Type": "chemical/x-mdl-sdfile",
+        "X-Artifact-Role": "ligand_input",
+        "X-Filename": r"C:\fakepath\ligand.sdf",
+    }
+    content = b"ligand structure"
+    with TestClient(app) as client:
+        uploaded = client.post(
+            f"/v1/projects/{project_id}/artifacts", headers=headers, content=content
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        data = uploaded.json()
+        assert data["artifact"]["role"] == "ligand_input"
+        assert data["artifact"]["sha256"] == hashlib.sha256(content).hexdigest()
+        assert data["size_bytes"] == len(content)
+        assert data["created"] is True
+
+        duplicate = client.post(
+            f"/v1/projects/{project_id}/artifacts", headers=headers, content=content
+        )
+        assert duplicate.status_code == 201
+        assert duplicate.json()["artifact"]["artifact_id"] == data["artifact"]["artifact_id"]
+        assert duplicate.json()["created"] is False
+
+        too_large = client.post(
+            f"/v1/projects/{project_id}/artifacts",
+            headers=headers,
+            content=content + b"x",
+        )
+        assert too_large.status_code == 413
+        with app.state.sessions() as session:
+            artifact = session.get(ArtifactRow, data["artifact"]["artifact_id"])
+            assert artifact is not None
+            assert artifact.original_name == "ligand.sdf"
+            assert artifact.media_type == "chemical/x-mdl-sdfile"
+            link = session.get(ProjectArtifactRow, (project_id, artifact.id, "ligand_input"))
+            assert link is not None
+            assert (
+                session.scalar(
+                    select(ArtifactRow).where(
+                        ArtifactRow.sha256 == hashlib.sha256(content + b"x").hexdigest()
+                    )
+                )
+                is None
+            )
 
 
 def test_provenance_api_requires_nonempty_token(tmp_path: Path) -> None:

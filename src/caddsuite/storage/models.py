@@ -254,6 +254,17 @@ class ArtifactRow(Base):
     created_at: Mapped[datetime] = _created()
 
 
+class ProjectArtifactRow(Base):
+    """Explicit project ownership links for uploaded/reused content-addressed artifacts."""
+
+    __tablename__ = "project_artifacts"
+
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id"), primary_key=True)
+    artifact_id: Mapped[str] = mapped_column(ForeignKey("artifacts.id"), primary_key=True)
+    role: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[datetime] = _created()
+
+
 class AttemptArtifactRow(Base):
     """PROV ``used`` / ``generated`` edges between an attempt and artifacts."""
 
