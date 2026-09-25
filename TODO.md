@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 12 — Reporting |
-| **Current task** | [-] 12.2 Methods text from provenance; limitations from validation evidence |
-| **Next task** | Implement report assembly and HTML/JSON/CSV renderers from a real run |
-| **Last completed** | 12.1 typed scientific report content contract and all 28 report topics; phase 11 provenance gate passed. |
+| **Current task** | [-] 12.3 HTML, JSON and CSV renderers; PDF backend evaluation |
+| **Next task** | Render the assembled ScientificReport while preserving its evidence links and section states |
+| **Last completed** | 12.1 report content schema and 12.2 provenance/validation-based report assembly; latest full gate 532 passed, 25 skipped. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -338,8 +338,12 @@ When the user says **CONTINUE**:
   - [x] Require data or artifacts for available sections and reject duplicate topics.
   - [x] Add the computational-prediction disclaimer and export the JSON Schema.
   - [x] Focused tests (3 passed), Ruff, format, strict mypy, schema freshness and diff check passed.
-- [ ] 12.2 Methods text generated from provenance; limitations from validation issues
-- [ ] 12.3 Renderers: HTML, PDF, JSON, CSV; figure pipeline
+- [x] 12.2 Methods text generated from provenance; limitations from validation issues
+  - [x] Build report sections from TaskAttempt stage IDs, timestamps/status, argv, software, parameters and captured environment.
+  - [x] Classify docking, MD, trajectory, MM/PBSA/GBSA and QM methods; leave result sections not_run without normalized evidence.
+  - [x] Carry validation issue messages into limitations and preserve the experimental-validation disclaimer.
+  - [x] Add report builder test and scientific reporting architecture documentation.
+- [-] 12.3 Renderers: HTML, PDF, JSON, CSV; figure pipeline
 - [ ] 12.4 Evidence + ranking scheme (explicit criteria, weights, contributions; fixed disclaimer)
 - [ ] 12.5 **Gate:** demo report reviewed
 
