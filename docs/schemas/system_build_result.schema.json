@@ -774,7 +774,15 @@
       "$ref": "#/$defs/Parameterization"
     },
     "protocol": {
-      "$ref": "#/$defs/MDProtocol"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MDProtocol"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "raw_artifacts": {
       "additionalProperties": {
@@ -811,8 +819,7 @@
     "complex_id",
     "builder",
     "parameterization",
-    "system",
-    "protocol"
+    "system"
   ],
   "title": "SystemBuildResult",
   "type": "object"

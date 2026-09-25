@@ -36,7 +36,13 @@ from caddsuite.contracts.evidence import (
 from caddsuite.contracts.execution import EnvironmentKind, ErrorRecord, SoftwareEnvironment
 from caddsuite.contracts.md import MDProtocol, MDSimulation, MDStage, MDStageKind, SegmentRecord
 from caddsuite.contracts.properties import PredictionKind, PropertyPrediction
-from caddsuite.contracts.qm import ExcitedState, OrbitalEnergies, PoseStrain
+from caddsuite.contracts.qm import (
+    ExcitedState,
+    OrbitalEnergies,
+    PoseStrain,
+    QMConvergence,
+    QMResult,
+)
 from caddsuite.contracts.registry import (
     ChemicalIdentity,
     Compound,
@@ -361,6 +367,8 @@ def test_rmsd_metric_must_declare_its_fit(make_artifact: MakeArtifact) -> None:
             name="rmsd_ligand",
             definition=MetricDefinition(target_selection="resname LIG"),
             unit="Å",
+            axis="time_ns",
+            value_column="value",
             series=make_artifact("series.csv"),
             window_ns=(20.0, 100.0),
         )
@@ -370,8 +378,11 @@ def test_rmsd_metric_must_declare_its_fit(make_artifact: MakeArtifact) -> None:
             target_selection="resname LIG and not type H",
             fit_selection="protein and backbone",
             refit=False,
+            weighting="uniform",
         ),
         unit="Å",
+        axis="time_ns",
+        value_column="value",
         series=make_artifact("series.csv"),
         window_ns=(20.0, 100.0),
     )
@@ -425,6 +436,7 @@ def test_pose_strain_arithmetic_is_checked() -> None:
     docked, ref = -1210.570, -1210.583
     strain = PoseStrain(
         pose_id=new_ulid(),
+        heavy_atom_map=((0, 0), (1, 1)),
         docked_energy_Eh=docked,
         reference_energy_Eh=ref,
         strain_kcal_per_mol=(docked - ref) * HARTREE_TO_KCAL_PER_MOL,
@@ -436,6 +448,7 @@ def test_pose_strain_arithmetic_is_checked() -> None:
     with pytest.raises(ValidationError, match="strain"):
         PoseStrain(
             pose_id=new_ulid(),
+            heavy_atom_map=((0, 0), (1, 1)),
             docked_energy_Eh=docked,
             reference_energy_Eh=ref,
             strain_kcal_per_mol=1.0,
@@ -512,3 +525,26 @@ def test_error_record_codes_and_timestamps() -> None:
         captured_at=datetime(2026, 9, 23, tzinfo=UTC),
     )
     assert env.schema_version == "software_environment/1.0"
+
+
+def test_qm_result_v1_pose_metrics_are_retained_as_unverified_after_upgrade() -> None:
+    old = QMResult(
+        calculation_id=new_ulid(),
+        total_energy_Eh=-10.0,
+        convergence=QMConvergence(scf_converged=True),
+    ).model_dump(mode="json")
+    old["schema_version"] = "qm_result/1.1"
+    old["pose_strain"] = {
+        "pose_id": new_ulid(),
+        "docked_energy_Eh": -9.9,
+        "reference_energy_Eh": -10.0,
+        "strain_kcal_per_mol": 62.75094740631,
+        "heavy_atom_rmsd_A": 0.8,
+    }
+
+    upgraded = load_contract(old)
+    assert isinstance(upgraded, QMResult)
+    assert upgraded.schema_version == "qm_result/2.0"
+    assert upgraded.pose_strain is None
+    assert upgraded.legacy_unverified_pose_strain is not None
+    assert "pose_strain" in upgraded.missing

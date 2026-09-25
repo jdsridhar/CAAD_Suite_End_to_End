@@ -1,0 +1,31 @@
+{
+  "basis": "6-31g*",
+  "entries": {
+    "acetic_acid": {
+      "fixture": "batch_acetic_acid.json",
+      "fixture_sha256": "e9184c292c30eca2e0244e18bae26ec519002f067f259ad906af0a6e50051074",
+      "sha256": "0a2862a78633e71d366dda47767b50b86a7cd1b73e79925cef773f75a2910f51",
+      "source": "dft-gui-suite/outputs/batch_acetic_acid.result.json"
+    },
+    "aspirin": {
+      "fixture": "batch_aspirin.json",
+      "fixture_sha256": "9c918980382ac5090a6c5389c888476bc6082a59199b4ada7dc6b7aa5bcd26df",
+      "sha256": "4b0c3d46f856d872a16c5823e1c0d6736eadabaa5b912e44c4571f1bd08f2128",
+      "source": "dft-gui-suite/outputs/batch_aspirin.result.json"
+    },
+    "benzene": {
+      "fixture": "batch_benzene.json",
+      "fixture_sha256": "d9e8e269acb9a4537aefe83b477e4f797706482105314b727a14a510779ac42b",
+      "sha256": "f32d5d25e17a49cd1a57616dd9e204c5adb2a1ea647496bbe35d918c076b08dc",
+      "source": "dft-gui-suite/outputs/batch_benzene.result.json"
+    },
+    "ethanol": {
+      "fixture": "batch_ethanol.json",
+      "fixture_sha256": "9f91e62fd748a273d880d74ca536f75c447d7eef60051d4b6e8b449927510db5",
+      "sha256": "9ffcf661c1d252cfdd43722d230131dc105c5bf810fe0534f8b27541c9a07840",
+      "source": "dft-gui-suite/outputs/batch_ethanol.result.json"
+    }
+  },
+  "method": "b3lyp",
+  "source_root": "legacy/dft-gui-suite/outputs"
+}

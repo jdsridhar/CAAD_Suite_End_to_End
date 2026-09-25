@@ -86,3 +86,49 @@ These notes cover the concepts behind each implemented piece: what it is, why it
 - **Dynamic fan-out:** a docking stage can yield a variable number of poses. Compilation therefore records a pose or compound fan-out template; the scheduler creates concrete task IDs once the upstream artifacts reveal item identities and counts.
 - **Scientific boundary:** exact normalized contract compatibility is static. Protonation, topology, parameterization and atom-level validity still require checks on the actual structures and stay visible at runtime.
 - **Interview line:** *"The compiler is engine-independent: adapters publish capabilities, contracts connect stages, and the compiler rejects unsupported graphs before any scientific process starts."*
+
+
+## Phase 10.5: volumetric QM outputs
+
+### Raw grids, normalized artifacts, and pictures are separate stages
+- **What:** Psi4 creates raw CUBE files in an isolated product directory. The worker reports paths and calculation settings, artifact storage hashes the files, the  links to those artifacts, and the optional renderer consumes hash-checked CUBE inputs to make figures.
+- **Why:** grids can be large and depend on engine semantics; rendering should not require importing Psi4 or place arrays in a database contract. Keeping the raw grid makes later re-rendering possible.
+- **Units:** the user configures Å; the adapter converts once to Bohr because Psi4's cubic grid spacing is in Bohr. The actual axis vectors are verified by parsing CUBE headers.
+- **Compatibility lesson:** identical nominal spacing does not guarantee identical voxel indexing. Charge-state jobs must preserve geometry and grid bounds so pointwise Fukui differences are valid. The worker clones the converged geometry and changes charge/spin, then the core reader checks origin, axes, dimensions, and atom records.
+- **Interview line:** *"I kept Psi4-specific cube generation in its isolated adapter worker, while normalized CUBE parsing and rendering remain engine-neutral. The grid compatibility check caught and fixed a subtle issue that a successful SCF alone would not reveal."*
+
+
+## Phase 10.5: volumetric QM outputs
+
+### Raw grids, normalized artifacts, and pictures are separate stages
+- **What:** Psi4 creates raw CUBE files in an isolated product directory. The worker reports paths and calculation settings, artifact storage hashes the files, the QMResult links to those artifacts, and the optional renderer consumes hash-checked CUBE inputs to make figures.
+- **Why:** grids can be large and depend on engine semantics; rendering should not require importing Psi4 or place arrays in a database contract. Keeping the raw grid makes later re-rendering possible.
+- **Units:** the user configures Å; the adapter converts once to Bohr because Psi4 cubic grid spacing is in Bohr. Actual axis vectors are verified by parsing CUBE headers.
+- **Compatibility lesson:** identical nominal spacing does not guarantee identical voxel indexing. Charge-state jobs must preserve geometry and grid bounds so pointwise Fukui differences are valid. The worker clones the converged geometry and changes charge/spin, then the core reader checks origin, axes, dimensions, and atom records.
+- **Interview line:** *I kept Psi4-specific cube generation in its isolated adapter worker, while normalized CUBE parsing and rendering remain engine-neutral. The grid compatibility check caught and fixed a subtle issue that a successful SCF alone would not reveal.*
+
+
+## Phase 10.7 — Conceptual DFT as a shared analysis
+
+Conceptual-DFT descriptors are calculations over orbital energies, not capabilities unique to a DFT executable. Putting the equations in the engine-independent analysis package lets each QM engine use the same definitions. The result states that Koopmans frontier-orbital estimates were used; it is not a delta-SCF ionization potential/electron affinity or an experimental measurement. When hardness is zero or negative, softness and electrophilicity are undefined for this use.
+
+For interviews: explain why analysis sits above engine adapters, why orbital input has an explicit energy unit, and why a compatible payload shape does not make a contract change backward compatible.
+
+## Phase 10.8 — A second QM engine
+
+The PySCF adapter implements the existing QM port and returns the same QMResult contract as Psi4. Engine-specific method names, basis selection and Python APIs stay in the adapter/worker boundary. A dedicated QM engine entry-point registry is needed because a workflow stage plugin and a scientific-engine port are distinct protocols.
+
+For interviews: describe how capability discovery controls supported protocols/properties, how a fresh subprocess isolates numerical libraries, and how a small single-point test demonstrates integration without claiming biological accuracy or cross-engine numerical identity.
+
+
+## Phase 11.1  Recording execution attempts at the orchestration boundary
+
+A task describes a workflow stage for one stable subject; an attempt is one actual try at executing that task. If a stage retries twice, the database should show three attempts, including the failures. If a result comes from cache or a gate skips the stage, no calculation happened, so neither event should be represented as an execution attempt.
+
+The scheduler is the right place to open and close these records because it owns retry and recovery decisions. It does not need to know whether the task is docking, MD, binding-energy analysis, or QM. A plugin still supplies its adapter and engine identities, while normalized contracts carry typed artifact references.
+
+LocalExecutor finishes a process and registers its stdout/stderr as content-addressed artifacts. A ContextVar gives those records a task-local route to the attempt currently being executed. Context-local state follows asynchronous execution contexts and avoids a shared global list, which could mix logs when work becomes concurrent.
+
+A useful interview explanation: I put attempt boundaries in the workflow scheduler because that layer knows about retries and cache behavior. The local executor reports process facts through a context-local event scope, so execution mechanics remain engine-neutral and concurrent tasks keep their provenance separate.
+
+One limitation is intentionally visible: the scheduler cannot assume its environment is the scientific worker environment. A PSI4 adapter may launch a separate interpreter, and an MD stage may use another conda environment or a container. Application composition must resolve the real worker environment and resource request; unknown values stay unknown.

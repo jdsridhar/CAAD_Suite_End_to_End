@@ -1,0 +1,194 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "EntityRef": {
+      "additionalProperties": false,
+      "description": "Polymorphic reference to another platform entity (e.g. a pose or a conformer).",
+      "properties": {
+        "accession": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Accession"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "EntityRef",
+      "type": "object"
+    },
+    "InteractionAnalysisMethod": {
+      "enum": [
+        "plip",
+        "geometric_polar_contact"
+      ],
+      "title": "InteractionAnalysisMethod",
+      "type": "string"
+    },
+    "ResidueRef": {
+      "additionalProperties": false,
+      "properties": {
+        "chain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain"
+        },
+        "icode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icode"
+        },
+        "resname": {
+          "minLength": 1,
+          "title": "Resname",
+          "type": "string"
+        },
+        "resnum": {
+          "title": "Resnum",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "resname",
+        "resnum"
+      ],
+      "title": "ResidueRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/interaction_analysis_request/1.0",
+  "additionalProperties": false,
+  "description": "Explicit pose/complex identity and method settings for interaction profiling.",
+  "properties": {
+    "complex_structure": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "ligand_residue": {
+      "$ref": "#/$defs/ResidueRef"
+    },
+    "method": {
+      "$ref": "#/$defs/InteractionAnalysisMethod"
+    },
+    "polar_contact_cutoff_A": {
+      "default": 3.6,
+      "exclusiveMinimum": 0,
+      "title": "Polar Contact Cutoff A",
+      "type": "number"
+    },
+    "polar_elements": {
+      "default": [
+        "N",
+        "O",
+        "S"
+      ],
+      "items": {
+        "enum": [
+          "N",
+          "O",
+          "S"
+        ],
+        "type": "string"
+      },
+      "title": "Polar Elements",
+      "type": "array"
+    },
+    "pose": {
+      "$ref": "#/$defs/EntityRef"
+    },
+    "schema_version": {
+      "default": "interaction_analysis_request/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "structure_format": {
+      "const": "PDB",
+      "default": "PDB",
+      "title": "Structure Format",
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/EntityRef"
+    }
+  },
+  "required": [
+    "id",
+    "pose",
+    "target",
+    "complex_structure",
+    "ligand_residue",
+    "method"
+  ],
+  "title": "InteractionAnalysisRequest",
+  "type": "object"
+}

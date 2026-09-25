@@ -1,0 +1,325 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "AtomSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "n_atoms": {
+          "minimum": 1,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "description",
+        "n_atoms",
+        "verified"
+      ],
+      "title": "AtomSelection",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    },
+    "TrajectoryTransform": {
+      "description": "Engine-independent meanings of periodic-boundary transformations.",
+      "enum": [
+        "remove_periodic_jumps",
+        "make_molecules_whole",
+        "align_rot_trans"
+      ],
+      "title": "TrajectoryTransform",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/trajectory_processing_result/1.0",
+  "additionalProperties": false,
+  "description": "Normalized processing output with raw/derived artifacts and frame metadata.",
+  "properties": {
+    "adapter_id": {
+      "minLength": 1,
+      "title": "Adapter Id",
+      "type": "string"
+    },
+    "adapter_version": {
+      "minLength": 1,
+      "title": "Adapter Version",
+      "type": "string"
+    },
+    "atom_masses": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "fit_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "frame_interval_ps": {
+      "exclusiveMinimum": 0,
+      "title": "Frame Interval Ps",
+      "type": "number"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "log_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Log Artifacts",
+      "type": "object"
+    },
+    "n_atoms": {
+      "minimum": 1,
+      "title": "N Atoms",
+      "type": "integer"
+    },
+    "n_frames": {
+      "minimum": 1,
+      "title": "N Frames",
+      "type": "integer"
+    },
+    "output_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minProperties": 1,
+      "title": "Output Artifacts",
+      "type": "object"
+    },
+    "output_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "processor": {
+      "$ref": "#/$defs/SoftwareRef"
+    },
+    "reference_structure": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "request_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "trajectory_processing_result/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simulation_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "source_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minProperties": 2,
+      "title": "Source Artifacts",
+      "type": "object"
+    },
+    "time_range_ps": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "minimum": 0,
+          "type": "number"
+        }
+      ],
+      "title": "Time Range Ps",
+      "type": "array"
+    },
+    "transforms": {
+      "items": {
+        "$ref": "#/$defs/TrajectoryTransform"
+      },
+      "title": "Transforms",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "request_id",
+    "simulation_id",
+    "processor",
+    "adapter_id",
+    "adapter_version",
+    "parameters",
+    "transforms",
+    "source_artifacts",
+    "output_artifacts",
+    "n_atoms",
+    "n_frames",
+    "frame_interval_ps",
+    "time_range_ps"
+  ],
+  "title": "TrajectoryProcessingResult",
+  "type": "object"
+}

@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/md_stage_input/1.0",
+  "additionalProperties": false,
+  "description": "Hash-linked inputs materialized for one engine stage.\n\nKeys in ``artifacts`` are logical roles such as ``md_parameters``, ``coordinates``,\n``topology``, ``reference_coordinates``, ``previous_checkpoint``, and\n``resume_checkpoint``. Adapters choose native staged filenames; those filenames never\nreplace the artifact IDs and hashes recorded here.",
+  "properties": {
+    "artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minProperties": 1,
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "md_stage_input/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage_index": {
+      "minimum": 0,
+      "title": "Stage Index",
+      "type": "integer"
+    },
+    "system_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "System Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "system_id",
+    "stage_index",
+    "artifacts"
+  ],
+  "title": "MDStageInput",
+  "type": "object"
+}

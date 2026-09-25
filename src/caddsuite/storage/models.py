@@ -195,6 +195,8 @@ class TaskAttemptRow(Base):
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"))
     attempt_no: Mapped[int] = mapped_column(Integer)
     executor: Mapped[str] = mapped_column(String(32))
+    environment_id: Mapped[str | None] = mapped_column(String(26), index=True)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     host: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     resources: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     steps: Mapped[list[Any] | None] = mapped_column(JSON)

@@ -1,0 +1,333 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "MetricDefinition": {
+      "additionalProperties": false,
+      "description": "Exactly what was measured. For RMSD-type metrics the fit selection is mandatory:\nthe legacy \"ligand RMSD\" was fitted on the ligand itself, so it measured internal\nflexibility, not pose stability, and nothing in the output said so (audit SCI-06).",
+      "properties": {
+        "fit_selection": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fit Selection"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "refit": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refit"
+        },
+        "target_selection": {
+          "minLength": 1,
+          "title": "Target Selection",
+          "type": "string"
+        },
+        "weighting": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weighting"
+        }
+      },
+      "required": [
+        "target_selection"
+      ],
+      "title": "MetricDefinition",
+      "type": "object"
+    },
+    "MetricSeries": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "enum": [
+            "time_ns",
+            "residue"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "definition": {
+          "$ref": "#/$defs/MetricDefinition"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "series": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "summary": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Summary",
+          "type": "object"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value_column": {
+          "minLength": 1,
+          "title": "Value Column",
+          "type": "string"
+        },
+        "window_ns": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "minimum": 0,
+              "type": "number"
+            }
+          ],
+          "title": "Window Ns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "definition",
+        "unit",
+        "axis",
+        "value_column",
+        "series",
+        "window_ns"
+      ],
+      "title": "MetricSeries",
+      "type": "object"
+    },
+    "TrajectoryPlotSource": {
+      "additionalProperties": false,
+      "description": "One normalized metric trace and its stable source analysis identity.",
+      "properties": {
+        "analysis_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Analysis Id",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "metric": {
+          "$ref": "#/$defs/MetricSeries"
+        },
+        "trajectory_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Trajectory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "analysis_id",
+        "trajectory_id",
+        "label",
+        "metric"
+      ],
+      "title": "TrajectoryPlotSource",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/trajectory_plot_request/1.0",
+  "additionalProperties": false,
+  "description": "Render a metric from one run or compare compatible runs without resampling.",
+  "properties": {
+    "comparison_basis": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Comparison Basis"
+    },
+    "display_window_ns": {
+      "anyOf": [
+        {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "minimum": 0,
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Display Window Ns"
+    },
+    "dpi": {
+      "default": 200,
+      "maximum": 600,
+      "minimum": 72,
+      "title": "Dpi",
+      "type": "integer"
+    },
+    "height_inches": {
+      "default": 4.5,
+      "exclusiveMinimum": 0,
+      "maximum": 30,
+      "title": "Height Inches",
+      "type": "number"
+    },
+    "highlight_label": {
+      "default": "Highlighted interval",
+      "minLength": 1,
+      "title": "Highlight Label",
+      "type": "string"
+    },
+    "highlight_window_ns": {
+      "anyOf": [
+        {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "minimum": 0,
+              "type": "number"
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Highlight Window Ns"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "trajectory_plot_request/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/TrajectoryPlotSource"
+      },
+      "minItems": 1,
+      "title": "Sources",
+      "type": "array"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "width_inches": {
+      "default": 8.5,
+      "exclusiveMinimum": 0,
+      "maximum": 30,
+      "title": "Width Inches",
+      "type": "number"
+    }
+  },
+  "required": [
+    "id",
+    "sources"
+  ],
+  "title": "TrajectoryPlotRequest",
+  "type": "object"
+}

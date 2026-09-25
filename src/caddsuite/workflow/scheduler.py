@@ -6,13 +6,32 @@ This module owns DAG scheduling, durable task state, result caching, and failure
 
 from __future__ import annotations
 
+import re
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 
-from caddsuite.contracts.base import VersionedContract
-from caddsuite.domain.enums import TaskState
+from pydantic import BaseModel
+
+from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
+from caddsuite.contracts.execution import (
+    AttemptArtifact,
+    AttemptSoftware,
+    AttemptStatus,
+    ErrorRecord,
+    SoftwareEnvironment,
+    TaskAttempt,
+)
+from caddsuite.domain.enums import LicenseClass, SoftwareKind, TaskState
+from caddsuite.domain.identity import new_ulid
+from caddsuite.execution.attempt_context import AttemptExecutionData, capture_attempt_execution
+from caddsuite.provenance.host import capture_host_info
+from caddsuite.provenance.software import (
+    platform_ref,
+)
+from caddsuite.storage.attempts import TaskAttemptStore
 from caddsuite.storage.result_cache import ResultCache
 from caddsuite.storage.task_state import TaskSnapshot, TaskStateStore
 from caddsuite.workflow.cache import build_cache_key
@@ -91,14 +110,41 @@ class RecoverableStageHandler(StageHandler, Protocol):
     def recover(self, invocation: TaskInvocation, task_id: str) -> VersionedContract | None: ...
 
 
+_ERROR_CODE = re.compile(r"^[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)+$")
+
+
 class StageExecutionFailure(RuntimeError):
     """A handler failure with a stable code for explicit retry policy matching."""
 
     def __init__(self, code: str, message: str) -> None:
-        if "." not in code:
-            raise ValueError("execution failure codes must be dotted, e.g. DOCKING.NON_CONVERGED")
+        if not _ERROR_CODE.fullmatch(code):
+            raise ValueError(
+                "execution failure codes must be stable dotted codes such as DOCKING.NON_CONVERGED"
+            )
         self.code = code
         super().__init__(message)
+
+
+def _artifact_refs(value: object) -> Iterator[ArtifactRef]:
+    if isinstance(value, ArtifactRef):
+        yield value
+    elif isinstance(value, BaseModel):
+        for field_name in type(value).model_fields:
+            yield from _artifact_refs(getattr(value, field_name))
+    elif isinstance(value, Mapping):
+        for child in value.values():
+            yield from _artifact_refs(child)
+    elif isinstance(value, (tuple, list)):
+        for child in value:
+            yield from _artifact_refs(child)
+
+
+def _attempt_artifacts(value: object, *, direction: str) -> tuple[AttemptArtifact, ...]:
+    unique: dict[tuple[str, str], AttemptArtifact] = {}
+    for artifact in _artifact_refs(value):
+        edge = AttemptArtifact(artifact=artifact, direction=direction, role=artifact.role[:64])
+        unique[(str(artifact.artifact_id), edge.role)] = edge
+    return tuple(unique.values())
 
 
 class WorkflowScheduler:
@@ -114,11 +160,17 @@ class WorkflowScheduler:
         task_store: TaskStateStore,
         result_cache: ResultCache,
         handlers: Mapping[str, StageHandler],
+        attempt_store: TaskAttemptStore | None = None,
+        environment_resolver: Callable[[StageHandler], SoftwareEnvironment | None] | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._tasks = task_store
         self._cache = result_cache
         self._handlers = handlers
+        self._attempts = attempt_store
+        self._host = capture_host_info() if attempt_store is not None else None
+        self._platform = platform_ref() if attempt_store is not None else None
+        self._environment_resolver = environment_resolver
         self._sleep = sleep
 
     def run(
@@ -279,6 +331,24 @@ class WorkflowScheduler:
                     "the engine process before this task can resume"
                 )
             recovered = recover(invocation, record.id)
+            open_attempt = (
+                self._attempts.running_for_task(record.id) if self._attempts is not None else None
+            )
+            if open_attempt is not None and self._attempts is not None:
+                recovered_artifacts = (
+                    _attempt_artifacts(recovered, direction="generated")
+                    if recovered is not None
+                    else ()
+                )
+                self._attempts.finish(
+                    str(open_attempt.id),
+                    status=(
+                        AttemptStatus.SUCCEEDED if recovered is not None else AttemptStatus.UNKNOWN
+                    ),
+                    ended_at=datetime.now(UTC),
+                    steps=open_attempt.steps,
+                    generated_artifacts=recovered_artifacts,
+                )
             if recovered is not None:
                 self._validate_result(task, recovered)
                 if record.state is TaskState.INTERRUPTED:
@@ -345,13 +415,31 @@ class WorkflowScheduler:
         attempts = 0
         while attempts < task.retry.max_attempts:
             attempts += 1
+            attempt = self._begin_attempt(task, handler, invocation, record.id)
+            execution_data = AttemptExecutionData()
             try:
-                candidate = handler.execute(invocation)
-                self._validate_result(task, candidate)
+                with capture_attempt_execution(execution_data):
+                    candidate = handler.execute(invocation)
+                    self._validate_result(task, candidate)
+                self._finish_attempt(
+                    attempt,
+                    AttemptStatus.SUCCEEDED,
+                    execution_data,
+                    result=candidate,
+                    stage_id=task.stage_id,
+                )
                 result = candidate
                 break
             except StageExecutionFailure as exc:
                 error = str(exc)
+                self._finish_attempt(
+                    attempt,
+                    AttemptStatus.FAILED,
+                    execution_data,
+                    error_code=exc.code,
+                    error_message=str(exc),
+                    stage_id=task.stage_id,
+                )
                 if not task.retry.should_retry(attempts, exc.code):
                     break
                 delay = task.retry.delay_after_failure(attempts)
@@ -359,6 +447,14 @@ class WorkflowScheduler:
                     self._sleep(delay)
             except Exception as exc:
                 error = f"PLATFORM.UNEXPECTED: {type(exc).__name__}: {exc}"
+                self._finish_attempt(
+                    attempt,
+                    AttemptStatus.FAILED,
+                    execution_data,
+                    error_code="PLATFORM.UNEXPECTED",
+                    error_message=error,
+                    stage_id=task.stage_id,
+                )
                 break
 
         if result is None:
@@ -379,6 +475,91 @@ class WorkflowScheduler:
         record = self._transition(record, TaskState.SUCCEEDED)
         produced = ProducedValue(subject_id, result)
         return TaskOutcome(task.stage_id, record.id, record.state, subject_id, result), produced
+
+    def _begin_attempt(
+        self, task: TaskTemplate, handler: StageHandler, invocation: TaskInvocation, task_id: str
+    ) -> TaskAttempt | None:
+        if self._attempts is None:
+            return None
+        if self._host is None or self._platform is None:
+            raise RuntimeError("attempt capture metadata was not initialized")
+        used = _attempt_artifacts(invocation.inputs, direction="used")
+        adapter = SoftwareRef(
+            name=handler.adapter_id,
+            version=handler.adapter_version,
+            kind=SoftwareKind.ADAPTER,
+            license_class=LicenseClass.UNKNOWN,
+        )
+        engine = SoftwareRef(
+            name=task.engine or handler.adapter_id,
+            version=handler.engine_version or "unknown",
+            kind=SoftwareKind.ENGINE,
+            license_class=LicenseClass.UNKNOWN,
+        )
+        attempt = TaskAttempt(
+            id=new_ulid(),
+            task_id=task_id,
+            attempt_no=self._attempts.next_attempt_no(task_id),
+            executor="local",
+            host=self._host,
+            platform=self._platform,
+            environment=(
+                self._environment_resolver(handler)
+                if self._environment_resolver is not None
+                else None
+            ),
+            software=(
+                AttemptSoftware(software=adapter, role="adapter"),
+                AttemptSoftware(software=engine, role="engine"),
+            ),
+            parameters=dict(task.params),
+            artifacts=used,
+            started_at=datetime.now(UTC),
+            status=AttemptStatus.RUNNING,
+        )
+        return self._attempts.begin(attempt)
+
+    def _finish_attempt(
+        self,
+        attempt: TaskAttempt | None,
+        status: AttemptStatus,
+        execution_data: AttemptExecutionData,
+        *,
+        result: VersionedContract | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        stage_id: str | None = None,
+    ) -> None:
+        if attempt is None or self._attempts is None:
+            return
+        generated = list(execution_data.generated_artifacts)
+        if result is not None:
+            generated.extend(_attempt_artifacts(result, direction="generated"))
+        error = None
+        if status is AttemptStatus.FAILED:
+            if error_code is None or error_message is None:
+                raise ValueError("failed attempts require an error code and message")
+            error = ErrorRecord(
+                code=error_code,
+                message=error_message[:2000] or error_code,
+                stage_id=stage_id,
+                task_id=attempt.task_id,
+                inputs=tuple(item.artifact for item in attempt.artifacts),
+                remediation=(
+                    "Review recorded inputs and engine logs; retry only if the cause is transient.",
+                ),
+                retryable=error_code != "PLATFORM.UNEXPECTED",
+                partial_outputs=tuple(item.artifact for item in generated),
+            )
+        deduplicated = {(item.artifact.artifact_id, item.role): item for item in generated}
+        self._attempts.finish(
+            str(attempt.id),
+            status=status,
+            ended_at=datetime.now(UTC),
+            steps=execution_data.steps,
+            error=error,
+            generated_artifacts=tuple(deduplicated.values()),
+        )
 
     @staticmethod
     def _validate_result(task: TaskTemplate, result: VersionedContract) -> None:

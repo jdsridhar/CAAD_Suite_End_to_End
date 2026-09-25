@@ -246,3 +246,30 @@ def test_invalid_argv_and_environment_are_rejected_before_spawn(
         )
     with pytest.raises(ExecutionError, match="could not start"):
         local.start(CommandSpec(argv=("/no/such/executable",), cwd=tmp_path), log_dir=log_dir)
+
+
+def test_step_record_captures_explicit_environment_and_redacts_secrets(
+    executor: tuple[LocalExecutor, Path, sessionmaker[Session]], tmp_path: Path
+) -> None:
+    local, log_dir, _sessions = executor
+    command = local.start(
+        CommandSpec(
+            argv=(sys.executable, "-c", "pass"),
+            cwd=tmp_path,
+            env={
+                "OMP_NUM_THREADS": "2",
+                "CONDA_PREFIX": "/envs/science",
+                "API_TOKEN": "never-persist-this",
+                "GPG_KEY": "never-persist-this-either",
+            },
+        ),
+        log_dir=log_dir,
+    )
+    result = command.wait(timeout=10)
+    assert result.step.env_subset == {
+        "API_TOKEN": "[REDACTED]",
+        "CONDA_PREFIX": "/envs/science",
+        "GPG_KEY": "[REDACTED]",
+        "OMP_NUM_THREADS": "2",
+    }
+    assert "never-persist-this" not in repr(result.step.model_dump())

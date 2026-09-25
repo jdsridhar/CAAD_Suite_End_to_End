@@ -10,6 +10,8 @@ from caddsuite.contracts.md import (
 )
 
 CHARMM_GUI_GROMACS_PROFILE_ID = "caddsuite.charmm_gui.gromacs.charmm36m_cgenff_v1"
+AMBER_TLEAP_GROMACS_PROFILE_ID = "caddsuite.ambertools.gromacs.ff14sb_gaff2_tip3p_v1"
+AMBER_TLEAP_NATIVE_PROFILE_ID = "caddsuite.ambertools.amber.ff14sb_gaff2_tip3p_v1"
 
 
 class ForceFieldCompatibilityProfile(ContractModel):
@@ -71,6 +73,60 @@ def default_force_field_profiles() -> ForceFieldCompatibilityRegistry:
                     "Audited CHARMM-GUI GROMACS import declaration profile; it verifies declared "
                     "component identities and file-format consistency, not force-field accuracy, "
                     "penalty acceptability, or simulation stability."
+                ),
+            ),
+            ForceFieldCompatibilityProfile(
+                profile_id=AMBER_TLEAP_GROMACS_PROFILE_ID,
+                family=ForceFieldFamily.AMBER,
+                component_force_fields={
+                    ForceFieldComponent.PROTEIN: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="ff14SB"
+                    ),
+                    ForceFieldComponent.LIGAND: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="GAFF2"
+                    ),
+                    ForceFieldComponent.WATER: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="TIP3P"
+                    ),
+                    ForceFieldComponent.IONS: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="Joung-Cheatham TIP3P"
+                    ),
+                },
+                ligand_charge_model="AM1-BCC",
+                topology_format="GROMACS",
+                supported=False,
+                scope_note=(
+                    "Disabled candidate. One tiny AmberTools-to-GROMACS conversion and "
+                    "single-point regression is recorded; multi-system validation and a "
+                    "justified energy tolerance are still required."
+                ),
+            ),
+            ForceFieldCompatibilityProfile(
+                profile_id=AMBER_TLEAP_NATIVE_PROFILE_ID,
+                family=ForceFieldFamily.AMBER,
+                component_force_fields={
+                    ForceFieldComponent.PROTEIN: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="ff14SB"
+                    ),
+                    ForceFieldComponent.LIGAND: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="GAFF2"
+                    ),
+                    ForceFieldComponent.WATER: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="TIP3P"
+                    ),
+                    ForceFieldComponent.IONS: ComponentForceField(
+                        family=ForceFieldFamily.AMBER, name="Joung-Cheatham TIP3P"
+                    ),
+                },
+                ligand_charge_model="AM1-BCC",
+                topology_format="AMBER",
+                supported=True,
+                scope_note=(
+                    "Native Amber prmtop/inpcrd execution is enabled for the OpenMM adapter's "
+                    "explicit ff14SB/GAFF2/AM1-BCC/TIP3P profile. Current evidence is one tiny "
+                    "solvated ethanol + two-residue GLY CPU smoke run; this is format and "
+                    "execution compatibility evidence, not broad force-field or scientific "
+                    "validation."
                 ),
             ),
         )

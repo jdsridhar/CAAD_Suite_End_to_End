@@ -55,7 +55,7 @@ Large legacy data (trajectories, receptors) is **not copied**. Tests reference i
 | 5 | ADMET integration | autopilot `admet.py` (pending Q1) | Known-molecule tests; definitions documented; computed on the neutral parent |
 | 6 | Complex preparation + `SystemBuilder` port + **CHARMM-GUI import** (+ AmberTools builder per ADR-0011) | `build_complex.py`, `traj_prep_run.sh` ligand detection | G-MD-3/4 green; FF-compatibility validators active |
 | 7 | **GROMACS adapter**; PoC OpenMM | `md_run_segment.sh`, `md_ctl.sh` | Plan golden = legacy command lines (minus intentional changes); tiny real run; interrupt → `-cpi` resume; warnings classified (SCI-04) |
-| 8 | Trajectory analysis (MDAnalysis) | `traj_prep_run.sh`, `analyze_run.sh`, `plot_traj_analysis.py`, `compare_run.py` | G-MD-1 green; SCI-06 relabel documented; SCI-19 verified |
+| 8 | Trajectory analysis (MDAnalysis + capability-specific analyzers) | `traj_prep_run.sh`, `analyze_run.sh`, `plot_traj_analysis.py`, `compare_run.py` | G-MD-1 green; SCI-06 fit/weighting semantics explicit; SCI-19 verified; H-bond topology limits surfaced |
 | 9 | Binding energy (**gmx_MMPBSA adapter**) | `mmpbsa_run.sh`, `mmpbsa_ctl.sh` | G-MD-2 green; groups from the system model (SCI-01); temperature from the thermostat (SCI-07); block SEM (SCI-08) |
 | 10 | QM: **Psi4 worker + adapter**; PoC second QM engine | `core/*` of dft-gui-suite | G-DFT-1/3 green; SCI-03 test with non-canonical atom order; cube and figure smoke tests |
 | 11 | Provenance completeness + legacy importers | all | "How was X generated" returns the full chain for a demo run; existing docking/MD projects importable as *provenance-partial* records |
@@ -100,11 +100,15 @@ Large legacy data (trajectories, receptors) is **not copied**. Tests reference i
 
 | Change | Legacy behaviour | New behaviour | Expected numeric effect | Measured |
 |---|---|---|---|---|
-| SCI-06 | "Ligand RMSD" = internal (self-fit) | Two metrics: pose RMSD (backbone fit) and internal RMSD | Pose RMSD ≥ internal RMSD | *Phase 8* |
+| SCI-06 | "Ligand RMSD" = internal (self-fit); legacy label did not state fitting semantics | Separate protein-fit pose RMSD and ligand-self-fit internal RMSD; record mass/uniform weighting | Pose RMSD ≥ internal RMSD on a consistently processed, linked trajectory | G-MD-14: corrected 11-frame pose/internal check; 100 ns internal RMSD MAE 0.00000109 Å vs legacy |
+| Phase 8.4 plots | Legacy figures shade a configured warm-up range and label it excluded from statistics, while CSVs may contain either trusted-only or full-run data | Plot normalized, hash-verified metric CSVs; preserve actual samples and use an explicitly named highlight interval without asserting exclusion | No data change; renderer performs no metric calculations or interpolation | Renderer unit checks; image pixels may vary with Matplotlib/font rasterization |
 | SCI-07 | MM-GBSA T = 310 K | T = MD thermostat (303.15 K) | ≈ 0 for GB without entropy | *Phase 9* |
 | SCI-08 | SEM over correlated frames | + block SEM, n_eff | Larger, more honest uncertainty | *Phase 9* |
 | SCI-16 | Centroid-centred box | Bounding-box-centred box | Small score shifts possible | *Phase 4* |
 | SCI-09 | Neutralized ligands | Explicit protonation policy (Q3) | Docking scores may shift; MD charge states change | *Phase 4* |
+| Phase 10.2 Psi4 worker | Preserved legacy calculation recipe; worker runs one task in a fresh Psi4 process with private PSI_SCRATCH | No intended numeric change for supported request | G-DFT-1 ethanol energy/orbitals/dipole match within configured tolerances; full molecule/solvent gates remain pending |
+| Phase 10.3 Psi4 adapter | Verify CompoundForm/Conformer/SDF identity and normalize worker outputs to QMResult/1.1, including requested-but-missing values and final geometry artifact | No intended numeric change | Complete adapter → worker → normalized-result G-DFT-1 test passes; full G-DFT-1 series and G-DFT-3 remain pending |
+| Phase 10.4 pose strain/RMSD | Replaced pose-derived SMILES ordering with registered-form identity validation and symmetry-aware substructure mapping; require an optimization reference and preserve the selected heavy-atom map | Pose tasks with mismatched connectivity/stereo now stop before Psi4; RMSD retains the same scientific definition but no longer assumes canonical-SMILES atom order | Synthetic mapping regressions and a real Psi4 optimization-level pose-strain golden; full set remains Phase 10.6 |
 
 ## 7. Risk register
 

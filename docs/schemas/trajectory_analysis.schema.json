@@ -93,6 +93,18 @@
           "minLength": 1,
           "title": "Target Selection",
           "type": "string"
+        },
+        "weighting": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weighting"
         }
       },
       "required": [
@@ -104,6 +116,14 @@
     "MetricSeries": {
       "additionalProperties": false,
       "properties": {
+        "axis": {
+          "enum": [
+            "time_ns",
+            "residue"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
         "definition": {
           "$ref": "#/$defs/MetricDefinition"
         },
@@ -127,6 +147,11 @@
           "title": "Unit",
           "type": "string"
         },
+        "value_column": {
+          "minLength": 1,
+          "title": "Value Column",
+          "type": "string"
+        },
         "window_ns": {
           "maxItems": 2,
           "minItems": 2,
@@ -148,6 +173,8 @@
         "name",
         "definition",
         "unit",
+        "axis",
+        "value_column",
         "series",
         "window_ns"
       ],
@@ -211,7 +238,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/trajectory_analysis/1.0",
+  "$id": "caddsuite://schemas/trajectory_analysis/1.1",
   "additionalProperties": false,
   "properties": {
     "analyzer": {
@@ -230,7 +257,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "trajectory_analysis/1.0",
+      "default": "trajectory_analysis/1.1",
       "title": "Schema Version",
       "type": "string"
     },

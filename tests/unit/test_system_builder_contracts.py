@@ -127,6 +127,8 @@ def test_normalized_system_build_result_requires_consistent_lineage():
     )
     assert result.system.complex_id == complex_id
     assert result.parameterization.id == result.system.parameterization_id
+    imported = SystemBuildResult.model_validate({**result.model_dump(), "protocol": None})
+    assert imported.protocol is None
 
     with pytest.raises(ValidationError, match="must link to the request Complex"):
         SystemBuildResult(**{**result.model_dump(), "complex_id": new_ulid()})

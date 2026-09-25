@@ -1,5 +1,40 @@
 {
   "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
     "EntityRef": {
       "additionalProperties": false,
       "description": "Polymorphic reference to another platform entity (e.g. a pose or a conformer).",
@@ -54,7 +89,7 @@
         "distance_A": {
           "anyOf": [
             {
-              "exclusiveMinimum": 0,
+              "minimum": 0,
               "type": "number"
             },
             {
@@ -70,6 +105,14 @@
             "type": "integer"
           },
           "title": "Ligand Atoms",
+          "type": "array"
+        },
+        "protein_atoms": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "title": "Protein Atoms",
           "type": "array"
         },
         "residue": {
@@ -101,6 +144,7 @@
       "title": "InteractionType",
       "type": "string"
     },
+    "JsonValue": {},
     "LicenseClass": {
       "description": "License class of an engine or dependency (ADR-0013).",
       "enum": [
@@ -216,9 +260,35 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/interaction_profile/1.0",
+  "$id": "caddsuite://schemas/interaction_profile/1.1",
   "additionalProperties": false,
   "properties": {
+    "adapter_id": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapter Id"
+    },
+    "adapter_version": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapter Version"
+    },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "Id",
@@ -232,16 +302,81 @@
       "title": "Interactions",
       "type": "array"
     },
+    "log_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Log Artifacts",
+      "type": "object"
+    },
     "method": {
       "$ref": "#/$defs/SoftwareRef"
     },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "raw_result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Request Id"
+    },
     "schema_version": {
-      "default": "interaction_profile/1.0",
+      "default": "interaction_profile/1.1",
       "title": "Schema Version",
       "type": "string"
     },
+    "source_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Source Artifacts",
+      "type": "object"
+    },
     "subject": {
       "$ref": "#/$defs/EntityRef"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EntityRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
     }
   },
   "required": [

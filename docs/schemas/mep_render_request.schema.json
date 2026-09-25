@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "CubeRenderInput": {
+      "additionalProperties": false,
+      "description": "One hash-addressed cube artifact and the selected scalar field within it.",
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "dataset_index": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Dataset Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "CubeRenderInput",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/mep_render_request/1.0",
+  "additionalProperties": false,
+  "description": "Color a total-density isosurface using ESP values from a compatible grid.",
+  "properties": {
+    "colormap": {
+      "default": "RdBu",
+      "minLength": 1,
+      "title": "Colormap",
+      "type": "string"
+    },
+    "density": {
+      "$ref": "#/$defs/CubeRenderInput"
+    },
+    "density_isovalue_e_bohr3": {
+      "default": 0.001,
+      "exclusiveMinimum": 0,
+      "title": "Density Isovalue E Bohr3",
+      "type": "number"
+    },
+    "esp": {
+      "$ref": "#/$defs/CubeRenderInput"
+    },
+    "esp_clip_au": {
+      "default": [
+        -0.05,
+        0.05
+      ],
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "title": "Esp Clip Au",
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "mep_render_request/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "show_molecular_skeleton": {
+      "default": false,
+      "title": "Show Molecular Skeleton",
+      "type": "boolean"
+    },
+    "size_pixels": {
+      "default": [
+        900,
+        900
+      ],
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "maximum": 6000,
+          "minimum": 200,
+          "type": "integer"
+        },
+        {
+          "maximum": 6000,
+          "minimum": 200,
+          "type": "integer"
+        }
+      ],
+      "title": "Size Pixels",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "density",
+    "esp"
+  ],
+  "title": "MEPRenderRequest",
+  "type": "object"
+}

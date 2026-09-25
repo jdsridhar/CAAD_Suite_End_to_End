@@ -27,6 +27,23 @@ conda create -n caddsuite --file environments/caddsuite.lock.txt
 
 The core chemistry and structure environment includes RDKit 2025.09.6, Dimorphite-DL 2.0.2, and Biopython 1.88. Dimorphite-DL s conda-forge package currently requires RDKit <2026. For a pip-managed environment, install optional functionality with pip install -e .[chem,protonation,structure]; the project constrains RDKit to a compatible series.
 
+Trajectory analysis runs in a separate Python 3.12 environment so MDAnalysis and its NumPy/SciPy
+stack do not become dependencies of the scientific core. Recreate the currently validated worker
+environment with:
+
+```bash
+python3.12 -m venv ~/venvs/caddsuite-analysis
+~/venvs/caddsuite-analysis/bin/python -m pip install -r environments/mdanalysis.lock.txt
+```
+
+The optional `analysis` extra pins MDAnalysis 2.10.0. This stable release does not parse the
+GROMACS 2026 TPR format in the audited dataset; use the verified GRO/XTC fallback for coordinate
+metrics and preserve the no-bonds limitation. See `docs/architecture/TRAJECTORY_ANALYSIS.md`.
+
+For static trajectory-analysis PNGs, install the optional renderer with `pip install -e '.[visualization]'`.
+The plotting adapter consumes hash-verified normalized CSVs and does not recalculate metrics; see
+`docs/architecture/TRAJECTORY_PLOTTING.md`.
+
 After changing dependencies, refresh the lock file:
 
 ```bash

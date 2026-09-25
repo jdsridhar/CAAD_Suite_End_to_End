@@ -274,6 +274,7 @@ class QMResult:
     convergence: dict                                          # scf_converged, opt_converged, n_imaginary
     orbitals: dict | None                                      # homo_eV, lumo_eV, gap_eV
     dipole_D: float | None
+    final_geometry: ArtifactRef | None                          # XYZ; optimized when requested
     charges: dict[str, list[float]]                            # scheme → per-atom (atom order = geometry)
     vibrations: dict | None; thermochemistry: dict | None
     excited_states: list[dict]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,9 +15,12 @@ from caddsuite.contracts.registry import CompoundForm, CompoundFormKind
 from caddsuite.contracts.reporting import ReportArtifact, ReportBundle
 from caddsuite.domain.enums import TaskState
 from caddsuite.domain.identity import new_ulid
+from caddsuite.execution.local import CommandSpec, LocalExecutor
 from caddsuite.storage import migrate
+from caddsuite.storage.artifacts import ArtifactStore
+from caddsuite.storage.attempts import TaskAttemptStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
-from caddsuite.storage.models import ProjectRow, WorkflowRunRow
+from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
 from caddsuite.storage.result_cache import ResultCache
 from caddsuite.storage.task_state import TaskStateStore
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
@@ -30,7 +34,7 @@ from caddsuite.workflow.scheduler import (
 
 
 @pytest.fixture
-def scheduler_env(tmp_path: Path) -> Iterator[tuple[TaskStateStore, ResultCache, str, str]]:
+def scheduler_env(tmp_path: Path) -> Iterator[tuple[object, ...]]:
     database = tmp_path / "scheduler.sqlite"
     migrate.upgrade(database)
     engine = create_db_engine(database)
@@ -58,7 +62,13 @@ def scheduler_env(tmp_path: Path) -> Iterator[tuple[TaskStateStore, ResultCache,
         session.add(second_run)
         session.flush()
         yield_ids = run.id, second_run.id, project.id
-    yield TaskStateStore(sessions), ResultCache(sessions), *yield_ids
+    yield (
+        TaskStateStore(sessions),
+        ResultCache(sessions),
+        *yield_ids,
+        TaskAttemptStore(sessions),
+        sessions,
+    )
     engine.dispose()
 
 
@@ -252,8 +262,146 @@ def _compiled(*, gate: bool, retry: bool = False, failure_policy: str = "exclude
     return WorkflowCompiler(capabilities).compile(workflow)
 
 
+def test_scheduler_persists_attempts_for_executions_only(scheduler_env, tmp_path: Path) -> None:
+    tasks, _cache, run_id, _second_run_id, project_id, attempt_store, sessions = scheduler_env
+    capability = StageCapability(
+        kind="gate",
+        inputs=(CapabilityInput(name="ligand", contracts=("compound_form/1.0",)),),
+        outputs=("compound_form/1.0",),
+        for_each=("compound",),
+        iteration_contracts={"compound": ("compound_form/1.0",)},
+    )
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "attempt capture",
+            "inputs": {"ligands": {"contract": "compound_form/1.0"}},
+            "stages": [
+                {
+                    "id": "select",
+                    "kind": "gate",
+                    "for_each": "compound",
+                    "input_contracts": {"ligand": "compound_form/1.0"},
+                    "input_bindings": {"ligand": "$ligands"},
+                    "output_contract": "compound_form/1.0",
+                    "params": {"seed": 42, "threshold": 0.2},
+                    "gate": "ligand.formal_charge == 0",
+                }
+            ],
+            "outputs": {"selected": "select"},
+        }
+    )
+    compiled = WorkflowCompiler([capability]).compile(workflow)
+    executor = LocalExecutor(ArtifactStore(tmp_path / "artifact-store"), sessions)
+
+    class CommandHandler(FakeHandler):
+        def execute(self, invocation: TaskInvocation) -> VersionedContract:
+            executor.start(
+                CommandSpec(
+                    argv=(sys.executable, "-c", "print('attempted')"),
+                    cwd=tmp_path,
+                ),
+                log_dir=tmp_path / "attempt-logs",
+            ).wait(timeout=10)
+            return invocation.inputs["ligand"][0]
+
+    handler = CommandHandler(project_id)
+    scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=_cache,
+        handlers={"select": handler},
+        attempt_store=attempt_store,
+    )
+    form = _form(project_id, "neutral")
+    first = scheduler.run(compiled, run_id=run_id, inputs={"ligands": (form,)})
+    assert first.tasks[0].state is TaskState.SUCCEEDED
+    task_id = first.tasks[0].task_id
+    task_row = tasks.get(task_id)
+    with sessions() as session:
+        rows = session.query(TaskAttemptRow).filter_by(task_id=task_id).all()
+        assert len(rows) == 1
+        recorded = attempt_store.get(rows[0].id)
+    assert recorded.status.value == "succeeded"
+    assert recorded.parameters == {"seed": 42, "threshold": 0.2}
+    assert recorded.environment is None  # scheduler environment is not assumed to be the engine env
+    assert recorded.software[0].software.name == handler.adapter_id
+    assert recorded.software[1].software.version == handler.engine_version
+    assert recorded.ended_at is not None
+    assert len(recorded.steps) == 1
+    assert recorded.steps[0].argv[-1] == "print('attempted')"
+    assert {edge.role for edge in recorded.artifacts if edge.direction == "generated"} == {
+        "stdout_log",
+        "stderr_log",
+    }
+    assert task_row.state is TaskState.SUCCEEDED
+
+    resumed = scheduler.run(compiled, run_id=run_id, inputs={"ligands": (form,)})
+    assert resumed.tasks[0].cache_hit
+    with sessions() as session:
+        rows = session.query(TaskAttemptRow).filter_by(task_id=task_id).all()
+        assert len(rows) == 1
+
+    class FailingHandler(FakeHandler):
+        def execute(self, invocation: TaskInvocation) -> VersionedContract:
+            raise StageExecutionFailure("TEST.PERMANENT", "scientific input rejected")
+
+    failed_form = _form(project_id, "fail-me")
+    failing_scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=_cache,
+        handlers={"select": FailingHandler(project_id)},
+        attempt_store=attempt_store,
+    )
+    failed = failing_scheduler.run(compiled, run_id=run_id, inputs={"ligands": (failed_form,)})
+    assert failed.tasks[0].state is TaskState.FAILED
+    with sessions() as session:
+        failed_row = session.query(TaskAttemptRow).filter_by(task_id=failed.tasks[0].task_id).one()
+    failed_attempt = attempt_store.get(failed_row.id)
+    assert failed_attempt.status.value == "failed"
+    assert failed_attempt.error is not None
+    assert failed_attempt.error.code == "TEST.PERMANENT"
+    assert failed_attempt.error.stage_id == "select"
+
+    interrupted_form = _form(project_id, "interrupt-me")
+    interrupted_handler = CrashOnceHandler(project_id)
+    interrupted_scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=_cache,
+        handlers={"select": interrupted_handler},
+        attempt_store=attempt_store,
+    )
+    with pytest.raises(KeyboardInterrupt, match="simulated"):
+        interrupted_scheduler.run(
+            compiled, run_id=_second_run_id, inputs={"ligands": (interrupted_form,)}
+        )
+    interrupted_task = next(
+        row for row in tasks.for_run(_second_run_id) if row.stage_id == "select"
+    )
+
+    resumed_handler = CrashOnceHandler(project_id)
+    resumed_handler.crashed = True
+    resumed_scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=_cache,
+        handlers={"select": resumed_handler},
+        attempt_store=attempt_store,
+    )
+    resumed = resumed_scheduler.run(
+        compiled, run_id=_second_run_id, inputs={"ligands": (interrupted_form,)}
+    )
+    assert resumed.tasks[0].state is TaskState.SUCCEEDED
+    with sessions() as session:
+        rows = (
+            session.query(TaskAttemptRow)
+            .filter_by(task_id=interrupted_task.id)
+            .order_by(TaskAttemptRow.attempt_no)
+            .all()
+        )
+        assert [row.exit_status for row in rows] == ["unknown", "succeeded"]
+
+
 def test_scheduler_fans_out_gates_and_reuses_cached_normalized_results(scheduler_env) -> None:
-    tasks, cache, run_id, second_run_id, project_id = scheduler_env
+    tasks, cache, run_id, second_run_id, project_id, _attempts, _sessions = scheduler_env
     handler = FakeHandler(project_id)
     selector = FakeHandler(project_id)
     downstream = FakeDownstream(project_id)
@@ -309,7 +457,7 @@ def test_scheduler_fans_out_gates_and_reuses_cached_normalized_results(scheduler
 
 
 def test_scheduler_retries_and_isolates_a_failed_subject(scheduler_env) -> None:
-    tasks, cache, run_id, _second_run_id, project_id = scheduler_env
+    tasks, cache, run_id, _second_run_id, project_id, _attempts, _sessions = scheduler_env
     handler = FakeHandler(project_id, fail_smiles="retry-then-fail")
     selector = FakeHandler(project_id)
     downstream = FakeDownstream(project_id)
@@ -349,7 +497,7 @@ def test_scheduler_retries_and_isolates_a_failed_subject(scheduler_env) -> None:
 def test_scheduler_resumes_interrupted_task_only_after_handler_reconciliation(
     scheduler_env,
 ) -> None:
-    tasks, cache, run_id, _second_run_id, project_id = scheduler_env
+    tasks, cache, run_id, _second_run_id, project_id, _attempts, _sessions = scheduler_env
     selector = FakeHandler(project_id)
     crashing = CrashOnceHandler(project_id)
     downstream = FakeDownstream(project_id)
@@ -391,7 +539,7 @@ def test_scheduler_resumes_interrupted_task_only_after_handler_reconciliation(
 
 
 def test_scheduler_rejects_wrong_contract_without_caching_it(scheduler_env) -> None:
-    tasks, cache, run_id, _second_run_id, project_id = scheduler_env
+    tasks, cache, run_id, _second_run_id, project_id, _attempts, _sessions = scheduler_env
     selector = FakeHandler(project_id)
     wrong = FakeHandler(project_id, wrong_output=True)
     downstream = FakeDownstream(project_id)

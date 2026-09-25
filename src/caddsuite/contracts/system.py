@@ -53,7 +53,7 @@ class SystemBuildResult(VersionedContract):
     builder: SoftwareRef
     parameterization: Parameterization
     system: MDSystem
-    protocol: MDProtocol
+    protocol: MDProtocol | None = None
     raw_artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
     normalized_artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
     validation_issues: tuple[ValidationIssue, ...] = ()

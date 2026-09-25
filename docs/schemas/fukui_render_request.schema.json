@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "CubeRenderInput": {
+      "additionalProperties": false,
+      "description": "One hash-addressed cube artifact and the selected scalar field within it.",
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "dataset_index": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Dataset Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "artifact"
+      ],
+      "title": "CubeRenderInput",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/fukui_render_request/1.0",
+  "additionalProperties": false,
+  "description": "Render a finite-difference Fukui density field on its positive isosurface.",
+  "properties": {
+    "charged_density": {
+      "$ref": "#/$defs/CubeRenderInput"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "isovalue_e_bohr3": {
+      "default": 0.003,
+      "exclusiveMinimum": 0,
+      "title": "Isovalue E Bohr3",
+      "type": "number"
+    },
+    "neutral_density": {
+      "$ref": "#/$defs/CubeRenderInput"
+    },
+    "schema_version": {
+      "default": "fukui_render_request/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "show_molecular_skeleton": {
+      "default": true,
+      "title": "Show Molecular Skeleton",
+      "type": "boolean"
+    },
+    "sign": {
+      "enum": [
+        "plus",
+        "minus"
+      ],
+      "title": "Sign",
+      "type": "string"
+    },
+    "size_pixels": {
+      "default": [
+        700,
+        700
+      ],
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "maximum": 6000,
+          "minimum": 200,
+          "type": "integer"
+        },
+        {
+          "maximum": 6000,
+          "minimum": 200,
+          "type": "integer"
+        }
+      ],
+      "title": "Size Pixels",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "neutral_density",
+    "charged_density",
+    "sign"
+  ],
+  "title": "FukuiRenderRequest",
+  "type": "object"
+}

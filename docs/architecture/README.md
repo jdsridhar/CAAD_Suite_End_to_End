@@ -30,6 +30,15 @@ Start with the audit, then read in this order:
 | [0015](ADR/0015-proof-of-extensibility-engines.md) | Second engine per family: AutoDock4, OpenMM (then NAMD), PySCF (then ORCA) | Accepted |
 | [0016](ADR/0016-protonation-engine-port-and-dependency-bound.md) | Protonation port, explicit ambiguity decisions, and RDKit/Dimorphite dependency bound | Accepted |
 | [0017](ADR/0017-coordinate-complex-assembly.md) | Coordinate complex assembly is separate from MD parameterization | Accepted |
+| [0018](ADR/0018-md-execution-port-and-stage-inputs.md) | Engine-independent MD planning with hash-linked stage inputs | Accepted |
+| [0019](ADR/0019-engine-specific-trajectory-processing.md) | Engine-specific PBC/alignment behind a normalized trajectory port | Accepted |
+| [0020](ADR/0020-sasa-as-an-engine-capability.md) | GROMACS SASA as a capability on the engine-neutral analysis port | Accepted |
+| [0021](ADR/0021-stdlib-worker-json-protocol.md) | Standard-library JSON protocol for isolated engine workers | Accepted |
+| [0022](ADR/0022-one-task-per-psi4-process.md) | One isolated process per Psi4 task; preserve legacy recipe | Accepted |
+| [0023](ADR/0023-identity-gated-qm-pose-strain-and-fukui-spin.md) | Identity-gated QM pose strain, explicit atom maps, and Fukui spin-state policy | Accepted |
+| [0024](ADR/0024-unit-aware-volumetric-rendering.md) | Unit-aware CUBE artifacts, engine-neutral parsing, and optional visualization | Accepted |
+| [0025](ADR/0025-conceptual-dft-analysis.md) | Engine-independent conceptual-DFT descriptors | Accepted |
+| [0026](ADR/0026-qm-engine-discovery.md) | Dedicated discovery for QM engine port implementations | Accepted |
 
 New ADRs: copy [`ADR/0000-template.md`](ADR/0000-template.md), take the next number, and never delete or renumber. Supersede instead.
 
@@ -47,4 +56,37 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADMET rules adapter and ML evaluation](ADMET_ADAPTER.md)
 - [Phase 6.1/6.2 system-builder audit and CHARMM-GUI import](SYSTEM_BUILDER_AUDIT.md)
 - [Force-field compatibility profiles and `FF.FAMILY_CONSISTENCY`](FORCE_FIELD_COMPATIBILITY.md)
+- [Phase 6.4 AmberTools/ParmEd audit](AMBER_BUILDER_AUDIT.md)
+- [MD execution-engine port and GROMACS stage planner](GROMACS_MD_ADAPTER.md)
+- [OpenMM second-engine adapter proof](OPENMM_MD_ADAPTER.md)
 - [G-MD-3/4 CHARMM-GUI bundle validation](../validation/G-MD-3.md)
+- [G-MD-6 legacy GROMACS command audit](../validation/G-MD-6.md)
+- [G-MD-7 warning classification and index normalization](../validation/G-MD-7.md)
+- [G-MD-8 live-progress parsing](../validation/G-MD-8.md)
+- [G-MD-9 short real GROMACS run](../validation/G-MD-9.md)
+- [G-MD-10 interrupted run and checkpoint resume](../validation/G-MD-10.md)
+- [G-MD-11 native Amber → OpenMM proof](../validation/G-MD-11.md)
+- [Trajectory analysis input policy](TRAJECTORY_ANALYSIS.md)
+- [Trajectory metric plotting port and Matplotlib adapter](TRAJECTORY_PLOTTING.md)
+- [Pose interaction audit and migration boundary](INTERACTION_ANALYSIS_AUDIT.md)
+- [G-MD-16 trajectory H-bond-count adapter](GROMACS_HBOND_ANALYSIS.md)
+- [Interaction-profile migration validation](../validation/G-INT-1.md)
+- [Legacy MM/GBSA workflow audit](MMGBSA_AUDIT.md)
+- [G-MD-17 MM/GBSA parser validation](../validation/G-MD-17.md)
+- [G-MD-18 short MM/GBSA execution and per-frame regression](../validation/G-MD-18.md)
+- [G-MD-19 block SEM and effective sample size diagnostics](../validation/G-MD-19.md)
+- [Isolated worker runtime and Python stdlib JSON protocol](WORKER_RUNTIME.md)
+- [Psi4 worker migration and validation scope](PSI4_WORKER.md)
+- [Psi4 engine capabilities, adapter plan, and QMResult normalization](PSI4_ADAPTER.md)
+- [PySCF second QM-engine adapter and capability limits](PYSCF_ADAPTER.md)
+- [Conceptual-DFT descriptor audit](CONCEPTUAL_DFT_AUDIT.md)
+- [Legacy volumetric cube and rendering audit](VOLUMETRIC_ANALYSIS_AUDIT.md)
+- [G-MD-12 MDAnalysis/GROMACS 2026 compatibility](../validation/G-MD-12.md)
+- [G-MD-13 GROMACS concatenation, PBC repair and alignment](../validation/G-MD-13.md)
+- [G-MD-14 trajectory metric and SASA regression](../validation/G-MD-14.md)
+- [G-MD-15 normalized trajectory plotting contract](../validation/G-MD-15.md)
+- [G-MD-16 GROMACS hydrogen-bond count regression](../validation/G-MD-16.md)
+- [Per-attempt provenance audit](PROVENANCE_AUDIT.md)
+- [Provenance capture audit](PROVENANCE_AUDIT.md)
+
+- [ADR-0028: Scheduler-managed execution attempt provenance](ADR/0028-scheduler-attempt-provenance.md)

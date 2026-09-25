@@ -1,0 +1,211 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "AtomSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "n_atoms": {
+          "minimum": 1,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "description",
+        "n_atoms",
+        "verified"
+      ],
+      "title": "AtomSelection",
+      "type": "object"
+    },
+    "TrajectorySegmentInput": {
+      "additionalProperties": false,
+      "description": "One trajectory artifact and its explicit output time origin.\n\nSegment numbering and assumed fixed durations are intentionally absent. The caller records\nthe absolute first-frame time derived from the producing MD stage and the observed sampling\ninterval; processors may validate these declarations against the actual trajectory.",
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "frame_interval_ps": {
+          "exclusiveMinimum": 0,
+          "title": "Frame Interval Ps",
+          "type": "number"
+        },
+        "n_frames": {
+          "minimum": 1,
+          "title": "N Frames",
+          "type": "integer"
+        },
+        "output_start_time_ps": {
+          "minimum": 0,
+          "title": "Output Start Time Ps",
+          "type": "number"
+        }
+      },
+      "required": [
+        "artifact",
+        "output_start_time_ps",
+        "n_frames",
+        "frame_interval_ps"
+      ],
+      "title": "TrajectorySegmentInput",
+      "type": "object"
+    },
+    "TrajectoryTransform": {
+      "description": "Engine-independent meanings of periodic-boundary transformations.",
+      "enum": [
+        "remove_periodic_jumps",
+        "make_molecules_whole",
+        "align_rot_trans"
+      ],
+      "title": "TrajectoryTransform",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/trajectory_processing_request/1.0",
+  "additionalProperties": false,
+  "description": "Explicit, engine-neutral request for joining and transforming MD trajectories.",
+  "properties": {
+    "expected_atom_count": {
+      "minimum": 1,
+      "title": "Expected Atom Count",
+      "type": "integer"
+    },
+    "fit_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "output_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "default": "trajectory_processing_request/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/TrajectorySegmentInput"
+      },
+      "minItems": 1,
+      "title": "Segments",
+      "type": "array"
+    },
+    "simulation_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "topology": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "topology_format": {
+      "minLength": 1,
+      "title": "Topology Format",
+      "type": "string"
+    },
+    "topology_has_connectivity": {
+      "title": "Topology Has Connectivity",
+      "type": "boolean"
+    },
+    "trajectory_format": {
+      "minLength": 1,
+      "title": "Trajectory Format",
+      "type": "string"
+    },
+    "transforms": {
+      "items": {
+        "$ref": "#/$defs/TrajectoryTransform"
+      },
+      "minItems": 1,
+      "title": "Transforms",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "simulation_id",
+    "topology",
+    "topology_format",
+    "topology_has_connectivity",
+    "trajectory_format",
+    "expected_atom_count",
+    "segments",
+    "transforms"
+  ],
+  "title": "TrajectoryProcessingRequest",
+  "type": "object"
+}

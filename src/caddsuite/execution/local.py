@@ -7,12 +7,13 @@ It has no knowledge of docking, MD, QM, or any particular engine.
 from __future__ import annotations
 
 import os
+import re
 import signal
 import subprocess
 import time
 from collections.abc import Mapping
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO
@@ -25,6 +26,18 @@ from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 
 _ENV_KEY = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")
+_SECRET_ENV_KEY = re.compile(
+    r"(?:PASS(?:WORD)?|TOKEN|SECRET|CREDENTIAL|AUTH|COOKIE|PRIVATE|KEY)", re.IGNORECASE
+)
+_REDACTED = "[REDACTED]"
+
+
+def _provenance_environment(values: Mapping[str, str]) -> dict[str, str]:
+    """Capture explicit environment overrides while redacting credential-like variables."""
+    return {
+        key: _REDACTED if _SECRET_ENV_KEY.search(key) else value
+        for key, value in sorted(values.items())
+    }
 
 
 class ExecutionError(RuntimeError):
@@ -49,6 +62,7 @@ class ProcessRecord:
     started_at: datetime
     stdout_path: str
     stderr_path: str
+    env_subset: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +199,7 @@ class LocalExecutor:
             started_at=started_at,
             stdout_path=str(stdout_path),
             stderr_path=str(stderr_path),
+            env_subset=_provenance_environment(spec.env or {}),
         )
         return RunningCommand(self, record, process, time.monotonic())
 
@@ -219,13 +234,14 @@ class LocalExecutor:
                 original_name=Path(record.stderr_path).name,
             )
             stdout_id, stderr_id = stdout_row.id, stderr_row.id
-        return ExecutionResult(
+        result = ExecutionResult(
             step=StepRecord(
                 argv=record.argv,
                 cwd=record.cwd,
                 pid=record.pid,
                 process_start_time=record.process_start_time,
                 exit_code=exit_code,
+                env_subset=dict(record.env_subset),
             ),
             exit_code=exit_code,
             duration_seconds=duration_seconds,
@@ -240,6 +256,10 @@ class LocalExecutor:
                 sha256=stderr_blob.sha256,
             ),
         )
+        from caddsuite.execution.attempt_context import record_process_execution
+
+        record_process_execution(result.step, result.stdout, result.stderr)
+        return result
 
 
 def _validate_spec(spec: CommandSpec) -> tuple[tuple[str, ...], Path, dict[str, str]]:

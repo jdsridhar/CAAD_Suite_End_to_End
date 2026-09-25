@@ -34,6 +34,40 @@
       "title": "EntityRef",
       "type": "object"
     },
+    "FukuiSpinSelection": {
+      "additionalProperties": false,
+      "description": "Optional explicit multiplicities for the extra-electron and electron-removal legs.\n\nWhen omitted, a closed-shell singlet may use doublets for both charged states.\nOpen-shell neutral systems require both values because spin coupling is not\ndetermined by electron parity alone.",
+      "properties": {
+        "anion_multiplicity": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Anion Multiplicity"
+        },
+        "cation_multiplicity": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cation Multiplicity"
+        }
+      },
+      "title": "FukuiSpinSelection",
+      "type": "object"
+    },
     "JsonValue": {},
     "LicenseClass": {
       "description": "License class of an engine or dependency (ADR-0013).",
@@ -191,7 +225,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/qm_calculation/1.0",
+  "$id": "caddsuite://schemas/qm_calculation/1.1",
   "additionalProperties": false,
   "properties": {
     "accession": {
@@ -213,6 +247,17 @@
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "Form Id",
       "type": "string"
+    },
+    "fukui_spin_states": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FukuiSpinSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "geometry_source": {
       "$ref": "#/$defs/EntityRef"
@@ -249,7 +294,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "qm_calculation/1.0",
+      "default": "qm_calculation/1.1",
       "title": "Schema Version",
       "type": "string"
     },

@@ -22,12 +22,16 @@ dependencies = [
     "alembic>=1.13",
     "typer>=0.12",
     "pyyaml>=6",
+    "defusedxml>=0.7.1,<1",
 ]
 
 [project.optional-dependencies]
 chem = ["rdkit>=2025.3,<2026"]
 protonation = ["dimorphite-dl==2.0.2"]
 structure = ["biopython>=1.83,<2"]
+analysis = ["MDAnalysis==2.10.0"]
+visualization = ["matplotlib>=3.8,<4"]
+volumetric = ["numpy>=1.26,<3", "scipy>=1.12,<2", "scikit-image>=0.22,<1", "pyvista>=0.44,<1"]
 dev = [
     "pytest>=8",
     "pytest-cov",
@@ -44,6 +48,9 @@ caddsuite = "caddsuite.cli.main:app"
 # Built-in engine adapters register here exactly like third-party plugins (ADR-0003).
 # They are added as each engine family is migrated (Phase 4 onwards).
 [project.entry-points."caddsuite.adapters"]
+
+[project.entry-points."caddsuite.qm_engines"]
+pyscf = "caddsuite.adapters.qm.pyscf_plugin:plugin_factory"
 
 [tool.hatch.version]
 path = "src/caddsuite/__init__.py"

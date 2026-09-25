@@ -1,5 +1,40 @@
 {
   "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
     "BindingEnergyMethod": {
       "enum": [
         "MM/GBSA",
@@ -7,6 +42,70 @@
       ],
       "title": "BindingEnergyMethod",
       "type": "string"
+    },
+    "BlockSEMDiagnostic": {
+      "additionalProperties": false,
+      "description": "One non-overlapping block-size estimate and its retained-frame accounting.",
+      "properties": {
+        "block_mean": {
+          "title": "Block Mean",
+          "type": "number"
+        },
+        "block_sd": {
+          "minimum": 0,
+          "title": "Block Sd",
+          "type": "number"
+        },
+        "block_size_frames": {
+          "minimum": 1,
+          "title": "Block Size Frames",
+          "type": "integer"
+        },
+        "frames_dropped": {
+          "minimum": 0,
+          "title": "Frames Dropped",
+          "type": "integer"
+        },
+        "frames_used": {
+          "minimum": 1,
+          "title": "Frames Used",
+          "type": "integer"
+        },
+        "n_blocks": {
+          "minimum": 2,
+          "title": "N Blocks",
+          "type": "integer"
+        },
+        "n_effective": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Effective"
+        },
+        "sem_block": {
+          "minimum": 0,
+          "title": "Sem Block",
+          "type": "number"
+        }
+      },
+      "required": [
+        "block_size_frames",
+        "n_blocks",
+        "frames_used",
+        "frames_dropped",
+        "block_mean",
+        "block_sd",
+        "sem_block"
+      ],
+      "title": "BlockSEMDiagnostic",
+      "type": "object"
     },
     "EnergyStatistics": {
       "additionalProperties": false,
@@ -206,7 +305,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/binding_energy/1.0",
+  "$id": "caddsuite://schemas/binding_energy/1.2",
   "additionalProperties": false,
   "description": "End-point binding-energy estimate. Never an experimental ΔG (requirements §17).",
   "properties": {
@@ -214,6 +313,40 @@
       "pattern": "^CMP\\d{4,}_MMPBSA_\\d{3,}$",
       "title": "Accession",
       "type": "string"
+    },
+    "adapter_id": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapter Id"
+    },
+    "adapter_version": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Adapter Version"
+    },
+    "block_diagnostics": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/BlockSEMDiagnostic"
+      },
+      "title": "Block Diagnostics",
+      "type": "array"
     },
     "components_kcal_per_mol": {
       "additionalProperties": {
@@ -233,6 +366,13 @@
       "title": "Id",
       "type": "string"
     },
+    "log_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Log Artifacts",
+      "type": "object"
+    },
     "method": {
       "$ref": "#/$defs/BindingEnergyMethod"
     },
@@ -243,18 +383,95 @@
       "title": "Model",
       "type": "object"
     },
+    "native_components_kcal_per_mol": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Native Components Kcal Per Mol",
+      "type": "object"
+    },
+    "native_summary_statistics": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "number"
+        },
+        "type": "object"
+      },
+      "title": "Native Summary Statistics",
+      "type": "object"
+    },
+    "output_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Output Artifacts",
+      "type": "object"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Request Id"
+    },
     "salt_concentration_M": {
       "minimum": 0,
       "title": "Salt Concentration M",
       "type": "number"
     },
     "schema_version": {
-      "default": "binding_energy/1.0",
+      "default": "binding_energy/1.2",
       "title": "Schema Version",
       "type": "string"
     },
+    "simulation_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Simulation Id"
+    },
+    "source_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "title": "Source Artifacts",
+      "type": "object"
+    },
     "statistics": {
       "$ref": "#/$defs/EnergyStatistics"
+    },
+    "system_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "System Id"
     },
     "temperature_K": {
       "exclusiveMinimum": 0,
@@ -268,6 +485,15 @@
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "Trajectory Id",
       "type": "string"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
     }
   },
   "required": [

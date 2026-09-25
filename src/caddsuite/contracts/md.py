@@ -207,6 +207,30 @@ class MDSimulation(VersionedContract):
         return self
 
 
+class MDStageInput(VersionedContract):
+    """Hash-linked inputs materialized for one engine stage.
+
+    Keys in ``artifacts`` are logical roles such as ``md_parameters``, ``coordinates``,
+    ``topology``, ``reference_coordinates``, ``previous_checkpoint``, and
+    ``resume_checkpoint``. Adapters choose native staged filenames; those filenames never
+    replace the artifact IDs and hashes recorded here.
+    """
+
+    schema_version: str = "md_stage_input/1.0"
+
+    id: ULIDStr
+    system_id: ULIDStr
+    stage_index: Annotated[int, Field(ge=0)]
+    artifacts: dict[str, ArtifactRef] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _artifact_refs_are_hashed(self) -> MDStageInput:
+        missing = sorted(role for role, ref in self.artifacts.items() if ref.sha256 is None)
+        if missing:
+            raise ValueError(f"MD stage input artifacts must be hashed; missing SHA-256: {missing}")
+        return self
+
+
 class Trajectory(VersionedContract):
     schema_version: str = "trajectory/1.0"
 

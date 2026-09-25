@@ -17,6 +17,7 @@ from caddsuite.contracts import (  # noqa: F401  (imported for registration side
     reporting,
     structure,
     system,
+    visualization,
 )
 from caddsuite.contracts.base import (
     ArtifactRef,

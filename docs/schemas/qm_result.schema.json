@@ -77,6 +77,7 @@
       "title": "ExcitedState",
       "type": "object"
     },
+    "JsonValue": {},
     "OrbitalEnergies": {
       "additionalProperties": false,
       "properties": {
@@ -115,6 +116,25 @@
           "title": "Docked Energy Eh",
           "type": "number"
         },
+        "heavy_atom_map": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "minimum": 0,
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Heavy Atom Map",
+          "type": "array"
+        },
         "heavy_atom_rmsd_A": {
           "minimum": 0,
           "title": "Heavy Atom Rmsd A",
@@ -152,6 +172,7 @@
       },
       "required": [
         "pose_id",
+        "heavy_atom_map",
         "docked_energy_Eh",
         "reference_energy_Eh",
         "strain_kcal_per_mol",
@@ -202,7 +223,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/qm_result/1.0",
+  "$id": "caddsuite://schemas/qm_result/2.0",
   "additionalProperties": false,
   "properties": {
     "calculation_id": {
@@ -273,6 +294,32 @@
       "title": "Figures",
       "type": "object"
     },
+    "final_geometry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "legacy_unverified_pose_strain": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Legacy Unverified Pose Strain"
+    },
     "missing": {
       "default": [],
       "items": {
@@ -304,7 +351,7 @@
       "default": null
     },
     "schema_version": {
-      "default": "qm_result/1.0",
+      "default": "qm_result/2.0",
       "title": "Schema Version",
       "type": "string"
     },
@@ -332,6 +379,13 @@
         "$ref": "#/$defs/ArtifactRef"
       },
       "title": "Volumetric",
+      "type": "object"
+    },
+    "volumetric_metadata": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Volumetric Metadata",
       "type": "object"
     }
   },

@@ -1,0 +1,269 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "AtomSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "n_atoms": {
+          "minimum": 1,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "description",
+        "n_atoms",
+        "verified"
+      ],
+      "title": "AtomSelection",
+      "type": "object"
+    },
+    "TrajectoryMetric": {
+      "description": "Coordinate metrics supported by an analysis adapter capability declaration.",
+      "enum": [
+        "backbone_rmsd",
+        "ligand_pose_rmsd",
+        "ligand_internal_rmsd",
+        "protein_ca_rmsf",
+        "protein_radius_of_gyration",
+        "protein_ligand_min_distance",
+        "protein_ligand_contact_count",
+        "solvent_accessible_surface_area",
+        "protein_ligand_hbond_count"
+      ],
+      "title": "TrajectoryMetric",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/trajectory_analysis_request/1.1",
+  "additionalProperties": false,
+  "description": "Selection- and lineage-explicit request for coordinate-based MD analysis.",
+  "properties": {
+    "atom_masses": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "contact_cutoff_A": {
+      "default": 6.0,
+      "exclusiveMinimum": 0,
+      "title": "Contact Cutoff A",
+      "type": "number"
+    },
+    "end_time_ns": {
+      "exclusiveMinimum": 0,
+      "title": "End Time Ns",
+      "type": "number"
+    },
+    "expected_atom_count": {
+      "minimum": 1,
+      "title": "Expected Atom Count",
+      "type": "integer"
+    },
+    "expected_frame_count": {
+      "minimum": 1,
+      "title": "Expected Frame Count",
+      "type": "integer"
+    },
+    "frame_interval_ps": {
+      "exclusiveMinimum": 0,
+      "title": "Frame Interval Ps",
+      "type": "number"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "index_file": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/TrajectoryMetric"
+      },
+      "minItems": 1,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "pose_fit_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "preprocessing_result_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Preprocessing Result Id",
+      "type": "string"
+    },
+    "reference_frame": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Reference Frame",
+      "type": "integer"
+    },
+    "reference_structure": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "rmsd_weighting": {
+      "default": "uniform",
+      "enum": [
+        "uniform",
+        "mass"
+      ],
+      "title": "Rmsd Weighting",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "trajectory_analysis_request/1.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selections": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AtomSelection"
+      },
+      "minProperties": 1,
+      "title": "Selections",
+      "type": "object"
+    },
+    "simulation_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "start_time_ns": {
+      "default": 0.0,
+      "minimum": 0,
+      "title": "Start Time Ns",
+      "type": "number"
+    },
+    "stride": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Stride",
+      "type": "integer"
+    },
+    "topology": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "topology_format": {
+      "minLength": 1,
+      "title": "Topology Format",
+      "type": "string"
+    },
+    "trajectory": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "trajectory_format": {
+      "minLength": 1,
+      "title": "Trajectory Format",
+      "type": "string"
+    },
+    "trajectory_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Trajectory Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "simulation_id",
+    "trajectory_id",
+    "preprocessing_result_id",
+    "trajectory",
+    "topology",
+    "trajectory_format",
+    "topology_format",
+    "expected_atom_count",
+    "expected_frame_count",
+    "frame_interval_ps",
+    "selections",
+    "metrics",
+    "end_time_ns"
+  ],
+  "title": "TrajectoryAnalysisRequest",
+  "type": "object"
+}

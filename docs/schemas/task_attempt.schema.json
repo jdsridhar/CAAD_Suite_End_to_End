@@ -1,0 +1,769 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "AttemptArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "direction": {
+          "enum": [
+            "used",
+            "generated"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact",
+        "direction",
+        "role"
+      ],
+      "title": "AttemptArtifact",
+      "type": "object"
+    },
+    "AttemptSoftware": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "software": {
+          "$ref": "#/$defs/SoftwareRef"
+        }
+      },
+      "required": [
+        "software",
+        "role"
+      ],
+      "title": "AttemptSoftware",
+      "type": "object"
+    },
+    "AttemptStatus": {
+      "enum": [
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "unknown"
+      ],
+      "title": "AttemptStatus",
+      "type": "string"
+    },
+    "EnvironmentKind": {
+      "enum": [
+        "conda",
+        "container",
+        "venv",
+        "system"
+      ],
+      "title": "EnvironmentKind",
+      "type": "string"
+    },
+    "ErrorRecord": {
+      "additionalProperties": false,
+      "description": "A failure explained for humans (requirements §32): what, why, where, which input,\nwhat to do, whether a retry can help, and whether partial output exists.",
+      "properties": {
+        "cause": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cause"
+        },
+        "code": {
+          "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$",
+          "title": "Code",
+          "type": "string"
+        },
+        "engine_excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Excerpt"
+        },
+        "inputs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "partial_outputs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "title": "Partial Outputs",
+          "type": "array"
+        },
+        "remediation": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Remediation",
+          "type": "array"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "stage_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stage Id"
+        },
+        "task_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task Id"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "ErrorRecord",
+      "type": "object"
+    },
+    "GPUInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "driver_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Driver Version"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "memory_MiB": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Memory Mib"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "name"
+      ],
+      "title": "GPUInfo",
+      "type": "object"
+    },
+    "HostInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "cpu_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cpu Model"
+        },
+        "gpus": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/GPUInfo"
+          },
+          "title": "Gpus",
+          "type": "array"
+        },
+        "hostname": {
+          "minLength": 1,
+          "title": "Hostname",
+          "type": "string"
+        },
+        "is_wsl": {
+          "title": "Is Wsl",
+          "type": "boolean"
+        },
+        "kernel": {
+          "minLength": 1,
+          "title": "Kernel",
+          "type": "string"
+        },
+        "logical_cpus": {
+          "minimum": 1,
+          "title": "Logical Cpus",
+          "type": "integer"
+        },
+        "machine": {
+          "minLength": 1,
+          "title": "Machine",
+          "type": "string"
+        },
+        "memory_GiB": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Memory Gib"
+        },
+        "os": {
+          "minLength": 1,
+          "title": "Os",
+          "type": "string"
+        },
+        "os_release": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os Release"
+        }
+      },
+      "required": [
+        "hostname",
+        "os",
+        "kernel",
+        "machine",
+        "is_wsl",
+        "logical_cpus"
+      ],
+      "title": "HostInfo",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LicenseClass": {
+      "description": "License class of an engine or dependency (ADR-0013).",
+      "enum": [
+        "open_source_permissive",
+        "open_source_weak_copyleft",
+        "open_source_copyleft",
+        "academic_noncommercial",
+        "commercial",
+        "web_service",
+        "unknown"
+      ],
+      "title": "LicenseClass",
+      "type": "string"
+    },
+    "PlatformRef": {
+      "additionalProperties": false,
+      "description": "Which version of *this* platform produced something (requirements §22: git commit).",
+      "properties": {
+        "git_commit": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Commit"
+        },
+        "git_dirty": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Git Dirty"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "title": "PlatformRef",
+      "type": "object"
+    },
+    "ResourceRequest": {
+      "additionalProperties": false,
+      "description": "Per-task resource reservation; memory fields are MiB and GPU reservations are exclusive.",
+      "properties": {
+        "cpu_cores": {
+          "minimum": 1,
+          "title": "Cpu Cores",
+          "type": "integer"
+        },
+        "gpu_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gpu Count",
+          "type": "integer"
+        },
+        "gpu_memory_MiB_per_gpu": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpu Memory Mib Per Gpu"
+        },
+        "memory_MiB": {
+          "minimum": 1,
+          "title": "Memory Mib",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cpu_cores",
+        "memory_MiB"
+      ],
+      "title": "ResourceRequest",
+      "type": "object"
+    },
+    "SoftwareEnvironment": {
+      "additionalProperties": false,
+      "description": "A captured software environment (ADR-0012). ``lock_sha256`` identifies the exact\npackage set, so two results can be checked for having come from the same environment.",
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "key_packages": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Key Packages",
+          "type": "object"
+        },
+        "kind": {
+          "$ref": "#/$defs/EnvironmentKind"
+        },
+        "lock": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lock_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Lock Sha256",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "prefix": {
+          "minLength": 1,
+          "title": "Prefix",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "software_environment/1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "prefix",
+        "lock_sha256",
+        "captured_at"
+      ],
+      "title": "SoftwareEnvironment",
+      "type": "object"
+    },
+    "SoftwareKind": {
+      "description": "Role a piece of software plays in a provenance record.",
+      "enum": [
+        "engine",
+        "adapter",
+        "library",
+        "platform",
+        "service",
+        "manual_step"
+      ],
+      "title": "SoftwareKind",
+      "type": "string"
+    },
+    "SoftwareRef": {
+      "additionalProperties": false,
+      "description": "A piece of software that took part in producing a result (a provenance *agent*).",
+      "properties": {
+        "environment_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Environment Id"
+        },
+        "kind": {
+          "$ref": "#/$defs/SoftwareKind"
+        },
+        "license_class": {
+          "$ref": "#/$defs/LicenseClass",
+          "default": "unknown"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "kind"
+      ],
+      "title": "SoftwareRef",
+      "type": "object"
+    },
+    "StepRecord": {
+      "additionalProperties": false,
+      "description": "One executed command: argument vector only, never a shell string (SEC-02).",
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Argv",
+          "type": "array"
+        },
+        "cwd": {
+          "minLength": 1,
+          "title": "Cwd",
+          "type": "string"
+        },
+        "env_subset": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Env Subset",
+          "type": "object"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        },
+        "pid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pid"
+        },
+        "process_start_time": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Process Start Time"
+        }
+      },
+      "required": [
+        "argv",
+        "cwd"
+      ],
+      "title": "StepRecord",
+      "type": "object"
+    }
+  },
+  "$id": "caddsuite://schemas/task_attempt/1.0",
+  "additionalProperties": false,
+  "description": "Typed provenance activity for one execution attempt (W3C PROV activity).",
+  "properties": {
+    "artifacts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AttemptArtifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "attempt_no": {
+      "minimum": 1,
+      "title": "Attempt No",
+      "type": "integer"
+    },
+    "ended_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ended At"
+    },
+    "environment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SoftwareEnvironment"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "executor": {
+      "minLength": 1,
+      "title": "Executor",
+      "type": "string"
+    },
+    "host": {
+      "$ref": "#/$defs/HostInfo"
+    },
+    "id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "platform": {
+      "$ref": "#/$defs/PlatformRef"
+    },
+    "resources": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ResourceRequest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "schema_version": {
+      "default": "task_attempt/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "software": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AttemptSoftware"
+      },
+      "title": "Software",
+      "type": "array"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/AttemptStatus"
+    },
+    "steps": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/StepRecord"
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "task_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Task Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "task_id",
+    "attempt_no",
+    "executor",
+    "host",
+    "platform",
+    "started_at",
+    "status"
+  ],
+  "title": "TaskAttempt",
+  "type": "object"
+}

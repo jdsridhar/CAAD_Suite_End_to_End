@@ -1,0 +1,6 @@
+name: caddsuite-pyscf
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pyscf=2.14.0
