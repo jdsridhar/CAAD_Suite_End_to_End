@@ -205,7 +205,9 @@ class WorkflowScheduler:
                         raise TypeError("workflow inputs must be normalized contracts")
                     bound[port.name] = tuple(
                         ProducedValue(
-                            handler.subject_key(task.for_each, value) if task.for_each else None,
+                            handler.subject_key(task.for_each, value)
+                            if task.for_each is not None and port.name in task.fanout_inputs
+                            else None,
                             value,
                         )
                         for value in sequence

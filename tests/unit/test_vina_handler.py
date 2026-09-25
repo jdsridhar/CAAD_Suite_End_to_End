@@ -17,7 +17,11 @@ from caddsuite.adapters.docking.autodock4_handler import AutoDock4DockingHandler
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
 from caddsuite.adapters.structure_preparation.complex_builder import CoordinateComplexBuilderHandler
 from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparationHandler
+from caddsuite.application.handlers import StageHandlerRegistry
+from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
+from caddsuite.contracts.docking import DockingResult
+from caddsuite.contracts.execution import TaskAttempt
 from caddsuite.contracts.registry import (
     ChemicalIdentity,
     Compound,
@@ -38,10 +42,9 @@ from caddsuite.contracts.structure import (
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
-from caddsuite.storage.artifacts import ArtifactStore, register_blob
-from caddsuite.storage.db import create_db_engine, make_session_factory
-from caddsuite.storage.migrate import upgrade
-from caddsuite.storage.models import ProjectRow
+from caddsuite.storage.artifacts import register_blob
+from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
+from caddsuite.workflow.definition import WorkflowDefinition
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXER_PYTHON = os.environ.get("CADDSUITE_PDBFIXER_PYTHON")
@@ -71,14 +74,87 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         timeout=20,
     ).stdout.strip()
 
-    db_path = tmp_path / "platform.sqlite"
-    upgrade(db_path)
-    engine = create_db_engine(db_path)
-    sessions = make_session_factory(engine)
-    store = ArtifactStore(tmp_path / "artifact-store")
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "Vina runtime integration",
+            "inputs": {
+                "compound": {"contract": "compound/1.0"},
+                "form": {"contract": "compound_form/1.0"},
+                "conformer": {"contract": "conformer/1.1"},
+                "receptor": {"contract": "prepared_receptor/1.0"},
+                "target_structure": {"contract": "structure/1.0"},
+                "site": {"contract": "binding_site/1.0"},
+            },
+            "stages": [
+                {
+                    "id": "dock",
+                    "kind": "docking",
+                    "engine": "vina",
+                    "for_each": "compound",
+                    "input_contracts": {
+                        "compound": "compound/1.0",
+                        "form": "compound_form/1.0",
+                        "conformer": "conformer/1.1",
+                        "receptor": "prepared_receptor/1.0",
+                        "target_structure": "structure/1.0",
+                        "site": "binding_site/1.0",
+                    },
+                    "input_bindings": {
+                        "compound": "$compound",
+                        "form": "$form",
+                        "conformer": "$conformer",
+                        "receptor": "$receptor",
+                        "target_structure": "$target_structure",
+                        "site": "$site",
+                    },
+                    "output_contract": DockingResult.schema_id(),
+                    "params": {
+                        "engine_parameters": {
+                            "vina_executable": str(vina),
+                            "meeko_python": str(meeko_python),
+                            "mk_prepare_receptor": str(engine_dir / "mk_prepare_receptor.py"),
+                            "mk_prepare_ligand": str(engine_dir / "mk_prepare_ligand.py"),
+                            "mk_export": str(engine_dir / "mk_export.py"),
+                            "memory_MiB": 2048,
+                        },
+                        "docking_parameters": {
+                            "exhaustiveness": 1,
+                            "num_modes": 2,
+                            "energy_range_kcal_mol": 3.0,
+                            "cpu_cores": 2,
+                            "seed": 42,
+                        },
+                    },
+                }
+            ],
+            "outputs": {"result": "dock"},
+        }
+    )
+    registry = StageHandlerRegistry.discover()
+    compiled = registry.compile(workflow)
+    runtime = LocalWorkflowRuntime.open(
+        data_root=tmp_path / "platform",
+        handlers=lambda services: registry.build_handlers(workflow, services),
+    )
+    engine = runtime.engine
+    sessions = runtime.sessions
+    store = runtime.services.artifacts
     project_id = new_ulid()
     with sessions.begin() as session:
-        session.add(ProjectRow(id=project_id, slug="vina-fixture", name="Vina fixture"))
+        project = ProjectRow(id=project_id, slug="vina-fixture", name="Vina fixture")
+        session.add(project)
+        session.flush()
+        run = WorkflowRunRow(
+            project_id=project_id,
+            accession="RUN-VINA-001",
+            workflow_hash="c" * 64,
+            config_hash="d" * 64,
+            status="running",
+        )
+        session.add(run)
+        session.flush()
+        run_id = run.id
 
     receptor_blob = store.put_file(ROOT / "tests/data/golden/structure_g1/5NIU.cif")
     with sessions.begin() as session:
@@ -109,7 +185,7 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         work_root=tmp_path / "prepare-jobs",
         log_root=tmp_path / "prepare-logs",
         engine_version="PDBFixer 1.12.0 / OpenMM 8.4",
-        executor=LocalExecutor(store, sessions),
+        executor=runtime.services.executor,
         artifact_store=store,
         sessions=sessions,
     )
@@ -201,33 +277,39 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         meeko_version=meeko_version,
         work_root=tmp_path / "docking-jobs",
         log_root=tmp_path / "docking-logs",
-        executor=LocalExecutor(store, sessions),
+        executor=runtime.services.executor,
         artifact_store=store,
         sessions=sessions,
     )
     try:
-        result = handler.execute(
-            SimpleNamespace(
-                task=SimpleNamespace(
-                    stage_id="dock",
-                    params={
-                        "exhaustiveness": 1,
-                        "num_modes": 2,
-                        "energy_range_kcal_mol": 3.0,
-                        "cpu_cores": 2,
-                        "seed": 42,
-                    },
-                ),
-                inputs={
-                    "compound": (compound,),
-                    "form": (form,),
-                    "conformer": (conformer,),
-                    "receptor": (prepared,),
-                    "target_structure": (structure,),
-                    "site": (site,),
-                },
-            )
+        outcome = runtime.run(
+            compiled,
+            run_id=run_id,
+            inputs={
+                "compound": (compound,),
+                "form": (form,),
+                "conformer": (conformer,),
+                "receptor": (prepared,),
+                "target_structure": (structure,),
+                "site": (site,),
+            },
         )
+        assert not outcome.failures
+        result = outcome.outputs["result"][0].value
+        assert isinstance(result, DockingResult)
+        with sessions() as session:
+            attempt_row = session.query(TaskAttemptRow).one()
+        attempt = TaskAttempt.model_validate(attempt_row.payload)
+        assert attempt.status.value == "succeeded"
+        assert attempt.resources is not None
+        assert attempt.resources.cpu_cores == 2
+        assert len(attempt.steps) == 4
+        assert {step.exit_code for step in attempt.steps} == {0}
+        assert any(
+            item.role == "engine" and item.software.version == vina_version
+            for item in attempt.software
+        )
+        assert any(edge.direction == "generated" for edge in attempt.artifacts)
         assert result.run.seed == 42
         assert 1 <= len(result.poses) <= 2
         assert result.run.pose_ids == tuple(pose.id for pose in result.poses)
