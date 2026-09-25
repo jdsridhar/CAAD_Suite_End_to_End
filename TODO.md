@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 11 — Provenance |
-| **Last completed** | Phase 11.1 per-attempt provenance foundation; QM and GROMACS runtime attempts capture parameters, software, environment locks, argv/logs, resources, and artifact lineage. Latest full gate: 514 passed, 25 skipped (2026-09-26) |
-| **Current task** | [-] 11.2 Provenance graph queries via CLI/API (CLI upstream traversal implemented; API and workflow-run queries remain) |
-| **Next task** | Complete 11.2 with API/workflow-run queries; close Vina execution-through-runtime evidence and Phase 11 gate |
+| **Last completed** | Phase 11.2 provenance read queries via CLI and authenticated API (focused checks pass); latest full gate: 517 passed, 25 skipped (2026-09-26) |
+| **Current task** | [-] 11.1 Vina execution-through-runtime evidence; then Phase 11 provenance gate |
+| **Next task** | Complete Vina runtime integration, then verify end-to-end provenance and begin legacy importers (11.3) |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -308,10 +308,10 @@ When the user says **CONTINUE**:
   - [x] CLI run loads typed normalized-contract JSON inputs, ingests and hash-verifies artifact attachments, creates and updates WorkflowRun records, and invokes StageHandlerRegistry + LocalWorkflowRuntime. A real PySCF CLI single-point run and Psi4/PySCF application-level runs passed with successful attempt provenance. Vina execution-through-runtime evidence and API execution remain. The QM provider currently executes one calculation per invocation.
   - [-] Add built-in Vina stage entry point exposing the audited handler through normalized compound/form/conformer/receptor/structure/site inputs and DockingResult output. Capability discovery and required-port contract tests pass; direct real Vina/Meeko preparation+docking+complex integration passes (168.42 s). Runtime attempt-provenance integration for Vina remains pending; current real integration invokes the handler directly.
   - [x] Add built-in MD stage providers for GROMACS and OpenMM with adapter-owned artifact path mapping and post-step validation; `MDStageResult` records stage lineage, engine/adapter versions, effective parameters, runtime, and hashed outputs. GROMACS Conda prefix locks are captured as provenance artifacts.
-- [-] 11.2 Provenance graph queries via CLI/API
+- [x] 11.2 Provenance graph queries via CLI/API
   - [x] Add read-only upstream attempt/artifact traversal following generated artifact producers, with JSON output and missing-ID diagnostics.
   - [x] Expose upstream traversal as caddsuite provenance ATTEMPT_ID; storage and CLI unit checks pass.
-  - [ ] Add workflow-run and project scoped listing, then expose a stable API query.
+  - [x] Add workflow-run and project-scoped graph queries, plus authenticated FastAPI endpoints for attempt, run and project lineage. Unauthorized requests, rejected browser origins, missing IDs and scoped results are covered. See docs/architecture/PROVENANCE_API.md.
 - [ ] 11.3 Legacy importers: docking projects + MD projects → provenance-partial records
 - [ ] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
 - [ ] 11.5 **Gate:** complete provenance chain for a demo run
@@ -421,10 +421,11 @@ When the user says **CONTINUE**:
 
 ## Session log
 
-| 2026-09-26 | Phase 11.1/13.1 GROMACS runtime handler implemented and pushed as 8a75193. GROMACS executes through discovered plugin and LocalWorkflowRuntime; a 50-step CPU production stage persisted normalized MDStageResult, TaskAttempt, logs/argv, environment lock and artifact lineage. Full gate: 514 passed, 25 skipped; strict mypy 165 source files; legacy 143/143. Began 11.2 with recursive read-only upstream attempt/artifact lineage and caddsuite provenance; 8 focused tests pass. timer.dat left untouched. |
-
 | Date | Session summary |
 |---|---|
+| 2026-09-26 | Phase 11.2 API scope added: read-only run/project graph aggregation and authenticated FastAPI routes for attempt/run/project provenance. Bearer authentication is mandatory; configured browser Origins are checked, and no server socket is started by the app factory. Added API guide and tests for auth, origin rejection, 404 and scoped queries. API/storage/CLI tests pass, including populated attempt, run and project graphs. Full repository gate: 517 passed, 25 skipped; strict mypy 167 files; Ruff, format, import-linter and schema checks pass. Frozen legacy manifest verifies 143/143 against the original Suites directory. Vina runtime evidence remains the next Phase 11 task. |
+
+| 2026-09-26 | Phase 11.1/13.1 GROMACS runtime handler implemented and pushed as 8a75193. GROMACS executes through discovered plugin and LocalWorkflowRuntime; a 50-step CPU production stage persisted normalized MDStageResult, TaskAttempt, logs/argv, environment lock and artifact lineage. Full gate: 514 passed, 25 skipped; strict mypy 165 source files; legacy 143/143. Began 11.2 with recursive read-only upstream attempt/artifact lineage and caddsuite provenance; 8 focused tests pass. timer.dat left untouched. |
 | 2026-09-25 | Added the built-in Psi4 engine registration, generic QM stage provider for Psi4/PySCF, declared output roles on QMTaskPlan, and default runtime capture of handler-provided environment and resources. Real Psi4 and PySCF ethanol single-point calculations passed through StageHandlerRegistry and LocalWorkflowRuntime, producing normalized QMResult and TaskAttempt with worker lock, resource request, command logs and artifact edges (2 focused engine integrations passed). Default full suite before adding the Psi4 case: 498 passed, 28 optional skips; static checks and 143/143 frozen legacy checksums pass. The PySCF CLI run path also passed a real application integration; docking/MD providers and API execution remain incomplete. The latest default suite is 498 passed, 32 optional skips; engine-enabled Psi4/PySCF and PySCF CLI integrations: 4 passed across focused runs. |
 | 2026-09-25 | Phase 11.1/13.1 composition advanced: added LocalWorkflowRuntime to initialize shared DB/artifact/LocalExecutor services and unconditionally inject TaskAttemptStore; added environment/resource resolvers. Added entry-point StageHandlerRegistry that compiles declared capabilities, requires explicit engine selection when ambiguous, and constructs enabled handlers with shared services. Runtime integration covers plugin discovery to execution to automatic attempt and resource persistence (5 focused tests pass). CLI remains plan-only and no production built-in handler factories are registered; a real application-level run is still required. ADR-0029, plugin development guide, provenance audit and learning notes updated. |
 | 2026-09-25 | Phase 11.1 scheduler integration advanced: WorkflowScheduler now persists one TaskAttempt per real execution/retry, including host/platform, adapter/engine, configured parameters, typed inputs/results, structured errors, and success/failed/unknown status. LocalExecutor command records and registered stdout/stderr artifacts flow through an invocation-local capture context. Recovery reconciles open attempts, and cache hits/skips produce none. Added ADR-0028, architecture audit updates and learning notes. Focused scheduler/store/executor suite: 13 passed; full gate pending. Application composition still needs to inject the store and resolve actual engine-worker environments/resources. |
