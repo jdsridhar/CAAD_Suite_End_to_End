@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 11 — Provenance |
-| **Current task** | [-] 11.4 review, commit and push; then 11.5 demo provenance gate |
-| **Next task** | Build and inspect an end-to-end attempt/artifact provenance chain across a demo workflow |
-| **Last completed** | Phase 11.3 legacy project importers; Phase 11.4 advisory version/environment drift endpoint. Latest full gate: 528 passed, 25 skipped; strict mypy 171 files (2026-09-26) |
+| **Current phase** | Phase 12 — Provenance |
+| **Current task** | [-] 12.1 Report model and artifact-aware sections |
+| **Next task** | Derive report content from normalized outputs and provenance; preserve explicit scientific limitations |
+| **Last completed** | Phase 11 provenance gate: legacy import, drift advisory endpoint, and real Vina artifact lineage query/hash verification. Cross-stage Docking-to-MD-to-QM remains future integration work. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -326,9 +326,15 @@ When the user says **CONTINUE**:
   - [x] Document advisory semantics and limitations; tests cover version/environment drift and unrelated or unknown software.
   - [x] Full gate: Ruff/format, strict mypy (171 files), import-linter (4 kept/0 broken), schema check; pytest 528 passed, 25 skipped.
   - [-] Review diff, commit and push.
-- [ ] 11.5 **Gate:** complete provenance chain for a demo run
+- [x] 11.5 **Gate:** complete provenance chain for a demo run (single real Vina docking stage)
+  - [x] Extend real Vina stage integration to query upstream lineage and hash-verify every used/generated artifact.
+  - [x] Record demo evidence and explicit single-stage scope; cross-stage Docking-to-MD-to-QM remains unvalidated.
+  - [x] Real Vina/Meeko, complex assembly, and 8YZ redocking integration passed in 161.18 s; the G-DOCK-4 <2 A target remains unmet.
+  - [-] Extend real Vina stage integration to query upstream lineage and hash-verify every used/generated artifact.
+  - [ ] Record the demo evidence and explicit single-stage scope; cross-stage Docking-to-MD-to-QM remains unvalidated.
+  - [ ] Full gate, frozen legacy manifest, review, commit and push.
 
-## Phase 12 — Reporting `[ ]`
+## Phase 12 — Reporting `[-]`
 
 - [ ] 12.1 Report model + sections (all 28 items from req. §31, present when the stage ran)
 - [ ] 12.2 Methods text generated from provenance; limitations from validation issues

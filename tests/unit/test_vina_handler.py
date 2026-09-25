@@ -44,6 +44,7 @@ from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
 from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
+from caddsuite.storage.provenance_graph import attempt_lineage
 from caddsuite.workflow.definition import WorkflowDefinition
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -310,6 +311,13 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
             for item in attempt.software
         )
         assert any(edge.direction == "generated" for edge in attempt.artifacts)
+        graph = attempt_lineage(sessions, str(attempt.id))
+        assert graph["root_attempt_id"] == str(attempt.id)
+        assert [item["id"] for item in graph["attempts"]] == [str(attempt.id)]
+        assert {edge["direction"] for edge in graph["edges"]} == {"used", "generated"}
+        assert all(item["sha256"] for item in graph["artifacts"])
+        assert all(store.verify(item["sha256"]) for item in graph["artifacts"])
+        assert len([step for step in attempt.steps if step.exit_code == 0]) == 4
         assert result.run.seed == 42
         assert 1 <= len(result.poses) <= 2
         assert result.run.pose_ids == tuple(pose.id for pose in result.poses)
