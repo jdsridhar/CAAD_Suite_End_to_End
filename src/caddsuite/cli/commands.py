@@ -20,6 +20,7 @@ from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.models import ArtifactRow, ProjectRow, TaskRow, WorkflowRunRow
 from caddsuite.storage.paths import artifacts_root, database_path, resolve_data_root
+from caddsuite.storage.provenance_graph import ProvenanceNodeNotFound, attempt_lineage
 from caddsuite.validation.decisions import Decision, DecisionRequest, DecisionScope
 from caddsuite.workflow.definition import WorkflowDefinition
 
@@ -374,5 +375,21 @@ def register_commands(app: typer.Typer) -> None:
                 with ArtifactStore(artifacts_root(root)).open(artifact.sha256) as stream:
                     stream.seek(max(0, artifact.size_bytes - tail_bytes))
                     typer.echo(stream.read(tail_bytes).decode("utf-8", errors="replace"), nl=False)
+        finally:
+            engine.dispose()
+
+    @app.command()
+    def provenance(
+        attempt_id: Annotated[str, typer.Argument(help="Task-attempt ID to trace upstream.")],
+        data_root: RootOption = None,
+    ) -> None:
+        """Print a task attempt and its recursively linked artifact ancestry as JSON."""
+        engine, sessions = _sessions(resolve_data_root(data_root))
+        try:
+            try:
+                graph = attempt_lineage(sessions, attempt_id)
+            except ProvenanceNodeNotFound as exc:
+                _fail(str(exc))
+            typer.echo(json.dumps(graph, indent=2))
         finally:
             engine.dispose()

@@ -8,8 +8,8 @@
 |---|---|
 | **Current phase** | Phase 11 — Provenance |
 | **Last completed** | Phase 11.1 per-attempt provenance foundation; QM and GROMACS runtime attempts capture parameters, software, environment locks, argv/logs, resources, and artifact lineage. Latest full gate: 514 passed, 25 skipped (2026-09-26) |
-| **Current task** | [-] 11.2 Provenance graph queries via CLI/API |
-| **Next task** | Add Vina execution-through-runtime evidence; then implement 11.2 provenance graph queries via CLI/API |
+| **Current task** | [-] 11.2 Provenance graph queries via CLI/API (CLI upstream traversal implemented; API and workflow-run queries remain) |
+| **Next task** | Complete 11.2 with API/workflow-run queries; close Vina execution-through-runtime evidence and Phase 11 gate |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -308,7 +308,10 @@ When the user says **CONTINUE**:
   - [x] CLI run loads typed normalized-contract JSON inputs, ingests and hash-verifies artifact attachments, creates and updates WorkflowRun records, and invokes StageHandlerRegistry + LocalWorkflowRuntime. A real PySCF CLI single-point run and Psi4/PySCF application-level runs passed with successful attempt provenance. Vina execution-through-runtime evidence and API execution remain. The QM provider currently executes one calculation per invocation.
   - [-] Add built-in Vina stage entry point exposing the audited handler through normalized compound/form/conformer/receptor/structure/site inputs and DockingResult output. Capability discovery and required-port contract tests pass; direct real Vina/Meeko preparation+docking+complex integration passes (168.42 s). Runtime attempt-provenance integration for Vina remains pending; current real integration invokes the handler directly.
   - [x] Add built-in MD stage providers for GROMACS and OpenMM with adapter-owned artifact path mapping and post-step validation; `MDStageResult` records stage lineage, engine/adapter versions, effective parameters, runtime, and hashed outputs. GROMACS Conda prefix locks are captured as provenance artifacts.
-- [ ] 11.2 Provenance graph queries via CLI/API
+- [-] 11.2 Provenance graph queries via CLI/API
+  - [x] Add read-only upstream attempt/artifact traversal following generated artifact producers, with JSON output and missing-ID diagnostics.
+  - [x] Expose upstream traversal as caddsuite provenance ATTEMPT_ID; storage and CLI unit checks pass.
+  - [ ] Add workflow-run and project scoped listing, then expose a stable API query.
 - [ ] 11.3 Legacy importers: docking projects + MD projects → provenance-partial records
 - [ ] 11.4 Version-drift warnings (e.g. comparing results from different GROMACS versions — REPRO-02)
 - [ ] 11.5 **Gate:** complete provenance chain for a demo run
@@ -417,6 +420,8 @@ When the user says **CONTINUE**:
 - No Phase 3 implementation blocker. Apache-2.0 is selected, LICENSE and NOTICE are present, and main is published to the configured GitHub remote.
 
 ## Session log
+
+| 2026-09-26 | Phase 11.1/13.1 GROMACS runtime handler implemented and pushed as 8a75193. GROMACS executes through discovered plugin and LocalWorkflowRuntime; a 50-step CPU production stage persisted normalized MDStageResult, TaskAttempt, logs/argv, environment lock and artifact lineage. Full gate: 514 passed, 25 skipped; strict mypy 165 source files; legacy 143/143. Began 11.2 with recursive read-only upstream attempt/artifact lineage and caddsuite provenance; 8 focused tests pass. timer.dat left untouched. |
 
 | Date | Session summary |
 |---|---|

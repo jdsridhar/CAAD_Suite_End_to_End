@@ -87,3 +87,9 @@ def test_cli_logs_prints_text_artifact_tail(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0
     assert result.output == "line two\n"
+
+
+def test_cli_provenance_reports_unknown_attempt(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["provenance", "missing-attempt", "--data-root", str(tmp_path)])
+    assert result.exit_code == 2
+    assert "task attempt 'missing-attempt' was not found" in result.output

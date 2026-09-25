@@ -37,6 +37,7 @@ from caddsuite.storage.models import (
     TaskAttemptRow,
     WorkflowRunRow,
 )
+from caddsuite.storage.provenance_graph import attempt_lineage
 from caddsuite.storage.task_state import TaskStateStore
 
 
@@ -168,6 +169,13 @@ def test_attempt_store_persists_and_finalizes_provenance_edges(attempt_context) 
     assert completed.environment is not None
     assert completed.software[0].software.version == "2.14.0"
     assert store.get(str(attempt.id)) == completed
+    lineage = attempt_lineage(sessions, str(attempt.id))
+    assert lineage["root_attempt_id"] == str(attempt.id)
+    assert [item["id"] for item in lineage["attempts"]] == [str(attempt.id)]
+    assert {(edge["direction"], edge["role"]) for edge in lineage["edges"]} == {
+        ("used", "geometry"),
+        ("generated", "normalized_result"),
+    }
     with sessions() as session:
         row = session.get(TaskAttemptRow, str(attempt.id))
         assert row is not None
