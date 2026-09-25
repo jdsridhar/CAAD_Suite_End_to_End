@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import JsonValue
+
 from caddsuite.contracts.reporting import (
     ReportSectionName,
     ReportSectionStatus,
@@ -20,6 +22,7 @@ def build_provenance_report(
     title: str,
     provenance_graph: dict[str, Any],
     validation_issues: tuple[dict[str, Any], ...] = (),
+    result_sections: dict[ReportSectionName, JsonValue] | None = None,
 ) -> ScientificReport:
     """Assemble auditable methods/provenance sections without inventing science values."""
     attempts = [item for item in provenance_graph.get("attempts", []) if isinstance(item, dict)]
@@ -101,6 +104,8 @@ def build_provenance_report(
         if records:
             sources = tuple(ULIDStr(item["attempt_id"]) for item in records)
             available(name, records, sources)
+    for name, data in (result_sections or {}).items():
+        available(name, data, attempt_ids)
     if attempts:
         available(
             ReportSectionName.REPRODUCIBILITY,

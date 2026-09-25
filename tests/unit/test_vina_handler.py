@@ -18,6 +18,7 @@ from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
 from caddsuite.adapters.structure_preparation.complex_builder import CoordinateComplexBuilderHandler
 from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparationHandler
 from caddsuite.application.handlers import StageHandlerRegistry
+from caddsuite.application.report_builder import build_provenance_report
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.docking import DockingResult
@@ -32,6 +33,7 @@ from caddsuite.contracts.registry import (
     StandardizationRecord,
     StandardizationStep,
 )
+from caddsuite.contracts.reporting import ReportSectionName, ReportSectionStatus
 from caddsuite.contracts.structure import (
     BindingSite,
     BindingSiteMethod,
@@ -42,6 +44,7 @@ from caddsuite.contracts.structure import (
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
+from caddsuite.reporting.renderers import render_report
 from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
 from caddsuite.storage.provenance_graph import attempt_lineage
@@ -318,6 +321,22 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         assert all(item["sha256"] for item in graph["artifacts"])
         assert all(store.verify(item["sha256"]) for item in graph["artifacts"])
         assert len([step for step in attempt.steps if step.exit_code == 0]) == 4
+        report = build_provenance_report(
+            project_id=project_id,
+            title="5NIU RC8 docking demonstration",
+            provenance_graph=graph,
+            result_sections={ReportSectionName.DOCKING_RESULTS: result.model_dump(mode="json")},
+        )
+        report_files = render_report(report, ("html", "json", "csv", "pdf"))
+        assert set(report_files) == {"html", "json", "csv", "pdf"}
+        report_sections = {section.name: section for section in report.sections}
+        assert (
+            report_sections[ReportSectionName.DOCKING_RESULTS].status
+            is ReportSectionStatus.AVAILABLE
+        )
+        assert report_sections[ReportSectionName.MD_METHOD].status is ReportSectionStatus.NOT_RUN
+        assert b"computational predictions" in report_files["html"].lower()
+        assert report_files["pdf"].startswith(b"%PDF")
         assert result.run.seed == 42
         assert 1 <= len(result.poses) <= 2
         assert result.run.pose_ids == tuple(pose.id for pose in result.poses)

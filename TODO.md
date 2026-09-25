@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 12 — Reporting |
-| **Current task** | [-] 12.5 demo report validation and review |
-| **Next task** | Assemble and render a report from a recorded scientific workflow and inspect completeness/limitations |
-| **Last completed** | Phase 12 report schema, provenance builder, four format renderers, and transparent weighted/Pareto/lexicographic ranking; full gate 537 passed, 25 skipped, strict mypy 174 files. |
+| **Current phase** | Phase 13 — Reporting |
+| **Current task** | [-] 13.1 Workflow execution API and job lifecycle endpoints |
+| **Next task** | Expose validated runtime execution and job status through authenticated application endpoints |
+| **Last completed** | Phase 12 report model, provenance assembly, four renderers, transparent ranking, and real Vina report gate; validation gate pending. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -354,9 +354,12 @@ When the user says **CONTINUE**:
   - [x] Preserve raw value, unit, uncertainty, evidence ID, normalized value, weight and contribution.
   - [x] Reject nonfinite/nonnumeric inputs, mixed units, evidence direction conflicts and duplicate values.
   - [x] Document score interpretation, tie behavior, limitations and computational-only status.
-- [-] 12.5 **Gate:** demo report reviewed
+- [x] 12.5 **Gate:** demo report reviewed
+  - [x] Build a ScientificReport from real Vina TaskAttempt lineage and normalized DockingResult.
+  - [x] Render HTML, JSON, CSV and PDF; assert docking available, MD not_run and interpretation disclaimer.
+  - [x] Real engine-backed demo passed in 166.85 s; report scope and redocking limitation documented in docs/validation/G-REPORT-1.md.
 
-## Phase 13 — API + UI `[ ]`
+## Phase 13 — API + UI `[-]`
 
 - [-] 13.1 Application runtime + StageHandlerRegistry are implemented; built-in QM, Vina, GROMACS, and OpenMM providers are registered. Real Vina docking and a 50-step GROMACS stage both ran through the registry/runtime and persisted successful attempt provenance. Authenticated read-only provenance REST queries exist. Remaining: workflow execution API, SSE, server lifecycle/binding, validated uploads and browser integration.
 - [ ] 13.2 OpenAPI → TypeScript client

@@ -2,6 +2,8 @@ import csv
 import io
 from datetime import UTC, datetime
 
+import pytest
+
 from caddsuite.contracts.reporting import (
     ReportSectionName,
     ReportSectionStatus,
@@ -45,5 +47,6 @@ def test_html_json_and_csv_renderers_preserve_content_and_escape_html() -> None:
 
 
 def test_pdf_renderer_produces_pdf_bytes() -> None:
+    pytest.importorskip("reportlab")
     pdf = render_report(_report(), ("pdf",))["pdf"]
     assert pdf.startswith(b"%PDF")

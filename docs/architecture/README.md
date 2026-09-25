@@ -110,3 +110,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 
 - [Transparent candidate evidence ranking](CANDIDATE_RANKING.md)
 - [ADR-0037: Transparent candidate ranking](ADR/0037-transparent-candidate-ranking.md)
+
+- [G-REPORT-1 real Docking report integration](../validation/G-REPORT-1.md)
