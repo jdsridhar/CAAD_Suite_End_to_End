@@ -18,7 +18,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import Field, JsonValue
 from sqlalchemy import select
@@ -435,6 +435,96 @@ def create_app(
             "sha256": blob.sha256,
             "created": blob.created,
         }
+
+    @app.get("/v1/projects/{project_id}/artifacts")
+    def list_project_artifacts(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> list[dict[str, object]]:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail="project was not found")
+            rows = {
+                row.id: row
+                for row in session.scalars(
+                    select(ArtifactRow)
+                    .join(ProjectArtifactRow, ProjectArtifactRow.artifact_id == ArtifactRow.id)
+                    .where(ProjectArtifactRow.project_id == project_id)
+                )
+            }
+            generated = session.scalars(
+                select(ArtifactRow)
+                .join(AttemptArtifactRow, AttemptArtifactRow.artifact_id == ArtifactRow.id)
+                .join(TaskAttemptRow, TaskAttemptRow.id == AttemptArtifactRow.attempt_id)
+                .join(TaskRow, TaskRow.id == TaskAttemptRow.task_id)
+                .join(WorkflowRunRow, WorkflowRunRow.id == TaskRow.run_id)
+                .where(WorkflowRunRow.project_id == project_id)
+            ).all()
+            rows.update({row.id: row for row in generated})
+            return [
+                {
+                    "id": row.id,
+                    "sha256": row.sha256,
+                    "size_bytes": row.size_bytes,
+                    "media_type": row.media_type,
+                    "kind": row.kind,
+                    "original_name": row.original_name,
+                    "created_at": row.created_at.isoformat(),
+                }
+                for row in sorted(rows.values(), key=lambda item: (item.created_at, item.id))
+            ]
+
+    @app.get("/v1/projects/{project_id}/artifacts/{artifact_id}/content")
+    def read_project_artifact_content(
+        project_id: str,
+        artifact_id: str,
+        _: None = Depends(authenticate),
+    ) -> FileResponse:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail="project was not found")
+            artifact = session.get(ArtifactRow, artifact_id)
+            if artifact is None:
+                raise HTTPException(status_code=404, detail="artifact was not found")
+            project_upload = (
+                session.scalar(
+                    select(ProjectArtifactRow.project_id).where(
+                        ProjectArtifactRow.project_id == project_id,
+                        ProjectArtifactRow.artifact_id == artifact_id,
+                    )
+                )
+                is not None
+            )
+            generated_by_project_run = (
+                session.scalar(
+                    select(AttemptArtifactRow.attempt_id)
+                    .join(TaskAttemptRow, TaskAttemptRow.id == AttemptArtifactRow.attempt_id)
+                    .join(TaskRow, TaskRow.id == TaskAttemptRow.task_id)
+                    .join(WorkflowRunRow, WorkflowRunRow.id == TaskRow.run_id)
+                    .where(
+                        WorkflowRunRow.project_id == project_id,
+                        AttemptArtifactRow.artifact_id == artifact_id,
+                    )
+                )
+                is not None
+            )
+            if not project_upload and not generated_by_project_run:
+                raise HTTPException(status_code=404, detail="artifact was not found")
+            digest = artifact.sha256
+            media_type = artifact.media_type
+        store = ArtifactStore(artifacts_root(root))
+        path = store.path_for(digest)
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="artifact content was not found")
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={
+                "Cache-Control": "private, no-store",
+                "ETag": f'"{digest}"',
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     @app.get("/v1/projects/{project_id}/artifacts/{artifact_id}/text")
     def read_project_text_artifact(

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 function ulid(): string {
   const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -43,6 +44,27 @@ test("project compound workflow pauses for a decision and resumes successfully",
   expect(response.ok()).toBeTruthy();
   const compounds = (await response.json()) as Array<{ id: string }>;
   expect(compounds).toHaveLength(1);
+
+  const receptorComplex = await readFile(
+    new URL(
+      "../../../tests/data/golden/docking_g1/results/RC8__5NIU_complex.pdb",
+      import.meta.url,
+    ),
+  );
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "RC8_5NIU_complex.pdb",
+    mimeType: "chemical/x-pdb",
+    buffer: receptorComplex,
+  });
+  await page
+    .getByRole("button", { name: "Upload artifact to project" })
+    .click();
+  await expect(page.getByText(/Uploaded to project CAS/)).toBeVisible();
+  await page.getByRole("button", { name: "View in Mol*" }).click();
+  await expect(page.getByLabel("Molecular structure viewer")).toBeVisible();
+  await expect(page.locator(".molstar-host canvas").first()).toBeVisible({
+    timeout: 30_000,
+  });
   const workflow = {
     schema: "caddsuite.workflow/1",
     name: "Browser decision-resume workflow",

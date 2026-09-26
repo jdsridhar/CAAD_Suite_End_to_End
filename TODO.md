@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.4 Mol* scientific structure and trajectory views |
+| **Current task** | [-] 13.4 Mol* viewer: authenticated static structure previews, then compatible trajectories and volumes |
 | **Next task** | 13.5 project dashboard, then Phase 13.6 browser end-to-end gate and demo |
-| **Last completed** | Phase 13.3 automated Playwright path: project, compound, workflow plan, persisted decision pause/resume, success, provenance. Browser/API gate passes against the WSL backend; core gate 556 passed, 25 optional skips. |
+| **Last completed** | Phase 13.4 static Mol* viewer milestone and full core gate: 557 passed, 25 optional skips. Authenticated CAS artifact APIs; real G-DOCK protein-ligand fixture renders in Chromium. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -383,7 +383,12 @@ When the user says **CONTINUE**:
   - [x] Durable workflow decision pause/resume (ADR-0047): handler DecisionRequired signal, atomic persisted request + RUNNING->AWAITING_DECISION, request-scoped API decision submission/requeue, decision replay into TaskInvocation; React controls and plugin guidance added. Full quality gate passed.
   - [x] Bounded project-linked log tails and project-scoped recent run history.
   - [x] Browser E2E validation: live localhost walkthrough verified project creation, RDKit ethanol registration (CMP0001), five capability discovery, Vina form planning, CAS upload/hash, run queue/status/history, and provenance; surfaced empty-enabled-stage submission defect and drove ADR-0046 preflight fix. API integration now covers a successful decision-paused handler run and same-run resume. Automated Playwright test and dedicated browser/API gate now cover the successful decision UI path; Chromium run passed. The full gate runs through `scripts/check-web.sh` on a Linux host with Playwright system libraries.
-- [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
+- [-] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes (ADR-0048).
+  - [x] Authenticated project-scoped artifact list and content access; only uploaded or run-linked artifacts are visible. Content remains CAS-backed and response carries registered media type/hash.
+  - [x] Lazy embedded Mol* viewer for whitelisted PDB, mmCIF, SDF, MOL2, and GRO structures, authenticated fetch, 100 MiB preview cap.
+  - [x] Browser regression loads the real RC8/5NIU protein-ligand complex from the frozen golden fixture; confirms viewer canvas and then continues the decision-resume workflow.
+  - [ ] Trajectory player: bind a compatible topology artifact to XTC/TRR/DCD and define frame/resource controls.
+  - [ ] Volumetric cube and molecular orbital views with explicit isovalue selection and units.
 - [ ] 13.5 Dashboard (req. §30)
 - [ ] 13.6 **Gate:** browser end-to-end demo
 
@@ -554,3 +559,12 @@ When the user says **CONTINUE**:
 - [x] Phase 13.3 browser E2E: Playwright test drives project and ethanol creation, plugin capability display, workflow plan and submit, persisted decision UI choice, same-run successful resume, run history, and provenance. Real app and API served from WSL; Windows Chromium executed the test because the WSL image lacks `libasound.so.2`. Dedicated `scripts/check-web.sh` runs API schema, type, build, and browser checks on a provisioned Linux host. Test uses unique project/input identities, hashes normalized fixture inputs to prevent false cache hits, and starts servers on dedicated non-reused ports.
 
 - [x] Browser/API gate repeat: isolated test service ports, injected plugin advertised by the capabilities endpoint, normalized-input cache hash, same-run decision resume and provenance all pass in Chromium. The browser was launched from Windows against the WSL localhost services because WSL lacks the `libasound.so.2` runtime dependency; `apps/web/README.md` records the Linux setup command.
+
+### Session log  Phase 13.4 Mol* static structure previews
+
+- [x] ADR-0048 selects Mol* and defines authenticated, project-scoped CAS reads; Mol* 5.11.0 license attribution added to NOTICE.
+- [x] Added project artifact listing and content APIs. Tests cover registered bytes, digest ETag, media type, authentication, orphan rejection, and cross-project denial.
+- [x] Embedded viewer supports static PDB, mmCIF, SDF, MOL2, and GRO through exact byte-text loading; added 100 MiB browser preview limit and lazy loading.
+- [x] Playwright loads the legacy golden RC8/5NIU complex and asserts a Mol* canvas, then exercises workflow decision resume.
+- [x] API focused tests (13 passed), web API/type/build checks pass. Mol* is lazy-loaded but adds a 4.83 MB minified / 1.37 MB gzip chunk; Vite also warns that Mol*'s optional h264 encoder imports Node built-ins. Investigate size and optional-extension bundling during the visualization gate.
+- [-] XTC/TRR/DCD topology pairing and cube volume controls remain incomplete; do not present them as supported yet.

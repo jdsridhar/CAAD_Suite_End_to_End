@@ -798,6 +798,64 @@ def test_project_text_artifact_endpoint_is_scoped_and_bounded(tmp_path: Path) ->
         )
 
 
+def test_project_artifact_list_and_content_are_authenticated_and_scoped(tmp_path: Path) -> None:
+    project_id, _run_id, _attempt_id = _seed_project_run(tmp_path)
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    store = ArtifactStore(artifacts_root(tmp_path))
+    pdb_bytes = b"HEADER    TEST PDB\\nEND\\n"
+    pdb_blob = store.put_bytes(pdb_bytes)
+    orphan_blob = store.put_bytes(b"unlinked")
+    with sessions.begin() as session:
+        pdb = register_blob(
+            session,
+            pdb_blob,
+            kind="prepared_receptor_pdb",
+            media_type="chemical/x-pdb",
+            original_name="receptor.pdb",
+        )
+        orphan = register_blob(
+            session, orphan_blob, kind="unlinked", media_type="application/octet-stream"
+        )
+        session.add(ProjectArtifactRow(project_id=project_id, artifact_id=pdb.id, role="input"))
+        pdb_id, orphan_id = pdb.id, orphan.id
+        other = ProjectRow(slug="artifact-other-project", name="Other project")
+        session.add(other)
+        session.flush()
+        other_project_id = other.id
+    engine.dispose()
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        listed = client.get(f"/v1/projects/{project_id}/artifacts", headers=headers)
+        assert listed.status_code == 200
+        assert any(
+            item["id"] == pdb_id and item["sha256"] == pdb_blob.sha256 for item in listed.json()
+        )
+        content = client.get(
+            f"/v1/projects/{project_id}/artifacts/{pdb_id}/content", headers=headers
+        )
+        assert content.status_code == 200
+        assert content.content == pdb_bytes
+        assert content.headers["content-type"].startswith("chemical/x-pdb")
+        assert content.headers["etag"] == f'"{pdb_blob.sha256}"'
+        assert (
+            client.get(
+                f"/v1/projects/{other_project_id}/artifacts/{pdb_id}/content",
+                headers=headers,
+            ).status_code
+            == 404
+        )
+        assert (
+            client.get(
+                f"/v1/projects/{project_id}/artifacts/{orphan_id}/content",
+                headers=headers,
+            ).status_code
+            == 404
+        )
+        assert client.get(f"/v1/projects/{project_id}/artifacts").status_code == 401
+
+
 def test_project_run_history_is_scoped_and_bounded(tmp_path: Path) -> None:
     project_id, run_id, _attempt_id = _seed_project_run(tmp_path)
     engine = create_db_engine(database_path(tmp_path))

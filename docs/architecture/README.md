@@ -121,3 +121,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 
 - [ADR-0046: Reject run submissions with no enabled tasks](ADR/0046-reject-workflows-with-no-enabled-tasks.md)
 - [ADR-0047: Durable workflow decision pause and resume](ADR/0047-durable-workflow-decision-pause-and-resume.md)
+
+- [0048](ADR/0048-authenticated-molstar-artifact-previews.md) | Authenticated Mol* previews over project-scoped artifacts | Accepted

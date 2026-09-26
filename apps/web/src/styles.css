@@ -8,3 +8,5 @@
 .decision-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
 .decision-options button{display:grid;gap:5px;text-align:left;line-height:1.45}
 .decision-options button span{font-weight:400;color:#617166}
+
+.structure-list{margin-top:1rem;border-top:1px solid var(--line);padding-top:1rem}.structure-list h3,.molecular-viewer h3{margin:.2rem 0 .6rem}.molecular-viewer{margin-top:1rem;border:1px solid var(--line);border-radius:8px;padding:1rem;background:#f9faf8}.molstar-host{position:relative;overflow:hidden;height:560px;min-height:360px;margin-top:.75rem;background:#fff}.molecular-viewer .molstar-host .msp-plugin{height:100%}.viewer-status{padding:.75rem;color:var(--muted)}
