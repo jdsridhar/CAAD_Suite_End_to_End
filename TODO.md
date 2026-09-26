@@ -387,8 +387,8 @@ When the user says **CONTINUE**:
   - [x] Authenticated project-scoped artifact list and content access; only uploaded or run-linked artifacts are visible. Content remains CAS-backed and response carries registered media type/hash.
   - [x] Lazy embedded Mol* viewer for whitelisted PDB, mmCIF, SDF, MOL2, and GRO structures, authenticated fetch, 100 MiB preview cap.
   - [x] Browser regression loads the real RC8/5NIU protein-ligand complex from the frozen golden fixture; confirms viewer canvas and then continues the decision-resume workflow.
-  - [ ] Trajectory player: bind a compatible topology artifact to XTC/TRR/DCD and define frame/resource controls.
-  - [ ] Volumetric cube and molecular orbital views with explicit isovalue selection and units.
+  - [-] Trajectory preview: explicit topology + coordinate selection, authenticated binary fetch and 100 MiB combined cap. Supported model formats GRO/PDB/mmCIF; topology PSF/PRMTOP/TOP; coordinate formats XTC/TRR/DCD/NC/NetCDF/LAMMPS dump. Browser playback and explicit frame/resource controls still need fixture-backed validation.
+  - [-] Cube/CUB preview: authenticated Mol* cube load and built-in isosurface controls added; browser fixture check pending. Interpret scalar units from source calculation metadata.
 - [ ] 13.5 Dashboard (req. §30)
 - [ ] 13.6 **Gate:** browser end-to-end demo
 
@@ -567,4 +567,8 @@ When the user says **CONTINUE**:
 - [x] Embedded viewer supports static PDB, mmCIF, SDF, MOL2, and GRO through exact byte-text loading; added 100 MiB browser preview limit and lazy loading.
 - [x] Playwright loads the legacy golden RC8/5NIU complex and asserts a Mol* canvas, then exercises workflow decision resume.
 - [x] API focused tests (13 passed), web API/type/build checks pass. Mol* is lazy-loaded but adds a 4.83 MB minified / 1.37 MB gzip chunk; Vite also warns that Mol*'s optional h264 encoder imports Node built-ins. Investigate size and optional-extension bundling during the visualization gate.
-- [-] XTC/TRR/DCD topology pairing and cube volume controls remain incomplete; do not present them as supported yet.
+- [-] Static viewer is browser-validated. Trajectory selection/loading is implemented but only typechecked/built: browser playback and frame controls remain unverified. Cube/CUB preview and Mol* isosurface controls are implemented but not browser-validated; interpret scalar units from calculation metadata.
+
+- [-] Trajectory preview implementation: binary authenticated artifact reads, explicit topology/coordinate selection, Mol* parser selection for model versus topology formats, and combined 100 MiB cap. API schema check, TypeScript check, and production build pass. Playwright did not start because WSL lacks the python alias used in webServer configuration; no browser trajectory result is claimed.
+
+- [-] Added authenticated .cube/.cub preview through Mol* file loading with built-in volume controls and a 100 MiB cap. UI warns that cube scalar units are not consistently declared. API schema check, TypeScript check, and production build pass. Browser fixture validation remains pending due the WSL Chromium libasound dependency.
