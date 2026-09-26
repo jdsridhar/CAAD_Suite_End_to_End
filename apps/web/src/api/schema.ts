@@ -42,6 +42,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/artifacts/{artifact_id}/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Project Text Artifact */
+        get: operations["read_project_text_artifact_v1_projects__project_id__artifacts__artifact_id__text_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/compounds": {
         parameters: {
             query?: never;
@@ -513,6 +530,42 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_project_text_artifact_v1_projects__project_id__artifacts__artifact_id__text_get: {
+        parameters: {
+            query?: {
+                tail_bytes?: number;
+            };
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

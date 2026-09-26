@@ -611,6 +611,85 @@
         "summary": "Upload Project Artifact"
       }
     },
+    "/v1/projects/{project_id}/artifacts/{artifact_id}/text": {
+      "get": {
+        "operationId": "read_project_text_artifact_v1_projects__project_id__artifacts__artifact_id__text_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tail_bytes",
+            "required": false,
+            "schema": {
+              "default": 65536,
+              "maximum": 1000000,
+              "minimum": 1,
+              "title": "Tail Bytes",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Project Text Artifact"
+      }
+    },
     "/v1/projects/{project_id}/compounds": {
       "get": {
         "operationId": "list_compounds_v1_projects__project_id__compounds_get",

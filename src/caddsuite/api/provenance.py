@@ -18,7 +18,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -42,10 +42,12 @@ from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
 from caddsuite.storage.models import (
     ArtifactRow,
+    AttemptArtifactRow,
     CompoundRow,
     ProjectArtifactRow,
     ProjectRow,
     RunSubmissionRow,
+    TaskAttemptRow,
     TaskRow,
     WorkflowRunRow,
 )
@@ -304,6 +306,49 @@ def create_app(
             "sha256": blob.sha256,
             "created": blob.created,
         }
+
+    @app.get("/v1/projects/{project_id}/artifacts/{artifact_id}/text")
+    def read_project_text_artifact(
+        project_id: str,
+        artifact_id: str,
+        tail_bytes: Annotated[int, Query(ge=1, le=1_000_000)] = 65_536,
+        _: None = Depends(authenticate),
+    ) -> PlainTextResponse:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail="project was not found")
+            artifact = session.get(ArtifactRow, artifact_id)
+            if artifact is None or artifact.media_type != "text/plain":
+                raise HTTPException(status_code=404, detail="text artifact was not found")
+            project_upload = (
+                session.scalar(
+                    select(ProjectArtifactRow.project_id).where(
+                        ProjectArtifactRow.project_id == project_id,
+                        ProjectArtifactRow.artifact_id == artifact_id,
+                    )
+                )
+                is not None
+            )
+            generated_by_project_run = (
+                session.scalar(
+                    select(AttemptArtifactRow.attempt_id)
+                    .join(TaskAttemptRow, TaskAttemptRow.id == AttemptArtifactRow.attempt_id)
+                    .join(TaskRow, TaskRow.id == TaskAttemptRow.task_id)
+                    .join(WorkflowRunRow, WorkflowRunRow.id == TaskRow.run_id)
+                    .where(
+                        WorkflowRunRow.project_id == project_id,
+                        AttemptArtifactRow.artifact_id == artifact_id,
+                    )
+                )
+                is not None
+            )
+            if not project_upload and not generated_by_project_run:
+                raise HTTPException(status_code=404, detail="text artifact was not found")
+            digest, size_bytes = artifact.sha256, artifact.size_bytes
+        with ArtifactStore(artifacts_root(root)).open(digest) as stream:
+            stream.seek(max(0, size_bytes - tail_bytes))
+            content = stream.read(tail_bytes).decode("utf-8", errors="replace")
+        return PlainTextResponse(content)
 
     @app.post("/v1/projects/{project_id}/runs/{run_id}/execute", status_code=202)
     def execute_workflow(

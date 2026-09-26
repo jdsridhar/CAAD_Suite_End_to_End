@@ -540,3 +540,51 @@ def test_project_api_rejects_duplicate_slug(tmp_path: Path) -> None:
         assert client.post("/v1/projects", headers=headers, json=payload).status_code == 201
         duplicate = client.post("/v1/projects", headers=headers, json=payload)
         assert duplicate.status_code == 409
+
+
+def test_project_text_artifact_endpoint_is_scoped_and_bounded(tmp_path: Path) -> None:
+    project_id, _run_id, _attempt_id = _seed_project_run(tmp_path)
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    store = ArtifactStore(artifacts_root(tmp_path))
+    log_blob = store.put_bytes(b"first line\nsecond line\n")
+    data_blob = store.put_bytes(b"not a text log")
+    with sessions.begin() as session:
+        log = register_blob(session, log_blob, kind="log", media_type="text/plain")
+        data = register_blob(session, data_blob, kind="input", media_type="application/json")
+        session.add(ProjectArtifactRow(project_id=project_id, artifact_id=log.id, role="stdout"))
+        session.add(ProjectArtifactRow(project_id=project_id, artifact_id=data.id, role="input"))
+        log_id, data_id = log.id, data.id
+        other = ProjectRow(slug="other-api-project", name="Other project")
+        session.add(other)
+        session.flush()
+        other_project_id = other.id
+    engine.dispose()
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        result = client.get(
+            f"/v1/projects/{project_id}/artifacts/{log_id}/text?tail_bytes=12",
+            headers=headers,
+        )
+        assert result.status_code == 200
+        assert result.text == "second line\n"
+        assert (
+            client.get(
+                f"/v1/projects/{other_project_id}/artifacts/{log_id}/text", headers=headers
+            ).status_code
+            == 404
+        )
+        assert (
+            client.get(
+                f"/v1/projects/{project_id}/artifacts/{data_id}/text", headers=headers
+            ).status_code
+            == 404
+        )
+        assert (
+            client.get(
+                f"/v1/projects/{project_id}/artifacts/{log_id}/text?tail_bytes=1000001",
+                headers=headers,
+            ).status_code
+            == 422
+        )
