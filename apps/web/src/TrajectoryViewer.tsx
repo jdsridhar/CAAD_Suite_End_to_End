@@ -13,7 +13,7 @@ export default function TrajectoryViewer(p: Props) {
  async function bytes(id:string){const r=await fetch(`${base}/v1/projects/${p.projectId}/artifacts/${id}/content`,{headers});if(!r.ok)throw Error(`Artifact request failed (${r.status})`);return new Uint8Array(await r.arrayBuffer())}
  const [topology,coordinates]=await Promise.all([bytes(p.topologyId),bytes(p.trajectoryId)]);if(cancelled||!host.current)return;
  viewer=await Viewer.create(host.current,{layoutIsExpanded:false,viewportShowAnimation:true,viewportShowTrajectoryControls:true});if(cancelled){viewer.dispose();return}
- const model = p.topologyFormat === "psf" || p.topologyFormat === "prmtop" || p.topologyFormat === "top" ? {kind:"topology-data" as const,data:topology,format:p.topologyFormat} : {kind:"model-data" as const,data:topology,format:p.topologyFormat};
+ const model = p.topologyFormat === "psf" || p.topologyFormat === "prmtop" || p.topologyFormat === "top" ? {kind:"topology-data" as const,data:topology,format:p.topologyFormat} : {kind:"model-data" as const,data:new TextDecoder().decode(topology),format:p.topologyFormat};
  await viewer.loadTrajectory({model,modelLabel:p.topologyName,coordinates:{kind:"coordinates-data",data:coordinates,format:p.trajectoryFormat},coordinatesLabel:p.trajectoryName,preset:"all-models"});
  if(!cancelled)setLoading(false)}catch(e){if(!cancelled){setError(e instanceof Error?e.message:String(e));setLoading(false)}}}
  void load();return()=>{cancelled=true;viewer?.dispose()}

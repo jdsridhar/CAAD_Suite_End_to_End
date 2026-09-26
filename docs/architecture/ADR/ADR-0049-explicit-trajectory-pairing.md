@@ -10,7 +10,7 @@ A trajectory coordinate stream does not identify its molecular topology or atom 
 
 ## Decision
 
-The viewer requires explicit user selection of one topology/model and one coordinate artifact. GRO/PDB/mmCIF use Mol* model-data input; PSF/PRMTOP/TOP use topology-data input. XTC, TRR, DCD, NetCDF, and LAMMPS dump coordinate files are recognized. Both artifacts use authenticated project-scoped content reads. Combined recorded size is capped at 100 MiB. The UI displays the selected pair and asks the user to confirm matching system identity and atom order.
+The viewer requires explicit user selection of one topology/model and one coordinate artifact. GRO/PDB/mmCIF are fetched as text and use Mol* model-data input; PSF/PRMTOP/TOP use topology-data input. XTC, TRR, DCD, NetCDF, and LAMMPS dump coordinate files are recognized. Both artifacts use authenticated project-scoped content reads. Combined recorded size is capped at 100 MiB. The UI displays the selected pair and asks the user to confirm matching system identity and atom order.
 
 ## Consequences
 

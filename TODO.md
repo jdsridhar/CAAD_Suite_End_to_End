@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.4 Mol* viewer: authenticated static structure previews, then compatible trajectories and volumes |
-| **Next task** | 13.5 project dashboard, then Phase 13.6 browser end-to-end gate and demo |
-| **Last completed** | Phase 13.4 static Mol* viewer milestone and full core gate: 557 passed, 25 optional skips. Authenticated CAS artifact APIs; real G-DOCK protein-ligand fixture renders in Chromium. |
+| **Current task** | [-] 13.5 project dashboard, then 13.6 browser end-to-end gate |
+| **Next task** | Phase 14 testing hardening |
+| **Last completed** | Phase 13.4 authenticated Mol* previews. Static complex, 11-frame GROMACS trajectory playback, and Psi4 orbital cube/isosurface loading verified in browser; frontend static gate passes. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -383,12 +383,12 @@ When the user says **CONTINUE**:
   - [x] Durable workflow decision pause/resume (ADR-0047): handler DecisionRequired signal, atomic persisted request + RUNNING->AWAITING_DECISION, request-scoped API decision submission/requeue, decision replay into TaskInvocation; React controls and plugin guidance added. Full quality gate passed.
   - [x] Bounded project-linked log tails and project-scoped recent run history.
   - [x] Browser E2E validation: live localhost walkthrough verified project creation, RDKit ethanol registration (CMP0001), five capability discovery, Vina form planning, CAS upload/hash, run queue/status/history, and provenance; surfaced empty-enabled-stage submission defect and drove ADR-0046 preflight fix. API integration now covers a successful decision-paused handler run and same-run resume. Automated Playwright test and dedicated browser/API gate now cover the successful decision UI path; Chromium run passed. The full gate runs through `scripts/check-web.sh` on a Linux host with Playwright system libraries.
-- [-] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes (ADR-0048).
+- [x] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes (ADR-0048).
   - [x] Authenticated project-scoped artifact list and content access; only uploaded or run-linked artifacts are visible. Content remains CAS-backed and response carries registered media type/hash.
   - [x] Lazy embedded Mol* viewer for whitelisted PDB, mmCIF, SDF, MOL2, and GRO structures, authenticated fetch, 100 MiB preview cap.
   - [x] Browser regression loads the real RC8/5NIU protein-ligand complex from the frozen golden fixture; confirms viewer canvas and then continues the decision-resume workflow.
-  - [-] Trajectory preview: explicit topology + coordinate selection, authenticated binary fetch and 100 MiB combined cap. Supported model formats GRO/PDB/mmCIF; topology PSF/PRMTOP/TOP; coordinate formats XTC/TRR/DCD/NC/NetCDF/LAMMPS dump. Browser playback and explicit frame/resource controls still need fixture-backed validation.
-  - [-] Cube/CUB preview: authenticated Mol* cube load and built-in isosurface controls added; browser fixture check pending. Interpret scalar units from source calculation metadata.
+  - [x] Trajectory preview: explicit topology + coordinate selection, authenticated fetch, 100 MiB combined cap, Mol* animation Loop/Duration/Start/Stop. Browser check loaded matching GRO/XTC (49,682 atoms, 11 frames, 0-1000 ps) and exercised playback.
+  - [x] Cube/CUB preview: authenticated Mol* volume load and visible isosurface from Psi4 HF/STO-3G water orbital CUBE (50x41x53 grid); interpret scalar values/units from calculation provenance.
 - [ ] 13.5 Dashboard (req. §30)
 - [ ] 13.6 **Gate:** browser end-to-end demo
 
@@ -567,8 +567,10 @@ When the user says **CONTINUE**:
 - [x] Embedded viewer supports static PDB, mmCIF, SDF, MOL2, and GRO through exact byte-text loading; added 100 MiB browser preview limit and lazy loading.
 - [x] Playwright loads the legacy golden RC8/5NIU complex and asserts a Mol* canvas, then exercises workflow decision resume.
 - [x] API focused tests (13 passed), web API/type/build checks pass. Mol* is lazy-loaded but adds a 4.83 MB minified / 1.37 MB gzip chunk; Vite also warns that Mol*'s optional h264 encoder imports Node built-ins. Investigate size and optional-extension bundling during the visualization gate.
-- [-] Static viewer is browser-validated. Trajectory selection/loading is implemented but only typechecked/built: browser playback and frame controls remain unverified. Cube/CUB preview and Mol* isosurface controls are implemented but not browser-validated; interpret scalar units from calculation metadata.
+- [x] Phase 13.4 browser validation complete: static RC8/5NIU PDB, matching real GROMACS GRO/XTC trajectory with animation controls, and real Psi4 HF/STO-3G water orbital CUBE with isosurface visible. Static checks pass; full end-to-end gate for the dashboard is Phase 13.6.
 
-- [-] Trajectory preview implementation: binary authenticated artifact reads, explicit topology/coordinate selection, Mol* parser selection for model versus topology formats, and combined 100 MiB cap. API schema check, TypeScript check, and production build pass. Playwright webServer successfully started after using the caddsuite environment; Chromium could not launch because WSL lacks libasound.so.2. No browser trajectory result is claimed.
+- [x] Trajectory viewer manually browser-validated with local-only temporary API artifacts. GRO text is decoded before Mol* model parsing (binary GRO initially failed with a missing-parent error); Mol* then loaded matching 49,682-atom, 11-frame XTC and exposed animation selection, Loop mode, duration and Start/Stop. GROMACS reports frames from 0 to 1000 ps (1 ns); this is a viewer check, not an MD validation benchmark. Standard Playwright still cannot launch WSL Chromium because libasound.so.2 is absent.
 
-- [-] Added authenticated .cube/.cub preview through Mol* file loading with built-in volume controls and a 100 MiB cap. UI warns that cube scalar units are not consistently declared. API schema check, TypeScript check, and production build pass. Browser fixture validation remains pending due the WSL Chromium libasound dependency.
+- [x] Cube viewer browser-validated with a temporary HF/STO-3G water orbital generated by Psi4 1.11; Mol* parsed the 50x41x53 volume and rendered its isosurface. UI directs users to calculation provenance for scalar interpretation and units. No fixture was committed.
+
+- [x] Phase 13.4 closeout: authenticated static structure, trajectory, and cube previews loaded in local browser; trajectory animation controls and isosurface representation were exercised. API schema check, TypeScript check, and production build pass. Mol* bundle and optional h264 Node built-in warnings remain for Phase 13.6 visualization gate.
