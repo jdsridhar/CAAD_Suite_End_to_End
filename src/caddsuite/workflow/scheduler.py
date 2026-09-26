@@ -34,8 +34,10 @@ from caddsuite.provenance.software import (
     platform_ref,
 )
 from caddsuite.storage.attempts import TaskAttemptStore
+from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.result_cache import ResultCache
 from caddsuite.storage.task_state import TaskSnapshot, TaskStateStore
+from caddsuite.validation.decisions import Decision, DecisionRequest
 from caddsuite.workflow.cache import build_cache_key
 from caddsuite.workflow.compiler import CompiledWorkflow, TaskTemplate
 from caddsuite.workflow.definition import FailurePolicy
@@ -47,6 +49,7 @@ class TaskInvocation:
     task: TaskTemplate
     subject_id: str | None
     inputs: Mapping[str, tuple[VersionedContract, ...]]
+    decisions: tuple[Decision, ...] = ()
 
 
 class StageHandler(Protocol):
@@ -76,6 +79,7 @@ class TaskOutcome:
     error: str | None = None
     cache_hit: bool = False
     failure_policy: FailurePolicy | None = None
+    decision_request: DecisionRequest | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +93,10 @@ class WorkflowOutcome:
     tasks: tuple[TaskOutcome, ...]
     outputs: Mapping[str, tuple[ProducedValue, ...]]
     stopped: bool
+
+    @property
+    def awaiting_decision(self) -> bool:
+        return any(task.state is TaskState.AWAITING_DECISION for task in self.tasks)
 
     @property
     def failures(self) -> tuple[TaskOutcome, ...]:
@@ -113,6 +121,14 @@ class RecoverableStageHandler(StageHandler, Protocol):
 
 
 _ERROR_CODE = re.compile(r"^[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)+$")
+
+
+class DecisionRequired(RuntimeError):
+    """Pause a stage until a user supplies one of the offered scientific choices."""
+
+    def __init__(self, request: DecisionRequest) -> None:
+        self.request = request
+        super().__init__(request.question)
 
 
 class StageExecutionFailure(RuntimeError):
@@ -163,6 +179,7 @@ class WorkflowScheduler:
         result_cache: ResultCache,
         handlers: Mapping[str, StageHandler],
         attempt_store: TaskAttemptStore | None = None,
+        decision_store: DecisionStore | None = None,
         environment_resolver: Callable[[StageHandler], SoftwareEnvironment | None] | None = None,
         resource_resolver: Callable[[StageHandler, TaskInvocation], ResourceRequest | None]
         | None = None,
@@ -172,6 +189,7 @@ class WorkflowScheduler:
         self._cache = result_cache
         self._handlers = handlers
         self._attempts = attempt_store
+        self._decisions = decision_store
         self._host = capture_host_info() if attempt_store is not None else None
         self._platform = platform_ref() if attempt_store is not None else None
         self._environment_resolver = environment_resolver
@@ -229,6 +247,9 @@ class WorkflowScheduler:
                     task, handler, run_id=run_id, subject_id=subject_id, inputs=stage_inputs
                 )
                 outcomes.append(outcome)
+                if outcome.state is TaskState.AWAITING_DECISION:
+                    stopped = True
+                    break
                 if outcome.state is TaskState.CANCELLED:
                     stopped = True
                     break
@@ -331,7 +352,12 @@ class WorkflowScheduler:
         if record.state is TaskState.PENDING:
             record = self._transition(record, TaskState.READY)
 
-        invocation = TaskInvocation(task, subject_id, inputs)
+        invocation = TaskInvocation(
+            task,
+            subject_id,
+            inputs,
+            self._decisions.for_task(record.id) if self._decisions is not None else (),
+        )
         if task.gate is not None and record.state is TaskState.READY:
             context, allowed = handler.gate_context(inputs)
             gate = compile_gate(task.gate, allowed_fields=allowed)
@@ -448,6 +474,40 @@ class WorkflowScheduler:
                 )
                 result = candidate
                 break
+            except DecisionRequired as exc:
+                if self._decisions is None:
+                    self._finish_attempt(
+                        attempt,
+                        AttemptStatus.FAILED,
+                        execution_data,
+                        error_code="PLATFORM.DECISION_STORE_MISSING",
+                        error_message="decision requested without a durable decision store",
+                        stage_id=task.stage_id,
+                    )
+                    raise RuntimeError(
+                        "stage requested a human decision but the runtime has no decision store"
+                    ) from exc
+                self._finish_attempt(
+                    attempt,
+                    AttemptStatus.AWAITING_DECISION,
+                    execution_data,
+                    stage_id=task.stage_id,
+                )
+                self._decisions.await_decision(
+                    record.id, exc.request, expected_version=record.version
+                )
+                paused = self._tasks.get(record.id)
+                return (
+                    TaskOutcome(
+                        task.stage_id,
+                        paused.id,
+                        paused.state,
+                        subject_id,
+                        None,
+                        decision_request=exc.request,
+                    ),
+                    None,
+                )
             except ExecutionCancelled as exc:
                 error = str(exc)
                 self._finish_attempt(

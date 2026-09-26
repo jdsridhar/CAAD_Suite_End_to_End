@@ -128,6 +128,7 @@ class AttemptStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    AWAITING_DECISION = "awaiting_decision"
     UNKNOWN = "unknown"
 
 

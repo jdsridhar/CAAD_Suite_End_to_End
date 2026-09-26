@@ -111,6 +111,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/runs/{run_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Run Decisions */
+        get: operations["list_run_decisions_v1_projects__project_id__runs__run_id__decisions_get"];
+        put?: never;
+        /** Submit Run Decision */
+        post: operations["submit_run_decision_v1_projects__project_id__runs__run_id__decisions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/runs/{run_id}/events": {
         parameters: {
             query?: never;
@@ -285,6 +303,26 @@ export interface components {
             created: boolean;
             /** Input Record Id */
             input_record_id: string;
+        };
+        /**
+         * DecisionScope
+         * @enum {string}
+         */
+        DecisionScope: "task" | "run" | "project";
+        /** DecisionSubmitRequest */
+        DecisionSubmitRequest: {
+            /** Chosen Key */
+            chosen_key: string;
+            /** Decided By */
+            decided_by: string;
+            /** Expected Version */
+            expected_version: number;
+            /** Issue Id */
+            issue_id: string;
+            /** Rationale */
+            rationale?: string | null;
+            /** @default task */
+            scope: components["schemas"]["DecisionScope"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -718,6 +756,82 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_decisions_v1_projects__project_id__runs__run_id__decisions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_run_decision_v1_projects__project_id__runs__run_id__decisions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionSubmitRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             202: {

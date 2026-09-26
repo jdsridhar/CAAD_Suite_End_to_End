@@ -9,6 +9,7 @@ from caddsuite.cli.main import app
 from caddsuite.domain.enums import TaskState
 from caddsuite.storage import migrate
 from caddsuite.storage.db import create_db_engine, make_session_factory
+from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
 from caddsuite.storage.paths import database_path
 from caddsuite.storage.task_state import TaskStateStore
@@ -38,7 +39,7 @@ def test_decide_cli_resumes_task_with_recorded_choice(tmp_path: Path) -> None:
 
     tasks = TaskStateStore(sessions)
     task = tasks.create(run_id=run_id, stage_id="prepare")
-    for target in (TaskState.READY, TaskState.AWAITING_DECISION):
+    for target in (TaskState.READY, TaskState.RUNNING):
         task = tasks.transition(
             task.id, expected=task.state, target=target, expected_version=task.version
         )
@@ -50,6 +51,8 @@ def test_decide_cli_resumes_task_with_recorded_choice(tmp_path: Path) -> None:
             DecisionOption(key="site_b", label="Site B", consequence="Use site B coordinates."),
         ),
     )
+    pause = DecisionStore(sessions).await_decision(task.id, request, expected_version=task.version)
+    task_version = pause.version
     request_path = tmp_path / "decision.json"
     request_path.write_text(request.model_dump_json(), encoding="utf-8")
     engine.dispose()
@@ -66,11 +69,11 @@ def test_decide_cli_resumes_task_with_recorded_choice(tmp_path: Path) -> None:
             "--decided-by",
             "researcher",
             "--expected-version",
-            str(task.version),
+            str(task_version),
             "--data-root",
             str(tmp_path),
         ],
     )
     assert result.exit_code == 0, result.output
     assert json.loads(result.output)["state"] == "ready"
-    assert json.loads(result.output)["version"] == task.version + 1
+    assert json.loads(result.output)["version"] == task_version + 1

@@ -27,6 +27,7 @@ from caddsuite.storage.models import (
     ArtifactRow,
     CompoundInputRow,
     CompoundRow,
+    DecisionRow,
     ProjectArtifactRow,
     ProjectRow,
     TaskAttemptRow,
@@ -34,8 +35,12 @@ from caddsuite.storage.models import (
 )
 from caddsuite.storage.paths import artifacts_root, database_path
 from caddsuite.storage.task_state import TaskStateStore
+from caddsuite.validation.decisions import (
+    DecisionOption,
+    DecisionRequest,
+)
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
-from caddsuite.workflow.scheduler import TaskInvocation
+from caddsuite.workflow.scheduler import DecisionRequired, TaskInvocation
 from tests.unit.test_attempt_store import _running_attempt
 
 
@@ -238,6 +243,166 @@ def test_api_executes_normalized_workflow_and_persists_run_state(tmp_path: Path)
             json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
         )
         assert repeated.status_code == 409
+
+
+class _DecisionCandidateHandler(_EchoCandidateHandler):
+    def __init__(self, observations: list[tuple[str, ...]]) -> None:
+        self.observations = observations
+
+    def execute(self, invocation: TaskInvocation) -> Candidate:
+        value = invocation.inputs["candidate"][0]
+        assert isinstance(value, Candidate)
+        keys = tuple(decision.chosen_key for decision in invocation.decisions)
+        self.observations.append(keys)
+        if not keys:
+            raise DecisionRequired(
+                DecisionRequest(
+                    issue_code="TEST.CHOICE_REQUIRED",
+                    question="Which candidate handling policy should be applied?",
+                    options=(
+                        DecisionOption(
+                            key="preserve",
+                            label="Preserve candidate",
+                            consequence="Continue without changing its normalized structure.",
+                        ),
+                        DecisionOption(
+                            key="exclude",
+                            label="Exclude candidate",
+                            consequence="Stop processing this candidate.",
+                        ),
+                    ),
+                )
+            )
+        assert keys == ("preserve",)
+        return value
+
+
+class _DecisionCandidatePlugin(_EchoCandidatePlugin):
+    plugin_id = "tests.decision_candidate"
+
+    def __init__(self) -> None:
+        self.observations: list[tuple[str, ...]] = []
+
+    def registrations(self) -> tuple[StageHandlerRegistration, ...]:
+        registration = super().registrations()[0]
+        capability = registration.capability.model_copy(update={"kind": "test.decision_candidate"})
+        return (
+            StageHandlerRegistration(
+                capability=capability,
+                factory=lambda _stage, _services: _DecisionCandidateHandler(self.observations),
+            ),
+        )
+
+
+def test_api_pauses_for_decision_and_requeues_with_choice_in_handler_invocation(
+    tmp_path: Path,
+) -> None:
+    migrate.upgrade(database_path(tmp_path))
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        project = ProjectRow(slug="api-decision", name="API decision")
+        session.add(project)
+        session.flush()
+        project_id = project.id
+    engine.dispose()
+
+    workflow = {
+        "schema": "caddsuite.workflow/1",
+        "name": "Decision replay",
+        "inputs": {"candidate": {"contract": "candidate/1.0"}},
+        "stages": [
+            {
+                "id": "review_candidate",
+                "kind": "test.decision_candidate",
+                "input_contracts": {"candidate": "candidate/1.0"},
+                "input_bindings": {"candidate": "$candidate"},
+                "output_contract": "candidate/1.0",
+                "params": {},
+            }
+        ],
+        "outputs": {"candidate": "review_candidate"},
+    }
+    candidate = Candidate(id=new_ulid(), compound_id=new_ulid(), project_id=project_id)
+    run_id = str(new_ulid())
+    plugin = _DecisionCandidatePlugin()
+    app = create_app(
+        data_root=tmp_path,
+        token="test-secret",  # noqa: S106
+        stage_registry=StageHandlerRegistry([plugin]),
+    )
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        submitted = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/execute",
+            headers=headers,
+            json={"workflow": workflow, "inputs": {"candidate": candidate.model_dump(mode="json")}},
+        )
+        assert submitted.status_code == 202, submitted.text
+
+        deadline = monotonic() + 5
+        status_response = client.get(
+            f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+        )
+        while not (
+            status_response.json()["status"] == "awaiting_decision"
+            and status_response.json()["submission"]["state"] == "awaiting_decision"
+        ):
+            assert monotonic() < deadline, status_response.json()
+            sleep(0.01)
+            status_response = client.get(
+                f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+            )
+
+        pending_response = client.get(
+            f"/v1/projects/{project_id}/runs/{run_id}/decisions", headers=headers
+        )
+        assert pending_response.status_code == 200
+        [pending] = pending_response.json()
+        assert pending["stage_id"] == "review_candidate"
+        assert pending["request"]["issue_code"] == "TEST.CHOICE_REQUIRED"
+        assert status_response.json()["tasks"][0]["state"] == "awaiting_decision"
+
+        resolved = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/decisions",
+            headers=headers,
+            json={
+                "issue_id": pending["issue_id"],
+                "chosen_key": "preserve",
+                "decided_by": "test researcher",
+                "expected_version": pending["task_version"],
+                "scope": "task",
+                "rationale": "Use the reviewed neutral workflow.",
+            },
+        )
+        assert resolved.status_code == 202, resolved.text
+        assert resolved.json()["run_status"] == "queued"
+
+        deadline = monotonic() + 5
+        status_response = client.get(
+            f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+        )
+        while status_response.json()["status"] not in {"succeeded", "failed"}:
+            assert monotonic() < deadline, status_response.json()
+            sleep(0.01)
+            status_response = client.get(
+                f"/v1/projects/{project_id}/runs/{run_id}/status", headers=headers
+            )
+        assert status_response.json()["status"] == "succeeded"
+        assert status_response.json()["tasks"][0]["state"] == "succeeded"
+        assert plugin.observations == [(), ("preserve",)]
+
+        with app.state.sessions() as session:
+            attempts = tuple(
+                session.scalars(select(TaskAttemptRow).order_by(TaskAttemptRow.attempt_no))
+            )
+            assert [row.exit_status for row in attempts] == [
+                "awaiting_decision",
+                "succeeded",
+            ]
+            decision = session.query(DecisionRow).one()
+            assert decision.issue_id == pending["issue_id"]
+            assert decision.chosen_key == "preserve"
 
 
 def test_api_rejects_workflow_with_no_enabled_stages_before_persisting(tmp_path: Path) -> None:

@@ -48,20 +48,17 @@ def decision_env(
     engine.dispose()
 
 
-def _waiting_task(task_states: TaskStateStore, run_id: str) -> tuple[str, int]:
+def _waiting_task(decisions: DecisionStore, task_states: TaskStateStore, run_id: str):
     task = task_states.create(run_id=run_id, stage_id="review")
-    for target in (
-        TaskState.READY,
-        TaskState.RUNNING,
-        TaskState.AWAITING_DECISION,
-    ):
+    for target in (TaskState.READY, TaskState.RUNNING):
         task = task_states.transition(
             task.id,
             expected=task.state,
             target=target,
             expected_version=task.version,
         )
-    return task.id, task.version
+    paused = decisions.await_decision(task.id, _decision().request, expected_version=task.version)
+    return task.id, paused.version, paused.issue_id
 
 
 def _decision() -> Decision:
@@ -93,8 +90,8 @@ def _decision() -> Decision:
 
 def test_decision_and_resume_transition_commit_atomically(decision_env) -> None:
     decisions, task_states, sessions, run_id = decision_env
-    task_id, version = _waiting_task(task_states, run_id)
-    result = decisions.submit(task_id, _decision(), expected_version=version)
+    task_id, version, issue_id = _waiting_task(decisions, task_states, run_id)
+    result = decisions.submit(task_id, _decision(), expected_version=version, issue_id=issue_id)
     task = task_states.get(task_id)
     assert result.task_id == task_id
     assert result.state is TaskState.READY
@@ -106,6 +103,7 @@ def test_decision_and_resume_transition_commit_atomically(decision_env) -> None:
         row = session.scalar(select(DecisionRow).where(DecisionRow.task_id == task_id))
         assert row is not None
         assert row.chosen_key == "provide_site"
+        assert row.issue_id == issue_id
         assert row.payload["rationale"] == "Use the experimentally supported site."
         events = tuple(
             session.scalars(
@@ -121,9 +119,9 @@ def test_decision_and_resume_transition_commit_atomically(decision_env) -> None:
 
 def test_stale_decision_does_not_write_record_or_resume_task(decision_env) -> None:
     decisions, task_states, sessions, run_id = decision_env
-    task_id, version = _waiting_task(task_states, run_id)
+    task_id, version, issue_id = _waiting_task(decisions, task_states, run_id)
     with pytest.raises(TaskStateConflict):
-        decisions.submit(task_id, _decision(), expected_version=version - 1)
+        decisions.submit(task_id, _decision(), expected_version=version - 1, issue_id=issue_id)
     assert task_states.get(task_id).state is TaskState.AWAITING_DECISION
     assert len(task_states.history(task_id)) == 4
     with sessions() as session:

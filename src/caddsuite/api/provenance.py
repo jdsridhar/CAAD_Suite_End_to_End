@@ -20,7 +20,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, sta
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import JsonValue
+from pydantic import Field, JsonValue
 from sqlalchemy import select
 
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
@@ -33,22 +33,32 @@ from caddsuite.chem.standardize import (
     make_compound,
     standardize_smiles,
 )
-from caddsuite.contracts.base import ArtifactRef, ContractModel, VersionedContract, load_contract
+from caddsuite.contracts.base import (
+    ArtifactRef,
+    ContractModel,
+    NonEmptyStr,
+    VersionedContract,
+    load_contract,
+)
 from caddsuite.contracts.registry import InputRecord
+from caddsuite.domain.enums import TaskState
 from caddsuite.domain.identity import ULIDStr, new_ulid
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 from caddsuite.storage.compound_registry import CompoundRegistry
 from caddsuite.storage.db import create_db_engine, make_session_factory
+from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.migrate import upgrade
 from caddsuite.storage.models import (
     ArtifactRow,
     AttemptArtifactRow,
     CompoundRow,
+    DecisionRow,
     ProjectArtifactRow,
     ProjectRow,
     RunSubmissionRow,
     TaskAttemptRow,
     TaskRow,
+    ValidationIssueRow,
     WorkflowRunRow,
 )
 from caddsuite.storage.paths import artifacts_root, database_path, resolve_data_root
@@ -56,6 +66,12 @@ from caddsuite.storage.provenance_graph import (
     ProvenanceNodeNotFound,
     project_lineage,
     run_lineage,
+)
+from caddsuite.validation.decisions import (
+    Decision,
+    DecisionRequest,
+    DecisionScope,
+    OptionKey,
 )
 from caddsuite.workflow.compiler import WorkflowCompileError
 from caddsuite.workflow.definition import WorkflowDefinition
@@ -96,6 +112,15 @@ class WorkflowRunSubmission(ContractModel):
 
     workflow: WorkflowDefinition
     inputs: dict[str, JsonValue]
+
+
+class DecisionSubmitRequest(ContractModel):
+    issue_id: ULIDStr
+    chosen_key: OptionKey
+    decided_by: NonEmptyStr
+    expected_version: Annotated[int, Field(ge=0)]
+    scope: DecisionScope = DecisionScope.TASK
+    rationale: str | None = None
 
 
 def create_app(
@@ -205,13 +230,14 @@ def create_app(
                     cancel_check=cancel_requested,
                 )
             run_status = (
-                "failed" if outcome.failures else "stopped" if outcome.stopped else "succeeded"
+                "awaiting_decision"
+                if outcome.awaiting_decision
+                else "failed"
+                if outcome.failures
+                else "stopped"
+                if outcome.stopped
+                else "succeeded"
             )
-            with sessions.begin() as session:
-                run = session.get(WorkflowRunRow, stable_run_id)
-                if run is not None:
-                    run.status = run_status
-                    run.finished_at = datetime.now(UTC)
             return run_status
         except Exception:
             with sessions.begin() as session:
@@ -220,6 +246,109 @@ def create_app(
                     run.status = "failed"
                     run.finished_at = datetime.now(UTC)
             raise
+
+    @app.get("/v1/projects/{project_id}/runs/{run_id}/decisions")
+    def list_run_decisions(
+        project_id: str,
+        run_id: str,
+        _: None = Depends(authenticate),
+    ) -> list[dict[str, object]]:
+        with sessions() as session:
+            run = session.scalar(
+                select(WorkflowRunRow).where(
+                    WorkflowRunRow.id == run_id,
+                    WorkflowRunRow.project_id == project_id,
+                )
+            )
+            if run is None:
+                raise HTTPException(status_code=404, detail="workflow run was not found")
+            submission = session.get(RunSubmissionRow, run_id)
+            if submission is None or submission.state != "awaiting_decision":
+                return []
+            pending = session.execute(
+                select(ValidationIssueRow, TaskRow.stage_id, TaskRow.subject_id, TaskRow.version)
+                .join(TaskRow, TaskRow.id == ValidationIssueRow.task_id)
+                .where(
+                    TaskRow.run_id == run_id,
+                    ValidationIssueRow.severity == "decision_required",
+                    ~select(DecisionRow.id)
+                    .where(DecisionRow.issue_id == ValidationIssueRow.id)
+                    .exists(),
+                )
+                .order_by(ValidationIssueRow.created_at, ValidationIssueRow.id)
+            ).all()
+            return [
+                {
+                    "issue_id": issue.id,
+                    "task_id": issue.task_id,
+                    "stage_id": stage_id,
+                    "subject_id": subject_id,
+                    "task_version": version,
+                    "request": issue.payload,
+                }
+                for issue, stage_id, subject_id, version in pending
+            ]
+
+    @app.post("/v1/projects/{project_id}/runs/{run_id}/decisions", status_code=202)
+    def submit_run_decision(
+        project_id: str,
+        run_id: str,
+        request: DecisionSubmitRequest,
+        _: None = Depends(authenticate),
+    ) -> dict[str, object]:
+        with sessions() as session:
+            issue = session.scalar(
+                select(ValidationIssueRow)
+                .join(TaskRow, TaskRow.id == ValidationIssueRow.task_id)
+                .join(WorkflowRunRow, WorkflowRunRow.id == TaskRow.run_id)
+                .where(
+                    ValidationIssueRow.id == request.issue_id,
+                    WorkflowRunRow.id == run_id,
+                    WorkflowRunRow.project_id == project_id,
+                    ValidationIssueRow.severity == "decision_required",
+                )
+            )
+            if issue is None:
+                raise HTTPException(status_code=404, detail="pending decision was not found")
+            task = session.get(TaskRow, issue.task_id)
+            submission = session.get(RunSubmissionRow, run_id)
+            if (
+                task is None
+                or task.state != TaskState.AWAITING_DECISION.value
+                or submission is None
+                or submission.state != "awaiting_decision"
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="workflow run has not reached a resolvable awaiting-decision state",
+                )
+            stored_request = DecisionRequest.model_validate(issue.payload)
+            task_id = task.id
+        try:
+            decision = Decision(
+                request=stored_request,
+                chosen_key=request.chosen_key,
+                decided_by=request.decided_by,
+                decided_at=datetime.now(UTC),
+                scope=request.scope,
+                rationale=request.rationale,
+            )
+            result = DecisionStore(sessions).submit(
+                task_id,
+                decision,
+                expected_version=request.expected_version,
+                issue_id=request.issue_id,
+            )
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        return {
+            "decision_id": result.decision_id,
+            "issue_id": result.issue_id,
+            "task_id": result.task_id,
+            "state": result.state.value,
+            "version": result.version,
+            "run_status": "queued",
+        }
 
     @app.post(
         "/v1/projects/{project_id}/artifacts",

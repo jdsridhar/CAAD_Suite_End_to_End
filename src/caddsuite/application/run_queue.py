@@ -14,7 +14,13 @@ from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from caddsuite.storage.models import RunSubmissionRow, WorkflowRunRow
+from caddsuite.domain.enums import TaskState
+from caddsuite.storage.models import (
+    RunSubmissionRow,
+    TaskRow,
+    TaskStateEventRow,
+    WorkflowRunRow,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +106,7 @@ class RunSubmissionQueue:
         error: str | None = None,
         now: datetime | None = None,
     ) -> bool:
-        if state not in {"succeeded", "failed", "stopped", "unknown"}:
+        if state not in {"succeeded", "failed", "stopped", "unknown", "awaiting_decision"}:
             raise ValueError(f"invalid terminal submission state {state!r}")
         timestamp = now or datetime.now(UTC)
         with self._sessions.begin() as session:
@@ -111,18 +117,74 @@ class RunSubmissionQueue:
                     RunSubmissionRow.worker_id == worker_id,
                     RunSubmissionRow.state == "running",
                 )
-                .values(state=state, finished_at=timestamp, heartbeat_at=timestamp, error=error)
+                .values(
+                    state=state,
+                    finished_at=(None if state == "awaiting_decision" else timestamp),
+                    heartbeat_at=timestamp,
+                    error=error,
+                )
             )
             if _rowcount(result) == 1:
                 session.execute(
                     update(WorkflowRunRow)
                     .where(WorkflowRunRow.id == run_id)
-                    .values(status=state, finished_at=timestamp)
+                    .values(
+                        status=state,
+                        finished_at=(None if state == "awaiting_decision" else timestamp),
+                    )
                 )
             return _rowcount(result) == 1
 
     def request_cancel(self, run_id: str) -> bool:
+        timestamp = datetime.now(UTC)
         with self._sessions.begin() as session:
+            submission = session.get(RunSubmissionRow, run_id)
+            if submission is None:
+                return False
+            if submission.state == "awaiting_decision":
+                tasks = session.scalars(
+                    select(TaskRow).where(
+                        TaskRow.run_id == run_id,
+                        TaskRow.state == TaskState.AWAITING_DECISION.value,
+                    )
+                ).all()
+                for task in tasks:
+                    result = session.execute(
+                        update(TaskRow)
+                        .where(
+                            TaskRow.id == task.id,
+                            TaskRow.state == TaskState.AWAITING_DECISION.value,
+                            TaskRow.version == task.version,
+                        )
+                        .values(
+                            state=TaskState.CANCELLED.value,
+                            version=TaskRow.version + 1,
+                            updated_at=timestamp,
+                        )
+                    )
+                    if _rowcount(result) != 1:
+                        raise RuntimeError(
+                            f"task {task.id} changed while cancelling the paused workflow"
+                        )
+                    session.add(
+                        TaskStateEventRow(
+                            task_id=task.id,
+                            version=task.version + 1,
+                            from_state=TaskState.AWAITING_DECISION.value,
+                            to_state=TaskState.CANCELLED.value,
+                            reason="workflow run cancelled while awaiting decision",
+                            created_at=timestamp,
+                        )
+                    )
+                submission.state = "stopped"
+                submission.cancel_requested = True
+                submission.finished_at = timestamp
+                submission.heartbeat_at = timestamp
+                run = session.get(WorkflowRunRow, run_id)
+                if run is not None:
+                    run.status = "stopped"
+                    run.finished_at = timestamp
+                return True
             result = session.execute(
                 update(RunSubmissionRow)
                 .where(

@@ -6,9 +6,16 @@ from threading import Event
 from time import monotonic, sleep
 
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
+from caddsuite.domain.enums import TaskState
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
-from caddsuite.storage.models import ProjectRow, RunSubmissionRow, WorkflowRunRow
+from caddsuite.storage.models import (
+    ProjectRow,
+    RunSubmissionRow,
+    TaskStateEventRow,
+    WorkflowRunRow,
+)
+from caddsuite.storage.task_state import TaskStateStore
 
 
 def _queue(tmp_path: Path) -> tuple[RunSubmissionQueue, object, str]:
@@ -95,6 +102,48 @@ def test_cancel_request_is_visible_to_the_owning_worker(tmp_path: Path) -> None:
     assert queue.request_cancel(run_id)
     assert queue.cancellation_requested(run_id, "worker-one")
     assert not queue.cancellation_requested(run_id, "worker-two")
+
+
+def test_cancel_while_awaiting_decision_cancels_task_and_closes_run_atomically(
+    tmp_path: Path,
+) -> None:
+    queue, (_engine, sessions), run_id = _queue(tmp_path)
+    task_store = TaskStateStore(sessions)
+    task = task_store.create(run_id=run_id, stage_id="needs_review")
+    for state in (
+        TaskState.READY,
+        TaskState.RUNNING,
+        TaskState.AWAITING_DECISION,
+    ):
+        task = task_store.transition(
+            task.id,
+            expected=task.state,
+            target=state,
+            expected_version=task.version,
+        )
+    queue.enqueue(run_id, {"workflow": {}, "inputs": {}})
+    assert queue.claim_next("worker-one") is not None
+    assert queue.finish(run_id, "worker-one", state="awaiting_decision")
+    assert queue.request_cancel(run_id)
+
+    with sessions() as session:
+        submission = session.get(RunSubmissionRow, run_id)
+        run = session.get(WorkflowRunRow, run_id)
+        event = (
+            session.query(TaskStateEventRow)
+            .filter_by(task_id=task.id)
+            .order_by(TaskStateEventRow.version.desc())
+            .first()
+        )
+        assert submission is not None
+        assert submission.state == "stopped"
+        assert submission.cancel_requested is True
+        assert run is not None
+        assert run.status == "stopped"
+        assert task_store.get(task.id).state is TaskState.CANCELLED
+        assert event is not None
+        assert event.from_state == TaskState.AWAITING_DECISION.value
+        assert event.to_state == TaskState.CANCELLED.value
 
 
 def test_supervisor_startup_recovers_expired_worker_lease(tmp_path: Path) -> None:

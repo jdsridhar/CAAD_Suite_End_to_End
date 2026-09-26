@@ -11,3 +11,7 @@ A handler must expose adapter_id, adapter_version, engine_version, subject_key()
 Package metadata declares the entry point under the caddsuite.stage_handlers group, with a key naming the plugin and a value pointing to its no-argument factory. Plugins are trusted Python code loaded into the application process. Do not install unreviewed plugins into a project environment. Executable calls must use LocalExecutor with argv lists and validated paths, and should not build shell command strings.
 
 At this milestone the registry and runtime are implemented, but no built-in stage-handler plugin entry points are installed and the CLI run command remains plan-only. See TODO.md for integration and validation tasks.
+
+## Human decisions during a workflow
+
+A handler that reaches a genuine decision point should raise `DecisionRequired` with a `DecisionRequest` before performing work that depends on the choice. The scheduler stores the request and pauses the task and run. After the user resolves it, the same run is queued again and the handler receives the stored decision in `TaskInvocation.decisions`, keyed by request issue ID. The handler must validate and honor that option; replay does not mean the stage can guess. Keep requests task-scoped and include enough context for an informed scientific decision. See ADR-0047 for the transaction and resume contract.

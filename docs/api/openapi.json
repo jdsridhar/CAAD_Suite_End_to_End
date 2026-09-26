@@ -47,6 +47,63 @@
         "title": "CompoundResponse",
         "type": "object"
       },
+      "DecisionScope": {
+        "enum": [
+          "task",
+          "run",
+          "project"
+        ],
+        "title": "DecisionScope",
+        "type": "string"
+      },
+      "DecisionSubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "chosen_key": {
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Chosen Key",
+            "type": "string"
+          },
+          "decided_by": {
+            "minLength": 1,
+            "title": "Decided By",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "issue_id": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "title": "Issue Id",
+            "type": "string"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/DecisionScope",
+            "default": "task"
+          }
+        },
+        "required": [
+          "issue_id",
+          "chosen_key",
+          "decided_by",
+          "expected_version"
+        ],
+        "title": "DecisionSubmitRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -973,6 +1030,159 @@
           }
         ],
         "summary": "Cancel Project Run"
+      }
+    },
+    "/v1/projects/{project_id}/runs/{run_id}/decisions": {
+      "get": {
+        "operationId": "list_run_decisions_v1_projects__project_id__runs__run_id__decisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Run Decisions V1 Projects  Project Id  Runs  Run Id  Decisions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Run Decisions"
+      },
+      "post": {
+        "operationId": "submit_run_decision_v1_projects__project_id__runs__run_id__decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Submit Run Decision V1 Projects  Project Id  Runs  Run Id  Decisions Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Run Decision"
       }
     },
     "/v1/projects/{project_id}/runs/{run_id}/events": {

@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.3 React SPA: form-based workflow builder, review/decision and log views |
-| **Next task** | Wire durable scheduler-owned DecisionRequest persistence before decision UI; add browser E2E for supported project/workflow/run flows |
-| **Last completed** | Phase 13.2 generated OpenAPI TypeScript client. Phase 13.3 now includes capability-driven stage forms, project-scoped run history and log-tail access; latest Python gate 553 passed, 25 skipped; frontend TypeScript/build/API-schema checks pass. |
+| **Current task** | [-] 13.3 React SPA: finish automated browser E2E and review/decision/log flows |
+| **Next task** | Persist automated browser E2E for project/workflow/run and decision pause/resume flows |
+| **Last completed** | Durable workflow decision pause/resume (ADR-0047); full gate 556 passed, 25 optional skips; strict mypy, import boundaries, schemas, React typecheck and production build pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -380,9 +380,9 @@ When the user says **CONTINUE**:
   - [x] Project-scoped bounded text artifact endpoint plus provenance-linked browser log tails (ADR-0042).
   - [x] Capability-driven stage cards for engine/kind, stage identity, enable/reorder/remove, fan-out scope, port contracts, workflow/stage bindings, outputs, and stage parameter JSON (ADR-0043); Vina stage form compiled successfully through the live API planner.
   - [x] Reject run submission with no enabled compiled tasks before persistence (ADR-0046); UI now renders structured API validation details instead of object coercion. Regression: 11 API provenance tests pass; web typecheck/build pass.
-  - [ ] Decision UI prerequisite (ADR-0045): scheduler/runtime currently does not persist a DecisionRequest or transition tasks into AWAITING_DECISION; do not synthesize choices in the frontend. Implement the durable request/resume contract first.
+  - [x] Durable workflow decision pause/resume (ADR-0047): handler DecisionRequired signal, atomic persisted request + RUNNING->AWAITING_DECISION, request-scoped API decision submission/requeue, decision replay into TaskInvocation; React controls and plugin guidance added. Full quality gate passed.
   - [x] Bounded project-linked log tails and project-scoped recent run history.
-  - [-] Browser E2E validation: live localhost walkthrough verified project creation, RDKit ethanol registration (CMP0001), five capability discovery, Vina form planning, CAS upload/hash, run queue/status/history, and provenance; surfaced empty-enabled-stage submission defect and drove ADR-0046 preflight fix. Repeat against the fixed API and persist an automated browser gate that covers a successful handler run.
+  - [-] Browser E2E validation: live localhost walkthrough verified project creation, RDKit ethanol registration (CMP0001), five capability discovery, Vina form planning, CAS upload/hash, run queue/status/history, and provenance; surfaced empty-enabled-stage submission defect and drove ADR-0046 preflight fix. API integration now covers a successful decision-paused handler run and same-run resume. Still persist an automated browser gate for successful run and decision UI interaction.
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
 - [ ] 13.5 Dashboard (req. §30)
 - [ ] 13.6 **Gate:** browser end-to-end demo
@@ -541,3 +541,12 @@ When the user says **CONTINUE**:
 | 2026-09-23 | Phase 3.1 completed: versioned engine-neutral workflow schema, safe YAML loader, structural DAG/binding validation, deterministic JSON Schema export, two example workflows, and tests. Quality gate: 103 tests pass; Ruff, strict mypy, import-linter and schema freshness pass. Frozen 143-file legacy baseline matches. Compiler/capability and contract compatibility remain Phase 3.2. Audit and architecture accepted; Q1–Q6 and D1/D2 resolved. Copied 21 files into WSL with hash verification, removed active OneDrive copy (pointer retained), initialized Git, created isolated `caddsuite` env and explicit lock. Phase 2 implemented: contracts/schema exporter, units, identities/accessions, validation, SQLAlchemy/Alembic/SQLite WAL, artifact store, provenance, CLI subset, docs and tests. Gate: 99 tests pass, 96% statement coverage; Ruff, strict mypy, import-linter and schema checks pass. Legacy baseline verified. Initial commit 088e82a and license commit f02d971 pushed to origin/main at https://github.com/jdsridhar/CAAD_Suite_End_to_End. Windows Git Credential Manager is configured as the WSL credential helper. |
 
 | 2026-09-26 | Browser smoke verified project + compound + capability-driven planning + project CAS upload + run monitor/history/provenance. Found that all-disabled workflows reached the runtime and failed with an unhelpful no-handlers error. Added a submit-time 422 preflight and structured frontend error rendering (ADR-0046); focused API suite 11 passed and web build passed. Full E2E success-run automation remains the current task. |
+
+| 2026-09-26 | ADR-0047 accepted after tracing decisions through handler, scheduler, task state, run lease, and replay semantics. Implementation current task: durable scheduler-owned pause/resume; decision UI follows only after backend integration tests prove requeue and replay. |
+
+### Session log — durable workflow decisions
+
+- [x] Added ADR-0047 and implemented scheduler-owned persisted decision requests, API resolution, queue resume, and React decision controls.
+- [x] Decision-store, scheduler, API, run-queue, and CLI decision tests cover persisted requests and same-run resume.
+- [x] Full gate: 556 passed, 25 optional skips; Ruff, format, strict mypy (176 files), import-linter, schemas, React API checks, and production build pass.
+- [-] Browser automation that exercises successful workflow execution and decision UI remains outstanding.

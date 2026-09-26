@@ -21,6 +21,7 @@ from caddsuite.storage import migrate
 from caddsuite.storage.artifacts import ArtifactStore
 from caddsuite.storage.attempts import TaskAttemptStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
+from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.paths import (
     artifacts_root,
     database_path,
@@ -79,6 +80,7 @@ class LocalWorkflowRuntime:
             result_cache=ResultCache(sessions),
             handlers=self.handlers,
             attempt_store=TaskAttemptStore(sessions),
+            decision_store=DecisionStore(sessions),
             environment_resolver=effective_environment_resolver,
             resource_resolver=effective_resource_resolver,
         )
