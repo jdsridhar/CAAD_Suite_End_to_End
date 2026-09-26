@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.3 React SPA: API-connected project and workflow screens |
-| **Next task** | Build the API-connected browser experience over the typed client; expose project, workflow, run, logs, decisions, and provenance |
-| **Last completed** | Phase 13.1 API/runtime gate: capability and planning APIs, durable queued execution and restart recovery, process-aware cancellation, bounded CAS uploads, scoped status/SSE; full gate 549 passed, 25 skipped, strict mypy 176 files. |
+| **Current task** | [-] 13.3 React SPA: form-based workflow builder, review/decision and log views |
+| **Next task** | Replace the JSON-only workflow editor with capability-driven stage forms; add decision/log/history screens and the browser E2E gate |
+| **Last completed** | Phase 13.2 generated OpenAPI TypeScript client. Phase 13.3 foundation adds localhost API serving, project/compound API and SPA run operations; full gate 551 passed, 25 skipped; frontend typecheck/build, generated schema check and npm audit pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -373,7 +373,13 @@ When the user says **CONTINUE**:
   - [x] Document conservative worker restart/cancellation semantics in API_RUNTIME.md and ADR-0039.
   - [x] Add bounded, streaming uploads for new inputs into CAS and return registered ArtifactRef contracts.
 - [x] 13.2 OpenAPI-driven TypeScript client: export checked-in OpenAPI, generate TS paths/schemas with openapi-typescript, typed JSON transport with openapi-fetch, streaming upload helper; ADR-0040.
-- [ ] 13.3 React SPA: projects, compounds, workflow builder (forms), run monitor, logs, validation/decisions, provenance
+- [-] 13.3 React SPA integration foundation (ADR-0041).
+  - [x] Localhost-only authenticated API serve command and CORS configuration.
+  - [x] Project list/create and project-scoped compound list/registration via RDKit standardization and existing registry.
+  - [x] Browser project selector/create, compound registration, installed capability discovery, workflow edit/plan, normalized input editor, bounded artifact upload, run submit/status/cancel, run provenance.
+  - [ ] Replace JSON-only workflow editor with capability-driven stage forms.
+  - [ ] Add decision/validation resolution, logs, and recent run history screens.
+  - [ ] Add browser end-to-end gate for project, compound, planning, upload, submit, monitor, and provenance.
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
 - [ ] 13.5 Dashboard (req. §30)
 - [ ] 13.6 **Gate:** browser end-to-end demo
@@ -468,6 +474,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-26 | Phase 13.3 integration foundation: Vite/React browser application consumes generated API types; API now exposes project CRUD/list and compound registration/list through the existing RDKit standardizer and transactional identity registry, retaining duplicate raw submissions. Added loopback-only caddsuite api serve with env bearer token and origin allowlist. Browser connects, manages projects/compounds, discovers capabilities, edits/plans workflow JSON, uploads CAS artifacts, submits/cancels/polls runs, and inspects provenance. Focused API regressions: 2 passed; live localhost server smoke verified project create/list and ethanol standardization/compound list; browser DOM shows loaded project+compound. Full gate: 551 passed, 25 skipped; strict mypy 176, TypeScript/Vite production build, generated schema check, npm audit (0 vulnerabilities). Visual stage forms, decisions/logs/history and E2E gate remain. |
 | 2026-09-26 | Phase 13.2 typed API client complete: reproducible FastAPI OpenAPI export, generated TypeScript schema, openapi-fetch path client, streamed upload helper, bearer auth security scheme, generation docs and ADR-0040. TypeScript typecheck passes; full gate 549 passed, 25 skipped, strict mypy 176 files. Current task is Phase 13.3 React SPA. |
 | 2026-09-26 | Phase 13.1 complete: durable HTTP submissions run under a lease-based local supervisor, with handler-authoritative recovery after expired ownership; status/SSE expose queued/running/terminal state. API cancellation reaches LocalExecutor-managed process groups, confirms termination, preserves logs, and records cancelled task/attempt provenance; in-process handlers stop at scheduler boundaries. Raw artifact uploads stream through a configurable bounded spool to CAS and return normalized ArtifactRefs; oversize uploads are rejected before registration and duplicate content deduplicates. Full gate: 549 passed, 25 skipped; strict mypy 176 source files, Ruff/format, 4 import contracts and schema freshness pass. Commit 848c8e1 contains cancellation; this commit records the project-linked upload API and Phase 13.1 closeout. Phase 13.2 typed API client is next. |
 | 2026-09-26 | Phase 13.1 durable local API worker slice: added migration 0006 with normalized submissions, compare-and-swap worker claims, lease heartbeats and stale-owner requeue; API execution now returns 202, with task/run/submission status and SSE snapshots. Added cancellation propagation through LocalExecutor-managed process groups with exit confirmation, retained logs, and CANCELLED task/attempt provenance; in-process stages stop at their next safe boundary. Restart recovery, API queue/cancel integration and scheduler cancellation tests pass. Full gate: 548 passed, 25 optional skips; Ruff/format, strict mypy 176 files, import-linter (4 kept/0 broken), and schema freshness pass. Legacy checksum source files remain unavailable in this WSL session. |

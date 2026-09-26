@@ -1,5 +1,12 @@
-# Browser application foundation
+# CADD Suite
 
-This package holds the OpenAPI-generated API types and typed transport helpers.
-It intentionally contains no scientific logic. The React application is the
-next Phase 13 task and will consume this package.
+CADD Suite is an extensible computational chemistry workflow platform. See
+[the browser application setup](../../docs/api/README.md) for local API/UI
+startup, or [the OpenAPI client documentation](../../docs/api/README.md) for
+regenerating TypeScript client types.
+
+This frontend currently supports project and compound registry operations,
+workflow editing and capability-based planning, artifact uploads, run
+submission/monitoring/cancellation, and provenance inspection. Workflows are
+scientific JSON contracts; the UI does not choose implicit force fields,
+protonation decisions, or scoring thresholds.

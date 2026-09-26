@@ -27,13 +27,22 @@ from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHand
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.application.version_drift import version_drift
+from caddsuite.chem.standardize import (
+    ChemistryDependencyError,
+    InvalidStructure,
+    make_compound,
+    standardize_smiles,
+)
 from caddsuite.contracts.base import ArtifactRef, ContractModel, VersionedContract, load_contract
-from caddsuite.domain.identity import ULIDStr
+from caddsuite.contracts.registry import InputRecord
+from caddsuite.domain.identity import ULIDStr, new_ulid
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
+from caddsuite.storage.compound_registry import CompoundRegistry
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
 from caddsuite.storage.models import (
     ArtifactRow,
+    CompoundRow,
     ProjectArtifactRow,
     ProjectRow,
     RunSubmissionRow,
@@ -56,6 +65,28 @@ _MAX_CONFIGURED_UPLOAD_BYTES = 1024 * 1024 * 1024
 _ROLE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
 _MEDIA_TYPE_PATTERN = re.compile(r"^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$")
 _BEARER_AUTH = HTTPBearer(auto_error=False)
+
+
+class ProjectCreateRequest(ContractModel):
+    slug: str
+    name: str
+
+
+class ProjectResponse(ContractModel):
+    id: str
+    slug: str
+    name: str
+
+
+class CompoundCreateRequest(ContractModel):
+    smiles: str
+    name: str
+
+
+class CompoundResponse(ContractModel):
+    compound: dict[str, JsonValue]
+    created: bool
+    input_record_id: str
 
 
 class WorkflowRunSubmission(ContractModel):
@@ -354,6 +385,101 @@ def create_app(
             "status": "queued",
             "status_url": f"/v1/projects/{project_id}/runs/{stable_run_id}/status",
         }
+
+    @app.get("/v1/projects")
+    def list_projects(_: None = Depends(authenticate)) -> list[ProjectResponse]:
+        with sessions() as session:
+            projects = session.scalars(select(ProjectRow).order_by(ProjectRow.slug)).all()
+            return [ProjectResponse(id=row.id, slug=row.slug, name=row.name) for row in projects]
+
+    @app.post("/v1/projects", status_code=201)
+    def create_project(
+        request: ProjectCreateRequest,
+        _: None = Depends(authenticate),
+    ) -> ProjectResponse:
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", request.slug):
+            raise HTTPException(
+                status_code=422,
+                detail="slug must contain lowercase letters, digits, or hyphens",
+            )
+        if not request.name.strip():
+            raise HTTPException(status_code=422, detail="project name must not be blank")
+        with sessions.begin() as session:
+            if session.scalar(select(ProjectRow.id).where(ProjectRow.slug == request.slug)):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"project slug {request.slug!r} already exists",
+                )
+            row = ProjectRow(slug=request.slug, name=request.name.strip())
+            session.add(row)
+            session.flush()
+            result = ProjectResponse(id=row.id, slug=row.slug, name=row.name)
+        return result
+
+    @app.get("/v1/projects/{project_id}/compounds")
+    def list_compounds(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> list[dict[str, JsonValue]]:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} was not found")
+            rows = session.scalars(
+                select(CompoundRow)
+                .where(CompoundRow.project_id == project_id)
+                .order_by(CompoundRow.accession)
+            ).all()
+            return [
+                {
+                    "id": row.id,
+                    "accession": row.accession,
+                    "name": row.name,
+                    "inchikey": row.inchikey,
+                    "payload": row.payload,
+                }
+                for row in rows
+            ]
+
+    @app.post("/v1/projects/{project_id}/compounds", status_code=201)
+    def register_compound(
+        project_id: str,
+        request: CompoundCreateRequest,
+        _: None = Depends(authenticate),
+    ) -> CompoundResponse:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} was not found")
+        try:
+            standardized = standardize_smiles(request.smiles)
+        except ChemistryDependencyError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except InvalidStructure as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        try:
+            name = request.name.strip() or standardized.identity.canonical_smiles
+            registered = CompoundRegistry(sessions).register(
+                project_id=project_id,
+                inchikey=standardized.identity.inchikey,
+                input_record=InputRecord(
+                    source="manual", original_text=request.smiles, original_name=request.name
+                ),
+                create_compound=lambda accession: make_compound(
+                    standardized,
+                    compound_id=new_ulid(),
+                    project_id=project_id,
+                    accession=accession,
+                    name=name,
+                    original_text=request.smiles,
+                    source="manual",
+                ),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return CompoundResponse(
+            compound=registered.compound.model_dump(mode="json"),
+            created=registered.created,
+            input_record_id=registered.input_record_id,
+        )
 
     @app.get("/v1/workflows/capabilities")
     def get_workflow_capabilities(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -47,8 +48,36 @@ def _fail(message: str) -> NoReturn:
 def register_commands(app: typer.Typer) -> None:
     projects = typer.Typer(no_args_is_help=True, help="Project management.")
     workflows = typer.Typer(no_args_is_help=True, help="Workflow validation and planning.")
+    api = typer.Typer(no_args_is_help=True, help="Local authenticated HTTP API.")
     app.add_typer(projects, name="project")
     app.add_typer(workflows, name="workflow")
+    app.add_typer(api, name="api")
+
+    @api.command("serve")
+    def api_serve(
+        host: Annotated[
+            str, typer.Option(help="Bind address; only loopback is allowed.")
+        ] = "127.0.0.1",
+        port: Annotated[int, typer.Option(min=1, max=65535)] = 8000,
+        data_root: RootOption = None,
+        origins: Annotated[list[str] | None, typer.Option("--origin")] = None,
+    ) -> None:
+        """Run the authenticated API on localhost for the browser application."""
+        import uvicorn
+
+        if host not in {"127.0.0.1", "localhost", "::1"}:
+            _fail("API server is restricted to loopback addresses")
+        token = os.environ.get("CADDSUITE_API_TOKEN", "")
+        if not token.strip():
+            _fail("set CADDSUITE_API_TOKEN to a long, random local bearer token")
+        from caddsuite.api.provenance import create_app
+
+        api_app = create_app(
+            data_root=resolve_data_root(data_root),
+            token=token,
+            allowed_origins=tuple(origins or ("http://127.0.0.1:5173",)),
+        )
+        uvicorn.run(api_app, host=host, port=port, access_log=False)
 
     @app.command()
     def doctor(data_root: RootOption = None) -> None:

@@ -25,6 +25,8 @@ from caddsuite.storage.attempts import TaskAttemptStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.models import (
     ArtifactRow,
+    CompoundInputRow,
+    CompoundRow,
     ProjectArtifactRow,
     ProjectRow,
     TaskAttemptRow,
@@ -477,3 +479,64 @@ def test_project_artifact_upload_streams_to_cas_with_size_limit(tmp_path: Path) 
 def test_provenance_api_requires_nonempty_token(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="token must be configured"):
         create_app(data_root=tmp_path, token="")
+
+
+def test_project_and_compound_api_uses_existing_registry_and_standardizer(
+    tmp_path: Path,
+) -> None:
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        created_project = client.post(
+            "/v1/projects",
+            headers=headers,
+            json={"slug": "web-project", "name": "Browser project"},
+        )
+        assert created_project.status_code == 201, created_project.text
+        project = created_project.json()
+        assert project["slug"] == "web-project"
+        assert client.get("/v1/projects", headers=headers).json() == [project]
+
+        first = client.post(
+            f"/v1/projects/{project['id']}/compounds",
+            headers=headers,
+            json={"smiles": "CCO", "name": "ethanol"},
+        )
+        assert first.status_code == 201, first.text
+        first_data = first.json()
+        assert first_data["created"] is True
+        assert first_data["compound"]["parent"]["canonical_smiles"] == "CCO"
+
+        duplicate = client.post(
+            f"/v1/projects/{project['id']}/compounds",
+            headers=headers,
+            json={"smiles": "OCC", "name": "ethanol alternate input"},
+        )
+        assert duplicate.status_code == 201, duplicate.text
+        duplicate_data = duplicate.json()
+        assert duplicate_data["created"] is False
+        assert duplicate_data["compound"]["id"] == first_data["compound"]["id"]
+        assert duplicate_data["input_record_id"] != first_data["input_record_id"]
+
+        compounds = client.get(f"/v1/projects/{project['id']}/compounds", headers=headers)
+        assert len(compounds.json()) == 1
+        invalid = client.post(
+            f"/v1/projects/{project['id']}/compounds",
+            headers=headers,
+            json={"smiles": "not-a-smiles", "name": "invalid"},
+        )
+        assert invalid.status_code == 422
+
+    with app.state.sessions() as session:
+        assert session.query(CompoundRow).count() == 1
+        assert session.query(CompoundInputRow).count() == 2
+
+
+def test_project_api_rejects_duplicate_slug(tmp_path: Path) -> None:
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    with TestClient(app) as client:
+        headers = {"Authorization": "Bearer test-secret"}
+        payload = {"slug": "same-project", "name": "Same"}
+        assert client.post("/v1/projects", headers=headers, json=payload).status_code == 201
+        duplicate = client.post("/v1/projects", headers=headers, json=payload)
+        assert duplicate.status_code == 409
