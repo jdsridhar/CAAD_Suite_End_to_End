@@ -664,7 +664,7 @@ def create_app(
         _: None = Depends(authenticate),
     ) -> dict[str, object]:
         try:
-            snapshot = StageHandlerRegistry.discover().snapshot()
+            snapshot = (stage_registry or StageHandlerRegistry.discover()).snapshot()
         except StageHandlerDiscoveryError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         return {

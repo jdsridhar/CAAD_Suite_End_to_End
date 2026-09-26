@@ -42,3 +42,7 @@ Thumbs.db
 # JavaScript dependencies and build output
 node_modules/
 dist/
+
+# Playwright browser output
+apps/web/test-results/
+apps/web/playwright-report/

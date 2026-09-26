@@ -333,6 +333,11 @@ def test_api_pauses_for_decision_and_requeues_with_choice_in_handler_invocation(
     )
     headers = {"Authorization": "Bearer test-secret"}
     with TestClient(app) as client:
+        capabilities = client.get("/v1/workflows/capabilities", headers=headers)
+        assert capabilities.status_code == 200
+        assert capabilities.json()["plugins"] == [
+            {"plugin_id": "tests.decision_candidate", "version": "1.0.0"}
+        ]
         submitted = client.post(
             f"/v1/projects/{project_id}/runs/{run_id}/execute",
             headers=headers,

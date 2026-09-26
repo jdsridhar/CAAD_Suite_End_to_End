@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.3 React SPA: finish automated browser E2E and review/decision/log flows |
-| **Next task** | Persist automated browser E2E for project/workflow/run and decision pause/resume flows |
-| **Last completed** | Durable workflow decision pause/resume (ADR-0047); full gate 556 passed, 25 optional skips; strict mypy, import boundaries, schemas, React typecheck and production build pass. |
+| **Current task** | [-] 13.4 Mol* scientific structure and trajectory views |
+| **Next task** | 13.5 project dashboard, then Phase 13.6 browser end-to-end gate and demo |
+| **Last completed** | Phase 13.3 automated Playwright path: project, compound, workflow plan, persisted decision pause/resume, success, provenance. Browser/API gate passes against the WSL backend; core gate 556 passed, 25 optional skips. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -373,7 +373,7 @@ When the user says **CONTINUE**:
   - [x] Document conservative worker restart/cancellation semantics in API_RUNTIME.md and ADR-0039.
   - [x] Add bounded, streaming uploads for new inputs into CAS and return registered ArtifactRef contracts.
 - [x] 13.2 OpenAPI-driven TypeScript client: export checked-in OpenAPI, generate TS paths/schemas with openapi-typescript, typed JSON transport with openapi-fetch, streaming upload helper; ADR-0040.
-- [-] 13.3 React SPA integration foundation (ADR-0041).
+- [x] 13.3 React SPA integration foundation (ADR-0041).
   - [x] Localhost-only authenticated API serve command and CORS configuration.
   - [x] Project list/create and project-scoped compound list/registration via RDKit standardization and existing registry.
   - [x] Browser project selector/create, compound registration, installed capability discovery, workflow edit/plan, normalized input editor, bounded artifact upload, run submit/status/cancel, run provenance.
@@ -382,7 +382,7 @@ When the user says **CONTINUE**:
   - [x] Reject run submission with no enabled compiled tasks before persistence (ADR-0046); UI now renders structured API validation details instead of object coercion. Regression: 11 API provenance tests pass; web typecheck/build pass.
   - [x] Durable workflow decision pause/resume (ADR-0047): handler DecisionRequired signal, atomic persisted request + RUNNING->AWAITING_DECISION, request-scoped API decision submission/requeue, decision replay into TaskInvocation; React controls and plugin guidance added. Full quality gate passed.
   - [x] Bounded project-linked log tails and project-scoped recent run history.
-  - [-] Browser E2E validation: live localhost walkthrough verified project creation, RDKit ethanol registration (CMP0001), five capability discovery, Vina form planning, CAS upload/hash, run queue/status/history, and provenance; surfaced empty-enabled-stage submission defect and drove ADR-0046 preflight fix. API integration now covers a successful decision-paused handler run and same-run resume. Still persist an automated browser gate for successful run and decision UI interaction.
+  - [x] Browser E2E validation: live localhost walkthrough verified project creation, RDKit ethanol registration (CMP0001), five capability discovery, Vina form planning, CAS upload/hash, run queue/status/history, and provenance; surfaced empty-enabled-stage submission defect and drove ADR-0046 preflight fix. API integration now covers a successful decision-paused handler run and same-run resume. Automated Playwright test and dedicated browser/API gate now cover the successful decision UI path; Chromium run passed. The full gate runs through `scripts/check-web.sh` on a Linux host with Playwright system libraries.
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
 - [ ] 13.5 Dashboard (req. §30)
 - [ ] 13.6 **Gate:** browser end-to-end demo
@@ -549,4 +549,8 @@ When the user says **CONTINUE**:
 - [x] Added ADR-0047 and implemented scheduler-owned persisted decision requests, API resolution, queue resume, and React decision controls.
 - [x] Decision-store, scheduler, API, run-queue, and CLI decision tests cover persisted requests and same-run resume.
 - [x] Full gate: 556 passed, 25 optional skips; Ruff, format, strict mypy (176 files), import-linter, schemas, React API checks, and production build pass.
-- [-] Browser automation that exercises successful workflow execution and decision UI remains outstanding.
+- [x] Browser automation now covers successful workflow execution, decision UI resolution, and provenance; see the Phase 13.3 browser E2E entry.
+
+- [x] Phase 13.3 browser E2E: Playwright test drives project and ethanol creation, plugin capability display, workflow plan and submit, persisted decision UI choice, same-run successful resume, run history, and provenance. Real app and API served from WSL; Windows Chromium executed the test because the WSL image lacks `libasound.so.2`. Dedicated `scripts/check-web.sh` runs API schema, type, build, and browser checks on a provisioned Linux host. Test uses unique project/input identities, hashes normalized fixture inputs to prevent false cache hits, and starts servers on dedicated non-reused ports.
+
+- [x] Browser/API gate repeat: isolated test service ports, injected plugin advertised by the capabilities endpoint, normalized-input cache hash, same-run decision resume and provenance all pass in Chromium. The browser was launched from Windows against the WSL localhost services because WSL lacks the `libasound.so.2` runtime dependency; `apps/web/README.md` records the Linux setup command.

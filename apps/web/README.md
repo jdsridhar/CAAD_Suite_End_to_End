@@ -42,8 +42,11 @@ Registered compounds can be inserted into a workflow input whose name contains
 they do not automatically convert protein coordinates into Structure contracts
 or prepare/parameterize a ligand.
 
-The current run monitor polls persisted task state and supports cancellation,
-provenance traversal, and bounded text log tails. Decision resolution and run
-history screens, richer analysis dashboards, molecular visualization, and an
-automated browser end-to-end suite remain planned work. Computational results
-are predictions and do not imply experimental validation.
+The run monitor polls persisted task state and supports cancellation, decision
+resolution, project run history, provenance traversal, and bounded text log tails.
+Richer analysis dashboards and molecular visualization remain planned work.
+Computational results are predictions and do not imply experimental validation.
+
+## Browser end-to-end gate
+
+Install the web dependencies with `npm ci`, then install Playwright Chromium with `npx playwright install chromium`. On a fresh Ubuntu/WSL machine, install the browser system libraries with `npx playwright install-deps chromium` (this uses the system package manager). Activate the isolated `caddsuite` Python environment before running `bash scripts/check-web.sh` from the repository root. The gate checks generated API types, TypeScript, the production bundle, and the real browser/API workflow. It starts isolated services on ports 8100 and 5174 and refuses to reuse already running services. The test handler is a workflow-engine fixture; it validates orchestration and decision handling, not a scientific engine result.
