@@ -368,7 +368,11 @@ def create_app(
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except (ValueError, WorkflowCompileError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        del compiled  # Compilation above validates capabilities before any persistent write.
+        if not compiled.tasks:
+            raise HTTPException(
+                status_code=422,
+                detail="workflow has no enabled stages to execute",
+            )
         try:
             parsed = _parse_workflow_inputs(request)
         except ValueError as exc:

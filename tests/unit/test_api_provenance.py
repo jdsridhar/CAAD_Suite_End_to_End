@@ -240,6 +240,44 @@ def test_api_executes_normalized_workflow_and_persists_run_state(tmp_path: Path)
         assert repeated.status_code == 409
 
 
+def test_api_rejects_workflow_with_no_enabled_stages_before_persisting(tmp_path: Path) -> None:
+    project_id, _existing_run_id, _attempt_id = _seed_project_run(tmp_path)
+    workflow = {
+        "schema": "caddsuite.workflow/1",
+        "name": "Disabled only",
+        "inputs": {},
+        "stages": [
+            {
+                "id": "disabled",
+                "kind": "test.echo_candidate",
+                "enabled": False,
+                "input_contracts": {},
+                "input_bindings": {},
+                "params": {},
+            }
+        ],
+        "outputs": {},
+    }
+    run_id = str(new_ulid())
+    app = create_app(
+        data_root=tmp_path,
+        token="test-secret",  # noqa: S106
+        stage_registry=StageHandlerRegistry([_EchoCandidatePlugin()]),
+    )
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        response = client.post(
+            f"/v1/projects/{project_id}/runs/{run_id}/execute",
+            headers=headers,
+            json={"workflow": workflow, "inputs": {}},
+        )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "workflow has no enabled stages to execute"
+    with app.state.sessions() as session:
+        assert session.get(WorkflowRunRow, run_id) is None
+
+
 class _ProcessCandidateHandler(_EchoCandidateHandler):
     started = Event()
 

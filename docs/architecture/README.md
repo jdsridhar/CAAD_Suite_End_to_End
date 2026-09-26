@@ -118,3 +118,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0038: Workflow planning and status API](ADR/0038-workflow-planning-and-status-api.md)
 
 - [ADR-0039: Durable local run supervision](ADR/0039-durable-local-run-supervision.md)
+
+- [ADR-0046: Reject run submissions with no enabled tasks](ADR/0046-reject-workflows-with-no-enabled-tasks.md)
