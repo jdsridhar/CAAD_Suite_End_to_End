@@ -8,7 +8,7 @@
 |---|---|
 | **Current phase** | Phase 13 — API + UI |
 | **Current task** | [-] 13.3 React SPA: form-based workflow builder, review/decision and log views |
-| **Next task** | Replace the JSON-only workflow editor with capability-driven stage forms; add decision/log/history screens and the browser E2E gate |
+| **Next task** | Wire durable scheduler-owned DecisionRequest persistence before decision UI; add browser E2E for supported project/workflow/run flows |
 | **Last completed** | Phase 13.2 generated OpenAPI TypeScript client. Phase 13.3 now includes capability-driven stage forms, project-scoped run history and log-tail access; latest Python gate 553 passed, 25 skipped; frontend TypeScript/build/API-schema checks pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -379,7 +379,8 @@ When the user says **CONTINUE**:
   - [x] Browser project selector/create, compound registration, installed capability discovery, workflow edit/plan, normalized input editor, bounded artifact upload, run submit/status/cancel, run provenance.
   - [x] Project-scoped bounded text artifact endpoint plus provenance-linked browser log tails (ADR-0042).
   - [x] Capability-driven stage cards for engine/kind, stage identity, enable/reorder/remove, fan-out scope, port contracts, workflow/stage bindings, outputs, and stage parameter JSON (ADR-0043); Vina stage form compiled successfully through the live API planner.
-  - [ ] Add decision/validation resolution screens; bounded log tails and project-scoped recent run history are implemented.
+  - [ ] Decision UI prerequisite (ADR-0045): scheduler/runtime currently does not persist a DecisionRequest or transition tasks into AWAITING_DECISION; do not synthesize choices in the frontend. Implement the durable request/resume contract first.
+  - [x] Bounded project-linked log tails and project-scoped recent run history.
   - [ ] Add browser end-to-end gate for project, compound, planning, upload, submit, monitor, and provenance.
 - [ ] 13.4 Mol* views: receptor, poses, complex, trajectory, cubes
 - [ ] 13.5 Dashboard (req. §30)
@@ -475,6 +476,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-26 | Decision UI audit: confirmed WorkflowScheduler catches unrecognized handler exceptions as failures and has no DecisionRequest outcome/persistence path; no code currently writes ValidationIssueRow. DecisionStore only resumes a task already in AWAITING_DECISION when a separately constructed Decision is supplied. ADR-0045 records why the browser must wait for durable scheduler-owned request persistence and optimistic resume semantics. Next work is this backend integration before decision UI. |
 | 2026-09-26 | Phase 13.3 project run history: added newest-first project-scoped persisted run summaries with a strict 1-100 result limit and browser reopen-through-status behavior. Regression confirms project isolation, summary identity/status, and invalid-limit rejection. ADR-0044 records the contract. TypeScript, generated API drift check and production build pass. Decision resolution and browser E2E remain. |
 | 2026-09-26 | Phase 13.3 capability-driven workflow forms: added stage cards populated from installed adapter capabilities, including engine/kind, fan-out, accepted port contracts, workflow-input/upstream-stage bindings, output contract, stage parameters, enabled state, reorder and remove. Forms serialize to the canonical workflow definition; advanced JSON remains available. Live browser Vina form was accepted by the backend planner with expected typed ports. ADR-0043 records backend-authoritative compatibility validation. TypeScript/Vite build passes. Decisions and recent-run history plus automated E2E remain. |
 | 2026-09-26 | Phase 13.3 observability slice: added authenticated project-scoped text artifact tail endpoint capped at 1 MiB. It serves only project-linked artifacts or artifacts connected through that project's attempt/run provenance and rejects non-text artifacts; SPA provenance view exposes text log tails. Regression covers truncation, cross-project 404 and MIME/size rejection. ADR-0042 records the access model. Full gate: 553 passed, 25 skipped; TypeScript schema check/build and npm audit pass. Stage forms, decisions and recent-run history remain open. |
