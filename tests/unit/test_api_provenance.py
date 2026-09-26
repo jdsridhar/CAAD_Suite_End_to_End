@@ -588,3 +588,28 @@ def test_project_text_artifact_endpoint_is_scoped_and_bounded(tmp_path: Path) ->
             ).status_code
             == 422
         )
+
+
+def test_project_run_history_is_scoped_and_bounded(tmp_path: Path) -> None:
+    project_id, run_id, _attempt_id = _seed_project_run(tmp_path)
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        other = ProjectRow(slug="history-other", name="History other")
+        session.add(other)
+        session.flush()
+        other_id = other.id
+    engine.dispose()
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    headers = {"Authorization": "Bearer test-secret"}
+    with TestClient(app) as client:
+        history = client.get(f"/v1/projects/{project_id}/runs?limit=1", headers=headers)
+        assert history.status_code == 200
+        assert len(history.json()) == 1
+        assert history.json()[0]["run_id"] == run_id
+        assert history.json()[0]["status"] == "succeeded"
+        assert client.get(f"/v1/projects/{other_id}/runs", headers=headers).json() == []
+        assert (
+            client.get(f"/v1/projects/{project_id}/runs?limit=101", headers=headers).status_code
+            == 422
+        )

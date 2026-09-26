@@ -574,6 +574,35 @@ def create_app(
             ],
         }
 
+    @app.get("/v1/projects/{project_id}/runs")
+    def list_project_runs(
+        project_id: str,
+        limit: Annotated[int, Query(ge=1, le=100)] = 20,
+        _: None = Depends(authenticate),
+    ) -> list[dict[str, JsonValue]]:
+        with sessions() as session:
+            if session.get(ProjectRow, project_id) is None:
+                raise HTTPException(status_code=404, detail="project was not found")
+            rows = session.scalars(
+                select(WorkflowRunRow)
+                .where(WorkflowRunRow.project_id == project_id)
+                .order_by(WorkflowRunRow.created_at.desc(), WorkflowRunRow.id.desc())
+                .limit(limit)
+            ).all()
+            return [
+                {
+                    "run_id": run.id,
+                    "accession": run.accession,
+                    "status": run.status,
+                    "workflow_hash": run.workflow_hash,
+                    "config_hash": run.config_hash,
+                    "started_at": run.started_at.isoformat() if run.started_at else None,
+                    "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                    "created_at": run.created_at.isoformat(),
+                }
+                for run in rows
+            ]
+
     @app.post("/v1/projects/{project_id}/runs/{run_id}/cancel", status_code=202)
     def cancel_project_run(
         project_id: str,
