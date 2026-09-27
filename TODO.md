@@ -394,7 +394,7 @@ When the user says **CONTINUE**:
   - [x] React dashboard shows project metrics, workflow status/activity, recent stage state, artifact categories/storage size and target assignment note; refreshes on project/run/input changes.
   - [x] Query project task/cache-key associations and validate cached contracts through the versioned registry. Bounded ADMET, docking, MD, trajectory-analysis, MM/PBSA/MM/GBSA, and QM summaries preserve identities, methods, units and warnings; docking and endpoint-estimate limitations are explicit. Cache origin task is retained for provenance, including cache reuse.
   - [x] Regression seeds a normalized ADMET contract and asserts exact value/unit/method plus project scoping; full repository gate passes. Frontend API schema drift check, typecheck and production build pass.
-  - [ ] Browser gate exercises empty and populated dashboard states; the populated browser state uses a clearly labeled UI-only network fixture, never presented as a scientific calculation.
+  - [x] Browser gate exercises empty and populated dashboard states; the populated browser state uses a clearly labeled UI-only network fixture, never presented as a scientific calculation.
 - [x] 13.6 **Gate:** browser end-to-end demo
   - [x] Playwright Chromium run passes the project/compound/dashboard flow, Mol* complex preview, workflow decision pause/resume, history/provenance, and dashboard evidence-card rendering. The evidence display uses an explicitly labeled UI-only network fixture; the API regression independently validates normalized ADMET result summarization.
 
@@ -406,7 +406,7 @@ When the user says **CONTINUE**:
   - [-] Improve aggregate adapter coverage from 67.25% to at least 70% with focused tests. Added engine-independent MDAnalysis plan/normalization tests (module coverage 72%), PDBFixer handler preflight tests (module 62%), and Amber system-builder handler staging/failure tests (module 60%); family coverage rose to analysis 76.2%, structure preparation 63.6%, and system builders 63.7%. Docking (44.8%) and visualization (50.9%) remain the largest gaps.
   - [ ] Establish separate worker coverage tracking; current is 32.99% because foreign-environment entry points and engine-only paths are not exercised by the no-engine suite.
   - [ ] Configure reproducible coverage commands and enforce thresholds only after measured targets pass.
-- [ ] 14.2 CI (GitHub Actions or local pre-commit): ruff, mypy, pytest (no-engine suites), import-linter
+- [-] 14.2 CI: added a GitHub Actions quality workflow for the pinned scientific Python environment, static/repository checks, full no-engine suite, and the established core coverage floor; adapter floor remains unenforced until measured at 70%. CI execution is pending push-triggered verification.
 - [ ] 14.3 Adapter conformance suite enforced for all adapters
 - [ ] 14.4 Property-based tests (hypothesis) for parsers and the expression language
 
