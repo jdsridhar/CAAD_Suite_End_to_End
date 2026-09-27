@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from caddsuite.adapters.docking.autodock4 import (
@@ -175,3 +177,23 @@ def test_autogrid_and_autodock_command_plans_are_argv_only(tmp_path: Path) -> No
     assert grid.argv == (str(executable), "-p", "grid.gpf", "-l", "grid.glg")
     assert dock.argv == (str(executable), "-p", "dock.dpf", "-l", "dock.dlg")
     assert grid.cwd == dock.cwd == tmp_path
+
+
+@given(score=st.floats(min_value=-50, max_value=50, allow_nan=False, allow_infinity=False))
+def test_dlg_parser_preserves_generated_finite_affinity_scores(score: float) -> None:
+    text = (
+        "AutoDock 4.2.6\n"
+        "DOCKED: MODEL 1\n"
+        "DOCKED: USER Run = 17\n"
+        f"DOCKED: USER Estimated Free Energy of Binding = {score:.3f} kcal/mol [=(1)+(2)]\n"
+        "DOCKED: REMARK INDEX MAP 1 1\n"
+        "DOCKED: ROOT\n"
+        "DOCKED: ATOM 1 C LIG 1 1.000 2.000 3.000 C\n"
+        "DOCKED: ENDROOT\n"
+        "DOCKED: TORSDOF 0\n"
+        "DOCKED: ENDMDL\n"
+    )
+    poses = parse_autodock4_dlg(text)
+    assert len(poses) == 1
+    assert poses[0].score_kcal_mol == float(f"{score:.3f}")
+    assert poses[0].run_index == 17

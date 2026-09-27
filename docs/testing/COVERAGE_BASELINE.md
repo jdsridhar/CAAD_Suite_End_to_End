@@ -34,7 +34,7 @@ the report.
 
 After the baseline, added deterministic tests for MDAnalysis request planning/result normalization,
 PDBFixer handler identity and preflight failures, Amber builder staging/failure reporting,
-AutoDock4 lineage/PDBQT validation, and missing CAS content. The full suite now reports 592 passed
+AutoDock4 lineage/PDBQT validation, and missing CAS content. The full suite now reports 593 passed
 and 33 skipped. Current grouped statement coverage is core 86.67% (7,344/8,474), adapters 68.69%
 (3,658/5,325), and isolated workers 32.99% (1,187/3,598). Adapters improved by 4.93 percentage
 points and remain 1.31 points below the target. Analysis is 76.23%, structure preparation 63.64%,
