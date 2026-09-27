@@ -54,11 +54,13 @@ Comparison is contract-aware and reports each normalized result separately:
   absent.
 - `non_reproducible`: the run cannot be rerun or a result cannot be compared defensibly.
 
-The comparison utility currently emits no aggregate similarity score and is not connected to
-`caddsuite reproduce`. Future replay reports must retain raw and normalized old/new contracts,
-software and environment versions, seed, a versioned tolerance policy, artifact hashes, and
-per-field comparison details. Tolerances must be selected by contract/result property; one global
-tolerance must not be applied across energies, coordinates, probabilities, and categories.
+The comparison API accepts a versioned `caddsuite.tolerance-policy/1` bound to one normalized
+contract schema. It returns each field result, selected artifact-role SHA-256 comparisons, and the
+complete policy definition, with no aggregate similarity score. It is not yet connected to replay
+reports. The future integration must retain raw and normalized old/new contracts, software and
+environment versions, seeds, artifact hashes, and per-field outcomes. Tolerances must be selected
+by contract/result property; one global tolerance must not be applied across energies, coordinates,
+probabilities, and categories.
 
 Trajectory and stochastic outputs may differ byte-for-byte while agreeing statistically or
 within property-specific tolerances. Such comparisons must name the measured properties and

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
@@ -167,3 +168,120 @@ def compare_contract_values(
     else:
         overall = "exact_match"
     return ContractComparison(status=overall, fields=tuple(fields))
+
+
+@dataclass(frozen=True, slots=True)
+class TolerancePolicy:
+    """Versioned numeric tolerance set scoped to one normalized contract schema."""
+
+    policy_id: str
+    version: str
+    contract_schema: str
+    fields: Mapping[str, NumericTolerance]
+    schema: str = "caddsuite.tolerance-policy/1"
+
+    def __post_init__(self) -> None:
+        if not self.policy_id.strip() or not self.version.strip():
+            raise ValueError("tolerance policy ID and version must be non-empty")
+        if not self.contract_schema.strip():
+            raise ValueError("tolerance policy must name one normalized contract schema")
+        if self.schema != "caddsuite.tolerance-policy/1":
+            raise ValueError("unsupported tolerance policy schema")
+        for pointer, tolerance in self.fields.items():
+            if not pointer.startswith("/") or pointer == "/":
+                raise ValueError(f"tolerance field must be a non-root JSON Pointer: {pointer!r}")
+            if not isinstance(tolerance, NumericTolerance):
+                raise TypeError(f"tolerance for {pointer!r} must be NumericTolerance")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": self.schema,
+            "policy_id": self.policy_id,
+            "version": self.version,
+            "contract_schema": self.contract_schema,
+            "fields": {key: asdict(value) for key, value in sorted(self.fields.items())},
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactHashComparison:
+    role: str
+    status: Literal["exact_match", "different"]
+    reference_sha256: str | None
+    reproduced_sha256: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ReplayResultComparison:
+    status: ComparisonStatus
+    contract_schema: str
+    policy: TolerancePolicy
+    normalized: ContractComparison
+    artifacts: tuple[ArtifactHashComparison, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "contract_schema": self.contract_schema,
+            "tolerance_policy": self.policy.to_dict(),
+            "normalized": self.normalized.to_dict(),
+            "artifacts": [asdict(item) for item in self.artifacts],
+        }
+
+
+def compare_replay_results(
+    *,
+    reference_contract_schema: str,
+    reproduced_contract_schema: str,
+    reference: Any,
+    reproduced: Any,
+    policy: TolerancePolicy,
+    reference_artifacts: Mapping[str, str],
+    reproduced_artifacts: Mapping[str, str],
+) -> ReplayResultComparison:
+    """Compare normalized values plus selected reproducibility-relevant artifact hashes."""
+    if reference_contract_schema != reproduced_contract_schema:
+        raise ValueError("reference and replayed contract schemas differ")
+    if policy.contract_schema != reference_contract_schema:
+        raise ValueError("tolerance policy contract schema does not match the compared results")
+    for hashes in (reference_artifacts, reproduced_artifacts):
+        for role, digest in hashes.items():
+            if (
+                not role.strip()
+                or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            ):
+                raise ValueError(
+                    "artifact hashes require non-empty roles and lowercase SHA-256 values"
+                )
+    normalized = compare_contract_values(reference, reproduced, tolerances=policy.fields)
+    visited = {field.path for field in normalized.fields}
+    unused = sorted(set(policy.fields) - visited)
+    if unused:
+        raise ValueError(f"tolerance policy contains paths absent from compared results: {unused}")
+    artifacts = tuple(
+        ArtifactHashComparison(
+            role=role,
+            status=(
+                "exact_match"
+                if reference_artifacts.get(role) == reproduced_artifacts.get(role)
+                and role in reference_artifacts
+                and role in reproduced_artifacts
+                else "different"
+            ),
+            reference_sha256=reference_artifacts.get(role),
+            reproduced_sha256=reproduced_artifacts.get(role),
+        )
+        for role in sorted(set(reference_artifacts) | set(reproduced_artifacts))
+    )
+    if normalized.status == "different" or any(item.status == "different" for item in artifacts):
+        status: ComparisonStatus = "different"
+    else:
+        status = normalized.status
+    return ReplayResultComparison(
+        status=status,
+        contract_schema=reference_contract_schema,
+        policy=policy,
+        normalized=normalized,
+        artifacts=artifacts,
+    )

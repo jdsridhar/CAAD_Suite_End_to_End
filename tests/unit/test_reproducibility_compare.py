@@ -4,7 +4,9 @@ import pytest
 
 from caddsuite.application.reproducibility.compare import (
     NumericTolerance,
+    TolerancePolicy,
     compare_contract_values,
+    compare_replay_results,
 )
 
 
@@ -62,3 +64,78 @@ def test_missing_fields_and_list_lengths_are_reported() -> None:
 def test_invalid_tolerance_is_rejected(absolute: float, relative: float, unit: str) -> None:
     with pytest.raises(ValueError, match="tolerance"):
         NumericTolerance(absolute, relative, unit)
+
+
+def test_versioned_contract_policy_compares_normalized_values_and_artifact_hashes() -> None:
+    digest = "a" * 64
+    policy = TolerancePolicy(
+        policy_id="test.energy",
+        version="1.0.0",
+        contract_schema="energy/1.0",
+        fields={"/value": NumericTolerance(0.02, 0.0, "kcal/mol")},
+    )
+    result = compare_replay_results(
+        reference_contract_schema="energy/1.0",
+        reproduced_contract_schema="energy/1.0",
+        reference={"value": -7.0, "unit": "kcal/mol"},
+        reproduced={"value": -7.01, "unit": "kcal/mol"},
+        policy=policy,
+        reference_artifacts={"normalized": digest},
+        reproduced_artifacts={"normalized": digest},
+    )
+    assert result.status == "within_tolerance"
+    assert result.normalized.status == "within_tolerance"
+    assert result.artifacts[0].status == "exact_match"
+    assert result.to_dict()["tolerance_policy"] == {
+        "schema": "caddsuite.tolerance-policy/1",
+        "policy_id": "test.energy",
+        "version": "1.0.0",
+        "contract_schema": "energy/1.0",
+        "fields": {"/value": {"absolute": 0.02, "relative": 0.0, "unit": "kcal/mol"}},
+    }
+
+
+def test_artifact_hash_or_contract_mismatch_is_not_tolerance_qualified() -> None:
+    policy = TolerancePolicy(
+        policy_id="test.energy", version="1", contract_schema="energy/1.0", fields={}
+    )
+    result = compare_replay_results(
+        reference_contract_schema="energy/1.0",
+        reproduced_contract_schema="energy/1.0",
+        reference={"value": -7.0},
+        reproduced={"value": -7.0},
+        policy=policy,
+        reference_artifacts={"pose": "a" * 64},
+        reproduced_artifacts={"pose": "b" * 64},
+    )
+    assert result.status == "different"
+    assert result.artifacts[0].status == "different"
+    with pytest.raises(ValueError, match="contract schemas differ"):
+        compare_replay_results(
+            reference_contract_schema="energy/1.0",
+            reproduced_contract_schema="energy/2.0",
+            reference={},
+            reproduced={},
+            policy=policy,
+            reference_artifacts={},
+            reproduced_artifacts={},
+        )
+
+
+def test_tolerance_policy_rejects_wrong_contract_and_unused_paths() -> None:
+    policy = TolerancePolicy(
+        policy_id="test.energy",
+        version="1",
+        contract_schema="energy/1.0",
+        fields={"/missing": NumericTolerance(0.1, 0.0, "kcal/mol")},
+    )
+    with pytest.raises(ValueError, match="absent from compared results"):
+        compare_replay_results(
+            reference_contract_schema="energy/1.0",
+            reproduced_contract_schema="energy/1.0",
+            reference={"value": 1},
+            reproduced={"value": 1},
+            policy=policy,
+            reference_artifacts={},
+            reproduced_artifacts={},
+        )
