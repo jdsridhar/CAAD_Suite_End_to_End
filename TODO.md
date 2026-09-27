@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 14 — Testing hardening |
-| **Current task** | [-] 14.2 verify hosted CI with enforced core and adapter coverage floors |
-| **Next task** | Phase 14.3 define and enforce adapter conformance across registered families |
+| **Current task** | [-] 14.3 define and enforce adapter conformance across the registered stage-handler and QM-engine plugin families |
+| **Next task** | Complete Phase 14.3 behavioral conformance, then proceed to Phase 15 reproducibility |
 | **Last completed** | Phase 13.6 browser end-to-end gate: project/compound, dashboard fixture card, molecular viewer, decision pause/resume, run history and provenance passed in Chromium. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -406,8 +406,8 @@ When the user says **CONTINUE**:
   - [x] Adapter coverage reached 70.95% (3,778/5,325) from the 63.76% baseline with focused tests for MDAnalysis planning/normalization, PDBFixer/Amber preflight, AutoDock4 lineage and PDBQT parsing, worker-result normalization, and missing CAS content. Remaining lower families include docking 53.40%, visualization 50.91%, structure preparation 63.64%, and QM 69.10%.
   - [x] Establish separate worker coverage tracking in the grouped JSON summarizer; current baseline is 32.99%. Foreign-environment entry points remain a separately reported group because many require installed engines.
   - [x] Added scripts/coverage.sh for a reproducible grouped report; CI enforces core ≥85% and adapter ≥70%.
-- [-] 14.2 CI: GitHub Actions runs the scientific Python environment, Ruff, formatting, strict mypy, import contracts, schema freshness, the complete suite, and coverage floors of core ≥85% and adapters ≥70%. Initial hosted run exposed a PyVista/VTK headless-rendering segmentation fault; adding Xvfb plus Mesa software rendering resolved it. Run cc77389 passed before the adapter floor was added; hosted verification of the new adapter threshold is pending.
-- [ ] 14.3 Adapter conformance suite enforced for all adapters
+- [x] 14.2 CI: GitHub Actions runs Ruff, formatting, strict mypy, import contracts, schema freshness, the complete suite, and coverage floors of core ≥85% and adapters ≥70%. Initial hosted run exposed a PyVista/VTK headless-rendering segmentation fault; Xvfb plus Mesa software rendering resolved it. Hosted run 36308984353 on commit 872238e succeeded with the adapter floor enabled.
+- [-] 14.3 Adapter conformance suite: audit found separate StageHandlerRegistry, QMEngineRegistry, and low-level family ports; a single StageAdapter shape check does not cover these different contracts. Define executable conformance checks per plugin family and distinguish contract behavior from scientific validation.
 - [x] 14.4 Hypothesis properties compare numeric and boolean workflow gate results against Python, generated AutoDock4 DLG scores against parser output, and Amber protein preflight inputs.
 
 ## Phase 15 — Reproducibility `[ ]`
@@ -598,4 +598,6 @@ When the user says **CONTINUE**:
 - [x] CI recheck on commit 2d10f66 passed after Amber preflight and property tests: complete suite, headless PyVista render, and core coverage gate all succeeded. GitHub Actions run 36307190267 is green.
 
 - [x] Phase 14.1 coverage gate reached: no-engine full suite 630 passed, 33 skipped; core 86.68%, adapters 70.95%, workers tracked separately at 32.99%. Amber normalization path now has a full normalized SystemBuildResult contract regression and explicit profile-review warning.
-- [-] Phase 14.2 CI now enforces both measured floors. The hosted workflow previously passed with headless PyVista enabled; awaiting a run of the updated adapter floor.
+- [x] Phase 14.2 CI enforces both measured floors; hosted run 36308984353 on 872238e succeeded with headless PyVista and the adapter coverage threshold enabled.
+
+- [-] Phase 14.3 audit: current published caddsuite.adapters registry is distinct from the production caddsuite.stage_handlers and caddsuite.qm_engines registries. Stage-handler conformance checks metadata and callable methods at construction; QM engine registration checks its port shape. Detailed behavioral tests exist per adapter file, but no shared suite currently enumerates all shipped plugin entry points.
