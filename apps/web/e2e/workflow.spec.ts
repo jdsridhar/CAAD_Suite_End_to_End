@@ -32,14 +32,18 @@ test("project compound workflow pauses for a decision and resumes successfully",
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByText(`Project created: ${slug}`)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Project dashboard" })).toBeVisible();
-  await expect(page.getByText("COMPOUNDS 0", { exact: true })).toBeVisible();
+  const compoundsMetric = page
+    .locator(".dashboard .metric")
+    .filter({ hasText: "Compounds" })
+    .locator("b");
+  await expect(compoundsMetric).toHaveText("0");
   const projectId = await page.locator("select").first().inputValue();
   expect(projectId).not.toBe("");
   await page.getByPlaceholder("Compound name").fill("Ethanol");
   await page.getByPlaceholder("SMILES (example: CCO)").fill("CCO");
   await page.getByRole("button", { name: "Standardize and register" }).click();
   await expect(page.getByText("CMP0001", { exact: true })).toBeVisible();
-  await expect(page.getByText("COMPOUNDS 1", { exact: true })).toBeVisible();
+  await expect(compoundsMetric).toHaveText("1");
   const response = await page.request.get(
     `${api}/v1/projects/${projectId}/compounds`,
     { headers: { Authorization: `Bearer ${token}` } },

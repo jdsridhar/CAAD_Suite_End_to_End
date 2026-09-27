@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 13 — API + UI |
-| **Current task** | [-] 13.6 browser end-to-end gate, including dashboard evidence rendering |
-| **Next task** | Phase 14 testing hardening |
-| **Last completed** | Phase 13.5 project dashboard API and normalized scientific evidence summaries; full browser gate is 13.6. |
+| **Current phase** | Phase 14 — Testing hardening |
+| **Current task** | [-] 14.1 raise adapter statement coverage from 63.76% to the 70% target |
+| **Next task** | Phase 14.2 CI gate after Phase 14.1 targets are met |
+| **Last completed** | Phase 13.6 browser end-to-end gate: project/compound, dashboard fixture card, molecular viewer, decision pause/resume, run history and provenance passed in Chromium. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -395,11 +395,17 @@ When the user says **CONTINUE**:
   - [x] Query project task/cache-key associations and validate cached contracts through the versioned registry. Bounded ADMET, docking, MD, trajectory-analysis, MM/PBSA/MM/GBSA, and QM summaries preserve identities, methods, units and warnings; docking and endpoint-estimate limitations are explicit. Cache origin task is retained for provenance, including cache reuse.
   - [x] Regression seeds a normalized ADMET contract and asserts exact value/unit/method plus project scoping; full repository gate passes. Frontend API schema drift check, typecheck and production build pass.
   - [ ] Browser gate exercises empty and populated dashboard states; the populated browser state uses a clearly labeled UI-only network fixture, never presented as a scientific calculation.
-- [ ] 13.6 **Gate:** browser end-to-end demo
+- [x] 13.6 **Gate:** browser end-to-end demo
+  - [x] Playwright Chromium run passes the project/compound/dashboard flow, Mol* complex preview, workflow decision pause/resume, history/provenance, and dashboard evidence-card rendering. The evidence display uses an explicitly labeled UI-only network fixture; the API regression independently validates normalized ADMET result summarization.
 
 ## Phase 14 — Testing hardening `[ ]`
 
-- [ ] 14.1 Coverage targets (core ≥ 85 %, adapters ≥ 70 % excluding engine-marked tests)
+- [-] 14.1 Coverage targets (core ≥ 85 %, adapters ≥ 70 % excluding engine-marked tests)
+  - [x] Measure a full no-engine-suite baseline and group coverage by source path; document per-family values in `docs/testing/COVERAGE_BASELINE.md`.
+  - [x] Core baseline is 86.58%, above the 85% target.
+  - [ ] Improve aggregate adapter coverage from 63.76% to at least 70% with focused tests; current sub-70 families include analysis (61.9%), docking (44.8%), structure preparation (43.6%), structure sources (64.6%), system builders (58.3%), visualization (50.9%), and QM (69.1%).
+  - [ ] Establish separate worker coverage tracking; baseline is 32.99% because foreign-environment entry points and engine-only paths are not exercised by the no-engine suite.
+  - [ ] Configure reproducible coverage commands and enforce thresholds only after measured targets pass.
 - [ ] 14.2 CI (GitHub Actions or local pre-commit): ruff, mypy, pytest (no-engine suites), import-linter
 - [ ] 14.3 Adapter conformance suite enforced for all adapters
 - [ ] 14.4 Property-based tests (hypothesis) for parsers and the expression language
@@ -580,4 +586,6 @@ When the user says **CONTINUE**:
 
 - [x] Phase 13.4 closeout: authenticated static structure, trajectory, and cube previews loaded in local browser; trajectory animation controls and isosurface representation were exercised. API schema check, TypeScript check, and production build pass. Mol* bundle and optional h264 Node built-in warnings remain for Phase 13.6 visualization gate.
 
-- [x] Phase 13.5 closeout: authenticated dashboard aggregates project metrics and the newest task-associated, normalized ADMET/docking/MD/trajectory-analysis/binding-energy/QM results from the versioned cache. Contract summaries retain source task provenance, identities, methods, units, uncertainties/warnings and scientific limitations; no composite candidate score is invented. Dashboard API test verifies normalized ADMET value/unit/method and project isolation. Full gate: 550 passed, 33 skipped; Ruff, format, strict mypy (176 files), import-linter and schemas pass. API schema check, TypeScript check and production frontend build pass. Browser E2E was attempted but the WSL Chromium process cannot launch because `libasound.so.2` is missing; a UI-only, explicitly labeled fixture assertion is added for the 13.6 browser gate. Mol* chunk size and optional h264 Node built-ins remain documented warnings.
+- [x] Phase 13.5 closeout: authenticated dashboard aggregates project metrics and the newest task-associated, normalized ADMET/docking/MD/trajectory-analysis/binding-energy/QM results from the versioned cache. Contract summaries retain source task provenance, identities, methods, units, uncertainties/warnings and scientific limitations; no composite candidate score is invented. Dashboard API test verifies normalized ADMET value/unit/method and project isolation. Full gate: 550 passed, 33 skipped; Ruff, format, strict mypy (176 files), import-linter and schemas pass. API schema check, TypeScript check and production frontend build pass.
+- [x] Phase 13.6 browser gate: Playwright Chromium walkthrough passes in 21.0 s. This environment lacked system `libasound.so.2`; loaded the official Ubuntu package into a per-user cache and supplied it with `LD_LIBRARY_PATH`, leaving the OS package database and repository clean. Corrected the dashboard compound metric locator to match its label/value markup. The UI evidence card was exercised only with a clearly labeled network fixture, never a fabricated scientific result.
+- [-] Phase 14.1 coverage hardening: full no-engine suite measured at 550 passed, 33 skipped. Statement coverage: core (excluding adapters) 86.58% / 8,471 statements; adapters 63.76% / 5,325; isolated workers 32.99% / 3,598. Core meets ≥85%; adapters remain below ≥70%. Per-family figures and measurement scope are documented in `docs/testing/COVERAGE_BASELINE.md`. Do not enforce the adapter floor or exclude whole families to make it appear green; next add meaningful unit coverage to engine-independent adapter paths.
