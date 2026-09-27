@@ -15,6 +15,18 @@ The two added mmCIF files and CCD ideal SDF files were retrieved from the offici
 
 The pilot inputs are curated and hash-pinned. The existing 5NIU/8YZ adapter run was rerun locally through the production Vina handler, including receptor preparation and pose registration. Its earlier measured top-pose RMSD of 12.3928 angstrom remains a failed baseline and will not be replaced or hidden. Native-coordinate ligand mapping for the two newly added cases, 3ERT/OHT and 1M17/AQ4, is implemented and validated against the pinned structures. Consistent receptor preparation has been run through the production PDBFixer worker and its reports and prepared structures are hash-pinned. Fixed-protocol Vina runs remain pending; no docking outcomes are claimed for them yet. See docs/validation/G-DOCK-5.md for execution evidence and remaining limits.
 
+## Reproduce the adapter pilot
+
+From the repository root in WSL, set `CADDSUITE_PDBFIXER_PYTHON` to the isolated environment containing PDBFixer, OpenMM, Meeko, and Vina, and set `CADDSUITE_REDOCKING_RUN_DIR` to a new persistent output directory. Then run:
+
+```bash
+CADDSUITE_PDBFIXER_PYTHON=/path/to/env/bin/python \
+CADDSUITE_REDOCKING_RUN_DIR=benchmarks/redocking/pilot_v1/runs/my-run \
+  .venv/bin/python -m benchmarks.redocking.run_pilot
+```
+
+Set `CADDSUITE_REDOCKING_RESUME=1` to resume a prior run directory. The runner reuses cases with a saved normalized result and retries cases whose recorded state is failure. It stores the platform database, content-addressed artifacts, raw engine files, logs, normalized results, and attempt provenance under that run directory.
+
 ## Sources
 
 - [5NIU PDB record](https://www.rcsb.org/structure/5NIU)
