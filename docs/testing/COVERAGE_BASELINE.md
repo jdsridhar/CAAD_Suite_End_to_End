@@ -34,12 +34,12 @@ the report.
 ## Progress snapshot (2026-09-27)
 
 After the baseline, added deterministic tests for MDAnalysis request planning/result normalization,
-PDBFixer handler identity and preflight failures, Amber builder input staging/failure reporting,
-and missing CAS content. The full suite now reports 567 passed and 33 skipped. Current grouped
-statement coverage is core 86.67% (7,344/8,474), adapters 67.25% (3,581/5,325), and isolated
-workers 32.99% (1,187/3,598). The adapter group has improved by 3.49 percentage points but is
-still 2.75 points below its target. Analysis is now 76.23%, structure preparation 63.64%, and
-system builders 63.65%; docking remains the largest low-coverage family at 44.82%.
+PDBFixer handler identity and preflight failures, Amber builder staging/failure reporting,
+AutoDock4 lineage/PDBQT validation, and missing CAS content. The full suite now reports 585 passed
+and 33 skipped. Current grouped statement coverage is core 86.67% (7,344/8,474), adapters 68.06%
+(3,624/5,325), and isolated workers 32.99% (1,187/3,598). Adapters improved by 4.30 percentage
+points and remain 1.94 points below the target. Analysis is 76.23%, structure preparation 63.64%,
+system builders 63.65%, and docking improved from 44.82% to 49.61%.
 
 ## Adapter coverage by family
 
@@ -48,7 +48,7 @@ system builders 63.65%; docking remains the largest low-coverage family at 44.82
 | ADMET | 93.9% |
 | Analysis | 76.2% |
 | Binding energy | 81.3% |
-| Docking | 44.8% |
+| Docking | 49.6% |
 | Interactions | 82.4% |
 | MD | 84.5% |
 | QM | 69.1% |
