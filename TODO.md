@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 14 — Testing hardening |
-| **Current task** | [-] 14.1 raise adapter statement coverage from 63.76% to the 70% target |
-| **Next task** | Phase 14.2 CI gate after Phase 14.1 targets are met |
+| **Current task** | [-] 14.1 raise adapter statement coverage from 68.69% to the 70% target |
+| **Next task** | Phase 14.2 GitHub Actions quality workflow validation |
 | **Last completed** | Phase 13.6 browser end-to-end gate: project/compound, dashboard fixture card, molecular viewer, decision pause/resume, run history and provenance passed in Chromium. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -405,8 +405,8 @@ When the user says **CONTINUE**:
   - [x] Core baseline is 86.58%, above the 85% target.
   - [-] Improve aggregate adapter coverage from 68.69% to at least 70% with focused tests. Added engine-independent MDAnalysis plan/normalization tests (module coverage 72%), PDBFixer handler preflight tests (module 62%), and Amber system-builder handler staging/failure tests (module 60%); family coverage rose to analysis 76.2%, structure preparation 63.6%, and system builders 63.7%. AutoDock4 handler validation raised docking family coverage from 44.8% to 53.4%; docking and visualization (50.9%) remain the largest gaps.
   - [x] Establish separate worker coverage tracking in the grouped JSON summarizer; current baseline is 32.99%. Foreign-environment entry points remain a separately reported group because many require installed engines.
-  - [ ] Configure reproducible coverage commands and enforce thresholds only after measured targets pass.
-- [-] 14.2 CI: added a GitHub Actions quality workflow for the pinned scientific Python environment, static/repository checks, full no-engine suite, and the established core coverage floor; adapter floor remains unenforced until measured at 70%. CI execution is pending push-triggered verification.
+  - [x] Added scripts/coverage.sh for a reproducible grouped report; core ≥85% is enforced by the CI invocation. Adapter ≥70% remains intentionally unenforced until achieved.
+- [-] 14.2 CI: added a GitHub Actions quality workflow for the pinned scientific Python environment, static/repository checks, full no-engine suite, and the established core coverage floor; adapter floor remains unenforced until measured at 70%. Hosted run logs exposed a PyVista/VTK segmentation fault without a display. CI now installs Xvfb and uses Mesa software rendering to run the visualization tests; push-triggered revalidation is pending.
 - [ ] 14.3 Adapter conformance suite enforced for all adapters
 - [ ] 14.4 Property-based tests (hypothesis) for parsers and the expression language
 
@@ -590,4 +590,4 @@ When the user says **CONTINUE**:
 - [x] Phase 13.6 browser gate: Playwright Chromium walkthrough passes in 21.0 s. This environment lacked system `libasound.so.2`; loaded the official Ubuntu package into a per-user cache and supplied it with `LD_LIBRARY_PATH`, leaving the OS package database and repository clean. Corrected the dashboard compound metric locator to match its label/value markup. The UI evidence card was exercised only with a clearly labeled network fixture, never a fabricated scientific result.
 - [-] Phase 14.1 coverage hardening: baseline was 550 passed, 33 skipped; after focused, no-engine adapter tests, latest full coverage run is 590 passed, 33 skipped. Current statement coverage: core (excluding adapters) 86.67% / 8,474 statements; adapters 68.69% / 5,325; isolated workers 32.99% / 3,598. Core meets ≥85%; adapter target is not yet met. Added a missing-artifact `ArtifactStore.verify()` regression and made missing CAS blobs return `False` for the advertised boolean check. Detailed baseline/progress and family figures are in `docs/testing/COVERAGE_BASELINE.md`; do not enforce the adapter floor or exclude entire families until genuine coverage reaches 70%.
 
-- [-] Phase 14.1 update: added 18 deterministic AutoDock4 handler validation cases for ligand/target lineage, coordinate-frame citations, PDBQT atom types, torsion records, and ligand coordinate parsing. Full suite: 590 passed, 33 skipped; coverage is core 86.67%, adapters 68.69%, workers 32.99%. Added malformed-SDF and invalid-form normalization rejection cases. AutoDock4 handler statement coverage is 43%; the docking family is 53.40%, and aggregate adapter coverage is still 1.31 percentage points short of its target.  passes Ruff, formatting, strict mypy (176 files), import contracts (4 kept), schema freshness, and the full test suite using scripts/check.sh.
+- [-] Phase 14.1 update: added 18 deterministic AutoDock4 handler validation cases for ligand/target lineage, coordinate-frame citations, PDBQT atom types, torsion records, and ligand coordinate parsing. Full suite: 590 passed, 33 skipped; coverage is core 86.67%, adapters 68.69%, workers 32.99%. Added malformed-SDF and invalid-form normalization rejection cases. AutoDock4 handler statement coverage is 43%; the docking family is 53.40%, and aggregate adapter coverage is still 1.31 percentage points short of its target. Full scripts/check.sh passes Ruff, formatting, strict mypy (176 files), import contracts (4 kept), schema freshness, and the full test suite using scripts/check.sh.

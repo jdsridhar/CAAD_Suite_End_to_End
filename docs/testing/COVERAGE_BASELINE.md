@@ -7,13 +7,12 @@ Date: 2026-09-27
 Run from the repository root with the `caddsuite` development environment:
 
 ```bash
-python -m pytest -q \
-  --cov=caddsuite \
-  --cov=caddsuite_worker \
-  --cov-report=term-missing \
-  --cov-report=json:/tmp/caddsuite-coverage.json
-python scripts/summarize_coverage.py /tmp/caddsuite-coverage.json
+bash scripts/coverage.sh --minimum-core 85
 ```
+
+Set `CADDSUITE_COVERAGE_REPORT` to choose the JSON output path. The script accepts optional
+threshold flags supported by `summarize_coverage.py`; do not pass `--minimum-adapters 70` until
+the observed adapter total reaches that floor.
 
 The measurement ran the full no-engine suite. It passed 550 tests and skipped 33 tests that
 require separately installed engines, archived molecular-dynamics datasets, or optional

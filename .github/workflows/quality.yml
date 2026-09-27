@@ -11,6 +11,8 @@ permissions:
 jobs:
   python:
     runs-on: ubuntu-latest
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: mamba-org/setup-micromamba@v2
@@ -18,17 +20,16 @@ jobs:
           environment-file: environments/caddsuite.yml
           cache-environment: true
           init-shell: bash
+      - name: Install headless rendering support
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
       - name: Install package and dev dependencies
         shell: bash -el {0}
         run: python -m pip install --no-build-isolation -e ".[dev,chem,protonation,structure,analysis,visualization,reporting,volumetric]"
       - name: Static and repository checks
         shell: bash -el {0}
-        run: bash scripts/check.sh
+        run: xvfb-run -a bash scripts/check.sh
       - name: Core coverage target
         shell: bash -el {0}
-        run: |
-          pytest -q --cov=caddsuite --cov=caddsuite_worker \
-            --cov-report=json:/tmp/caddsuite-coverage.json
-          python scripts/summarize_coverage.py /tmp/caddsuite-coverage.json \
-            --minimum-core 85
-
+        run: xvfb-run -a bash scripts/coverage.sh --minimum-core 85
