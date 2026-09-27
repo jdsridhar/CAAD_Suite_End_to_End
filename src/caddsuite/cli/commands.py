@@ -18,7 +18,7 @@ from caddsuite.application.legacy_import import plan_legacy_import
 from caddsuite.application.legacy_import_service import import_legacy_project
 from caddsuite.plugins.registry import PluginDiscoveryError, PluginRegistry
 from caddsuite.storage import migrate
-from caddsuite.storage.artifacts import ArtifactStore
+from caddsuite.storage.artifacts import ArtifactIntegrityError, ArtifactStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.models import ArtifactRow, ProjectRow, TaskRow, WorkflowRunRow
@@ -153,6 +153,55 @@ def register_commands(app: typer.Typer) -> None:
                 )
         finally:
             engine.dispose()
+
+    @projects.command("export")
+    def project_export_command(
+        project_id: Annotated[str, typer.Argument(help="Project ID to export.")],
+        output: Annotated[Path, typer.Option("--output", help="New export directory.")],
+        slim: Annotated[
+            bool, typer.Option("--slim", help="Omit explicitly classified trajectory payloads.")
+        ] = False,
+        data_root: RootOption = None,
+    ) -> None:
+        """Export one project with its provenance and verified content-addressed artifacts."""
+        from caddsuite.application.project_export import (
+            ProjectExportError,
+            export_project,
+        )
+
+        root = resolve_data_root(data_root)
+        engine, sessions = _sessions(root)
+        try:
+            summary = export_project(
+                sessions,
+                artifact_store=ArtifactStore(artifacts_root(root)),
+                project_id=project_id,
+                output=output,
+                slim=slim,
+            )
+        except (
+            ArtifactIntegrityError,
+            ProjectExportError,
+            ProvenanceNodeNotFound,
+            OSError,
+            ValueError,
+        ) as exc:
+            _fail(str(exc))
+        finally:
+            engine.dispose()
+        typer.echo(
+            json.dumps(
+                {
+                    "project_id": summary.project_id,
+                    "output": str(summary.output),
+                    "included_artifacts": summary.included_artifacts,
+                    "omitted_artifacts": summary.omitted_artifacts,
+                    "manifest_sha256": summary.manifest_sha256,
+                    "mode": "slim" if slim else "full",
+                },
+                indent=2,
+            )
+        )
 
     @workflows.command("validate")
     def workflow_validate(
