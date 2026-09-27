@@ -131,3 +131,59 @@ def test_ad4_ligand_center_rejects_missing_or_malformed_coordinates(
     ligand.write_text(contents, encoding="utf-8")
     with pytest.raises(StageExecutionFailure):
         AutoDock4DockingHandler._ligand_center(ligand)
+
+
+def test_ad4_normalizer_rejects_malformed_sdf_before_engine_metadata_is_needed(
+    tmp_path: Path,
+) -> None:
+    handler = object.__new__(AutoDock4DockingHandler)
+    source = tmp_path / "source.sdf"
+    exported = tmp_path / "poses.sdf"
+    source.write_text("not an SDF record\n", encoding="utf-8")
+    exported.write_text("", encoding="utf-8")
+    with pytest.raises(StageExecutionFailure) as error:
+        handler._normalize(
+            compound=SimpleNamespace(),
+            form=SimpleNamespace(),
+            conformer=SimpleNamespace(),
+            receptor=SimpleNamespace(),
+            site=SimpleNamespace(),
+            parameters=SimpleNamespace(),
+            outputs=(object(),),
+            structure=SimpleNamespace(),
+            exported_sdf=exported,
+            ligand_input=source,
+            logs={},
+        )
+    assert error.value.code == "DOCKING.AD4_NORMALIZATION_FAILED"
+    assert "Invalid input file" in str(error.value)
+
+
+def test_ad4_normalizer_rejects_invalid_selected_form_smiles(tmp_path: Path) -> None:
+    from rdkit import Chem
+
+    handler = object.__new__(AutoDock4DockingHandler)
+    source = tmp_path / "source.sdf"
+    exported = tmp_path / "poses.sdf"
+    molecule = Chem.MolFromSmiles("C")
+    assert molecule is not None
+    with Chem.SDWriter(str(source)) as writer:
+        writer.write(molecule)
+    with Chem.SDWriter(str(exported)) as writer:
+        writer.write(molecule)
+    with pytest.raises(StageExecutionFailure) as error:
+        handler._normalize(
+            compound=SimpleNamespace(),
+            form=SimpleNamespace(smiles="not-a-smiles"),
+            conformer=SimpleNamespace(),
+            receptor=SimpleNamespace(),
+            site=SimpleNamespace(),
+            parameters=SimpleNamespace(),
+            outputs=(object(),),
+            structure=SimpleNamespace(),
+            exported_sdf=exported,
+            ligand_input=source,
+            logs={},
+        )
+    assert error.value.code == "DOCKING.AD4_NORMALIZATION_FAILED"
+    assert "invalid SMILES" in str(error.value)
