@@ -31,7 +31,12 @@ both captured workflow and input-manifest artifacts is non-reproducible. API pay
 only when their canonical hashes and workflow/input contracts validate. Missing or unlinked
 artifacts, unsupported stage capabilities, corrupt source records, and host-specific attachment
 paths are reported as blockers or warnings. Source readiness is not execution readiness: adapter
-probes are opt-in, and artifact staging plus exact attachment relocation remain required.
+probes are opt-in. `stage_replay_sources` now copies verified CLI source files and retained
+attachments into a new directory, rewrites attachment paths to relative staged paths, records
+lineage, and refuses destinations inside the source export. The ordinary input loader remains
+responsible for validating hashes and registering fresh artifact identities. The staged workflow
+is not yet executed by `caddsuite reproduce`; fresh-root runtime orchestration and result comparison
+remain outstanding.
 
 ## Comparison results
 

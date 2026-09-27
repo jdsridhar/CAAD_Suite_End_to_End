@@ -421,7 +421,8 @@ When the user says **CONTINUE**:
   - [x] Make these subprocess probes opt-in via `caddsuite reproduce --probe-engines`; default archive inspection never launches executable paths loaded from package parameters.
   - [x] Unit-test registry dispatch, no-probe default, fixed GROMACS/OpenMM argv, fake Vina/Meeko version checks, missing executables, and unavailable probe handling.
   - [ ] Add tests for restored attachment relocation and supported workflow capabilities using representative real run exports; artifact absence is currently covered with synthetic exports.
-  - [ ] Stage artifacts into a fresh data root and re-execute only eligible runs through the normal worker/runtime path, preserving source-package immutability and package lineage.
+  - [x] Add replay source staging that verifies the export and run hashes, relocates retained attachments by content hash, rewrites only attachment paths, records source manifest/run lineage, rejects unsafe IDs and in-package destinations, and preserves the source package. Unit coverage includes a structure artifact with a captured host-specific path.
+  - [ ] Re-execute only eligible staged runs through the normal worker/runtime path in a fresh data root, preserving lineage in the resulting run record.
   - [ ] Add versioned, contract-specific tolerance policies and compare normalized results plus artifact hashes; no cross-unit aggregate score.
   - [ ] Complete a fresh-environment CLI export → replay → compare integration gate and document its scientific scope.
 - [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)

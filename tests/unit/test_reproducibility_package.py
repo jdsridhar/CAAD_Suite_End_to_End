@@ -15,6 +15,7 @@ from caddsuite.application.handlers import (
 )
 from caddsuite.application.project_export import ProjectExportError
 from caddsuite.application.reproducibility.package import inspect_export_replayability
+from caddsuite.application.reproducibility.staging import stage_replay_sources
 from caddsuite.cli.main import app
 from caddsuite.workflow.capabilities import StageCapability
 from caddsuite.workflow.definition import WorkflowDefinition
@@ -274,6 +275,114 @@ def test_cli_writes_json_report_without_overwriting_existing_path(tmp_path: Path
     assert "File exists" in second.output
 
 
+def test_replay_staging_relocates_retained_attachment_without_mutating_package(
+    tmp_path: Path,
+) -> None:
+    package = _package(tmp_path / "relocate.caddsuite")
+    attachment_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+    attachment = b"PDB fixture bytes\n"
+    attachment_hash = hashlib.sha256(attachment).hexdigest()
+    attachment_path = (
+        package / "artifacts/sha256" / attachment_hash[:2] / attachment_hash[2:4] / attachment_hash
+    )
+    attachment_path.parent.mkdir(parents=True)
+    attachment_path.write_bytes(attachment)
+
+    workflow = (
+        b"schema: caddsuite.workflow/1\n"
+        b"name: Attachment relocation\n"
+        b"inputs:\n"
+        b"  structure:\n"
+        b"    contract: structure/1.0\n"
+        b"stages:\n"
+        b"  - id: unsupported\n"
+        b"    kind: future_engine_stage\n"
+    )
+    inputs = {
+        "inputs": {
+            "structure": {
+                "schema_version": "structure/1.0",
+                "id": attachment_id,
+                "target_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+                "source": "local",
+                "raw": {
+                    "artifact_id": attachment_id,
+                    "role": "raw_structure",
+                    "sha256": attachment_hash,
+                },
+            }
+        },
+        "artifacts": {attachment_id: "C:/old-machine/protein.pdb"},
+    }
+    inputs_bytes = (json.dumps(inputs, sort_keys=True) + "\n").encode()
+    metadata_path = package / "artifacts/metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    source_hashes: dict[str, str] = {}
+    for artifact in metadata:
+        if artifact["kind"] == "workflow_source":
+            payload = workflow
+        elif artifact["kind"] == "input_manifest":
+            payload = inputs_bytes
+        else:
+            continue
+        digest = hashlib.sha256(payload).hexdigest()
+        old_digest = artifact["sha256"]
+        old_path = package / "artifacts/sha256" / old_digest[:2] / old_digest[2:4] / old_digest
+        old_path.unlink()
+        new_path = package / "artifacts/sha256" / digest[:2] / digest[2:4] / digest
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_path.write_bytes(payload)
+        artifact["sha256"] = digest
+        artifact["size_bytes"] = len(payload)
+        source_hashes[artifact["kind"]] = digest
+    metadata.append(
+        {
+            "artifact_id": attachment_id,
+            "sha256": attachment_hash,
+            "kind": "workflow_input",
+            "media_type": "chemical/x-pdb",
+            "size_bytes": len(attachment),
+            "original_name": "protein.pdb",
+        }
+    )
+    metadata_path.write_text(json.dumps(metadata, sort_keys=True) + "\n")
+    run_path = package / "runs/run-001/run.json"
+    run = json.loads(run_path.read_text())
+    run["workflow_hash"] = source_hashes["workflow_source"]
+    run["config_hash"] = source_hashes["input_manifest"]
+    run_path.write_text(json.dumps(run, sort_keys=True) + "\n")
+    (package / "runs/run-001/workflow-source-do-not-touch").unlink(missing_ok=True)
+    # Keep the package inventory and top-level artifact index consistent with the edited fixture.
+    _refresh_package_manifest(package, additional_artifacts=metadata)
+    original_manifest = (package / "manifest.json").read_bytes()
+
+    staged = stage_replay_sources(
+        package, run_id="run-001", destination=tmp_path / "fresh" / "replay-001"
+    )
+    staged_inputs = json.loads(Path(staged["inputs"]).read_text())
+    relative = staged_inputs["artifacts"][attachment_id]
+    relocated = Path(staged["inputs"]).parent / relative
+    assert relocated.read_bytes() == attachment
+    assert Path(staged["workflow"]).read_bytes() == workflow
+    lineage = staged["lineage"]
+    assert lineage["source_run_id"] == "run-001"
+    assert lineage["attachments"] == [
+        {"source_artifact_id": attachment_id, "sha256": attachment_hash, "path": relative}
+    ]
+    assert (package / "manifest.json").read_bytes() == original_manifest
+    with pytest.raises(ValueError, match="outside the source export"):
+        stage_replay_sources(
+            package, run_id="run-001", destination=package / "new-parent" / "replay-inside-source"
+        )
+    assert not (package / "new-parent").exists()
+    with pytest.raises(ValueError, match="single path component"):
+        stage_replay_sources(package, run_id="../run-001", destination=tmp_path / "bad-id")
+    with pytest.raises(FileExistsError, match="already exists"):
+        stage_replay_sources(
+            package, run_id="run-001", destination=tmp_path / "fresh" / "replay-001"
+        )
+
+
 def test_modified_package_is_rejected_before_replayability_inspection(tmp_path: Path) -> None:
     package = _package(tmp_path / "tampered.caddsuite")
     (package / "runs/run-001/run.json").write_text("{}\n")
@@ -305,20 +414,30 @@ def test_symlink_package_is_rejected(tmp_path: Path) -> None:
         inspect_export_replayability(link)
 
 
-def _refresh_package_manifest(package: Path) -> None:
+def _refresh_package_manifest(
+    package: Path, *, additional_artifacts: list[dict[str, Any]] | None = None
+) -> None:
     manifest_path = package / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
     entries = []
-    for item in manifest["files"]:
-        payload = (package / item["path"]).read_bytes()
+    package_files = (
+        path
+        for path in package.rglob("*")
+        if path.is_file() and path.name not in {"manifest.json", "manifest.sha256"}
+    )
+    for path in sorted(package_files):
+        relative = path.relative_to(package).as_posix()
+        payload = path.read_bytes()
         entries.append(
             {
-                "path": item["path"],
+                "path": relative,
                 "size_bytes": len(payload),
                 "sha256": hashlib.sha256(payload).hexdigest(),
             }
         )
     manifest["files"] = sorted(entries, key=lambda item: item["path"])
+    if additional_artifacts is not None:
+        manifest["artifacts"] = additional_artifacts
     encoded = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode()
     manifest_path.write_bytes(encoded)
     (package / "manifest.sha256").write_text(
