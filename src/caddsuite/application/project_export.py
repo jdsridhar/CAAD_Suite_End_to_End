@@ -24,6 +24,8 @@ from caddsuite.storage.models import (
     ProjectArtifactRow,
     ProjectRow,
     RunSubmissionRow,
+    TaskCacheRow,
+    TaskRow,
     WorkflowRunRow,
 )
 from caddsuite.storage.provenance_graph import ProvenanceNodeNotFound, project_lineage
@@ -163,6 +165,26 @@ def export_project(
             if runs
             else {}
         )
+        run_results = (
+            session.execute(
+                select(
+                    TaskRow.run_id,
+                    TaskRow.id,
+                    TaskRow.stage_id,
+                    TaskRow.subject_kind,
+                    TaskRow.subject_id,
+                    TaskCacheRow.cache_key,
+                    TaskCacheRow.schema_version,
+                    TaskCacheRow.payload,
+                    TaskCacheRow.created_at,
+                )
+                .join(TaskCacheRow, TaskCacheRow.cache_key == TaskRow.cache_key)
+                .where(TaskRow.run_id.in_([run.id for run in runs]))
+                .order_by(TaskRow.run_id, TaskRow.stage_id, TaskRow.subject_id, TaskRow.id)
+            ).all()
+            if runs
+            else []
+        )
         project_links = session.scalars(
             select(ProjectArtifactRow).where(ProjectArtifactRow.project_id == project_id)
         ).all()
@@ -262,6 +284,23 @@ def export_project(
                 ),
             }
             write_json(f"runs/{run.id}/run.json", run_payload)
+        write_json(
+            "results.json",
+            [
+                {
+                    "run_id": row.run_id,
+                    "task_id": row.id,
+                    "stage_id": row.stage_id,
+                    "subject_kind": row.subject_kind,
+                    "subject_id": row.subject_id,
+                    "cache_key": row.cache_key,
+                    "schema_version": row.schema_version,
+                    "payload": row.payload,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                for row in run_results
+            ],
+        )
         write_json("provenance/project.json", graph)
         write_json("artifacts/metadata.json", artifact_metadata)
         write_json("omissions.json", omitted)

@@ -24,6 +24,8 @@ from caddsuite.storage.models import (
     CompoundRow,
     ProjectArtifactRow,
     ProjectRow,
+    TaskCacheRow,
+    TaskRow,
     WorkflowRunRow,
 )
 from caddsuite.storage.paths import artifacts_root, database_path
@@ -121,6 +123,29 @@ def _project_store(tmp_path: Path):
                 status="succeeded",
             )
         )
+        session.flush()
+        task_id = new_ulid()
+        cache_key = "c" * 64
+        session.add(
+            TaskRow(
+                id=task_id,
+                run_id=run_id,
+                stage_id="docking",
+                subject_kind="compound",
+                subject_id=compound_id,
+                cache_key=cache_key,
+                state="succeeded",
+            )
+        )
+        session.flush()
+        session.add(
+            TaskCacheRow(
+                cache_key=cache_key,
+                schema_version="energy/1.0",
+                payload={"schema_version": "energy/1.0", "value": -7.2, "unit": "kcal/mol"},
+                source_task_id=task_id,
+            )
+        )
     return engine, sessions, store, project_id
 
 
@@ -152,6 +177,14 @@ def test_full_and_slim_export_verify_inventory_and_preserve_omission_hash(
         project_payload = json.loads((full.output / "project.json").read_text())
         assert project_payload["compounds"][0]["accession"] == "CMP0001"
         assert project_payload["compounds"][0]["forms"][0]["smiles"] == "CCO"
+        result_snapshot = json.loads((full.output / "results.json").read_text())
+        assert len(result_snapshot) == 1
+        assert (
+            result_snapshot[0]["run_id"]
+            == json.loads(next((full.output / "runs").glob("*/run.json")).read_text())["id"]
+        )
+        assert result_snapshot[0]["schema_version"] == "energy/1.0"
+        assert result_snapshot[0]["payload"]["value"] == -7.2
         assert manifest["format"] == "caddsuite.project-export/1"
         assert len(manifest["artifacts"]) == 5
         assert all("private-other-project" not in item["path"] for item in manifest["files"])
