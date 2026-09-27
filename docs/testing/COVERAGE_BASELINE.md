@@ -7,12 +7,11 @@ Date: 2026-09-27
 Run from the repository root with the `caddsuite` development environment:
 
 ```bash
-bash scripts/coverage.sh --minimum-core 85
+bash scripts/coverage.sh --minimum-core 85 --minimum-adapters 70
 ```
 
-Set `CADDSUITE_COVERAGE_REPORT` to choose the JSON output path. The script accepts optional
-threshold flags supported by `summarize_coverage.py`; do not pass `--minimum-adapters 70` until
-the observed adapter total reaches that floor.
+Set `CADDSUITE_COVERAGE_REPORT` to choose the JSON output path. CI enforces both floors; worker
+coverage remains separately reported.
 
 The measurement ran the full no-engine suite. It passed 550 tests and skipped 33 tests that
 require separately installed engines, archived molecular-dynamics datasets, or optional
@@ -32,12 +31,10 @@ the report.
 
 ## Progress snapshot (2026-09-27)
 
-After the baseline, added deterministic tests for MDAnalysis request planning/result normalization,
-PDBFixer handler identity and preflight failures, Amber builder staging/failure reporting,
-AutoDock4 lineage/PDBQT validation, and missing CAS content. The full suite now reports 630 passed
-and 33 skipped. Current grouped statement coverage is core 86.68% (7,345/8,474), adapters 70.95%
-(3,778/5,325), and isolated workers 32.99% (1,187/3,598). Adapters improved by 7.19 percentage
-points and now exceed the target by 0.95 points. Analysis is 76.23%, structure preparation 63.64%,
+After the baseline, focused adapter tests raised grouped coverage above the enforced floors. The
+latest full no-engine suite reports 633 passed and 33 skipped. Current grouped statement coverage
+is core 86.60% (7,359/8,498), adapters 70.95% (3,778/5,325), and isolated workers 32.99%
+(1,187/3,598). Adapters improved by 7.19 percentage points and now exceed the target by 0.95 points. Analysis is 76.23%, structure preparation 63.64%,
 system builders 76.15%, and docking improved from 44.82% to 53.40%.
 
 ## Adapter coverage by family
@@ -60,4 +57,7 @@ The aggregate adapter target is met and enforced in CI. Lower-coverage families 
 
 ## Gate decision
 
-Core and aggregate adapter coverage floors are both enforced in CI. Continue tracking worker and per-family coverage separately; the aggregate does not replace adapter-specific scientific validation.
+Core and aggregate adapter floors are met and enforced in CI. Latest local run: core 86.60%, adapters
+70.95%, workers 32.99%; the 633-test no-engine suite passes. Per-family coverage remains visible
+above and is not used to exclude modules from the aggregate. These metrics do not replace
+adapter-specific scientific validation.

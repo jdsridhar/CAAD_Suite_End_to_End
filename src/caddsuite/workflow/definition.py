@@ -169,8 +169,14 @@ class WorkflowDefinition(ContractModel):
     @classmethod
     def from_yaml(cls, path: Path) -> WorkflowDefinition:
         """Load and validate a workflow YAML document using safe YAML parsing."""
-        with path.open(encoding="utf-8") as stream:
-            document = yaml.safe_load(stream)
+        return cls.from_yaml_bytes(path.read_bytes(), source=path)
+
+    @classmethod
+    def from_yaml_bytes(
+        cls, content: bytes, *, source: Path | str = "workflow"
+    ) -> WorkflowDefinition:
+        """Parse exact captured bytes so provenance can retain what was executed."""
+        document = yaml.safe_load(content.decode("utf-8"))
         if not isinstance(document, Mapping):
-            raise ValueError(f"workflow document {path} must contain a YAML mapping")
+            raise ValueError(f"workflow document {source} must contain a YAML mapping")
         return cls.model_validate(document)

@@ -9,8 +9,9 @@
 - Engine environment lock files are registered as artifacts and linked to task attempts.
 - API run submissions retain the submitted workflow and normalized inputs in
   `run_submissions.payload`.
-- The local CLI `caddsuite run` currently records hashes of its workflow and input manifest,
-  but does not retain those source bytes or their paths. Such historical runs cannot be
+- New local CLI runs parse captured workflow bytes and normalized input-manifest bytes, then
+  retain those exact source bytes as content-addressed, project-owned artifacts with run-scoped
+  roles. Historical CLI runs created before this change still record only hashes and cannot be
   faithfully reconstructed from the database alone.
 - Project rows do not currently model a target entity directly; export must include linked
   contracts/artifacts and run payloads rather than inventing missing target metadata.
@@ -66,7 +67,8 @@ self-contained or replayable when those bytes are absent.
 
 ## Implementation sequence and gate
 
-1. Persist or attach workflow and input-manifest bytes for new CLI runs so they are exportable.
+1. [x] Persist exact workflow and input-manifest bytes for new CLI runs; parse the same bytes
+   that are retained so run hashes identify executed source, not a later file reread.
 2. Implement a project-scoped exporter over project rows, run submissions, provenance graphs,
    project artifact links, and the content-addressed store.
 3. Add `caddsuite project export PROJECT_ID --output PATH [--slim]`.

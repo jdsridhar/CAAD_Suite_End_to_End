@@ -19,6 +19,7 @@ def load_workflow_inputs(
     declarations: dict[str, str],
     sessions: sessionmaker[Session],
     artifacts: ArtifactStore,
+    manifest_bytes: bytes | None = None,
 ) -> dict[str, VersionedContract | tuple[VersionedContract, ...]]:
     """Deserialize declared contracts and ingest each referenced artifact file.
 
@@ -26,7 +27,10 @@ def load_workflow_inputs(
     Relative artifact paths resolve beside the manifest; bytes are content-addressed and
     the normalized contracts are rewritten to the registered artifact IDs and hashes.
     """
-    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    source = manifest_bytes
+    if source is None:
+        source = manifest_path.read_bytes()
+    payload = json.loads(source.decode("utf-8"))
     if not isinstance(payload, dict) or set(payload) - {"inputs", "artifacts"}:
         raise ValueError("input manifest must contain only 'inputs' and optional 'artifacts'")
     raw_inputs = payload.get("inputs")

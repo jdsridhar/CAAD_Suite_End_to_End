@@ -193,7 +193,8 @@ def register_commands(app: typer.Typer) -> None:
     ) -> None:
         """Compile a workflow or execute it with validated normalized-contract inputs."""
         try:
-            workflow = WorkflowDefinition.from_yaml(workflow_file)
+            workflow_bytes = workflow_file.read_bytes()
+            workflow = WorkflowDefinition.from_yaml_bytes(workflow_bytes, source=workflow_file)
         except (OSError, ValueError) as exc:
             _fail(str(exc))
         if plan_only:
@@ -221,6 +222,7 @@ def register_commands(app: typer.Typer) -> None:
             _fail("execution requires --project PROJECT_ID and --inputs INPUTS.json")
 
         from caddsuite.application.handlers import StageHandlerRegistry
+        from caddsuite.application.run_sources import capture_cli_run_sources
         from caddsuite.application.runtime import LocalWorkflowRuntime
         from caddsuite.cli.input_loader import load_workflow_inputs
         from caddsuite.domain.identity import new_ulid
@@ -239,28 +241,41 @@ def register_commands(app: typer.Typer) -> None:
                 if project is None:
                     _fail(f"project {project_id!r} was not found")
                 declarations = {name: item.contract for name, item in workflow.inputs.items()}
+                input_bytes = inputs_file.read_bytes()
                 values = load_workflow_inputs(
                     inputs_file,
                     declarations=declarations,
                     sessions=runtime.sessions,
                     artifacts=runtime.services.artifacts,
+                    manifest_bytes=input_bytes,
                 )
 
                 def digest(payload: bytes) -> str:
                     return hashlib.sha256(payload).hexdigest()
 
+                run_id = new_ulid()
                 with runtime.sessions.begin() as session:
+                    capture_cli_run_sources(
+                        session,
+                        artifact_store=runtime.services.artifacts,
+                        project_id=project_id,
+                        run_id=run_id,
+                        workflow_file=workflow_file,
+                        inputs_file=inputs_file,
+                        workflow_bytes=workflow_bytes,
+                        input_bytes=input_bytes,
+                    )
                     run_row = WorkflowRunRow(
+                        id=run_id,
                         project_id=project_id,
                         accession="RUN-" + new_ulid(),
-                        workflow_hash=digest(workflow_file.read_bytes()),
-                        config_hash=digest(inputs_file.read_bytes()),
+                        workflow_hash=digest(workflow_bytes),
+                        config_hash=digest(input_bytes),
                         status="running",
                         started_at=datetime.now(UTC),
                     )
                     session.add(run_row)
                     session.flush()
-                    run_id = run_row.id
                 outcome = runtime.run(compiled, run_id=run_id, inputs=values)
                 status_value = (
                     "failed" if outcome.failures else "stopped" if outcome.stopped else "succeeded"
