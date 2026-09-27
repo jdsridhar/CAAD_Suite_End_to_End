@@ -413,7 +413,11 @@ When the user says **CONTINUE**:
 ## Phase 15 — Reproducibility [-]
 
 - [x] 15.1 Export package (manifest, provenance, env locks, `--slim`)
-- [-] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`. Next implement package preflight/replayability diagnostics and contract-aware per-field comparison; no global cross-unit threshold.
+- [-] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`.
+  - [x] Contract-aware nested JSON comparison; exact per-field outcomes, explicit unit-labelled absolute/relative tolerance per JSON Pointer, and explicit missing/categorical/non-finite differences (`application/reproducibility/compare.py`). No aggregate similarity score.
+  - [ ] Verify exported package and diagnose retained run sources, attachments, installed capabilities, and actionable replay blockers; emit an honest machine-readable report.
+  - [ ] Wire the diagnostics to `caddsuite reproduce`; do not report execution as reproduced before engine-backed replay exists.
+  - [ ] Add tolerance policy versioning and contract-specific comparisons for normalized scientific results.
 - [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)
 - [ ] 15.4 **Gate:** export → fresh env → re-run → equal within tolerances
 
