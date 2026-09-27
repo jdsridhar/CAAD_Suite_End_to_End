@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 15 — Reproducibility |
-| **Current task** | [-] 15.2 implement package replayability diagnostics and result comparison |
-| **Next task** | Extend reproduce to engine-backed execution and finish the Phase 15.4 fresh-environment gate |
+| **Current task** | [-] 15.2 implement engine-backed replay and versioned result comparison |
+| **Next task** | Finish Phase 15.2 engine-backed replay and normalized result comparison, then proceed to Phase 15.3 |
 | **Last completed** | Phase 14 testing gate: registered-plugin conformance plus family behavior suites; local and hosted quality/coverage gates pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -415,9 +415,13 @@ When the user says **CONTINUE**:
 - [x] 15.1 Export package (manifest, provenance, env locks, `--slim`)
 - [-] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`.
   - [x] Contract-aware nested JSON comparison; exact per-field outcomes, explicit unit-labelled absolute/relative tolerance per JSON Pointer, and explicit missing/categorical/non-finite differences (`application/reproducibility/compare.py`). No aggregate similarity score.
-  - [ ] Verify exported package and diagnose retained run sources, attachments, installed capabilities, and actionable replay blockers; emit an honest machine-readable report.
-  - [ ] Wire the diagnostics to `caddsuite reproduce`; do not report execution as reproduced before engine-backed replay exists.
-  - [ ] Add tolerance policy versioning and contract-specific comparisons for normalized scientific results.
+  - [x] Verify export integrity and inspect CLI source artifacts plus normalized API submissions; validate source hashes, workflow/input schemas, artifact references, and registered stage-handler capabilities. Emit stage-level plugin registration/version and actionable JSON blockers.
+  - [x] Wire diagnostics to `caddsuite reproduce [PACKAGE] [--output REPORT.json]`. Explicitly label the mode `diagnostics_only`; never claim a run was executed/reproduced. Output files are created exclusively.
+  - [ ] Add a generic adapter preflight capability to probe configured engine executables, licenses and runtime dependencies without starting calculations; report unknown where an adapter cannot safely probe.
+  - [ ] Add tests for restored attachment relocation and supported workflow capabilities using representative real run exports; artifact absence is currently covered with synthetic exports.
+  - [ ] Stage artifacts into a fresh data root and re-execute only eligible runs through the normal worker/runtime path, preserving source-package immutability and package lineage.
+  - [ ] Add versioned, contract-specific tolerance policies and compare normalized results plus artifact hashes; no cross-unit aggregate score.
+  - [ ] Complete a fresh-environment CLI export → replay → compare integration gate and document its scientific scope.
 - [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)
 - [ ] 15.4 **Gate:** export → fresh env → re-run → equal within tolerances
 
@@ -607,3 +611,13 @@ When the user says **CONTINUE**:
 
 - [x] Phase 14.3 completed: plugin registry discovery/capability assertions plus documented family-specific plan/normalization test map; 632 passed, 33 skipped locally, core 86.68%, adapters 70.95%; hosted run 36309633349 is green. Sci validation of physics/chemistry remains tracked in Phases 16–17.
 - [x] 15.1 Export package gate: project-scoped full/slim package includes compounds/forms, API submissions, exact CLI source inputs, provenance, CAS artifacts, environment locks, and hash-verified omissions. `verify_export_package` checks checksum, path safety, inventory, sizes and hashes before publication. Five exporter tests pass; local suite 638 passed/33 skipped, core 86.72%, adapters 70.95%; hosted run 36313325313 passed on `898b66d`.
+
+
+### Session log — Phase 15.2 reproducibility diagnostics
+
+- [x] Added unit-labelled, per-field normalized JSON comparison and documented its limits.
+- [x] Added export verification and replayability inspection for captured CLI source files and normalized API submissions, with hash, contract, artifact-reference, plugin capability and stage registration/version checks.
+- [x] Added `caddsuite reproduce PACKAGE [--output REPORT.json]`; report explicitly uses `diagnostics_only` and `execution_status=not_attempted`. Report files are never overwritten.
+- [x] Local repository gate: Ruff, formatting, strict mypy (181 files), import-linter, schemas, and 652 tests pass (34 environment/data gated skips, one upstream Starlette/httpx deprecation warning).
+- [x] Coverage gate: core 86.32% (7,787/9,021), adapters 73.31% (3,904/5,325), workers 32.99%; core and adapter targets pass.
+- [ ] Limitation recorded: stage-handler registration does not probe engine executables, licenses, or runtime dependencies. Replay staging and execution remain incomplete; no reproduction is claimed.

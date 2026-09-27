@@ -57,7 +57,7 @@ The aggregate adapter target is met and enforced in CI. Lower-coverage families 
 
 ## Gate decision
 
-Core and aggregate adapter floors are met and enforced in CI. Latest local run: core 86.60%, adapters
-70.95%, workers 32.99%; the 638-test no-engine suite passes. Per-family coverage remains visible
+Core and aggregate adapter floors are met and enforced in CI. Latest local run: core 86.32%, adapters
+73.31%, workers 32.99%; the 652-test no-engine suite passes (34 skipped). Per-family coverage remains visible
 above and is not used to exclude modules from the aggregate. These metrics do not replace
 adapter-specific scientific validation.

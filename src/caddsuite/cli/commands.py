@@ -53,6 +53,32 @@ def register_commands(app: typer.Typer) -> None:
     app.add_typer(workflows, name="workflow")
     app.add_typer(api, name="api")
 
+    @app.command("reproduce")
+    def reproduce(
+        package: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+        output: Annotated[
+            Path | None,
+            typer.Option("--output", help="Write the JSON preflight report to a new file."),
+        ] = None,
+    ) -> None:
+        """Inspect replayability; this preflight does not execute scientific workflows."""
+        from caddsuite.application.project_export import ProjectExportError
+        from caddsuite.application.reproducibility.package import inspect_export_replayability
+
+        try:
+            report = inspect_export_replayability(package)
+            serialized = json.dumps(report, indent=2, sort_keys=True) + "\n"
+            if output is None:
+                typer.echo(serialized, nl=False)
+            else:
+                destination = output.expanduser().absolute()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with destination.open("x", encoding="utf-8") as stream:
+                    stream.write(serialized)
+                typer.echo(json.dumps({"report": str(destination), "mode": report["mode"]}))
+        except (OSError, ValueError, ProjectExportError) as exc:
+            _fail(str(exc))
+
     @api.command("serve")
     def api_serve(
         host: Annotated[

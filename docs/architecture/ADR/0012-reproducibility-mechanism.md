@@ -16,6 +16,15 @@
 4. **Containers are optional:** an Apptainer or Docker recipe per engine env may be generated for HPC, but it is not required locally.
 5. Seeds are mandatory parameters for stochastic engines (docking, embedding, MD velocities where applicable).
 
+## Implementation status (2026-09-27)
+
+Project export and integrity verification are implemented. `caddsuite reproduce` currently runs a
+preflight only: it verifies the archive, checks captured CLI/API workflow and input payloads,
+validates normalized contracts and stage-handler registrations, and reports blockers as JSON.
+It does **not** probe engine executables/licenses, recreate environments, stage inputs, execute
+calculations, or compare results yet. Those remain explicit Phase 15.2 and 15.4 work; the ADR's
+re-run behavior describes the target, not current functionality.
+
 ## Alternatives considered
 | Option | Why not (alone) |
 |---|---|

@@ -2,24 +2,31 @@
 
 ## Purpose
 
-`caddsuite reproduce PACKAGE` verifies a project export, identifies whether each recorded run
-has enough retained source data and whether its required engines are available, then re-executes
-eligible workflows into a new project/run context. It never changes the source package and never
-silently substitutes an engine, model, force field, or parameter.
+`caddsuite reproduce PACKAGE` currently verifies an export and emits a diagnostics-only JSON
+report. It assesses retained CLI/API workflow sources, input contracts, referenced artifacts and
+registered stage-handler capabilities. It does not probe engine executables, execute scientific
+work, or claim reproduction.
+The eventual engine-backed replay must run into a fresh project/data root, preserve source-package
+immutability, and never silently substitute an engine, model, force field, or parameter.
+
+Use `caddsuite reproduce PACKAGE` to print the preflight report or
+`caddsuite reproduce PACKAGE --output REPORT.json` to create a new report file. Existing report
+files are not overwritten. A successful command exit means the diagnostic report was generated;
+inspect each run's `preflight_status`, `stages`, `blockers`, and `warnings` before considering any
+run for execution.
 
 ## Run eligibility and limitations
 
-Before execution, verify the package using `verify_export_package` and inspect each exported
-run's `reconstruction_complete` marker. A CLI run without both captured workflow and input
-manifest source artifacts is not replayable. Historical API payloads can be replayable when
-they contain supported workflow/input contracts; archived API runs may also reference external
-artifacts that were not included or cannot be staged.
-
-Each stage is checked against installed plugin capabilities and environment provenance. An
-unavailable or license-restricted engine, missing required input, manual preparation step, or
-known nondeterministic execution is reported explicitly. The command must not claim a run was
-reproduced if any required stage was skipped. Container/Conda environment recreation remains
-best-effort and is not attempted implicitly.
+The preflight verifies the package using `verify_export_package`, checks source hashes against
+the recorded run hashes, parses captured CLI YAML/JSON or normalized API submissions, validates
+supplied versioned contracts, and reports each stage's plugin registration and version. The
+report sets `engine_installation` to `not_probed`: capability registration does not prove that
+configured executables, licenses, or runtime dependencies are usable. A CLI run without
+both captured workflow and input-manifest artifacts is non-reproducible. API payloads are accepted
+only when their canonical hashes and workflow/input contracts validate. Missing or unlinked
+artifacts, unsupported stage capabilities, corrupt source records, and host-specific attachment
+paths are reported as blockers or warnings. Source readiness is not execution readiness: engine
+availability probes, artifact staging, and exact attachment relocation still need implementation.
 
 ## Comparison results
 
@@ -32,11 +39,11 @@ Comparison is contract-aware and reports each normalized result separately:
   absent.
 - `non_reproducible`: the run cannot be rerun or a result cannot be compared defensibly.
 
-No aggregate similarity score is emitted. Raw and normalized old/new contracts, software and
-environment versions, seed, tolerance policy, artifact hashes, and per-field comparison details
-remain available in the report. Tolerances are selected by contract/result property or supplied
-explicitly; a single global tolerance must not be applied across energies, coordinates,
-probabilities, and categorical outcomes.
+The comparison utility currently emits no aggregate similarity score and is not connected to
+`caddsuite reproduce`. Future replay reports must retain raw and normalized old/new contracts,
+software and environment versions, seed, a versioned tolerance policy, artifact hashes, and
+per-field comparison details. Tolerances must be selected by contract/result property; one global
+tolerance must not be applied across energies, coordinates, probabilities, and categories.
 
 Trajectory and stochastic outputs may differ byte-for-byte while agreeing statistically or
 within property-specific tolerances. Such comparisons must name the measured properties and
@@ -51,9 +58,11 @@ because a final scalar score is close.
 3. Re-run only supported workflow definitions through the normal plugin/workflow runtime.
 4. Capture fresh provenance and keep it linked to the source run/package digest.
 5. Compare outputs under a versioned tolerance policy and emit a machine-readable JSON report.
-6. Return a nonzero command status when a run is different, incomplete, or non-reproducible;
-   the report still preserves successful comparisons and actionable reasons.
+6. Return a nonzero execution status when a requested replay is different, incomplete, or
+   non-reproducible; preserve completed comparisons and actionable reasons in the report.
 
-The first usable milestone is an export integrity/replayability report. Full re-execution and
-contract-specific comparison must pass the Phase 15.4 fresh-environment gate before this phase
-is considered complete.
+The current command implements the export integrity/replayability diagnostic milestone only.
+Engine-backed re-execution, fresh-root artifact staging, contract-specific versioned tolerance
+policies, result comparison, and the Phase 15.4 fresh-environment gate remain required before
+Phase 15.2/15.4 can be marked complete. In diagnostics-only mode, exit code zero means the
+preflight report was successfully generated, even when its report identifies blockers.
