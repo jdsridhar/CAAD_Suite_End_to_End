@@ -23,10 +23,14 @@ preflight only: it verifies the archive, checks captured CLI/API workflow and in
 validates normalized contracts and stage-handler registrations, and reports blockers as JSON.
 Engine executable/import probes exist for Vina/Meeko, GROMACS, OpenMM, Psi4, and PySCF and are
 opt-in with `--probe-engines`, because paths in an imported archive are untrusted executable
-configuration. Plugins without probes report availability as unknown. The command does not check
-license entitlement, recreate environments, stage inputs, execute calculations, or compare results
-yet. Those remain explicit Phase 15.2 and 15.4 work; the ADR's re-run behavior describes the target,
-not current functionality.
+configuration. Plugins without probes report availability as unknown; engine-free stages report
+`not_applicable`. `caddsuite replay PACKAGE --run-id ID --data-root PATH` now stages retained CLI
+inputs in a new root, restores project/compound identity, invokes the normal input loader and local
+runtime, and preserves source run/manifest lineage. A no-engine plugin integration test verifies the
+runtime path. API-submission replay, license entitlement, environment recreation, installed-engine
+replay against representative exports, and normalized result/artifact comparison are still
+outstanding Phase 15.2/15.4 work. The ADR's comparison behavior remains the target, not a completed
+gate.
 
 ## Alternatives considered
 | Option | Why not (alone) |

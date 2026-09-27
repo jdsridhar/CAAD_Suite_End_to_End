@@ -184,6 +184,9 @@ class StageHandlerRegistry:
                 "plugin_version": registration.plugin_version,
             }
         )
+        if registration.capability.engine is None:
+            base["engine_installation"] = "not_applicable"
+            return base
         if not probe_engine:
             base["reason"] = "engine probe not requested"
             return base

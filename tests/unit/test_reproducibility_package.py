@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,10 +16,19 @@ from caddsuite.application.handlers import (
 )
 from caddsuite.application.project_export import ProjectExportError
 from caddsuite.application.reproducibility.package import inspect_export_replayability
+from caddsuite.application.reproducibility.runtime import replay_exported_run
 from caddsuite.application.reproducibility.staging import stage_replay_sources
 from caddsuite.cli.main import app
+from caddsuite.contracts.base import ArtifactRef, VersionedContract
+from caddsuite.contracts.reporting import ReportArtifact, ReportBundle
+from caddsuite.domain.identity import new_ulid
+from caddsuite.storage.artifacts import register_blob
+from caddsuite.storage.db import create_db_engine, make_session_factory
+from caddsuite.storage.models import ArtifactRow, ProjectRow, WorkflowRunRow
+from caddsuite.storage.paths import database_path
 from caddsuite.workflow.capabilities import StageCapability
 from caddsuite.workflow.definition import WorkflowDefinition
+from caddsuite.workflow.scheduler import TaskInvocation
 
 runner = CliRunner()
 
@@ -28,6 +38,8 @@ def _package(
     *,
     source_files: bool = True,
     api_submission: dict[str, Any] | None = None,
+    workflow_bytes: bytes | None = None,
+    input_bytes: bytes | None = None,
 ) -> Path:
     root.mkdir()
     (root / "runs/run-001").mkdir(parents=True)
@@ -42,7 +54,8 @@ def _package(
         b"  - id: unsupported\n"
         b"    kind: future_engine_stage\n"
     )
-    inputs = b'{"inputs": {}, "artifacts": {}}\n'
+    workflow = workflow_bytes or workflow
+    inputs = input_bytes or b'{"inputs": {}, "artifacts": {}}\n'
     artifacts: list[dict[str, Any]] = []
     source_ids: dict[str, str] = {}
     files: list[tuple[str, bytes]] = []
@@ -77,7 +90,11 @@ def _package(
     }
     files.extend(
         [
-            ("project.json", b'{"id": "project-001"}\n'),
+            (
+                "project.json",
+                b'{"id":"01ARZ3NDEKTSV4RRFFQ69G5FAX","slug":"fixture",'
+                b'"name":"Replay Fixture","compounds":[]}\n',
+            ),
             ("runs/run-001/run.json", (json.dumps(run, sort_keys=True) + "\n").encode()),
             ("provenance/project.json", b"{}\n"),
             ("artifacts/metadata.json", (json.dumps(artifacts, sort_keys=True) + "\n").encode()),
@@ -98,7 +115,7 @@ def _package(
     ]
     manifest = {
         "format": "caddsuite.project-export/1",
-        "project": {"id": "project-001", "slug": "fixture"},
+        "project": {"id": "01ARZ3NDEKTSV4RRFFQ69G5FAX", "slug": "fixture"},
         "exported_at": "2026-01-01T00:00:00+00:00",
         "mode": "full",
         "files": inventory,
@@ -153,7 +170,7 @@ def test_package_engine_probe_is_opt_in_and_unavailability_blocks_preflight(
         def registrations(self):
             return (
                 StageHandlerRegistration(
-                    StageCapability(kind="future_engine_stage"),
+                    StageCapability(kind="future_engine_stage", engine="fixture-engine"),
                     lambda _stage, _services: object(),
                     preflight,
                 ),
@@ -164,7 +181,13 @@ def test_package_engine_probe_is_opt_in_and_unavailability_blocks_preflight(
         "caddsuite.application.reproducibility.package.StageHandlerRegistry.discover",
         classmethod(lambda _cls: registry),
     )
-    package = _package(tmp_path / "probe.caddsuite")
+    package = _package(
+        tmp_path / "probe.caddsuite",
+        workflow_bytes=(
+            b"schema: caddsuite.workflow/1\nname: probe\ninputs: {}\nstages:\n"
+            b"  - id: unsupported\n    kind: future_engine_stage\n    engine: fixture-engine\n"
+        ),
+    )
 
     default = inspect_export_replayability(package)
     assert calls == 0
@@ -381,6 +404,109 @@ def test_replay_staging_relocates_retained_attachment_without_mutating_package(
         stage_replay_sources(
             package, run_id="run-001", destination=tmp_path / "fresh" / "replay-001"
         )
+
+
+class _ReplayHandler:
+    adapter_id = "tests.replay"
+    adapter_version = "1"
+    engine_version = "none"
+
+    def __init__(self, services: Any) -> None:
+        self.services = services
+
+    def subject_key(self, scope: str, value: VersionedContract) -> str:
+        return "project"
+
+    def artifact_hashes(self, inputs: Any) -> dict[str, str]:
+        return {}
+
+    def gate_context(self, inputs: Any) -> tuple[dict[str, object], frozenset[str]]:
+        return {}, frozenset()
+
+    def execute(self, invocation: TaskInvocation) -> VersionedContract:
+        blob = self.services.artifacts.put_bytes(b'{"test_adapter":true}\n')
+        with self.services.sessions.begin() as session:
+            row = register_blob(session, blob, kind="test_report", media_type="application/json")
+            ref = ArtifactRef(artifact_id=row.id, role="test_report", sha256=row.sha256)
+        return ReportBundle(
+            id=new_ulid(),
+            project_id=PROJECT_ID,
+            generated_at=datetime.now(UTC),
+            artifacts=(ReportArtifact(format="json", media_type="application/json", artifact=ref),),
+        )
+
+
+PROJECT_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAX"
+
+
+def test_fresh_root_runtime_replay_executes_no_engine_fixture_and_records_lineage(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    workflow = (
+        b"schema: caddsuite.workflow/1\n"
+        b"name: Replay fixture\n"
+        b"inputs: {}\n"
+        b"stages:\n"
+        b"  - id: evidence\n"
+        b"    kind: evidence\n"
+        b"    output_contract: report_bundle/1.0\n"
+    )
+    package = _package(
+        tmp_path / "eligible.caddsuite",
+        workflow_bytes=workflow,
+        input_bytes=b'{"inputs": {}, "artifacts": {}}\n',
+    )
+    from caddsuite.application.handlers import StageHandlerRegistration, StageHandlerRegistry
+    from caddsuite.workflow.capabilities import StageCapability
+
+    class Plugin:
+        plugin_id = "tests.replay"
+        version = "1"
+
+        def registrations(self):
+            return (
+                StageHandlerRegistration(
+                    StageCapability(kind="evidence", outputs=("report_bundle/1.0",)),
+                    lambda _stage, services: _ReplayHandler(services),
+                ),
+            )
+
+    registry = StageHandlerRegistry([Plugin()])
+    monkeypatch.setattr(StageHandlerRegistry, "discover", classmethod(lambda _cls: registry))
+    root = tmp_path / "fresh-data"
+    result = replay_exported_run(package, run_id="run-001", data_root=root)
+    assert result["status"] == "succeeded"
+    assert result["mode"] == "executed_replay"
+    assert result["source_run_id"] == "run-001"
+    assert result["replay_run_id"] != result["source_run_id"]
+    assert Path(result["fresh_data_root"]) == root
+    engine = create_db_engine(database_path(root))
+    sessions = make_session_factory(engine)
+    try:
+        with sessions() as session:
+            project = session.get(ProjectRow, PROJECT_ID)
+            replay = session.get(WorkflowRunRow, result["replay_run_id"])
+            lineage = session.get(ArtifactRow, result["lineage_artifact_id"])
+        assert project is not None
+        assert replay is not None
+        assert replay.status == "succeeded"
+        assert lineage is not None
+        assert lineage.kind == "replay_lineage"
+    finally:
+        engine.dispose()
+
+
+def test_runtime_replay_refuses_ineligible_source_before_creating_data_root(
+    tmp_path: Path,
+) -> None:
+    package = _package(tmp_path / "not-ready.caddsuite")
+    root = tmp_path / "should-not-exist"
+    with pytest.raises(ValueError, match="not replay-ready"):
+        replay_exported_run(package, run_id="run-001", data_root=root)
+    assert not root.exists()
+    with pytest.raises(ValueError, match="single path component"):
+        replay_exported_run(package, run_id="../run-001", data_root=root)
+    assert not root.exists()
 
 
 def test_modified_package_is_rejected_before_replayability_inspection(tmp_path: Path) -> None:

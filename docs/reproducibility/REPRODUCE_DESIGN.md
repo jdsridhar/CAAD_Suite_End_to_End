@@ -6,8 +6,8 @@
 report. It assesses retained CLI/API workflow sources, input contracts, referenced artifacts and
 registered stage-handler capabilities, and adapter-owned engine preflight when implemented. It
 does not execute scientific work or claim reproduction.
-The eventual engine-backed replay must run into a fresh project/data root, preserve source-package
-immutability, and never silently substitute an engine, model, force field, or parameter.
+Engine-backed replay runs into a fresh data root and preserves source-package immutability. The
+system never silently substitutes an engine, model, force field, or parameter.
 
 Use `caddsuite reproduce PACKAGE` to print the preflight report or
 `caddsuite reproduce PACKAGE --output REPORT.json` to create a new report file. Existing report
@@ -34,9 +34,14 @@ paths are reported as blockers or warnings. Source readiness is not execution re
 probes are opt-in. `stage_replay_sources` now copies verified CLI source files and retained
 attachments into a new directory, rewrites attachment paths to relative staged paths, records
 lineage, and refuses destinations inside the source export. The ordinary input loader remains
-responsible for validating hashes and registering fresh artifact identities. The staged workflow
-is not yet executed by `caddsuite reproduce`; fresh-root runtime orchestration and result comparison
-remain outstanding.
+responsible for validating hashes and registering fresh artifact identities. `caddsuite replay PACKAGE --run-id ID --data-root PATH` currently executes a successful CLI run
+with captured workflow and input files only when
+all enabled stages are registered and their engine probes report ready. It requires a new or empty
+root, restores project and compound identity snapshots, invokes the ordinary contract input loader
+and local runtime, and stores source run/manifest lineage as a project-linked artifact. The replay
+uses the archived workflow and inputs; output comparison and representative real-engine replay
+validation remain outstanding. A successful replay is computational execution evidence, not proof
+that an engine result matches the archived result.
 
 ## Comparison results
 
@@ -71,8 +76,9 @@ because a final scalar score is close.
 6. Return a nonzero execution status when a requested replay is different, incomplete, or
    non-reproducible; preserve completed comparisons and actionable reasons in the report.
 
-The current command implements the export integrity/replayability diagnostic milestone only.
-Engine-backed re-execution, fresh-root artifact staging, contract-specific versioned tolerance
-policies, result comparison, and the Phase 15.4 fresh-environment gate remain required before
-Phase 15.2/15.4 can be marked complete. In diagnostics-only mode, exit code zero means the
-preflight report was successfully generated, even when its report identifies blockers.
+The diagnostic command and the separate replay command have distinct exit meanings. In
+`caddsuite reproduce` diagnostics-only mode, exit code zero means the report was generated, even
+when it contains blockers. `caddsuite replay` requires preflight eligibility and returns a failed
+execution status when its workflow fails. Versioned comparison policies, normalized-result plus
+artifact comparison, representative installed-engine replay, and the Phase 15.4 fresh-environment
+gate remain required before Phase 15.2/15.4 can be marked complete.

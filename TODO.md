@@ -422,9 +422,9 @@ When the user says **CONTINUE**:
   - [x] Unit-test registry dispatch, no-probe default, fixed GROMACS/OpenMM argv, fake Vina/Meeko version checks, missing executables, and unavailable probe handling.
   - [ ] Add tests for restored attachment relocation and supported workflow capabilities using representative real run exports; artifact absence is currently covered with synthetic exports.
   - [x] Add replay source staging that verifies the export and run hashes, relocates retained attachments by content hash, rewrites only attachment paths, records source manifest/run lineage, rejects unsafe IDs and in-package destinations, and preserves the source package. Unit coverage includes a structure artifact with a captured host-specific path.
-  - [ ] Re-execute only eligible staged runs through the normal worker/runtime path in a fresh data root, preserving lineage in the resulting run record.
+  - [x] Add `caddsuite replay PACKAGE --run-id ID --data-root PATH`: require a successful source run with captured CLI sources and clear engine preflight, reject non-empty/in-package data roots, restore project/compound identities, stage and re-validate contract attachments through the shared application input loader, execute through `LocalWorkflowRuntime`, and retain source/result lineage as a project-linked artifact. Engine-free test adapter replays successfully end-to-end; installed-engine replay still needs a real-export validation gate.
   - [ ] Add versioned, contract-specific tolerance policies and compare normalized results plus artifact hashes; no cross-unit aggregate score.
-  - [ ] Complete a fresh-environment CLI export → replay → compare integration gate and document its scientific scope.
+  - [ ] Complete a fresh-environment CLI export → installed-engine replay → compare integration gate using a representative real run export; current end-to-end replay uses a no-engine test plugin and is not scientific engine validation.
 - [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)
 - [ ] 15.4 **Gate:** export → fresh env → re-run → equal within tolerances
 
@@ -624,3 +624,12 @@ When the user says **CONTINUE**:
 - [x] Local repository gate: Ruff, formatting, strict mypy (181 files), import-linter, schemas, and 652 tests pass (34 environment/data gated skips, one upstream Starlette/httpx deprecation warning).
 - [x] Coverage gate: core 86.32% (7,787/9,021), adapters 73.31% (3,904/5,325), workers 32.99%; core and adapter targets pass.
 - [ ] Limitation recorded: stage-handler registration does not probe engine executables, licenses, or runtime dependencies. Replay staging and execution remain incomplete; no reproduction is claimed.
+
+
+### Session log — replay execution foundation (2026-09-27)
+
+- [x] Extracted normalized input loading into the application layer; the CLI retains a compatibility import.
+- [x] Added `caddsuite replay` to replay successful captured CLI runs only after stage capability and explicit engine preflight are clear. API-only submissions remain preflightable but are not yet executable as replay sources.
+- [x] Replay starts in a new/empty external data root, preserves project/compound/form identities, revalidates attachments with the regular loader, executes through `LocalWorkflowRuntime`, and stores source manifest/run lineage.
+- [x] End-to-end no-engine fixture execution verifies a successful run and lineage artifact; this validates runtime wiring, not scientific-engine reproducibility.
+- [ ] Next: real exported run/engine replay and versioned contract-specific result-plus-artifact comparison.

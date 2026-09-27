@@ -89,6 +89,25 @@ def register_commands(app: typer.Typer) -> None:
         except (OSError, ValueError, ProjectExportError) as exc:
             _fail(str(exc))
 
+    @app.command("replay")
+    def replay(
+        package: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+        run_id: Annotated[str, typer.Option("--run-id", help="Successful source run to replay.")],
+        data_root: Annotated[
+            Path, typer.Option("--data-root", help="New or empty destination data root.")
+        ],
+    ) -> None:
+        """Execute one fully preflighted exported CLI run in a fresh data root."""
+        from caddsuite.application.reproducibility.runtime import replay_exported_run
+
+        try:
+            result = replay_exported_run(package, run_id=run_id, data_root=data_root)
+        except Exception as exc:
+            _fail(str(exc))
+        typer.echo(json.dumps(result, indent=2, sort_keys=True))
+        if result["status"] != "succeeded":
+            raise typer.Exit(code=1)
+
     @api.command("serve")
     def api_serve(
         host: Annotated[
