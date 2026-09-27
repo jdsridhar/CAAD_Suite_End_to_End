@@ -33,7 +33,7 @@ the report.
 
 After the baseline, focused adapter tests raised grouped coverage above the enforced floors. The
 latest full no-engine suite reports 638 passed and 33 skipped. Current grouped statement coverage
-is core 86.67% (7,556/8,718), adapters 70.95% (3,778/5,325), and isolated workers 32.99%
+is core 86.72% (7,560/8,718), adapters 70.95% (3,778/5,325), and isolated workers 32.99%
 (1,187/3,598). Adapters improved by 7.19 percentage points and now exceed the target by 0.95 points. Analysis is 76.23%, structure preparation 63.64%,
 system builders 76.15%, and docking improved from 44.82% to 53.40%.
 

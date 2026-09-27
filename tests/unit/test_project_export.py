@@ -66,6 +66,7 @@ def _project_store(tmp_path: Path):
         for role, kind, payload, media_type in (
             ("protein", "prepared_structure", b"protein-pdb", "chemical/x-pdb"),
             ("trajectory", "trajectory", b"traj-bytes", "application/octet-stream"),
+            ("environment", "environment_lock", b"@EXPLICIT\npackage-lock", "text/plain"),
         ):
             blob = store.put_bytes(payload)
             row = register_blob(
@@ -141,9 +142,9 @@ def test_full_and_slim_export_verify_inventory_and_preserve_omission_hash(
             output=tmp_path / "slim.caddsuite",
             slim=True,
         )
-        assert full.included_artifacts == 4
+        assert full.included_artifacts == 5
         assert full.omitted_artifacts == 0
-        assert slim.included_artifacts == 3
+        assert slim.included_artifacts == 4
         assert slim.omitted_artifacts == 1
 
         manifest = verify_export_package(full.output)
@@ -152,8 +153,11 @@ def test_full_and_slim_export_verify_inventory_and_preserve_omission_hash(
         assert project_payload["compounds"][0]["accession"] == "CMP0001"
         assert project_payload["compounds"][0]["forms"][0]["smiles"] == "CCO"
         assert manifest["format"] == "caddsuite.project-export/1"
-        assert len(manifest["artifacts"]) == 4
+        assert len(manifest["artifacts"]) == 5
         assert all("private-other-project" not in item["path"] for item in manifest["files"])
+        lock_payloads = list((full.output / "environments" / "locks").glob("*.txt"))
+        assert len(lock_payloads) == 1
+        assert lock_payloads[0].read_bytes() == b"@EXPLICIT\npackage-lock"
         assert [item["path"] for item in manifest["files"]] == sorted(
             item["path"] for item in manifest["files"]
         )
@@ -181,7 +185,7 @@ def test_full_and_slim_export_verify_inventory_and_preserve_omission_hash(
         assert omitted["reason"] == "trajectory_omitted_by_slim_mode"
         assert omitted["sha256"] == hashlib.sha256(b"traj-bytes").hexdigest()
         slim_blobs = list((slim.output / "artifacts" / "sha256").glob("*/*/*"))
-        assert len(slim_blobs) == 3
+        assert len(slim_blobs) == 4
     finally:
         engine.dispose()
 
@@ -204,7 +208,7 @@ def test_export_is_project_scoped_and_rejects_existing_target(tmp_path: Path) ->
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert payload["project_id"] == project_id
-        assert payload["included_artifacts"] == 4
+        assert payload["included_artifacts"] == 5
         assert (tmp_path / "from-cli.caddsuite" / "project.json").is_file()
 
         with pytest.raises(ProjectExportError, match="already exists"):
