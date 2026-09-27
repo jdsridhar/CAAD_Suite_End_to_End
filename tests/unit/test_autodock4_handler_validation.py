@@ -187,3 +187,94 @@ def test_ad4_normalizer_rejects_invalid_selected_form_smiles(tmp_path: Path) -> 
         )
     assert error.value.code == "DOCKING.AD4_NORMALIZATION_FAILED"
     assert "invalid SMILES" in str(error.value)
+
+
+def test_ad4_fanout_identity_uses_compound_lineage() -> None:
+    from caddsuite.contracts.registry import Compound, CompoundForm, Conformer
+
+    assert (
+        AutoDock4DockingHandler.subject_key(None, "compound", Compound.model_construct(id="cmp"))
+        == "cmp"
+    )
+    assert (
+        AutoDock4DockingHandler.subject_key(
+            None, "form", CompoundForm.model_construct(compound_id="cmp")
+        )
+        == "cmp"
+    )
+    assert (
+        AutoDock4DockingHandler.subject_key(
+            None, "conformer", Conformer.model_construct(compound_id="cmp", form_id="form")
+        )
+        == "cmp"
+    )
+    assert (
+        AutoDock4DockingHandler.subject_key(
+            None, "conformer", Conformer.model_construct(compound_id=None, form_id="form")
+        )
+        == "form"
+    )
+
+
+def test_ad4_fanout_identity_rejects_unidentified_contract() -> None:
+    from caddsuite.contracts.structure import Structure
+
+    with pytest.raises(TypeError, match="cannot identify Structure"):
+        AutoDock4DockingHandler.subject_key(
+            None, "target", Structure.model_construct(id="structure")
+        )
+
+
+def test_ad4_constructor_requires_engine_paths_and_creates_work_directories(
+    tmp_path: Path,
+) -> None:
+    engine_paths = []
+    for name in (
+        "autodock4",
+        "autogrid4",
+        "python",
+        "prepare_receptor.py",
+        "prepare_ligand.py",
+        "export.py",
+    ):
+        path = tmp_path / name
+        path.write_text("fixture", encoding="utf-8")
+        engine_paths.append(path)
+    work = tmp_path / "work"
+    logs = tmp_path / "logs"
+    handler = AutoDock4DockingHandler(
+        autodock_executable=engine_paths[0],
+        autogrid_executable=engine_paths[1],
+        meeko_python=engine_paths[2],
+        mk_prepare_receptor=engine_paths[3],
+        mk_prepare_ligand=engine_paths[4],
+        mk_export=engine_paths[5],
+        autodock_version="fixture",
+        autogrid_version="fixture",
+        meeko_version="fixture",
+        work_root=work,
+        log_root=logs,
+        executor=object(),
+        artifact_store=object(),
+        sessions=object(),
+    )
+    assert work.is_dir()
+    assert logs.is_dir()
+    assert handler.engine_version == "fixture"
+    with pytest.raises(FileNotFoundError):
+        AutoDock4DockingHandler(
+            autodock_executable=tmp_path / "missing",
+            autogrid_executable=engine_paths[1],
+            meeko_python=engine_paths[2],
+            mk_prepare_receptor=engine_paths[3],
+            mk_prepare_ligand=engine_paths[4],
+            mk_export=engine_paths[5],
+            autodock_version="fixture",
+            autogrid_version="fixture",
+            meeko_version="fixture",
+            work_root=work,
+            log_root=logs,
+            executor=object(),
+            artifact_store=object(),
+            sessions=object(),
+        )
