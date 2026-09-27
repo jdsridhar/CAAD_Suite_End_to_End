@@ -6,3 +6,5 @@
 *.pdf binary
 *.zip binary
 *.gz binary
+# Preserve downloaded RCSB mmCIF source bytes and ignore archive trailing padding spaces.
+benchmarks/redocking/pilot_v1/structures/*.cif -text -whitespace

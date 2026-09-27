@@ -1,0 +1,78 @@
+{
+  "schema": "caddsuite.redocking-benchmark/1",
+  "dataset_id": "redocking-pilot-v1",
+  "selection": {
+    "experimental_method": "X-RAY DIFFRACTION",
+    "resolution_angstrom_max": 3.0,
+    "reference_ligand": "one explicitly selected, complete, non-covalently bound CCD component instance",
+    "heavy_atom_count_min": 20,
+    "heavy_atom_count_max": 50,
+    "receptor_chain": "single declared author chain"
+  },
+  "cases": [
+    {
+      "case_id": "5niu-8yz",
+      "pdb_id": "5NIU",
+      "structure_path": "../../../tests/data/golden/structure_g1/5NIU.cif",
+      "structure_sha256": "badf5ad650559c8710fc6f03dab6f2dd676927800dc9864c0df5904e8da1e0ed",
+      "method": "X-RAY DIFFRACTION",
+      "resolution_angstrom": 2.01,
+      "protein_auth_chain": "A",
+      "ligand": {
+        "ccd_id": "8YZ",
+        "auth_chain": "A",
+        "auth_seq_id": "201",
+        "heavy_atom_count": 44,
+        "ideal_graph_path": "../../../tests/data/golden/docking_g1/receptors/8YZ_ideal.sdf",
+        "ideal_graph_sha256": "e8c7271e05869603188a51b18290b4b77b7f1143744439bcae747b8091b4d4fa",
+        "native_coordinates_path": "../../../tests/data/golden/docking_g1/receptors/5NIU_ref_ligand.pdb",
+        "native_coordinates_sha256": "18a142f0218dc2e1d589ee674cd77c65aad5aaa28395986b2e524ad39109c3e0"
+      },
+      "source": "https://www.rcsb.org/structure/5NIU"
+    },
+    {
+      "case_id": "3ert-oht",
+      "pdb_id": "3ERT",
+      "structure_path": "structures/3ert.cif",
+      "structure_sha256": "93e5225a94e21f490089666c0cab160bcc33ee6701b0a44d69eb99cedf771427",
+      "method": "X-RAY DIFFRACTION",
+      "resolution_angstrom": 1.90,
+      "protein_auth_chain": "A",
+      "ligand": {
+        "ccd_id": "OHT",
+        "auth_chain": "A",
+        "auth_seq_id": "600",
+        "label_asym_id": "B",
+        "heavy_atom_count": 29,
+        "ideal_graph_path": "ligands/OHT_ideal.sdf",
+        "ideal_graph_sha256": "81a88179ecbcdf8e41f04253f9b7e3cce0616c6a501e440e298010e9a497b8a6"
+      },
+      "source": "https://www.rcsb.org/structure/3ERT"
+    },
+    {
+      "case_id": "1m17-aq4",
+      "pdb_id": "1M17",
+      "structure_path": "structures/1m17.cif",
+      "structure_sha256": "849bd2548dffb7ddcb7229a05202c1e2e41019a1fd69ec39483654cf984fc4d0",
+      "method": "X-RAY DIFFRACTION",
+      "resolution_angstrom": 2.60,
+      "protein_auth_chain": "A",
+      "ligand": {
+        "ccd_id": "AQ4",
+        "auth_chain": "A",
+        "auth_seq_id": "999",
+        "label_asym_id": "B",
+        "heavy_atom_count": 29,
+        "ideal_graph_path": "ligands/AQ4_ideal.sdf",
+        "ideal_graph_sha256": "ca37d8bf0aaab94e2e0d6fdbe1c74b9399038e29fbf37a34ed773c12fa0a77b9"
+      },
+      "source": "https://www.rcsb.org/structure/1M17"
+    }
+  ],
+  "status": "curated_inputs_only",
+  "limitations": [
+    "The three structures form a pilot set and do not support broad docking-accuracy claims.",
+    "Docking outcomes have not yet been generated for 3ERT or 1M17.",
+    "The existing 5NIU/8YZ baseline misses the predeclared 2.0 angstrom top-pose target."
+  ]
+}

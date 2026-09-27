@@ -434,7 +434,11 @@ When the user says **CONTINUE**:
 
 ## Phase 16 — Benchmarking + research `[ ]`
 
-- [ ] 16.1 Re-docking benchmark (set of known complexes) and optional enrichment study
+- [-] 16.1 Re-docking benchmark (set of known complexes) and optional enrichment study
+  - [x] Curate a pinned three-complex pilot from CC0 RCSB X-ray structures: 5NIU/8YZ, 3ERT/OHT, and 1M17/AQ4. Record receptor chain, ligand author/label chain and residue, resolution, source path, and SHA-256 in benchmarks/redocking/pilot_v1/manifest.json.
+  - [x] Predeclare site-restricted redocking preparation, fixed Vina settings, symmetry-corrected no-fit RMSD, top-rank <2.0 angstrom success criterion, per-case reporting, and limitations in docs/validation/REDOCKING_PILOT_V1.md. Preserve the known 5NIU miss as a failed baseline.
+  - [x] Add a manifest/integrity test for the pinned raw structures and ligand graph files.
+  - [ ] Implement and execute the same native-coordinate mapping, receptor preparation, and Vina protocol across all three cases; no outcomes are claimed for the new cases.
 - [ ] 16.2 Performance benchmarks (throughput vs resource settings)
 - [ ] 16.3 Research framing (only if a genuine gap is found in 1.8): question, hypothesis, datasets, baselines, metrics, statistics, limitations
 
