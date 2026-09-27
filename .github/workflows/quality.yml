@@ -32,4 +32,4 @@ jobs:
         run: xvfb-run -a bash scripts/check.sh
       - name: Core coverage target
         shell: bash -el {0}
-        run: xvfb-run -a bash scripts/coverage.sh --minimum-core 85
+        run: xvfb-run -a bash scripts/coverage.sh --minimum-core 85 --minimum-adapters 70

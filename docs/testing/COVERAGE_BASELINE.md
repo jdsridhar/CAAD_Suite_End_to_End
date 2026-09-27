@@ -34,11 +34,11 @@ the report.
 
 After the baseline, added deterministic tests for MDAnalysis request planning/result normalization,
 PDBFixer handler identity and preflight failures, Amber builder staging/failure reporting,
-AutoDock4 lineage/PDBQT validation, and missing CAS content. The full suite now reports 598 passed
-and 33 skipped. Current grouped statement coverage is core 86.67% (7,344/8,474), adapters 68.79%
-(3,663/5,325), and isolated workers 32.99% (1,187/3,598). Adapters improved by 5.03 percentage
-points and remain 1.21 points below the target. Analysis is 76.23%, structure preparation 63.64%,
-system builders 63.65%, and docking improved from 44.82% to 53.40%.
+AutoDock4 lineage/PDBQT validation, and missing CAS content. The full suite now reports 630 passed
+and 33 skipped. Current grouped statement coverage is core 86.68% (7,345/8,474), adapters 70.95%
+(3,778/5,325), and isolated workers 32.99% (1,187/3,598). Adapters improved by 7.19 percentage
+points and now exceed the target by 0.95 points. Analysis is 76.23%, structure preparation 63.64%,
+system builders 76.15%, and docking improved from 44.82% to 53.40%.
 
 ## Adapter coverage by family
 
@@ -53,19 +53,11 @@ system builders 63.65%, and docking improved from 44.82% to 53.40%.
 | QM | 69.1% |
 | Structure preparation | 63.6% |
 | Structure sources | 64.6% |
-| System builders | 63.7% |
+| System builders | 76.2% |
 | Visualization | 50.9% |
 
-The aggregate adapter target is not met. Low coverage clusters around external-process handlers,
-optional-dependency paths, and analysis workers. The next work should add focused unit tests
-using controlled process/filesystem fixtures where the behavior is engine-independent, while
-keeping real-engine scientific integration tests separately marked and reported. Do not raise
-the CI threshold by excluding entire adapter families or by counting skipped integration cases
-as covered.
+The aggregate adapter target is met and enforced in CI. Lower-coverage families remain visible in this report; keep real-engine scientific integration tests separately marked and do not exclude adapter families to manipulate the aggregate.
 
 ## Gate decision
 
-Core coverage currently exceeds its target. Do not enforce the adapter 70% threshold yet: doing
-so would make the required quality gate fail. Add tests against the low-coverage adapter paths,
-repeat this measurement, and only then add per-group fail-under checks. Preserve the current
-baseline for comparison and review threshold changes as architecture/testing decisions.
+Core and aggregate adapter coverage floors are both enforced in CI. Continue tracking worker and per-family coverage separately; the aggregate does not replace adapter-specific scientific validation.
