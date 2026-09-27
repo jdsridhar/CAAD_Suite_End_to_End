@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -14,7 +15,7 @@ from pydantic import Field, JsonValue
 from caddsuite.adapters.md.gromacs import GromacsMDAdapter, GromacsStagePlanParameters
 from caddsuite.adapters.md.openmm import OpenMMMDAdapter, OpenMMStagePlanParameters
 from caddsuite.application.environment import capture_conda_environment
-from caddsuite.application.handlers import StageHandlerRegistration
+from caddsuite.application.handlers import EnginePreflightResult, StageHandlerRegistration
 from caddsuite.application.md_stage import MDExecutionStageHandler
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ContractModel
@@ -60,8 +61,87 @@ class MDStagePlugin:
             ) -> StageHandler:
                 return self._build(engine_id, stage, services)
 
-            registrations.append(StageHandlerRegistration(capability, factory))
+            def preflight(
+                stage: StageDefinition,
+                engine_id: str = engine,
+            ) -> EnginePreflightResult:
+                return self._preflight(engine_id, stage)
+
+            registrations.append(StageHandlerRegistration(capability, factory, preflight))
         return tuple(registrations)
+
+    @staticmethod
+    def _preflight(engine_key: str, stage: StageDefinition) -> EnginePreflightResult:
+        raw = stage.params.get("engine_parameters")
+        if not isinstance(raw, Mapping):
+            return EnginePreflightResult(
+                "unavailable", reason="MD stage requires engine_parameters"
+            )
+        try:
+            normalized = json.loads(json.dumps(raw, allow_nan=False))
+            settings = MDPluginSettings.model_validate(normalized)
+            adapter_raw = getattr(settings, engine_key)
+            if not isinstance(adapter_raw, Mapping):
+                return EnginePreflightResult(
+                    "unavailable", reason=f"MD stage requires {engine_key!r} adapter parameters"
+                )
+            if engine_key == "gromacs":
+                gromacs_parameters = GromacsStagePlanParameters.model_validate(dict(adapter_raw))
+                commands = {"gromacs": gromacs_parameters.executable}
+                if gromacs_parameters.minimization_executable is not None:
+                    commands["minimization"] = gromacs_parameters.minimization_executable
+                resolved = {name: shutil.which(command) for name, command in commands.items()}
+                missing = sorted(
+                    name for name, executable in resolved.items() if executable is None
+                )
+                if missing:
+                    return EnginePreflightResult(
+                        "unavailable", reason=f"GROMACS executable not found for: {missing}"
+                    )
+                executable = resolved["gromacs"]
+                if executable is None:
+                    return EnginePreflightResult(
+                        "unavailable", reason="GROMACS executable could not be resolved"
+                    )
+                probe = subprocess.run(  # noqa: S603 - configured executable, fixed version argv
+                    [executable, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=False,
+                    shell=False,
+                )
+                version_text = probe.stdout.strip() or probe.stderr.strip()
+                if probe.returncode != 0 or not version_text:
+                    return EnginePreflightResult(
+                        "unavailable",
+                        reason=(probe.stderr.strip() or "GROMACS version probe failed")[-2000:],
+                    )
+                return EnginePreflightResult("available", engine_version=version_text)
+
+            openmm_parameters = OpenMMStagePlanParameters.model_validate(dict(adapter_raw))
+            python = Path(openmm_parameters.python_executable).expanduser().resolve(strict=True)
+            if not python.is_file() or not os.access(python, os.X_OK):
+                return EnginePreflightResult(
+                    "unavailable", reason="OpenMM Python interpreter is not executable"
+                )
+            probe = subprocess.run(  # noqa: S603 - configured interpreter, fixed probe code
+                [str(python), "-c", "import openmm; print(openmm.__version__)"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+                shell=False,
+            )
+            version_lines = probe.stdout.strip().splitlines()
+            if probe.returncode != 0 or not version_lines:
+                return EnginePreflightResult(
+                    "unavailable",
+                    reason=(probe.stderr.strip() or "OpenMM import probe failed")[-2000:],
+                )
+            return EnginePreflightResult("available", engine_version=version_lines[-1])
+        except (OSError, ValueError, TypeError, subprocess.TimeoutExpired) as exc:
+            return EnginePreflightResult("unavailable", reason=f"{engine_key} probe failed: {exc}")
 
     @staticmethod
     def _build(

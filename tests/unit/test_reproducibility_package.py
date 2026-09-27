@@ -8,9 +8,15 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
+from caddsuite.application.handlers import (
+    EnginePreflightResult,
+    StageHandlerRegistration,
+    StageHandlerRegistry,
+)
 from caddsuite.application.project_export import ProjectExportError
 from caddsuite.application.reproducibility.package import inspect_export_replayability
 from caddsuite.cli.main import app
+from caddsuite.workflow.capabilities import StageCapability
 from caddsuite.workflow.definition import WorkflowDefinition
 
 runner = CliRunner()
@@ -114,6 +120,7 @@ def test_cli_source_preflight_checks_provenance_and_capabilities(tmp_path: Path)
     package = _package(tmp_path / "source.caddsuite")
     report = inspect_export_replayability(package)
     assert report["mode"] == "diagnostics_only"
+    assert report["engine_probes_requested"] is False
     assert report["reproduction_claimed"] is False
     assert report["plugin_discovery"]["available"] is True
     run = report["runs"][0]
@@ -125,7 +132,49 @@ def test_cli_source_preflight_checks_provenance_and_capabilities(tmp_path: Path)
     stage = run["stages"][0]
     assert stage["stage_id"] == "unsupported"
     assert stage["adapter_registration"] == "plugin_unavailable"
-    assert stage["engine_installation"] == "not_probed"
+    assert stage["engine_installation"] == "unknown"
+
+
+def test_package_engine_probe_is_opt_in_and_unavailability_blocks_preflight(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    calls = 0
+
+    def preflight(_stage: Any) -> EnginePreflightResult:
+        nonlocal calls
+        calls += 1
+        return EnginePreflightResult("unavailable", reason="fixture executable absent")
+
+    class Plugin:
+        plugin_id = "tests.preflight"
+        version = "1"
+
+        def registrations(self):
+            return (
+                StageHandlerRegistration(
+                    StageCapability(kind="future_engine_stage"),
+                    lambda _stage, _services: object(),
+                    preflight,
+                ),
+            )
+
+    registry = StageHandlerRegistry([Plugin()])
+    monkeypatch.setattr(
+        "caddsuite.application.reproducibility.package.StageHandlerRegistry.discover",
+        classmethod(lambda _cls: registry),
+    )
+    package = _package(tmp_path / "probe.caddsuite")
+
+    default = inspect_export_replayability(package)
+    assert calls == 0
+    assert default["runs"][0]["preflight_status"] == "incomplete"
+    assert default["runs"][0]["stages"][0]["engine_installation"] == "unknown"
+
+    opted_in = inspect_export_replayability(package, probe_engines=True)
+    assert calls == 1
+    assert opted_in["runs"][0]["preflight_status"] == "blocked"
+    assert "engine_unavailable" in _unavailable_stage_codes(opted_in["runs"][0])
+    assert opted_in["runs"][0]["stages"][0]["reason"] == "fixture executable absent"
 
 
 def test_api_submission_is_checked_without_fake_source_artifact_requirement(
@@ -197,6 +246,15 @@ def test_api_contract_with_unretained_artifact_is_blocked(tmp_path: Path) -> Non
 
     report = inspect_export_replayability(package)
     assert "input_artifact_missing" in _unavailable_stage_codes(report["runs"][0])
+
+
+def test_cli_engine_probe_option_is_explicit_and_reported(tmp_path: Path) -> None:
+    package = _package(tmp_path / "opt-in.caddsuite")
+    result = runner.invoke(app, ["reproduce", str(package), "--probe-engines"])
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.output)
+    assert report["engine_probes_requested"] is True
+    assert report["mode"] == "diagnostics_only"
 
 
 def test_incomplete_legacy_run_gets_explicit_blocker(tmp_path: Path) -> None:

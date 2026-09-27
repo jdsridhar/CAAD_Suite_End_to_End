@@ -4,29 +4,34 @@
 
 `caddsuite reproduce PACKAGE` currently verifies an export and emits a diagnostics-only JSON
 report. It assesses retained CLI/API workflow sources, input contracts, referenced artifacts and
-registered stage-handler capabilities. It does not probe engine executables, execute scientific
-work, or claim reproduction.
+registered stage-handler capabilities, and adapter-owned engine preflight when implemented. It
+does not execute scientific work or claim reproduction.
 The eventual engine-backed replay must run into a fresh project/data root, preserve source-package
 immutability, and never silently substitute an engine, model, force field, or parameter.
 
 Use `caddsuite reproduce PACKAGE` to print the preflight report or
 `caddsuite reproduce PACKAGE --output REPORT.json` to create a new report file. Existing report
-files are not overwritten. A successful command exit means the diagnostic report was generated;
-inspect each run's `preflight_status`, `stages`, `blockers`, and `warnings` before considering any
-run for execution.
+files are not overwritten. Engine commands embedded in package parameters are not executed by
+default. Add `--probe-engines` to opt in to each registered adapter's fixed version/import probe;
+these are subprocesses, but do not start scientific calculations. A successful command exit means
+the diagnostic report was generated; inspect each run's `preflight_status`, `stages`, `blockers`,
+and `warnings` before considering any run for execution.
 
 ## Run eligibility and limitations
 
 The preflight verifies the package using `verify_export_package`, checks source hashes against
 the recorded run hashes, parses captured CLI YAML/JSON or normalized API submissions, validates
 supplied versioned contracts, and reports each stage's plugin registration and version. The
-report sets `engine_installation` to `not_probed`: capability registration does not prove that
-configured executables, licenses, or runtime dependencies are usable. A CLI run without
+report distinguishes `available`, `unavailable`, and `unknown` engine installation states.
+With explicit `--probe-engines`, adapters probe configured executables and runtime dependencies
+with fixed, non-calculating version/import checks; adapters without such a probe remain `unknown`.
+By default engine status remains `unknown` and no package-configured executable is launched. Probe
+results do not establish license entitlement or scientific correctness. A CLI run without
 both captured workflow and input-manifest artifacts is non-reproducible. API payloads are accepted
 only when their canonical hashes and workflow/input contracts validate. Missing or unlinked
 artifacts, unsupported stage capabilities, corrupt source records, and host-specific attachment
-paths are reported as blockers or warnings. Source readiness is not execution readiness: engine
-availability probes, artifact staging, and exact attachment relocation still need implementation.
+paths are reported as blockers or warnings. Source readiness is not execution readiness: adapter
+probes are opt-in, and artifact staging plus exact attachment relocation remain required.
 
 ## Comparison results
 

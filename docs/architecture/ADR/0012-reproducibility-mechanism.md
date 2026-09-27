@@ -21,9 +21,12 @@
 Project export and integrity verification are implemented. `caddsuite reproduce` currently runs a
 preflight only: it verifies the archive, checks captured CLI/API workflow and input payloads,
 validates normalized contracts and stage-handler registrations, and reports blockers as JSON.
-It does **not** probe engine executables/licenses, recreate environments, stage inputs, execute
-calculations, or compare results yet. Those remain explicit Phase 15.2 and 15.4 work; the ADR's
-re-run behavior describes the target, not current functionality.
+Engine executable/import probes exist for Vina/Meeko, GROMACS, OpenMM, Psi4, and PySCF and are
+opt-in with `--probe-engines`, because paths in an imported archive are untrusted executable
+configuration. Plugins without probes report availability as unknown. The command does not check
+license entitlement, recreate environments, stage inputs, execute calculations, or compare results
+yet. Those remain explicit Phase 15.2 and 15.4 work; the ADR's re-run behavior describes the target,
+not current functionality.
 
 ## Alternatives considered
 | Option | Why not (alone) |

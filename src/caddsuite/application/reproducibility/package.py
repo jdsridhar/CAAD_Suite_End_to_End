@@ -15,7 +15,7 @@ from caddsuite.workflow.compiler import WorkflowCompileError, WorkflowCompiler
 from caddsuite.workflow.definition import WorkflowDefinition
 
 
-def inspect_export_replayability(package: Path) -> dict[str, Any]:
+def inspect_export_replayability(package: Path, *, probe_engines: bool = False) -> dict[str, Any]:
     """Inspect source completeness and capabilities without executing scientific work.
 
     The returned report distinguishes reconstructable inputs from actual replay. No
@@ -41,13 +41,7 @@ def inspect_export_replayability(package: Path) -> dict[str, Any]:
             raise ValueError(f"exported run record must be an object: {run_path}")
         run_id = run.get("id")
         blockers: list[dict[str, str]] = []
-        warnings: list[dict[str, str]] = [
-            _issue(
-                "engine_installation_not_probed",
-                "Preflight checks registered stage-handler plugins and capabilities; "
-                "engine executables and runtime dependencies are not probed.",
-            )
-        ]
+        warnings: list[dict[str, str]] = []
         if not isinstance(run_id, str) or run_id != run_path.parent.name:
             blockers.append(
                 _issue("run_identity_mismatch", "Run ID does not match its export directory.")
@@ -272,8 +266,33 @@ def inspect_export_replayability(package: Path) -> dict[str, Any]:
                     plugin_report["error"] or "Plugin discovery failed.",
                 )
             )
-        preflight_clear = not blockers
-        if preflight_clear:
+        stage_reports = _stage_availability(workflow, plugin_report, probe_engines=probe_engines)
+        for stage_report in stage_reports:
+            stage_id = stage_report.get("stage_id")
+            if stage_report.get("engine_installation") == "unavailable":
+                blockers.append(
+                    _issue(
+                        "engine_unavailable",
+                        str(stage_report.get("reason") or "Engine readiness probe failed."),
+                        stage_id if isinstance(stage_id, str) else None,
+                    )
+                )
+            elif stage_report.get("engine_installation") == "unknown":
+                warnings.append(
+                    _issue(
+                        "engine_availability_unknown",
+                        str(stage_report.get("reason") or "Adapter has no readiness probe."),
+                        stage_id if isinstance(stage_id, str) else None,
+                    )
+                )
+        preflight_status = (
+            "blocked"
+            if blockers
+            else "incomplete"
+            if any(item.get("engine_installation") == "unknown" for item in stage_reports)
+            else "clear"
+        )
+        if preflight_status == "clear":
             warnings.append(
                 _issue(
                     "execution_not_attempted",
@@ -285,9 +304,9 @@ def inspect_export_replayability(package: Path) -> dict[str, Any]:
             {
                 "run_id": run_id,
                 "recorded_status": run.get("status"),
-                "preflight_status": "clear" if preflight_clear else "blocked",
+                "preflight_status": preflight_status,
                 "execution_status": "not_attempted",
-                "stages": _stage_availability(workflow, plugin_report),
+                "stages": stage_reports,
                 "blockers": blockers,
                 "warnings": warnings,
             }
@@ -296,6 +315,7 @@ def inspect_export_replayability(package: Path) -> dict[str, Any]:
     return {
         "report_schema": "caddsuite.reproduction-preflight/1",
         "mode": "diagnostics_only",
+        "engine_probes_requested": probe_engines,
         "reproduction_claimed": False,
         "package": {"project": manifest.get("project"), "manifest_sha256": manifest_hash},
         "plugin_discovery": {
@@ -314,9 +334,16 @@ def inspect_export_replayability(package: Path) -> dict[str, Any]:
 
 def _discover_capabilities() -> dict[str, Any]:
     try:
-        snapshot = StageHandlerRegistry.discover().snapshot()
+        registry = StageHandlerRegistry.discover()
+        snapshot = registry.snapshot()
     except StageHandlerDiscoveryError as exc:
-        return {"available": False, "plugins": [], "error": str(exc), "snapshot": None}
+        return {
+            "available": False,
+            "plugins": [],
+            "error": str(exc),
+            "snapshot": None,
+            "registry": None,
+        }
     return {
         "available": True,
         "plugins": [
@@ -324,49 +351,33 @@ def _discover_capabilities() -> dict[str, Any]:
         ],
         "error": None,
         "snapshot": snapshot,
+        "registry": registry,
     }
 
 
 def _stage_availability(
     workflow: WorkflowDefinition | None,
     discovery: dict[str, Any],
+    *,
+    probe_engines: bool,
 ) -> list[dict[str, Any]]:
     if workflow is None:
         return []
-    snapshot = discovery.get("snapshot")
-    stages: list[dict[str, Any]] = []
-    for stage in workflow.stages:
-        detail: dict[str, Any] = {
-            "stage_id": stage.id,
-            "kind": stage.kind,
-            "requested_engine": stage.engine,
-            "enabled": stage.enabled,
-            "adapter_registration": ("disabled" if not stage.enabled else "plugin_unavailable"),
-            "engine_installation": "not_probed",
-        }
-        if snapshot is not None and stage.enabled:
-            options = [
-                item
-                for (kind, engine), item in snapshot.registrations.items()
-                if kind == stage.kind and (stage.engine is None or engine == stage.engine)
-            ]
-            if len(options) == 1:
-                registered = options[0]
-                detail.update(
-                    {
-                        "adapter_registration": "plugin_registered",
-                        "engine": registered.capability.engine,
-                        "plugin_id": registered.plugin_id,
-                        "plugin_version": registered.plugin_version,
-                    }
-                )
-            elif len(options) > 1:
-                detail["adapter_registration"] = "ambiguous"
-                detail["available_engines"] = sorted(
-                    item.capability.engine or "<core>" for item in options
-                )
-        stages.append(detail)
-    return stages
+    registry = discovery.get("registry")
+    if registry is None:
+        return [
+            {
+                "stage_id": stage.id,
+                "kind": stage.kind,
+                "requested_engine": stage.engine,
+                "enabled": stage.enabled,
+                "adapter_registration": "plugin_discovery_failed",
+                "engine_installation": "unknown",
+                "reason": discovery.get("error"),
+            }
+            for stage in workflow.stages
+        ]
+    return [registry.inspect_stage(stage, probe_engine=probe_engines) for stage in workflow.stages]
 
 
 def _validate_capabilities(

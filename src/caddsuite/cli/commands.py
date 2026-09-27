@@ -60,13 +60,23 @@ def register_commands(app: typer.Typer) -> None:
             Path | None,
             typer.Option("--output", help="Write the JSON preflight report to a new file."),
         ] = None,
+        probe_engines: Annotated[
+            bool,
+            typer.Option(
+                "--probe-engines",
+                help=(
+                    "Explicitly run configured adapters' fixed engine version/import probes. "
+                    "This executes configured engine paths; no scientific calculations run."
+                ),
+            ),
+        ] = False,
     ) -> None:
         """Inspect replayability; this preflight does not execute scientific workflows."""
         from caddsuite.application.project_export import ProjectExportError
         from caddsuite.application.reproducibility.package import inspect_export_replayability
 
         try:
-            report = inspect_export_replayability(package)
+            report = inspect_export_replayability(package, probe_engines=probe_engines)
             serialized = json.dumps(report, indent=2, sort_keys=True) + "\n"
             if output is None:
                 typer.echo(serialized, nl=False)

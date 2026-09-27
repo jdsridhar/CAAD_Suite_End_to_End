@@ -8,9 +8,15 @@ LocalRuntimeServices provides the Linux data root, runs directory, SQLAlchemy se
 
 A handler must expose adapter_id, adapter_version, engine_version, subject_key(), artifact_hashes(), gate_context(), and execute(). The registry checks this scheduler-facing shape at construction. A worker environment or resource request should be supplied through the runtime resolvers when the factory can identify it; do not report the application environment as the scientific engine environment.
 
+## Optional engine readiness probes
+
+A `StageHandlerRegistration` may include a `preflight(stage)` callback returning an `EnginePreflightResult`. Use it to validate configured executable paths, import the intended engine environment, and report an engine version without performing scientific calculations. Return `status="available"`, `"unavailable"`, or `"unknown"`, with a concise reason and JSON-safe details. Keep checks bounded with strict timeouts. If readiness cannot be established safely, return `unknown` or omit the callback; do not guess.
+
+A callback must use a fixed argument vector and `shell=False`; validate paths and parameters before probing. `caddsuite reproduce PACKAGE` never invokes package-configured executables by default. The explicit `--probe-engines` option opts into those adapter callbacks, so users should only probe packages from trusted sources. A probe establishes software availability/version only; it does not verify licensing, scientific correctness, or full reproducibility.
+
 Package metadata declares the entry point under the caddsuite.stage_handlers group, with a key naming the plugin and a value pointing to its no-argument factory. Plugins are trusted Python code loaded into the application process. Do not install unreviewed plugins into a project environment. Executable calls must use LocalExecutor with argv lists and validated paths, and should not build shell command strings.
 
-At this milestone the registry and runtime are implemented, but no built-in stage-handler plugin entry points are installed and the CLI run command remains plan-only. See TODO.md for integration and validation tasks.
+Built-in Vina, MD (GROMACS/OpenMM), and QM (Psi4/PySCF) stage-handler entry points are registered. The CLI can execute workflows through the local worker/runtime path. Adapter readiness callbacks are optional and are exercised by explicit preflight tests; see TODO.md for the remaining replay and validation gates.
 
 ## Human decisions during a workflow
 

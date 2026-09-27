@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from importlib import metadata
 from types import MappingProxyType
-from typing import Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.workflow.capabilities import CapabilityRegistry, StageCapability
@@ -17,12 +17,27 @@ from caddsuite.workflow.scheduler import StageHandler
 
 _PLUGIN_ID = re.compile(r"^[a-z][a-z0-9_.-]{1,127}$")
 HandlerFactory = Callable[[StageDefinition, LocalRuntimeServices], StageHandler]
+PreflightStatus = Literal["available", "unavailable", "unknown"]
+
+
+@dataclass(frozen=True, slots=True)
+class EnginePreflightResult:
+    """Adapter-owned, non-calculating check of configured engine readiness."""
+
+    status: PreflightStatus
+    reason: str | None = None
+    engine_version: str | None = None
+    details: Mapping[str, Any] | None = None
+
+
+EnginePreflight = Callable[[StageDefinition], EnginePreflightResult]
 
 
 @dataclass(frozen=True, slots=True)
 class StageHandlerRegistration:
     capability: StageCapability
     factory: HandlerFactory
+    preflight: EnginePreflight | None = None
 
 
 class StageHandlerPlugin(Protocol):
@@ -44,6 +59,7 @@ class RegisteredStageHandler:
     plugin_version: str
     capability: StageCapability
     factory: HandlerFactory
+    preflight: EnginePreflight | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +130,7 @@ class StageHandlerRegistry:
                 plugin_version=version,
                 capability=capability,
                 factory=item.factory,
+                preflight=item.preflight,
             )
         try:
             CapabilityRegistry(
@@ -138,6 +155,66 @@ class StageHandlerRegistry:
 
     def compile(self, workflow: WorkflowDefinition) -> CompiledWorkflow:
         return WorkflowCompiler(self.snapshot().capabilities).compile(workflow)
+
+    def inspect_stage(
+        self, stage: StageDefinition, *, probe_engine: bool = False
+    ) -> dict[str, Any]:
+        """Report registration and optionally run an adapter's fixed readiness probe."""
+        base: dict[str, Any] = {
+            "stage_id": stage.id,
+            "kind": stage.kind,
+            "requested_engine": stage.engine,
+            "enabled": stage.enabled,
+            "adapter_registration": "disabled" if not stage.enabled else "plugin_unavailable",
+            "engine_installation": "not_applicable" if not stage.enabled else "unknown",
+        }
+        if not stage.enabled:
+            return base
+        try:
+            registration = self._resolve(stage)
+        except StageHandlerDiscoveryError as exc:
+            base["reason"] = str(exc)
+            return base
+
+        base.update(
+            {
+                "adapter_registration": "plugin_registered",
+                "engine": registration.capability.engine,
+                "plugin_id": registration.plugin_id,
+                "plugin_version": registration.plugin_version,
+            }
+        )
+        if not probe_engine:
+            base["reason"] = "engine probe not requested"
+            return base
+        if registration.preflight is None:
+            base["reason"] = "adapter has no non-calculating engine preflight probe"
+            return base
+        try:
+            probe = registration.preflight(stage)
+            if not isinstance(probe, EnginePreflightResult) or probe.status not in {
+                "available",
+                "unavailable",
+                "unknown",
+            }:
+                base["reason"] = "adapter returned an invalid engine preflight result"
+                return base
+        except Exception as exc:
+            base.update(
+                {
+                    "engine_installation": "unavailable",
+                    "reason": f"adapter preflight failed: {exc}",
+                }
+            )
+            return base
+        base["engine_installation"] = probe.status
+        if probe.reason is not None:
+            base["reason"] = probe.reason
+        if probe.engine_version is not None:
+            base["engine_version"] = probe.engine_version
+        if probe.details:
+            base["engine_details"] = dict(probe.details)
+        return base
 
     def build_handlers(
         self, workflow: WorkflowDefinition, services: LocalRuntimeServices

@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from caddsuite.application.handlers import (
+    EnginePreflightResult,
     StageHandlerDiscoveryError,
     StageHandlerRegistration,
     StageHandlerRegistry,
@@ -176,3 +177,81 @@ def test_installed_entry_point_discovers_md_providers_without_probing_engines() 
     registry = StageHandlerRegistry.discover()
     assert registry.snapshot().capabilities.resolve("molecular_dynamics", "gromacs")
     assert registry.snapshot().capabilities.resolve("molecular_dynamics", "openmm")
+
+
+def test_registry_reports_unknown_when_adapter_has_no_probe() -> None:
+    registry = StageHandlerRegistry([Plugin()])
+    report = registry.inspect_stage(_workflow("engine-b").stages[0])
+    assert report["adapter_registration"] == "plugin_registered"
+    assert report["engine_installation"] == "unknown"
+
+
+def test_registry_returns_plugin_owned_probe_result() -> None:
+    class ProbedPlugin(Plugin):
+        plugin_id = "tests.probed-engines"
+
+        def registrations(self):
+            return tuple(
+                StageHandlerRegistration(
+                    item.capability,
+                    item.factory,
+                    lambda _stage: EnginePreflightResult(
+                        "available", engine_version="2.1", details={"runtime": "cpu"}
+                    ),
+                )
+                for item in super().registrations()
+            )
+
+    report = StageHandlerRegistry([ProbedPlugin()]).inspect_stage(
+        _workflow("engine-b").stages[0], probe_engine=True
+    )
+    assert report["engine_installation"] == "available"
+    assert report["engine_version"] == "2.1"
+    assert report["engine_details"] == {"runtime": "cpu"}
+
+
+def test_engine_probe_is_not_run_by_default() -> None:
+    calls = 0
+
+    def probe(_stage):
+        nonlocal calls
+        calls += 1
+        return EnginePreflightResult("available", engine_version="1")
+
+    class OptInPlugin(Plugin):
+        plugin_id = "tests.opt-in-probe"
+
+        def registrations(self):
+            return tuple(
+                StageHandlerRegistration(item.capability, item.factory, probe)
+                for item in super().registrations()
+            )
+
+    registry = StageHandlerRegistry([OptInPlugin()])
+    stage = _workflow("engine-b").stages[0]
+    default_report = registry.inspect_stage(stage)
+    assert default_report["engine_installation"] == "unknown"
+    assert calls == 0
+    opted_in_report = registry.inspect_stage(stage, probe_engine=True)
+    assert opted_in_report["engine_installation"] == "available"
+    assert calls == 1
+
+
+def test_registry_converts_probe_exception_to_actionable_unavailable_result() -> None:
+    def fail(_stage):
+        raise RuntimeError("executable missing")
+
+    class FailingProbePlugin(Plugin):
+        plugin_id = "tests.failing-probe"
+
+        def registrations(self):
+            return tuple(
+                StageHandlerRegistration(item.capability, item.factory, fail)
+                for item in super().registrations()
+            )
+
+    report = StageHandlerRegistry([FailingProbePlugin()]).inspect_stage(
+        _workflow("engine-b").stages[0], probe_engine=True
+    )
+    assert report["engine_installation"] == "unavailable"
+    assert "executable missing" in report["reason"]

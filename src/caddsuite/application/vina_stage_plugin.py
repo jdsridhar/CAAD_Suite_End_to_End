@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
@@ -10,7 +11,7 @@ from pydantic import Field
 
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
 from caddsuite.application.environment import capture_conda_environment
-from caddsuite.application.handlers import StageHandlerRegistration
+from caddsuite.application.handlers import EnginePreflightResult, StageHandlerRegistration
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ContractModel
 from caddsuite.contracts.docking import DockingResult
@@ -58,7 +59,76 @@ class VinaStagePlugin:
                 )
             },
         )
-        return (StageHandlerRegistration(capability, self._build),)
+        return (StageHandlerRegistration(capability, self._build, self._preflight),)
+
+    @staticmethod
+    def _preflight(stage: StageDefinition) -> EnginePreflightResult:
+        raw = stage.params.get("engine_parameters")
+        if not isinstance(raw, Mapping):
+            return EnginePreflightResult(
+                "unavailable", reason="Vina stage requires an engine_parameters object"
+            )
+        try:
+            settings = VinaEngineSettings.model_validate(raw)
+            configured = {
+                "vina": settings.vina_executable,
+                "meeko_python": settings.meeko_python,
+                "prepare_receptor": settings.mk_prepare_receptor,
+                "prepare_ligand": settings.mk_prepare_ligand,
+                "export": settings.mk_export,
+            }
+            resolved = {name: path.resolve(strict=True) for name, path in configured.items()}
+            missing = [name for name, path in resolved.items() if not path.is_file()]
+            if missing:
+                return EnginePreflightResult(
+                    "unavailable", reason=f"configured Vina/Meeko files are missing: {missing}"
+                )
+            for name in ("vina", "meeko_python"):
+                if not resolved[name].is_file() or not os.access(resolved[name], os.X_OK):
+                    return EnginePreflightResult(
+                        "unavailable", reason=f"configured {name} path is not executable"
+                    )
+            vina_probe = subprocess.run(  # noqa: S603 - configured binary, fixed version argv
+                [str(resolved["vina"]), "--version"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+                shell=False,
+            )
+            meeko_probe = subprocess.run(  # noqa: S603 - configured Python, fixed probe code
+                [
+                    str(resolved["meeko_python"]),
+                    "-c",
+                    "import importlib.metadata; print(importlib.metadata.version('meeko'))",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+                shell=False,
+            )
+        except (OSError, ValueError, TypeError, subprocess.TimeoutExpired) as exc:
+            return EnginePreflightResult("unavailable", reason=f"Vina/Meeko probe failed: {exc}")
+        vina_version = vina_probe.stdout.strip() or vina_probe.stderr.strip()
+        meeko_version = meeko_probe.stdout.strip() or meeko_probe.stderr.strip()
+        if (
+            vina_probe.returncode != 0
+            or meeko_probe.returncode != 0
+            or not vina_version
+            or not meeko_version
+        ):
+            detail = (
+                meeko_probe.stderr.strip()
+                or vina_probe.stderr.strip()
+                or "version probe returned no version"
+            )
+            return EnginePreflightResult("unavailable", reason=detail[-2000:])
+        return EnginePreflightResult(
+            "available",
+            engine_version=vina_version,
+            details={"meeko_version": meeko_version},
+        )
 
     @staticmethod
     def _build(stage: StageDefinition, services: LocalRuntimeServices) -> StageHandler:

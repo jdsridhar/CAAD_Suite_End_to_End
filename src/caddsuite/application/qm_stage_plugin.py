@@ -6,7 +6,11 @@ from collections.abc import Callable, Mapping
 
 from caddsuite.adapters.qm.psi4 import Psi4QMAdapter
 from caddsuite.adapters.qm.pyscf import PySCFQMAdapter
-from caddsuite.application.handlers import StageHandlerRegistration
+from caddsuite.application.handlers import (
+    EnginePreflight,
+    EnginePreflightResult,
+    StageHandlerRegistration,
+)
 from caddsuite.application.qm_stage import QMEngineStageHandler
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.docking import DockingRun, Pose
@@ -47,8 +51,42 @@ class QMStagePlugin:
                 ),
                 outputs=(QMResult.schema_id(),),
             )
-            result.append(StageHandlerRegistration(capability, self._factory(engine_id)))
+            result.append(
+                StageHandlerRegistration(
+                    capability,
+                    self._factory(engine_id),
+                    self._preflight(engine_id),
+                )
+            )
         return tuple(result)
+
+    def _preflight(self, engine_id: str) -> EnginePreflight:
+        engine = self._engines[engine_id]
+
+        def probe(stage: StageDefinition) -> EnginePreflightResult:
+            raw = stage.params.get("engine_parameters")
+            if not isinstance(raw, Mapping) or not all(isinstance(key, str) for key in raw):
+                return EnginePreflightResult(
+                    "unavailable", reason="QM stage requires an engine_parameters mapping"
+                )
+            try:
+                result = engine.probe(dict(raw))
+            except Exception as exc:
+                return EnginePreflightResult(
+                    "unavailable", reason=f"{engine_id} availability probe failed: {exc}"
+                )
+            return EnginePreflightResult(
+                "available" if result.installed else "unavailable",
+                reason=result.reason,
+                engine_version=result.engine_version,
+                details={
+                    "protocols": [item.value for item in result.protocols],
+                    "properties": list(result.properties),
+                    "solvation_models": list(result.solvation_models),
+                },
+            )
+
+        return probe
 
     def _factory(
         self, engine_id: str
