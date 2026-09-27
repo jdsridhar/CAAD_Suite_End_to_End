@@ -398,7 +398,7 @@ When the user says **CONTINUE**:
 - [x] 13.6 **Gate:** browser end-to-end demo
   - [x] Playwright Chromium run passes the project/compound/dashboard flow, Mol* complex preview, workflow decision pause/resume, history/provenance, and dashboard evidence-card rendering. The evidence display uses an explicitly labeled UI-only network fixture; the API regression independently validates normalized ADMET result summarization.
 
-## Phase 14 — Testing hardening `[ ]`
+## Phase 14 — Testing hardening [x]
 
 - [x] 14.1 Coverage targets (core ≥ 85 %, adapters ≥ 70 % in the full no-engine suite)
   - [x] Measure a full no-engine-suite baseline and group coverage by source path; document per-family values in `docs/testing/COVERAGE_BASELINE.md`.
