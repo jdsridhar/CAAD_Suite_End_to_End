@@ -14,14 +14,14 @@ from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import Field, JsonValue
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
@@ -33,6 +33,7 @@ from caddsuite.chem.standardize import (
     make_compound,
     standardize_smiles,
 )
+from caddsuite.contracts.analysis import BindingEnergyResult, TrajectoryAnalysis
 from caddsuite.contracts.base import (
     ArtifactRef,
     ContractModel,
@@ -40,6 +41,10 @@ from caddsuite.contracts.base import (
     VersionedContract,
     load_contract,
 )
+from caddsuite.contracts.docking import DockingResult
+from caddsuite.contracts.md import MDSimulation, MDStageResult
+from caddsuite.contracts.properties import PropertyPredictionSet
+from caddsuite.contracts.qm import QMResult
 from caddsuite.contracts.registry import InputRecord
 from caddsuite.domain.enums import TaskState
 from caddsuite.domain.identity import ULIDStr, new_ulid
@@ -57,6 +62,7 @@ from caddsuite.storage.models import (
     ProjectRow,
     RunSubmissionRow,
     TaskAttemptRow,
+    TaskCacheRow,
     TaskRow,
     ValidationIssueRow,
     WorkflowRunRow,
@@ -797,6 +803,142 @@ def create_app(
             ],
         }
 
+    @app.get("/v1/projects/{project_id}/dashboard")
+    def get_project_dashboard(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> dict[str, JsonValue]:
+        """Return a bounded project overview aggregated from authoritative records."""
+        with sessions() as session:
+            project = session.get(ProjectRow, project_id)
+            if project is None:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} was not found")
+            compound_count = (
+                session.scalar(
+                    select(func.count())
+                    .select_from(CompoundRow)
+                    .where(CompoundRow.project_id == project_id)
+                )
+                or 0
+            )
+            run_counts = {
+                str(state): int(count)
+                for state, count in session.execute(
+                    select(WorkflowRunRow.status, func.count())
+                    .where(WorkflowRunRow.project_id == project_id)
+                    .group_by(WorkflowRunRow.status)
+                )
+            }
+            run_rows = session.scalars(
+                select(WorkflowRunRow)
+                .where(WorkflowRunRow.project_id == project_id)
+                .order_by(WorkflowRunRow.created_at.desc(), WorkflowRunRow.id.desc())
+                .limit(5)
+            ).all()
+            run_ids = [row.id for row in run_rows]
+            task_rows = (
+                session.scalars(
+                    select(TaskRow)
+                    .where(TaskRow.run_id.in_(run_ids))
+                    .order_by(TaskRow.created_at, TaskRow.id)
+                ).all()
+                if run_ids
+                else []
+            )
+            cached_rows = session.execute(
+                select(TaskCacheRow, TaskRow)
+                .join(TaskRow, TaskRow.cache_key == TaskCacheRow.cache_key)
+                .join(WorkflowRunRow, WorkflowRunRow.id == TaskRow.run_id)
+                .where(WorkflowRunRow.project_id == project_id)
+                .order_by(TaskCacheRow.created_at.desc(), TaskCacheRow.cache_key.desc())
+                .limit(100)
+            ).all()
+            scientific_results: list[dict[str, JsonValue]] = []
+            for cache_row, task_row in cached_rows:
+                try:
+                    result = load_contract(cache_row.payload)
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "Skipping unreadable cached result %s in project dashboard",
+                        cache_row.cache_key,
+                    )
+                    continue
+                summary = _dashboard_result_summary(result)
+                if summary is None:
+                    continue
+                scientific_results.append(
+                    {
+                        "schema_version": result.schema_version,
+                        "task_id": task_row.id,
+                        "source_task_id": cache_row.source_task_id,
+                        "stage_id": task_row.stage_id,
+                        "task_state": task_row.state,
+                        "subject_id": task_row.subject_id,
+                        "created_at": cache_row.created_at.isoformat(),
+                        **summary,
+                    }
+                )
+            tasks_by_run: dict[str, list[TaskRow]] = {}
+            for task in task_rows:
+                tasks_by_run.setdefault(task.run_id, []).append(task)
+
+            artifact_rows = {
+                row.id: row
+                for row in session.scalars(
+                    select(ArtifactRow)
+                    .join(ProjectArtifactRow, ProjectArtifactRow.artifact_id == ArtifactRow.id)
+                    .where(ProjectArtifactRow.project_id == project_id)
+                )
+            }
+            generated = session.scalars(
+                select(ArtifactRow)
+                .join(AttemptArtifactRow, AttemptArtifactRow.artifact_id == ArtifactRow.id)
+                .join(TaskAttemptRow, TaskAttemptRow.id == AttemptArtifactRow.attempt_id)
+                .join(TaskRow, TaskRow.id == TaskAttemptRow.task_id)
+                .join(WorkflowRunRow, WorkflowRunRow.id == TaskRow.run_id)
+                .where(WorkflowRunRow.project_id == project_id)
+            ).all()
+            artifact_rows.update({row.id: row for row in generated})
+            artifact_kinds: dict[str, dict[str, int]] = {}
+            for artifact in artifact_rows.values():
+                entry = artifact_kinds.setdefault(artifact.kind, {"count": 0, "size_bytes": 0})
+                entry["count"] += 1
+                entry["size_bytes"] += artifact.size_bytes
+            return {
+                "project": {"id": project.id, "slug": project.slug, "name": project.name},
+                "target": None,
+                "target_note": "No target is linked to this project in the current project model.",
+                "counts": {
+                    "compounds": int(compound_count),
+                    "workflow_runs": sum(run_counts.values()),
+                    "tasks_in_recent_runs": len(task_rows),
+                    "artifacts": len(artifact_rows),
+                    "artifact_bytes": sum(row.size_bytes for row in artifact_rows.values()),
+                },
+                "workflow_statuses": cast(JsonValue, run_counts),
+                "artifact_kinds": cast(JsonValue, artifact_kinds),
+                "scientific_results": cast(JsonValue, scientific_results[:50]),
+                "recent_runs": [
+                    {
+                        "run_id": run.id,
+                        "accession": run.accession,
+                        "status": run.status,
+                        "created_at": run.created_at.isoformat(),
+                        "tasks": [
+                            {
+                                "stage_id": task.stage_id,
+                                "state": task.state,
+                                "updated_at": (
+                                    task.updated_at.isoformat() if task.updated_at else None
+                                ),
+                            }
+                            for task in tasks_by_run.get(run.id, [])
+                        ],
+                    }
+                    for run in run_rows
+                ],
+            }
+
     @app.get("/v1/projects/{project_id}/runs")
     def list_project_runs(
         project_id: str,
@@ -901,7 +1043,7 @@ def create_app(
                         "subject_id": task.subject_id,
                         "state": task.state,
                         "version": task.version,
-                        "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+                        "updated_at": (task.updated_at.isoformat() if task.updated_at else None),
                     }
                     for task in tasks
                 ],
@@ -1036,6 +1178,131 @@ def create_app(
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return app
+
+
+def _dashboard_result_summary(result: VersionedContract) -> dict[str, JsonValue] | None:
+    """Expose typed result values without collapsing evidence into a platform score."""
+    if isinstance(result, PropertyPredictionSet):
+        return {
+            "category": "admet",
+            "result_id": result.id,
+            "identity": result.accession,
+            "method": f"{result.predictor.name} {result.predictor.version}",
+            "values": [
+                {
+                    "endpoint": item.endpoint,
+                    "value": cast(JsonValue, item.value),
+                    "unit": item.unit,
+                    "kind": item.kind.value,
+                    "model": item.model,
+                    "model_version": item.model_version,
+                    "uncertainty": item.uncertainty,
+                }
+                for item in result.predictions
+            ],
+            "warnings": [],
+        }
+    if isinstance(result, DockingResult):
+        return {
+            "category": "docking",
+            "result_id": result.run.id,
+            "identity": result.run.accession,
+            "method": f"{result.run.engine.name} {result.run.engine.version}",
+            "values": [
+                {
+                    "pose_id": pose.id,
+                    "rank": pose.rank,
+                    "score": pose.score.value,
+                    "unit": pose.score.unit,
+                    "scoring_function": pose.score.scoring_function,
+                }
+                for pose in result.poses
+            ],
+            "warnings": ["Docking scores are scoring-function outputs, not binding free energies."],
+        }
+    if isinstance(result, MDSimulation):
+        return {
+            "category": "md",
+            "result_id": result.id,
+            "identity": result.accession,
+            "method": f"{result.engine.name} {result.engine.version}",
+            "values": {
+                "total_ns": result.total_ns,
+                "successful_segments": sum(
+                    segment.status in {TaskState.SUCCEEDED, TaskState.SUCCEEDED_WITH_WARNINGS}
+                    for segment in result.segments
+                ),
+                "production_temperature_K": (
+                    result.protocol.production.temperature_K if result.protocol.production else None
+                ),
+            },
+            "warnings": [],
+        }
+    if isinstance(result, MDStageResult):
+        return {
+            "category": "md_stage",
+            "result_id": result.id,
+            "identity": f"{result.stage_kind.value} stage {result.stage_index}",
+            "method": f"{result.engine.name} {result.engine.version}",
+            "values": {"runtime_seconds": result.runtime_seconds, "parameters": result.parameters},
+            "warnings": [],
+        }
+    if isinstance(result, TrajectoryAnalysis):
+        return {
+            "category": "trajectory_analysis",
+            "result_id": result.id,
+            "identity": f"trajectory {result.trajectory_id}",
+            "method": f"{result.analyzer.name} {result.analyzer.version}",
+            "values": [
+                {
+                    "metric": metric.name,
+                    "summary": cast(JsonValue, metric.summary),
+                    "unit": metric.unit,
+                    "window_ns": list(metric.window_ns),
+                    "definition": metric.definition.model_dump(mode="json"),
+                }
+                for metric in result.metrics
+            ],
+            "warnings": [],
+        }
+    if isinstance(result, BindingEnergyResult):
+        return {
+            "category": "binding_energy",
+            "result_id": result.id,
+            "identity": result.accession,
+            "method": f"{result.method.value} via {result.tool.name} {result.tool.version}",
+            "values": {
+                "components_kcal_per_mol": cast(JsonValue, result.components_kcal_per_mol),
+                "mean_kcal_per_mol": result.statistics.mean,
+                "uncertainty": result.statistics.model_dump(mode="json"),
+                "frames": result.frames.model_dump(mode="json"),
+            },
+            "warnings": [
+                *result.warnings,
+                "Endpoint estimate; this is not an exact experimental binding free energy.",
+            ],
+        }
+    if isinstance(result, QMResult):
+        return {
+            "category": "quantum_chemistry",
+            "result_id": result.calculation_id,
+            "identity": result.calculation_id,
+            "method": "See linked QM calculation and attempt provenance",
+            "values": {
+                "total_energy_Eh": result.total_energy_Eh,
+                "scf_converged": result.convergence.scf_converged,
+                "optimization_converged": result.convergence.optimization_converged,
+                "orbitals": result.orbitals.model_dump(mode="json") if result.orbitals else None,
+                "dipole_D": result.dipole_D,
+                "missing": list(result.missing),
+            },
+            "warnings": [
+                *result.missing,
+                "QM method, basis and engine identity are recorded in linked calculation/"
+                "run provenance.",
+            ],
+        }
+    return None
 
 
 def _parse_workflow_inputs(

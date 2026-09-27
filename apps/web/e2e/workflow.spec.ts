@@ -31,12 +31,15 @@ test("project compound workflow pauses for a decision and resumes successfully",
   await page.getByPlaceholder("lowercase-project-slug").fill(slug);
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByText(`Project created: ${slug}`)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Project dashboard" })).toBeVisible();
+  await expect(page.getByText("COMPOUNDS 0", { exact: true })).toBeVisible();
   const projectId = await page.locator("select").first().inputValue();
   expect(projectId).not.toBe("");
   await page.getByPlaceholder("Compound name").fill("Ethanol");
   await page.getByPlaceholder("SMILES (example: CCO)").fill("CCO");
   await page.getByRole("button", { name: "Standardize and register" }).click();
   await expect(page.getByText("CMP0001", { exact: true })).toBeVisible();
+  await expect(page.getByText("COMPOUNDS 1", { exact: true })).toBeVisible();
   const response = await page.request.get(
     `${api}/v1/projects/${projectId}/compounds`,
     { headers: { Authorization: `Bearer ${token}` } },
@@ -117,4 +120,32 @@ test("project compound workflow pauses for a decision and resumes successfully",
   await page.getByRole("button", { name: "Inspect run provenance" }).click();
   await expect(page.getByText("Run provenance loaded")).toBeVisible();
   await expect(page.getByText("Recent project runs")).toBeVisible();
+  await page.route(`${api}/v1/projects/${projectId}/dashboard`, async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as Record<string, unknown>;
+    payload.scientific_results = [
+      {
+        schema_version: "browser_fixture/1.0",
+        task_id: ulid(),
+        source_task_id: ulid(),
+        stage_id: "fixture",
+        task_state: "succeeded",
+        subject_id: compounds[0].id,
+        created_at: new Date().toISOString(),
+        category: "browser_fixture",
+        result_id: ulid(),
+        identity: "UI payload only",
+        method: "Playwright network fixture",
+        values: { message: "not scientific evidence" },
+        warnings: ["Test fixture only; not a scientific result."],
+      },
+    ];
+    await route.fulfill({ response, json: payload });
+  });
+  await expect(page.getByText("browser fixture", { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByText("Test fixture only; not a scientific result.", { exact: true }),
+  ).toBeVisible();
 });

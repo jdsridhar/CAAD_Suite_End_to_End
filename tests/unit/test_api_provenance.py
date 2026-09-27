@@ -13,10 +13,11 @@ from sqlalchemy import select
 
 from caddsuite.api.provenance import create_app
 from caddsuite.application.handlers import StageHandlerRegistration, StageHandlerRegistry
-from caddsuite.contracts.base import ArtifactRef
+from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.evidence import Candidate
 from caddsuite.contracts.execution import AttemptArtifact, AttemptStatus
-from caddsuite.domain.enums import TaskState
+from caddsuite.contracts.properties import PredictionKind, PropertyPrediction, PropertyPredictionSet
+from caddsuite.domain.enums import LicenseClass, SoftwareKind, TaskState
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import CommandSpec
 from caddsuite.storage import migrate
@@ -31,6 +32,8 @@ from caddsuite.storage.models import (
     ProjectArtifactRow,
     ProjectRow,
     TaskAttemptRow,
+    TaskCacheRow,
+    TaskRow,
     WorkflowRunRow,
 )
 from caddsuite.storage.paths import artifacts_root, database_path
@@ -878,4 +881,164 @@ def test_project_run_history_is_scoped_and_bounded(tmp_path: Path) -> None:
         assert (
             client.get(f"/v1/projects/{project_id}/runs?limit=101", headers=headers).status_code
             == 422
+        )
+
+
+def test_project_dashboard_aggregates_only_project_records(tmp_path: Path) -> None:
+    migrate.upgrade(database_path(tmp_path))
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        project = ProjectRow(slug="dashboard-a", name="Dashboard A")
+        other = ProjectRow(slug="dashboard-b", name="Dashboard B")
+        session.add_all((project, other))
+        session.flush()
+        run = WorkflowRunRow(
+            project_id=project.id,
+            accession="RUN-DASH-001",
+            workflow_hash="c" * 64,
+            config_hash="d" * 64,
+            status="succeeded",
+        )
+        other_run = WorkflowRunRow(
+            project_id=other.id,
+            accession="RUN-DASH-OTHER",
+            workflow_hash="e" * 64,
+            config_hash="f" * 64,
+            status="failed",
+        )
+        session.add_all((run, other_run))
+        session.flush()
+        compound = CompoundRow(
+            project_id=project.id,
+            accession="CMP0001",
+            name="Ethanol",
+            inchikey="LFQSCWFLJHTTHZ-UHFFFAOYSA-N",
+            payload={"canonical_smiles": "CCO"},
+        )
+        session.add(compound)
+        session.flush()
+        admet_cache_key = hashlib.sha256(b"dashboard-admet").hexdigest()
+        dashboard_task = TaskRow(
+            run_id=run.id,
+            stage_id="admet",
+            subject_id=compound.id,
+            cache_key=admet_cache_key,
+            state="succeeded",
+        )
+        session.add(dashboard_task)
+        session.flush()
+        admet = PropertyPredictionSet(
+            id=new_ulid(),
+            accession="CMP0001_ADMET_001",
+            compound_id=compound.id,
+            predictor=SoftwareRef(
+                name="RDKit",
+                version="2025.03",
+                kind=SoftwareKind.LIBRARY,
+                license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+            ),
+            predictions=(
+                PropertyPrediction(
+                    endpoint="tpsa",
+                    kind=PredictionKind.CALCULATED_DESCRIPTOR,
+                    value=20.23,
+                    unit="A^2",
+                    definition="Topological polar surface area",
+                ),
+            ),
+        )
+        session.add(
+            TaskCacheRow(
+                cache_key=admet_cache_key,
+                schema_version=admet.schema_version,
+                payload=admet.model_dump(mode="json"),
+                source_task_id=dashboard_task.id,
+            )
+        )
+        session.add(
+            CompoundRow(
+                project_id=other.id,
+                accession="CMP0002",
+                name="Other ethanol",
+                inchikey="LFQSCWFLJHTTHZ-UHFFFAOYSA-N",
+                payload={"canonical_smiles": "CCO"},
+            )
+        )
+        session.add_all((TaskRow(run_id=other_run.id, stage_id="secret-stage", state="failed"),))
+        project_id, other_project_id = project.id, other.id
+        output = register_blob(
+            session,
+            ArtifactStore(artifacts_root(tmp_path)).put_bytes(b"dashboard artifact"),
+            kind="docking_result",
+            media_type="application/json",
+        )
+        session.add(
+            ProjectArtifactRow(
+                project_id=project_id,
+                artifact_id=output.id,
+                role="result",
+            )
+        )
+    engine.dispose()
+    app = create_app(data_root=tmp_path, token="dashboard-secret")  # noqa: S106
+    with TestClient(app) as client:
+        assert client.get(f"/v1/projects/{project_id}/dashboard").status_code == 401
+        headers = {"Authorization": "Bearer dashboard-secret"}
+        response = client.get(f"/v1/projects/{project_id}/dashboard", headers=headers)
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["project"]["id"] == project_id
+        assert payload["target"] is None
+        assert payload["counts"] == {
+            "compounds": 1,
+            "workflow_runs": 1,
+            "tasks_in_recent_runs": 1,
+            "artifacts": 1,
+            "artifact_bytes": len(b"dashboard artifact"),
+        }
+        assert payload["workflow_statuses"] == {"succeeded": 1}
+        assert payload["artifact_kinds"] == {
+            "docking_result": {"count": 1, "size_bytes": len(b"dashboard artifact")}
+        }
+        assert payload["recent_runs"][0]["tasks"][0]["stage_id"] == "admet"
+        assert payload["scientific_results"] == [
+            {
+                "schema_version": "property_prediction_set/1.0",
+                "task_id": dashboard_task.id,
+                "source_task_id": dashboard_task.id,
+                "stage_id": "admet",
+                "task_state": "succeeded",
+                "subject_id": compound.id,
+                "created_at": payload["scientific_results"][0]["created_at"],
+                "category": "admet",
+                "result_id": admet.id,
+                "identity": admet.accession,
+                "method": "RDKit 2025.03",
+                "values": [
+                    {
+                        "endpoint": "tpsa",
+                        "value": 20.23,
+                        "unit": "A^2",
+                        "kind": "calculated_descriptor",
+                        "model": None,
+                        "model_version": None,
+                        "uncertainty": None,
+                    }
+                ],
+                "warnings": [],
+            }
+        ]
+        assert (
+            client.get(f"/v1/projects/{other_project_id}/dashboard", headers=headers).json()[
+                "counts"
+            ]["compounds"]
+            == 1
+        )
+        other_dashboard = client.get(
+            f"/v1/projects/{other_project_id}/dashboard", headers=headers
+        ).json()
+        assert other_dashboard["scientific_results"] == []
+        assert (
+            client.get("/v1/projects/no-such-project/dashboard", headers=headers).status_code == 404
         )
