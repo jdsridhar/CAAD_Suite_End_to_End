@@ -16,15 +16,15 @@ from caddsuite.application.handlers import (
 )
 from caddsuite.application.project_export import ProjectExportError
 from caddsuite.application.reproducibility.package import inspect_export_replayability
+from caddsuite.application.reproducibility.run_compare import compare_exported_run_to_replay
 from caddsuite.application.reproducibility.runtime import replay_exported_run
 from caddsuite.application.reproducibility.staging import stage_replay_sources
 from caddsuite.cli.main import app
 from caddsuite.contracts.base import ArtifactRef, VersionedContract
 from caddsuite.contracts.reporting import ReportArtifact, ReportBundle
-from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.db import create_db_engine, make_session_factory
-from caddsuite.storage.models import ArtifactRow, ProjectRow, WorkflowRunRow
+from caddsuite.storage.models import ArtifactRow, ProjectRow, TaskCacheRow, WorkflowRunRow
 from caddsuite.storage.paths import database_path
 from caddsuite.workflow.capabilities import StageCapability
 from caddsuite.workflow.definition import WorkflowDefinition
@@ -429,9 +429,9 @@ class _ReplayHandler:
             row = register_blob(session, blob, kind="test_report", media_type="application/json")
             ref = ArtifactRef(artifact_id=row.id, role="test_report", sha256=row.sha256)
         return ReportBundle(
-            id=new_ulid(),
+            id="01ARZ3NDEKTSV4RRFFQ69G5FAV",
             project_id=PROJECT_ID,
-            generated_at=datetime.now(UTC),
+            generated_at=datetime(2026, 1, 1, tzinfo=UTC),
             artifacts=(ReportArtifact(format="json", media_type="application/json", artifact=ref),),
         )
 
@@ -473,6 +473,58 @@ def test_fresh_root_runtime_replay_executes_no_engine_fixture_and_records_lineag
 
     registry = StageHandlerRegistry([Plugin()])
     monkeypatch.setattr(StageHandlerRegistry, "discover", classmethod(lambda _cls: registry))
+    report_bytes = b'{"test_adapter":true}\n'
+    report_hash = hashlib.sha256(report_bytes).hexdigest()
+    source_artifact_id = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+    blob_path = package / "artifacts/sha256" / report_hash[:2] / report_hash[2:4] / report_hash
+    blob_path.parent.mkdir(parents=True, exist_ok=True)
+    blob_path.write_bytes(report_bytes)
+    metadata_path = package / "artifacts/metadata.json"
+    artifacts = json.loads(metadata_path.read_text())
+    artifacts.append(
+        {
+            "artifact_id": source_artifact_id,
+            "sha256": report_hash,
+            "kind": "test_report",
+            "media_type": "application/json",
+            "size_bytes": len(report_bytes),
+            "original_name": "report.json",
+        }
+    )
+    metadata_path.write_text(json.dumps(artifacts, sort_keys=True) + "\n")
+    result_contract = ReportBundle(
+        id="01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        project_id=PROJECT_ID,
+        generated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        artifacts=(
+            ReportArtifact(
+                format="json",
+                media_type="application/json",
+                artifact=ArtifactRef(
+                    artifact_id=source_artifact_id, role="test_report", sha256=report_hash
+                ),
+            ),
+        ),
+    )
+    (package / "results.json").write_text(
+        json.dumps(
+            [
+                {
+                    "run_id": "run-001",
+                    "task_id": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                    "stage_id": "evidence",
+                    "subject_kind": None,
+                    "subject_id": None,
+                    "cache_key": "d" * 64,
+                    "schema_version": "report_bundle/1.0",
+                    "payload": result_contract.model_dump(mode="json"),
+                }
+            ],
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    _refresh_package_manifest(package, additional_artifacts=artifacts)
     root = tmp_path / "fresh-data"
     result = replay_exported_run(package, run_id="run-001", data_root=root)
     assert result["status"] == "succeeded"
@@ -480,6 +532,82 @@ def test_fresh_root_runtime_replay_executes_no_engine_fixture_and_records_lineag
     assert result["source_run_id"] == "run-001"
     assert result["replay_run_id"] != result["source_run_id"]
     assert Path(result["fresh_data_root"]) == root
+    comparison = compare_exported_run_to_replay(
+        package,
+        source_run_id="run-001",
+        replay_data_root=root,
+        replay_run_id=result["replay_run_id"],
+    )
+    assert comparison["status"] == "exact_match"
+    assert len(comparison["items"]) == 1
+    assert comparison["items"][0]["comparison"]["artifacts"][0]["status"] == "exact_match"
+    policy_path = tmp_path / "report-policy.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "schema": "caddsuite.tolerance-policy/1",
+                "policy_id": "report-replay",
+                "version": "1.0.0",
+                "contract_schema": "report_bundle/1.0",
+                "fields": {},
+                "ignored_paths": ["/generated_at"],
+            }
+        )
+    )
+    report_path = tmp_path / "replay-comparison.json"
+    cli_result = runner.invoke(
+        app,
+        [
+            "compare",
+            str(package),
+            "--source-run-id",
+            "run-001",
+            "--replay-run-id",
+            result["replay_run_id"],
+            "--replay-data-root",
+            str(root),
+            "--policy",
+            str(policy_path),
+            "--output",
+            str(report_path),
+        ],
+    )
+    assert cli_result.exit_code == 0, cli_result.output
+    cli_report = json.loads(report_path.read_text())
+    assert cli_report["status"] == "exact_match"
+    assert cli_report["items"][0]["comparison"]["tolerance_policy"]["version"] == "1.0.0"
+    assert any(
+        field["path"] == "/generated_at" and field["status"] == "ignored"
+        for field in cli_report["items"][0]["comparison"]["normalized"]["fields"]
+    )
+    engine = create_db_engine(database_path(root))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        cached = session.query(TaskCacheRow).one()
+        altered = dict(cached.payload)
+        altered["limitations"] = ["fixture divergence"]
+        cached.payload = altered
+    engine.dispose()
+    failed_report = tmp_path / "different.json"
+    different_result = runner.invoke(
+        app,
+        [
+            "compare",
+            str(package),
+            "--source-run-id",
+            "run-001",
+            "--replay-run-id",
+            result["replay_run_id"],
+            "--replay-data-root",
+            str(root),
+            "--policy",
+            str(policy_path),
+            "--output",
+            str(failed_report),
+        ],
+    )
+    assert different_result.exit_code == 1
+    assert json.loads(failed_report.read_text())["status"] == "different"
     engine = create_db_engine(database_path(root))
     sessions = make_session_factory(engine)
     try:

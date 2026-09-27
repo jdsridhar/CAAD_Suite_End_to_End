@@ -108,6 +108,56 @@ def register_commands(app: typer.Typer) -> None:
         if result["status"] != "succeeded":
             raise typer.Exit(code=1)
 
+    @app.command("compare")
+    def compare(
+        package: Annotated[Path, typer.Argument(exists=True, file_okay=False, readable=True)],
+        source_run_id: Annotated[str, typer.Option("--source-run-id")],
+        replay_run_id: Annotated[str, typer.Option("--replay-run-id")],
+        replay_data_root: Annotated[Path, typer.Option("--replay-data-root")],
+        policy_files: Annotated[
+            list[Path] | None,
+            typer.Option("--policy", help="Versioned tolerance policy JSON; repeat per contract."),
+        ] = None,
+        output: Annotated[
+            Path | None, typer.Option("--output", help="Write report to a new JSON file.")
+        ] = None,
+    ) -> None:
+        """Compare exported normalized results with a fresh-root replay."""
+        from caddsuite.application.reproducibility.run_compare import (
+            compare_exported_run_to_replay,
+            load_tolerance_policy,
+        )
+
+        try:
+            policies = {}
+            for policy_file in policy_files or []:
+                policy = load_tolerance_policy(policy_file)
+                if policy.contract_schema in policies:
+                    _fail(f"duplicate tolerance policy for {policy.contract_schema!r}")
+                policies[policy.contract_schema] = policy
+            report = compare_exported_run_to_replay(
+                package,
+                source_run_id=source_run_id,
+                replay_data_root=replay_data_root,
+                replay_run_id=replay_run_id,
+                policies=policies,
+            )
+            serialized = json.dumps(report, indent=2, sort_keys=True) + "\n"
+            if output is None:
+                typer.echo(serialized, nl=False)
+            else:
+                destination = output.expanduser().absolute()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                with destination.open("x", encoding="utf-8") as stream:
+                    stream.write(serialized)
+                typer.echo(json.dumps({"report": str(destination), "status": report["status"]}))
+            if report["status"] == "different":
+                raise typer.Exit(code=1)
+        except typer.Exit:
+            raise
+        except Exception as exc:
+            _fail(str(exc))
+
     @api.command("serve")
     def api_serve(
         host: Annotated[

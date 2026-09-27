@@ -45,6 +45,23 @@ that an engine result matches the archived result.
 
 ## Comparison results
 
+Example policy JSON:
+
+```json
+{
+  "schema": "caddsuite.tolerance-policy/1",
+  "policy_id": "mmgbsa-replay",
+  "version": "1.0.0",
+  "contract_schema": "binding_energy/1.2",
+  "fields": {
+    "/components_kcal_per_mol/total": {"absolute": 0.1, "relative": 0.02, "unit": "kcal/mol"}
+  },
+  "ignored_paths": ["/id", "/accession"]
+}
+```
+
+Run `caddsuite compare PACKAGE --source-run-id SOURCE --replay-run-id REPLAY --replay-data-root PATH --policy POLICY.json --output COMPARISON.json`. Without a policy for a contract, numeric differences require exact equality.
+
 Comparison is contract-aware and reports each normalized result separately:
 
 - `exact_match`: normalized JSON values and referenced artifact hashes match.
@@ -58,9 +75,13 @@ Project exports now include each run's normalized cached task outputs in integri
 `results.json`, keyed to source run, task, stage, subject, cache key, and contract schema. The
 comparison API accepts a versioned `caddsuite.tolerance-policy/1` bound to one normalized
 contract schema. It returns each field result, selected artifact-role SHA-256 comparisons, and the
-complete policy definition, with no aggregate similarity score. It is not yet connected to exported-versus-replayed
-run result selection or replay reports. The future integration must retain raw and normalized old/new contracts, software and
-environment versions, seeds, artifact hashes, and per-field outcomes. Tolerances must be selected
+complete policy definition, with no aggregate similarity score. `caddsuite compare` connects exported-versus-replayed task outputs, pairs them by stage and
+subject identity plus normalized contract schema, and verifies the replay lineage points to the
+source package/run. It compares content-addressed artifact bytes and treats storage-local artifact
+IDs as content references when a SHA-256 is available. Per-contract JSON policy files can declare
+unit-labelled tolerances or explicitly ignored JSON Pointers; ignored fields remain visible in the
+report. Missing/ambiguous outputs fail the comparison. The report includes the full tolerance
+policy and both raw normalized contracts. Tolerances must be selected
 by contract/result property; one global tolerance must not be applied across energies, coordinates,
 probabilities, and categories.
 

@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-FieldStatus = Literal["exact_match", "within_tolerance", "different"]
+FieldStatus = Literal["exact_match", "within_tolerance", "different", "ignored"]
 ComparisonStatus = Literal["exact_match", "within_tolerance", "different"]
 
 
@@ -57,6 +57,7 @@ def compare_contract_values(
     reproduced: Any,
     *,
     tolerances: Mapping[str, NumericTolerance] | None = None,
+    ignored_paths: frozenset[str] = frozenset(),
 ) -> ContractComparison:
     """Compare JSON-compatible contracts without cross-field aggregation.
 
@@ -84,6 +85,9 @@ def compare_contract_values(
         before_present: bool,
         after_present: bool,
     ) -> None:
+        if path in ignored_paths:
+            add(path, "ignored", before, after, reason="excluded_by_versioned_policy")
+            return
         if not before_present or not after_present:
             add(
                 path,
@@ -178,6 +182,7 @@ class TolerancePolicy:
     version: str
     contract_schema: str
     fields: Mapping[str, NumericTolerance]
+    ignored_paths: frozenset[str] = frozenset()
     schema: str = "caddsuite.tolerance-policy/1"
 
     def __post_init__(self) -> None:
@@ -192,6 +197,10 @@ class TolerancePolicy:
                 raise ValueError(f"tolerance field must be a non-root JSON Pointer: {pointer!r}")
             if not isinstance(tolerance, NumericTolerance):
                 raise TypeError(f"tolerance for {pointer!r} must be NumericTolerance")
+        if any(not pointer.startswith("/") or pointer == "/" for pointer in self.ignored_paths):
+            raise ValueError("ignored fields must be non-root JSON Pointers")
+        if set(self.fields) & self.ignored_paths:
+            raise ValueError("a policy field cannot be both ignored and tolerance-compared")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -200,6 +209,7 @@ class TolerancePolicy:
             "version": self.version,
             "contract_schema": self.contract_schema,
             "fields": {key: asdict(value) for key, value in sorted(self.fields.items())},
+            "ignored_paths": sorted(self.ignored_paths),
         }
 
 
@@ -254,7 +264,12 @@ def compare_replay_results(
                 raise ValueError(
                     "artifact hashes require non-empty roles and lowercase SHA-256 values"
                 )
-    normalized = compare_contract_values(reference, reproduced, tolerances=policy.fields)
+    normalized = compare_contract_values(
+        _canonicalize_artifact_ids(reference),
+        _canonicalize_artifact_ids(reproduced),
+        tolerances=policy.fields,
+        ignored_paths=policy.ignored_paths,
+    )
     visited = {field.path for field in normalized.fields}
     unused = sorted(set(policy.fields) - visited)
     if unused:
@@ -285,3 +300,16 @@ def compare_replay_results(
         normalized=normalized,
         artifacts=artifacts,
     )
+
+
+def _canonicalize_artifact_ids(value: Any) -> Any:
+    """Use content identity for ArtifactRefs; storage-local IDs differ after fresh-root replay."""
+    if isinstance(value, Mapping):
+        result = {key: _canonicalize_artifact_ids(child) for key, child in value.items()}
+        digest = value.get("sha256")
+        if isinstance(value.get("artifact_id"), str) and isinstance(digest, str):
+            result["artifact_id"] = f"sha256:{digest}"
+        return result
+    if isinstance(value, list):
+        return [_canonicalize_artifact_ids(child) for child in value]
+    return value

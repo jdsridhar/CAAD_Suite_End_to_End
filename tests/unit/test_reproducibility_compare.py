@@ -92,6 +92,7 @@ def test_versioned_contract_policy_compares_normalized_values_and_artifact_hashe
         "version": "1.0.0",
         "contract_schema": "energy/1.0",
         "fields": {"/value": {"absolute": 0.02, "relative": 0.0, "unit": "kcal/mol"}},
+        "ignored_paths": [],
     }
 
 
@@ -139,3 +140,36 @@ def test_tolerance_policy_rejects_wrong_contract_and_unused_paths() -> None:
             reference_artifacts={},
             reproduced_artifacts={},
         )
+
+
+def test_replay_comparison_canonicalizes_storage_artifact_ids_and_reports_ignored_fields() -> None:
+    digest = "e" * 64
+    policy = TolerancePolicy(
+        policy_id="report.replay",
+        version="2",
+        contract_schema="report/1.0",
+        fields={},
+        ignored_paths=frozenset({"/id"}),
+    )
+    result = compare_replay_results(
+        reference_contract_schema="report/1.0",
+        reproduced_contract_schema="report/1.0",
+        reference={
+            "id": "old-result",
+            "file": {"artifact_id": "old-artifact", "role": "report", "sha256": digest},
+        },
+        reproduced={
+            "id": "new-result",
+            "file": {"artifact_id": "new-artifact", "role": "report", "sha256": digest},
+        },
+        policy=policy,
+        reference_artifacts={"/file": digest},
+        reproduced_artifacts={"/file": digest},
+    )
+    assert result.status == "exact_match"
+    ignored = next(item for item in result.normalized.fields if item.path == "/id")
+    assert ignored.status == "ignored"
+    artifact_id = next(
+        item for item in result.normalized.fields if item.path == "/file/artifact_id"
+    )
+    assert artifact_id.status == "exact_match"
