@@ -1,0 +1,11 @@
+{
+  "input_mmcif": "benchmarks/redocking/pilot_v1/structures/3ert.cif",
+  "output_mmcif": "benchmarks/redocking/pilot_v1/prepared/3ert_protein.cif",
+  "output_pdb": "benchmarks/redocking/pilot_v1/prepared/3ert_protein.pdb",
+  "selected_chain_ids": [
+    "A"
+  ],
+  "ph": 7.4,
+  "fill_internal_gaps": true,
+  "keep_water": false
+}

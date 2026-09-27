@@ -440,7 +440,8 @@ When the user says **CONTINUE**:
   - [x] Add a manifest/integrity test for the pinned raw structures and ligand graph files.
   - [x] Re-executed the production Vina handler integration locally on 5NIU/8YZ; it passed (157.90 s) with Vina `f458505-mod`, Meeko 0.7.1, PDBFixer 1.12.0, OpenMM 8.4.0; see `docs/validation/G-DOCK-5.md`.
   - [x] Implement CCD graph/name/element validated native ligand coordinate mapping for 3ERT/OHT and 1M17/AQ4; coordinate-bearing SDFs generated and covered by focused tests. See `benchmarks/redocking/native_ligand.py` and `docs/validation/G-DOCK-6.md`.
-  - [ ] Prepare receptors consistently and execute the fixed Vina protocol across all three cases; retain fresh per-pose diagnostics for 5NIU. No docking outcomes are claimed for the new cases.
+  - [x] Prepare 3ERT and 1M17 author chain A with the production PDBFixer worker (pH 7.4, no waters, fill internal gaps); retain request/response and mmCIF/PDB outputs with hashes. Record unresolved termini and the modeled 1M17 internal gap in `docs/validation/G-DOCK-7.md`.
+  - [ ] Execute the fixed Vina protocol across all three cases; retain fresh per-pose diagnostics for 5NIU. No docking outcomes are claimed for the new cases.
   - **Current limit:** existing 5NIU/8YZ top-pose RMSD 12.3928 Å misses the <2.0 Å criterion; two added pilot cases have no outcomes yet.
 - [ ] 16.2 Performance benchmarks (throughput vs resource settings)
 - [ ] 16.3 Research framing (only if a genuine gap is found in 1.8): question, hypothesis, datasets, baselines, metrics, statistics, limitations
