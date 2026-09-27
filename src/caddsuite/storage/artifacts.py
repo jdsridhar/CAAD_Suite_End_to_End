@@ -128,9 +128,12 @@ class ArtifactStore:
     def verify(self, sha256: str) -> bool:
         """Re-hash a stored blob; True if it still matches its address."""
         digest = hashlib.sha256()
-        with self.open(sha256) as stream:
-            while chunk := stream.read(CHUNK_BYTES):
-                digest.update(chunk)
+        try:
+            with self.open(sha256) as stream:
+                while chunk := stream.read(CHUNK_BYTES):
+                    digest.update(chunk)
+        except FileNotFoundError:
+            return False
         return digest.hexdigest() == sha256
 
     def iter_hashes(self) -> Iterator[str]:

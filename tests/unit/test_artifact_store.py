@@ -53,6 +53,10 @@ def test_verify_detects_corruption(store: ArtifactStore) -> None:
     assert not store.verify(blob.sha256)
 
 
+def test_verify_returns_false_for_missing_content_address(store: ArtifactStore) -> None:
+    assert not store.verify("f" * 64)
+
+
 @pytest.mark.parametrize("bad", ["../../etc/passwd", "ABCDEF" + "0" * 58, "abc", ""])
 def test_path_for_rejects_non_digests(store: ArtifactStore, bad: str) -> None:
     with pytest.raises(ValueError, match="sha256"):

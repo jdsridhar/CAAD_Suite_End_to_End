@@ -31,20 +31,30 @@ points are kept separate because they run in foreign scientific environments and
 require installed engines. They remain part of the test plan and are not silently removed from
 the report.
 
+## Progress snapshot (2026-09-27)
+
+After the baseline, added deterministic tests for MDAnalysis request planning/result normalization,
+PDBFixer handler identity and preflight failures, Amber builder input staging/failure reporting,
+and missing CAS content. The full suite now reports 567 passed and 33 skipped. Current grouped
+statement coverage is core 86.67% (7,344/8,474), adapters 67.25% (3,581/5,325), and isolated
+workers 32.99% (1,187/3,598). The adapter group has improved by 3.49 percentage points but is
+still 2.75 points below its target. Analysis is now 76.23%, structure preparation 63.64%, and
+system builders 63.65%; docking remains the largest low-coverage family at 44.82%.
+
 ## Adapter coverage by family
 
 | Adapter family | Coverage |
 |---|---:|
 | ADMET | 93.9% |
-| Analysis | 61.9% |
+| Analysis | 76.2% |
 | Binding energy | 81.3% |
 | Docking | 44.8% |
 | Interactions | 82.4% |
 | MD | 84.5% |
 | QM | 69.1% |
-| Structure preparation | 43.6% |
+| Structure preparation | 63.6% |
 | Structure sources | 64.6% |
-| System builders | 58.3% |
+| System builders | 63.7% |
 | Visualization | 50.9% |
 
 The aggregate adapter target is not met. Low coverage clusters around external-process handlers,
