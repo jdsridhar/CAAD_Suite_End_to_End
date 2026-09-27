@@ -426,7 +426,8 @@ When the user says **CONTINUE**:
   - [x] Export each run's cached normalized task outputs in integrity-manifested `results.json` so comparison inputs survive project export.
   - [x] Add a versioned `caddsuite.tolerance-policy/1` with exact contract schema and JSON Pointer numeric fields; compare normalized contracts and selected artifact-role SHA-256 values. Reports include full policy definition and field/artifact outcomes; no cross-unit aggregate score.
   - [x] Connect exported and fresh-root replay task results by stage/subject/contract; verify replay lineage and artifact bytes, canonicalize storage-local ArtifactRef IDs by SHA-256, load per-contract versioned policy JSON, and emit machine-readable `caddsuite compare` reports with raw contracts and per-field/artifact outcomes. Exit nonzero on differences. Engine-free exported→replay→compare integration passes.
-  - [ ] Validate comparison/replay against a representative real-engine run export; current end-to-end adapter fixture performs no scientific calculation.
+  - [x] Verify local engine environment availability: GROMACS 2026.3 and Psi4 1.11 are installed; the real Psi4 application→worker runtime integration passed (ethanol B3LYP/6-31G* single point).
+  - [ ] Validate comparison/replay against a representative real-engine run export; current end-to-end adapter fixture performs no scientific calculation. Local platform DB inspected on 2026-09-27 contains no prior workflow runs, so no eligible archived run export was available. The Psi4 runtime check above is not a CLI export/replay test.
   - [ ] Complete a fresh-environment CLI export → installed-engine replay → compare integration gate using a representative real run export; current end-to-end replay uses a no-engine test plugin and is not scientific engine validation.
 - [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)
 - [ ] 15.4 **Gate:** export → fresh env → re-run → equal within tolerances

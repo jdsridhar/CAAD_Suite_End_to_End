@@ -39,9 +39,10 @@ with captured workflow and input files only when
 all enabled stages are registered and their engine probes report ready. It requires a new or empty
 root, restores project and compound identity snapshots, invokes the ordinary contract input loader
 and local runtime, and stores source run/manifest lineage as a project-linked artifact. The replay
-uses the archived workflow and inputs; output comparison and representative real-engine replay
-validation remain outstanding. A successful replay is computational execution evidence, not proof
-that an engine result matches the archived result.
+uses the archived workflow and inputs; comparison is available through `caddsuite compare`. The
+full export-to-replay comparison path has engine-free integration coverage; a representative
+installed-engine export-to-replay validation is still outstanding. A successful replay is
+computational execution evidence, not proof that an engine result matches the archived result.
 
 ## Comparison results
 

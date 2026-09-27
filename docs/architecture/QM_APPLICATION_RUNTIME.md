@@ -10,7 +10,7 @@ The local runtime attaches a `TaskAttempt` to each actual execution. It records 
 
 ## Current boundary
 
-This provider supports one QM calculation per stage invocation. The CLI still needs a normalized-contract input format and `run` command wiring. The example docking workflows still lack all inputs required to jump straight to QM, and a scientifically valid docking-to-QM flow needs explicit pose selection and geometry preparation stages.
+This provider supports one QM calculation per stage invocation. The `caddsuite run` CLI accepts normalized-contract input manifests and executes supported workflows through the application runtime. Existing example docking workflows do not declare the inputs required to jump straight to QM; a scientifically valid docking-to-QM flow still needs explicit pose selection and geometry preparation stages. The Psi4 application integration test has been run successfully with the installed Psi4 1.11 worker environment. That runtime check does not exercise project export, fresh-root replay, or comparison.
 
 ## Learning notes
 
