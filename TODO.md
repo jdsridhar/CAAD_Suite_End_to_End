@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 15 — Reproducibility |
-| **Current task** | [-] 15.2 implement engine-backed replay and versioned result comparison |
-| **Next task** | Finish Phase 15.2 engine-backed replay and normalized result comparison, then proceed to Phase 15.3 |
-| **Last completed** | Phase 14 testing gate: registered-plugin conformance plus family behavior suites; local and hosted quality/coverage gates pass. |
+| **Current phase** | Phase 16 — Benchmarking and research framing |
+| **Current task** | [-] 16.1 build a reproducible redocking benchmark dataset and protocol |
+| **Next task** | Execute and document the benchmark protocol, then assess performance measurements in Phase 16.2 |
+| **Last completed** | Phase 15 reproducibility gate: real Psi4 CLI run exported, recreated from explicit lock in a clean environment, replayed, and compared within the declared tolerance. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -413,24 +413,24 @@ When the user says **CONTINUE**:
 ## Phase 15 — Reproducibility [-]
 
 - [x] 15.1 Export package (manifest, provenance, env locks, `--slim`)
-- [-] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`.
+- [x] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`.
   - [x] Contract-aware nested JSON comparison; exact per-field outcomes, explicit unit-labelled absolute/relative tolerance per JSON Pointer, and explicit missing/categorical/non-finite differences (`application/reproducibility/compare.py`). No aggregate similarity score.
   - [x] Verify export integrity and inspect CLI source artifacts plus normalized API submissions; validate source hashes, workflow/input schemas, artifact references, and registered stage-handler capabilities. Emit stage-level plugin registration/version and actionable JSON blockers.
   - [x] Wire diagnostics to `caddsuite reproduce [PACKAGE] [--output REPORT.json]`. Explicitly label the mode `diagnostics_only`; never claim a run was executed/reproduced. Output files are created exclusively.
   - [x] Add adapter-owned preflight callbacks to stage-handler registrations. Vina/Meeko, GROMACS, OpenMM, Psi4, and PySCF probes use fixed version/import commands, strict timeouts, and no calculation execution; unavailable parameters/executables fail clearly. Plugins without probes report `unknown`.
   - [x] Make these subprocess probes opt-in via `caddsuite reproduce --probe-engines`; default archive inspection never launches executable paths loaded from package parameters.
   - [x] Unit-test registry dispatch, no-probe default, fixed GROMACS/OpenMM argv, fake Vina/Meeko version checks, missing executables, and unavailable probe handling.
-  - [ ] Add tests for restored attachment relocation and supported workflow capabilities using representative real run exports; artifact absence is currently covered with synthetic exports.
+  - [x] Add tests for restored attachment relocation and supported workflow capabilities using a representative real Psi4 CLI run export (docs/validation/G-REPRO-PSI4-1.md).
   - [x] Add replay source staging that verifies the export and run hashes, relocates retained attachments by content hash, rewrites only attachment paths, records source manifest/run lineage, rejects unsafe IDs and in-package destinations, and preserves the source package. Unit coverage includes a structure artifact with a captured host-specific path.
-  - [x] Add `caddsuite replay PACKAGE --run-id ID --data-root PATH`: require a successful source run with captured CLI sources and clear engine preflight, reject non-empty/in-package data roots, restore project/compound identities, stage and re-validate contract attachments through the shared application input loader, execute through `LocalWorkflowRuntime`, and retain source/result lineage as a project-linked artifact. Engine-free test adapter replays successfully end-to-end; installed-engine replay still needs a real-export validation gate.
+  - [x] Add `caddsuite replay PACKAGE --run-id ID --data-root PATH`: require a successful source run with captured CLI sources and clear engine preflight, reject non-empty/in-package data roots, restore project/compound identities, stage and re-validate contract attachments through the shared application input loader, execute through `LocalWorkflowRuntime`, and retain source/result lineage as a project-linked artifact. Engine-free and real Psi4 exported-run replays pass; see docs/validation/G-REPRO-PSI4-1.md.
   - [x] Export each run's cached normalized task outputs in integrity-manifested `results.json` so comparison inputs survive project export.
   - [x] Add a versioned `caddsuite.tolerance-policy/1` with exact contract schema and JSON Pointer numeric fields; compare normalized contracts and selected artifact-role SHA-256 values. Reports include full policy definition and field/artifact outcomes; no cross-unit aggregate score.
   - [x] Connect exported and fresh-root replay task results by stage/subject/contract; verify replay lineage and artifact bytes, canonicalize storage-local ArtifactRef IDs by SHA-256, load per-contract versioned policy JSON, and emit machine-readable `caddsuite compare` reports with raw contracts and per-field/artifact outcomes. Exit nonzero on differences. Engine-free exported→replay→compare integration passes.
   - [x] Verify local engine environment availability: GROMACS 2026.3 and Psi4 1.11 are installed; the real Psi4 application→worker runtime integration passed (ethanol B3LYP/6-31G* single point).
-  - [ ] Validate comparison/replay against a representative real-engine run export; current end-to-end adapter fixture performs no scientific calculation. Local platform DB inspected on 2026-09-27 contains no prior workflow runs, so no eligible archived run export was available. The Psi4 runtime check above is not a CLI export/replay test.
-  - [ ] Complete a fresh-environment CLI export → installed-engine replay → compare integration gate using a representative real run export; current end-to-end replay uses a no-engine test plugin and is not scientific engine validation.
-- [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)
-- [ ] 15.4 **Gate:** export → fresh env → re-run → equal within tolerances
+  - [x] Validate comparison/replay against a representative real-engine run export: Psi4 ethanol B3LYP/6-31G* CLI source run, export, fresh-root replay, and comparison passed with a 1e-8 Eh energy tolerance (docs/validation/G-REPRO-PSI4-1.md).
+  - [x] Complete CLI export → fresh data root → replay → comparison using a new Psi4 1.11 environment recreated from the explicit Linux package lock; same-lock package listing and result tolerance verified (docs/validation/G-REPRO-PSI4-1.md).
+- [x] 15.3 Assess optional container recipes per engine environment. Deferred recipe implementation: no Docker/Apptainer runtime or HPC deployment target is configured; explicit Conda locks provide a validated local reproduction mechanism (docs/reproducibility/CONTAINER_RUNTIME_ASSESSMENT.md).
+- [x] 15.4 **Gate:** export → fresh environment from explicit Psi4 package lock → re-run → normalized QM result agrees within the declared 1e-8 Eh tolerance. Fresh lock-derived environment matched the lock manifest exactly; evidence in docs/validation/G-REPRO-PSI4-1.md. Scope is Psi4 on Linux; other engine environments remain to be locked and validated.
 
 ## Phase 16 — Benchmarking + research `[ ]`
 

@@ -150,14 +150,29 @@ def register_blob(
     media_type: str,
     original_name: str | None = None,
     producer_attempt_id: str | None = None,
+    artifact_id: str | None = None,
 ) -> ArtifactRow:
     """Record a stored blob in the database (idempotent on its sha256)."""
+    if artifact_id is not None:
+        requested = session.get(ArtifactRow, artifact_id)
+        if requested is not None:
+            if requested.sha256 != blob.sha256 or requested.size_bytes != blob.size_bytes:
+                raise ArtifactIntegrityError(
+                    f"artifact ID {artifact_id!r} is already registered for different bytes"
+                )
+            return requested
     existing = session.scalar(select(ArtifactRow).where(ArtifactRow.sha256 == blob.sha256))
     if existing is not None:
         if existing.size_bytes != blob.size_bytes:
             raise ArtifactIntegrityError(f"size mismatch for already-registered {blob.sha256}")
+        if artifact_id is not None and existing.id != artifact_id:
+            raise ArtifactIntegrityError(
+                f"content {blob.sha256} is already registered as {existing.id!r}, "
+                f"not requested artifact ID {artifact_id!r}"
+            )
         return existing
     row = ArtifactRow(
+        id=artifact_id,
         sha256=blob.sha256,
         size_bytes=blob.size_bytes,
         media_type=media_type,

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from caddsuite.contracts.base import ArtifactRef, VersionedContract, load_contract
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
+from caddsuite.storage.models import ProjectArtifactRow
 
 
 def load_workflow_inputs(
@@ -20,6 +21,7 @@ def load_workflow_inputs(
     sessions: sessionmaker[Session],
     artifacts: ArtifactStore,
     manifest_bytes: bytes | None = None,
+    project_id: str | None = None,
 ) -> dict[str, VersionedContract | tuple[VersionedContract, ...]]:
     """Deserialize declared contracts and ingest each referenced artifact file.
 
@@ -72,7 +74,20 @@ def load_workflow_inputs(
                         kind="workflow_input",
                         media_type="application/octet-stream",
                         original_name=paths[key].name,
+                        artifact_id=key,
                     )
+                    if project_id is not None:
+                        link = session.get(
+                            ProjectArtifactRow, (project_id, row.id, "workflow_input")
+                        )
+                        if link is None:
+                            session.add(
+                                ProjectArtifactRow(
+                                    project_id=project_id,
+                                    artifact_id=row.id,
+                                    role="workflow_input",
+                                )
+                            )
                 ingested[key] = ArtifactRef(artifact_id=row.id, role=value.role, sha256=row.sha256)
             return ingested[key]
         if isinstance(value, BaseModel):

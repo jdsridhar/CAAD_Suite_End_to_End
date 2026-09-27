@@ -39,9 +39,7 @@ with captured workflow and input files only when
 all enabled stages are registered and their engine probes report ready. It requires a new or empty
 root, restores project and compound identity snapshots, invokes the ordinary contract input loader
 and local runtime, and stores source run/manifest lineage as a project-linked artifact. The replay
-uses the archived workflow and inputs; comparison is available through `caddsuite compare`. The
-full export-to-replay comparison path has engine-free integration coverage; a representative
-installed-engine export-to-replay validation is still outstanding. A successful replay is
+uses the archived workflow and inputs; comparison is available through caddsuite compare. CLI input ingestion preserves submitted attachment identity in the content-addressed store and links the input artifact to its project, so exported inputs resolve their structure bytes during preflight and replay. Identity collisions against different bytes fail explicitly. The full export-to-replay comparison path has engine-free and real Psi4 integration coverage; the real engine gate is recorded in docs/validation/G-REPRO-PSI4-1.md. The tested replay uses a fresh data root and the same installed engine environment, not a reconstructed environment. A successful replay is
 computational execution evidence, not proof that an engine result matches the archived result.
 
 ## Comparison results

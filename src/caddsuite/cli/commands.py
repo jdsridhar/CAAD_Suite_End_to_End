@@ -402,6 +402,7 @@ def register_commands(app: typer.Typer) -> None:
                     sessions=runtime.sessions,
                     artifacts=runtime.services.artifacts,
                     manifest_bytes=input_bytes,
+                    project_id=project_id,
                 )
 
                 def digest(payload: bytes) -> str:

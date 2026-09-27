@@ -95,6 +95,7 @@ def replay_exported_run(package: Path, *, run_id: str, data_root: Path) -> dict[
             sessions=runtime.sessions,
             artifacts=runtime.services.artifacts,
             manifest_bytes=input_bytes,
+            project_id=project_data["id"],
         )
         with runtime.sessions.begin() as session:
             capture_cli_run_sources(
