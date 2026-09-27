@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 16 — Benchmarking and research framing |
-| **Current task** | [-] 16.1 build a reproducible redocking benchmark dataset and protocol |
-| **Next task** | Execute and document the benchmark protocol, then assess performance measurements in Phase 16.2 |
+| **Current task** | [-] 16.1 build and execute a reproducible redocking benchmark dataset and protocol |
+| **Next task** | Complete native coordinate mapping and standardized Vina runs for 3ERT/OHT and 1M17/AQ4; then assess measurements in Phase 16.2 |
 | **Last completed** | Phase 15 reproducibility gate: real Psi4 CLI run exported, recreated from explicit lock in a clean environment, replayed, and compared within the declared tolerance. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -438,7 +438,9 @@ When the user says **CONTINUE**:
   - [x] Curate a pinned three-complex pilot from CC0 RCSB X-ray structures: 5NIU/8YZ, 3ERT/OHT, and 1M17/AQ4. Record receptor chain, ligand author/label chain and residue, resolution, source path, and SHA-256 in benchmarks/redocking/pilot_v1/manifest.json.
   - [x] Predeclare site-restricted redocking preparation, fixed Vina settings, symmetry-corrected no-fit RMSD, top-rank <2.0 angstrom success criterion, per-case reporting, and limitations in docs/validation/REDOCKING_PILOT_V1.md. Preserve the known 5NIU miss as a failed baseline.
   - [x] Add a manifest/integrity test for the pinned raw structures and ligand graph files.
-  - [ ] Implement and execute the same native-coordinate mapping, receptor preparation, and Vina protocol across all three cases; no outcomes are claimed for the new cases.
+  - [x] Re-executed the production Vina handler integration locally on 5NIU/8YZ; it passed (157.90 s) with Vina `f458505-mod`, Meeko 0.7.1, PDBFixer 1.12.0, OpenMM 8.4.0; see `docs/validation/G-DOCK-5.md`.
+  - [ ] Implement and execute the same native-coordinate mapping, receptor preparation, and Vina protocol across all three cases; collect fresh per-pose diagnostics for 5NIU. No outcomes are claimed for the new cases.
+  - **Current limit:** existing 5NIU/8YZ top-pose RMSD 12.3928 Å misses the <2.0 Å criterion; two added pilot cases have no outcomes yet.
 - [ ] 16.2 Performance benchmarks (throughput vs resource settings)
 - [ ] 16.3 Research framing (only if a genuine gap is found in 1.8): question, hypothesis, datasets, baselines, metrics, statistics, limitations
 

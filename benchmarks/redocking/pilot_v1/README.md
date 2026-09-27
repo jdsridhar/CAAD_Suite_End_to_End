@@ -13,7 +13,7 @@ The two added mmCIF files and CCD ideal SDF files were retrieved from the offici
 - Primary metric: symmetry-corrected heavy-atom RMSD without fitting for the top-scored pose. Report per-case success at <2.0 angstrom and the fraction of cases passing. Also report best-of-nine RMSD as a secondary diagnostic, never as the primary pass criterion.
 - Preserve preparation and docking logs, parameters, raw poses, normalized results, and hashes. A failed case remains in the denominator. Do not call a Vina score experimental binding free energy.
 
-The dataset is currently curated input data only. Native-coordinate atom mapping, consistent receptor preparation, and engine runs for all cases remain pending. The existing 5NIU miss (top pose 12.3928 angstrom) remains a failed baseline and will not be replaced or hidden.
+The pilot inputs are curated and hash-pinned. The existing 5NIU/8YZ adapter run was rerun locally through the production Vina handler, including receptor preparation and pose registration. Its earlier measured top-pose RMSD of 12.3928 angstrom remains a failed baseline and will not be replaced or hidden. The two newly added cases, 3ERT/OHT and 1M17/AQ4, still require native-coordinate mapping, receptor preparation, and engine runs under this fixed protocol; no outcomes are claimed for them yet. See docs/validation/G-DOCK-5.md for execution evidence and remaining limits.
 
 ## Sources
 
