@@ -594,3 +594,5 @@ When the user says **CONTINUE**:
 
 - [x] Phase 14.2 hosted CI gate verified on commit cc77389: Ruff, format, strict mypy (176 files), import contracts (4 kept), schema check, 590 tests, and core coverage 86.67% passed. Headless PyVista rendering runs under Xvfb with Mesa software rendering.
 - [-] Phase 14.4 added Hypothesis properties for numeric comparator and boolean logic equivalence in workflow gates; focused property tests and the full suite pass. A generated-input property also checks DLG score parsing; full-suite validation passes.
+
+- [x] CI recheck on commit 2d10f66 passed after Amber preflight and property tests: complete suite, headless PyVista render, and core coverage gate all succeeded. GitHub Actions run 36307190267 is green.
