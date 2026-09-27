@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 15 — Reproducibility |
-| **Current task** | [-] 15.1 implement and validate the reproducibility export package |
-| **Next task** | Add caddsuite reproduce and environment lock/container support after export contract is stable |
+| **Current task** | [-] 15.2 implement package replayability diagnostics and result comparison |
+| **Next task** | Extend reproduce to engine-backed execution and finish the Phase 15.4 fresh-environment gate |
 | **Last completed** | Phase 14 testing gate: registered-plugin conformance plus family behavior suites; local and hosted quality/coverage gates pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -410,10 +410,10 @@ When the user says **CONTINUE**:
 - [x] 14.3 Adapter conformance: registry-wide discovery checks cover all installed stage-handler and QM-engine entry points; the family test map in docs/testing/ADAPTER_CONFORMANCE.md identifies behavior tests for each implemented adapter family. Distinct contracts remain family-specific; no false universal execution protocol is imposed. Full local suite and hosted CI run 36309633349 on bf1c8cc pass.
 - [x] 14.4 Hypothesis properties compare numeric and boolean workflow gate results against Python, generated AutoDock4 DLG scores against parser output, and Amber protein preflight inputs.
 
-## Phase 15 — Reproducibility `[ ]`
+## Phase 15 — Reproducibility [-]
 
-- [ ] 15.1 Export package (manifest, provenance, env locks, `--slim`)
-- [ ] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps
+- [x] 15.1 Export package (manifest, provenance, env locks, `--slim`)
+- [-] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`. Next implement package preflight/replayability diagnostics and contract-aware per-field comparison; no global cross-unit threshold.
 - [ ] 15.3 Optional container recipes per engine env (Apptainer/Docker)
 - [ ] 15.4 **Gate:** export → fresh env → re-run → equal within tolerances
 
@@ -602,4 +602,4 @@ When the user says **CONTINUE**:
 - [x] Phase 14.2 CI enforces both measured floors; hosted run 36308984353 on 872238e succeeded with headless PyVista and the adapter coverage threshold enabled.
 
 - [x] Phase 14.3 completed: plugin registry discovery/capability assertions plus documented family-specific plan/normalization test map; 632 passed, 33 skipped locally, core 86.68%, adapters 70.95%; hosted run 36309633349 is green. Sci validation of physics/chemistry remains tracked in Phases 16–17.
-- [-] 15.1 Export package: `caddsuite project export PROJECT_ID --output PATH [--slim]` now writes an atomic project-scoped directory with compounds/forms, API submissions, exact CLI workflow/input source files, provenance, CAS artifact payloads/metadata, environment locks, and omitted-trajectory hashes. `verify_export_package` validates the checksum sidecar, path safety, exact inventory, sizes, and hashes before publication. Five exporter tests pass. Full quality gate: 638 passed, 33 skipped; core coverage 86.72% (7,560/8,718), adapters 70.95% (3,778/5,325), workers 32.99%. Local phase gate is complete; awaiting hosted CI.
+- [x] 15.1 Export package gate: project-scoped full/slim package includes compounds/forms, API submissions, exact CLI source inputs, provenance, CAS artifacts, environment locks, and hash-verified omissions. `verify_export_package` checks checksum, path safety, inventory, sizes and hashes before publication. Five exporter tests pass; local suite 638 passed/33 skipped, core 86.72%, adapters 70.95%; hosted run 36313325313 passed on `898b66d`.
