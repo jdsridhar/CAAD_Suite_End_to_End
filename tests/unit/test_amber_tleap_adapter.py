@@ -243,3 +243,25 @@ def test_input_paths_are_confined_to_stage_directory(tmp_path: Path) -> None:
     )
     issues = _adapter(tmp_path).validate_input(context)
     assert issues[0].code == "AMBER_BUILD.UNSAFE_PATH"
+
+
+@pytest.mark.parametrize(
+    ("protein_text", "expected_code"),
+    [
+        ("ATOM  1\n", "AMBER_BUILD.PROTEIN_FORMAT"),
+        (
+            (_pdb_atom(1, "CA") + _pdb_atom(2, "CA").replace("ATOM  ", "HETATM", 1)),
+            "AMBER_BUILD.NONPROTEIN_COMPONENT",
+        ),
+        (_pdb_atom(1, "CA")[:16] + "A" + _pdb_atom(1, "CA")[17:], "AMBER_BUILD.ALTLOC_UNRESOLVED"),
+        (_pdb_atom(1, "CA", residue="MSE"), "AMBER_BUILD.NONSTANDARD_RESIDUE"),
+        (_pdb_atom(1, "CA", x=float("nan")), "AMBER_BUILD.PROTEIN_FORMAT"),
+    ],
+)
+def test_amber_protein_preflight_reports_unsafe_or_unsupported_pdb(
+    tmp_path: Path, protein_text: str, expected_code: str
+) -> None:
+    context, *_ = _inputs(tmp_path, protein_text=protein_text)
+    issues = _adapter(tmp_path).validate_input(context)
+    assert issues
+    assert issues[0].code == expected_code
