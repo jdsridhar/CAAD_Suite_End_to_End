@@ -125,7 +125,7 @@ class TrajectorySegmentInput(ContractModel):
 class TrajectoryProcessingRequest(VersionedContract):
     """Explicit, engine-neutral request for joining and transforming MD trajectories."""
 
-    schema_version: str = "trajectory_processing_request/1.0"
+    schema_version: str = "trajectory_processing_request/1.1"
 
     id: ULIDStr
     simulation_id: ULIDStr
@@ -183,7 +183,7 @@ class TrajectoryProcessingRequest(VersionedContract):
 class TrajectoryProcessingResult(VersionedContract):
     """Normalized processing output with raw/derived artifacts and frame metadata."""
 
-    schema_version: str = "trajectory_processing_result/1.0"
+    schema_version: str = "trajectory_processing_result/1.1"
 
     id: ULIDStr
     request_id: ULIDStr
@@ -246,7 +246,7 @@ class TrajectoryMetric(StrEnum):
 class TrajectoryAnalysisRequest(VersionedContract):
     """Selection- and lineage-explicit request for coordinate-based MD analysis."""
 
-    schema_version: str = "trajectory_analysis_request/1.1"
+    schema_version: str = "trajectory_analysis_request/1.2"
 
     id: ULIDStr
     simulation_id: ULIDStr
@@ -342,7 +342,7 @@ class TrajectoryAnalysisRequest(VersionedContract):
 
 class TrajectoryAnalysisPlan(VersionedContract):
     # User-selected metrics bind to actual artifact identities after processing completes.
-    schema_version: str = "trajectory_analysis_plan/1.0"
+    schema_version: str = "trajectory_analysis_plan/1.1"
 
     id: ULIDStr
     simulation_id: ULIDStr
@@ -434,7 +434,7 @@ class TrajectoryAnalysisPlan(VersionedContract):
 class TrajectoryAnalysisResult(VersionedContract):
     """Normalized metric artifacts linked to their simulation and preprocessing result."""
 
-    schema_version: str = "trajectory_analysis_result/1.1"
+    schema_version: str = "trajectory_analysis_result/1.2"
 
     id: ULIDStr
     request_id: ULIDStr
@@ -639,7 +639,7 @@ class BindingEnergyRequest(VersionedContract):
 class BindingEnergyResult(VersionedContract):
     """End-point binding-energy estimate. Never an experimental ΔG (requirements §17)."""
 
-    schema_version: str = "binding_energy/1.2"
+    schema_version: str = "binding_energy/1.3"
 
     id: ULIDStr
     accession: BindingEnergyAccession

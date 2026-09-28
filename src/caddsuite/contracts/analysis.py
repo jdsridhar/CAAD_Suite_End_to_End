@@ -127,10 +127,12 @@ class TrajectorySegmentInput(ContractModel):
 class TrajectoryProcessingRequest(VersionedContract):
     """Explicit, engine-neutral request for joining and transforming MD trajectories."""
 
-    schema_version: str = "trajectory_processing_request/1.0"
+    schema_version: str = "trajectory_processing_request/1.1"
 
     id: ULIDStr
     simulation_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     topology: ArtifactRef
     topology_format: NonEmptyStr
     topology_has_connectivity: bool
@@ -143,6 +145,8 @@ class TrajectoryProcessingRequest(VersionedContract):
 
     @model_validator(mode="after")
     def _compatible_inputs(self) -> TrajectoryProcessingRequest:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("trajectory request compound_id and form_id must be provided together")
         if self.topology.sha256 is None:
             raise ValueError("trajectory topology must include a SHA-256 hash")
         if len({segment.artifact.artifact_id for segment in self.segments}) != len(self.segments):
@@ -185,11 +189,13 @@ class TrajectoryProcessingRequest(VersionedContract):
 class TrajectoryProcessingResult(VersionedContract):
     """Normalized processing output with raw/derived artifacts and frame metadata."""
 
-    schema_version: str = "trajectory_processing_result/1.0"
+    schema_version: str = "trajectory_processing_result/1.1"
 
     id: ULIDStr
     request_id: ULIDStr
     simulation_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     processor: SoftwareRef
     adapter_id: NonEmptyStr
     adapter_version: NonEmptyStr
@@ -209,6 +215,8 @@ class TrajectoryProcessingResult(VersionedContract):
 
     @model_validator(mode="after")
     def _hashed_artifacts_and_times(self) -> TrajectoryProcessingResult:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("processing result compound_id and form_id must be provided together")
         artifacts = (
             *self.source_artifacts.values(),
             *self.output_artifacts.values(),
@@ -248,10 +256,12 @@ class TrajectoryMetric(StrEnum):
 class TrajectoryAnalysisRequest(VersionedContract):
     """Selection- and lineage-explicit request for coordinate-based MD analysis."""
 
-    schema_version: str = "trajectory_analysis_request/1.1"
+    schema_version: str = "trajectory_analysis_request/1.2"
 
     id: ULIDStr
     simulation_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     trajectory_id: ULIDStr
     preprocessing_result_id: ULIDStr
     trajectory: ArtifactRef
@@ -276,6 +286,8 @@ class TrajectoryAnalysisRequest(VersionedContract):
 
     @model_validator(mode="after")
     def _validate_selections_and_window(self) -> TrajectoryAnalysisRequest:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("analysis request compound_id and form_id must be provided together")
         if (
             self.trajectory.sha256 is None
             or self.topology.sha256 is None
@@ -344,11 +356,13 @@ class TrajectoryAnalysisRequest(VersionedContract):
 
 class TrajectoryAnalysisPlan(VersionedContract):
     # User-selected metrics bind to actual artifact identities after processing completes.
-    schema_version: str = "trajectory_analysis_plan/1.0"
+    schema_version: str = "trajectory_analysis_plan/1.1"
 
     id: ULIDStr
     simulation_id: ULIDStr
     trajectory_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     selections: dict[str, AtomSelection] = Field(min_length=1)
     pose_fit_selection: AtomSelection | None = None
     rmsd_weighting: Literal["uniform", "mass"] = "uniform"
@@ -361,6 +375,8 @@ class TrajectoryAnalysisPlan(VersionedContract):
 
     @model_validator(mode="after")
     def _validate_plan(self) -> TrajectoryAnalysisPlan:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("analysis plan compound_id and form_id must be provided together")
         if len(set(self.metrics)) != len(self.metrics):
             raise ValueError("trajectory plan metrics must not repeat")
         if any(not selection.verified for selection in self.selections.values()):
@@ -398,6 +414,14 @@ class TrajectoryAnalysisPlan(VersionedContract):
         # Resolve the generated artifact references only after processing is complete.
         if preprocessing.simulation_id != self.simulation_id:
             raise ValueError("analysis plan and processing result identify different simulations")
+        if self.compound_id is not None and preprocessing.compound_id != self.compound_id:
+            raise ValueError("analysis plan compound_id differs from processed simulation identity")
+        if self.form_id is not None and preprocessing.form_id != self.form_id:
+            raise ValueError("analysis plan form_id differs from processed simulation identity")
+        compound_id = self.compound_id or preprocessing.compound_id
+        form_id = self.form_id or preprocessing.form_id
+        if (compound_id is None) != (form_id is None):
+            raise ValueError("analysis requires compound_id and form_id together")
         trajectory = preprocessing.output_artifacts.get("processed")
         if trajectory is None or preprocessing.reference_structure is None:
             raise ValueError("processing result lacks its normalized trajectory or GRO reference")
@@ -409,6 +433,8 @@ class TrajectoryAnalysisPlan(VersionedContract):
         return TrajectoryAnalysisRequest(
             id=self.id,
             simulation_id=self.simulation_id,
+            compound_id=compound_id,
+            form_id=form_id,
             trajectory_id=self.trajectory_id,
             preprocessing_result_id=preprocessing.id,
             trajectory=trajectory,
@@ -436,11 +462,13 @@ class TrajectoryAnalysisPlan(VersionedContract):
 class TrajectoryAnalysisResult(VersionedContract):
     """Normalized metric artifacts linked to their simulation and preprocessing result."""
 
-    schema_version: str = "trajectory_analysis_result/1.1"
+    schema_version: str = "trajectory_analysis_result/1.2"
 
     id: ULIDStr
     request_id: ULIDStr
     simulation_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     trajectory_id: ULIDStr
     preprocessing_result_id: ULIDStr
     analyzer: SoftwareRef
@@ -453,6 +481,8 @@ class TrajectoryAnalysisResult(VersionedContract):
 
     @model_validator(mode="after")
     def _artifacts_are_hashed(self) -> TrajectoryAnalysisResult:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("analysis result compound_id and form_id must be provided together")
         artifacts = (
             *self.source_artifacts.values(),
             self.raw_result,
@@ -826,7 +856,7 @@ class BindingEnergyPlan(VersionedContract):
 class BindingEnergyResult(VersionedContract):
     """End-point binding-energy estimate. Never an experimental ΔG (requirements §17)."""
 
-    schema_version: str = "binding_energy/1.2"
+    schema_version: str = "binding_energy/1.3"
 
     id: ULIDStr
     accession: BindingEnergyAccession
@@ -834,6 +864,8 @@ class BindingEnergyResult(VersionedContract):
     request_id: ULIDStr | None = None
     system_id: ULIDStr | None = None
     simulation_id: ULIDStr | None = None
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     method: BindingEnergyMethod
     model: dict[str, JsonValue]  # e.g. {"igb": 5, "radii": "mbondi2"} or PB settings
     tool: SoftwareRef
@@ -856,6 +888,10 @@ class BindingEnergyResult(VersionedContract):
 
     @model_validator(mode="after")
     def _total_consistent(self) -> BindingEnergyResult:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError(
+                "binding-energy result compound_id and form_id must be provided together"
+            )
         if "total" not in self.components_kcal_per_mol:
             raise ValueError("components_kcal_per_mol must include 'total'")
         total = self.components_kcal_per_mol["total"]

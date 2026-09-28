@@ -111,9 +111,12 @@ def test_discovered_trajectory_handlers_compose_on_pparg_dataset(tmp_path: Path)
     topology = _ref("topology", topology_path)
     segment = _ref("trajectory_segment", trajectory_path)
     simulation_id = new_ulid()
+    compound_id, form_id = new_ulid(), new_ulid()
     process_request = TrajectoryProcessingRequest(
         id=new_ulid(),
         simulation_id=simulation_id,
+        compound_id=compound_id,
+        form_id=form_id,
         topology=topology,
         topology_format="GROMACS TPR",
         topology_has_connectivity=True,
@@ -160,6 +163,8 @@ def test_discovered_trajectory_handlers_compose_on_pparg_dataset(tmp_path: Path)
             )
         )
         assert processed.n_atoms == metadata["atoms"]
+        assert processed.compound_id == compound_id
+        assert processed.form_id == form_id
         assert processed.n_frames == metadata["frames"]
         assert processed.time_range_ps == (0, metadata["last_time_ps"])
 
@@ -211,6 +216,8 @@ def test_discovered_trajectory_handlers_compose_on_pparg_dataset(tmp_path: Path)
             )
         )
         assert result.analyzer.version == "2.10.0"
+        assert result.compound_id == compound_id
+        assert result.form_id == form_id
         assert {metric.name for metric in result.metrics} == {
             "mindist_protein_ligand",
             "contacts_protein_ligand",

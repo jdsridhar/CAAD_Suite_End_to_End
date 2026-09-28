@@ -305,7 +305,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/binding_energy/1.2",
+  "$id": "caddsuite://schemas/binding_energy/1.3",
   "additionalProperties": false,
   "description": "End-point binding-energy estimate. Never an experimental ΔG (requirements §17).",
   "properties": {
@@ -355,8 +355,34 @@
       "title": "Components Kcal Per Mol",
       "type": "object"
     },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
+    },
     "entropy": {
       "$ref": "#/$defs/EntropyTreatment"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "frames": {
       "$ref": "#/$defs/FrameSelection"
@@ -433,7 +459,7 @@
       "type": "number"
     },
     "schema_version": {
-      "default": "binding_energy/1.2",
+      "default": "binding_energy/1.3",
       "title": "Schema Version",
       "type": "string"
     },

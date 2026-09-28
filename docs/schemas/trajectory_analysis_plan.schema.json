@@ -89,9 +89,22 @@
       "type": "string"
     }
   },
-  "$id": "caddsuite://schemas/trajectory_analysis_plan/1.0",
+  "$id": "caddsuite://schemas/trajectory_analysis_plan/1.1",
   "additionalProperties": false,
   "properties": {
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
+    },
     "contact_cutoff_A": {
       "default": 6.0,
       "exclusiveMinimum": 0,
@@ -102,6 +115,19 @@
       "exclusiveMinimum": 0,
       "title": "End Time Ns",
       "type": "number"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -143,7 +169,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "trajectory_analysis_plan/1.0",
+      "default": "trajectory_analysis_plan/1.1",
       "title": "Schema Version",
       "type": "string"
     },

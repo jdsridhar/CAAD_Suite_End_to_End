@@ -664,6 +664,8 @@ class GromacsMMPBSAAdapter:
             request_id=request.id,
             system_id=request.system.id,
             simulation_id=request.simulation.id,
+            compound_id=request.simulation.compound_id,
+            form_id=request.simulation.form_id,
             method=parsed.method,
             model=request.model,
             tool=SoftwareRef(

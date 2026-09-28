@@ -89,7 +89,7 @@
       "type": "string"
     }
   },
-  "$id": "caddsuite://schemas/trajectory_analysis_request/1.1",
+  "$id": "caddsuite://schemas/trajectory_analysis_request/1.2",
   "additionalProperties": false,
   "description": "Selection- and lineage-explicit request for coordinate-based MD analysis.",
   "properties": {
@@ -103,6 +103,19 @@
         }
       ],
       "default": null
+    },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
     },
     "contact_cutoff_A": {
       "default": 6.0,
@@ -124,6 +137,19 @@
       "minimum": 1,
       "title": "Expected Frame Count",
       "type": "integer"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "frame_interval_ps": {
       "exclusiveMinimum": 0,
@@ -197,7 +223,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "trajectory_analysis_request/1.1",
+      "default": "trajectory_analysis_request/1.2",
       "title": "Schema Version",
       "type": "string"
     },

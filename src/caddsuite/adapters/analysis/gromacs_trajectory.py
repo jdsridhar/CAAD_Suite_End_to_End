@@ -436,6 +436,8 @@ class GromacsTrajectoryProcessor:
             id=new_ulid(),
             request_id=request.id,
             simulation_id=request.simulation_id,
+            compound_id=request.compound_id,
+            form_id=request.form_id,
             processor=SoftwareRef(
                 name="GROMACS",
                 version=engine_version,

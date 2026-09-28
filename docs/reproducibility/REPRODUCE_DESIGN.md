@@ -51,7 +51,7 @@ Example policy JSON:
   "schema": "caddsuite.tolerance-policy/1",
   "policy_id": "mmgbsa-replay",
   "version": "1.0.0",
-  "contract_schema": "binding_energy/1.2",
+  "contract_schema": "binding_energy/1.3",
   "fields": {
     "/components_kcal_per_mol/total": {"absolute": 0.1, "relative": 0.02, "unit": "kcal/mol"}
   },

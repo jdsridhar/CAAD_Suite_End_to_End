@@ -28,9 +28,9 @@ def test_trajectory_analysis_capability_is_discovered_with_typed_ports() -> None
         .capabilities.resolve("trajectory.analyze", "mdanalysis")
     )
     assert capability is not None
-    assert capability.inputs[0].contracts == ("trajectory_analysis_request/1.1",)
-    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.0",)
-    assert capability.outputs == ("trajectory_analysis_result/1.1",)
+    assert capability.inputs[0].contracts == ("trajectory_analysis_request/1.2",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.1",)
+    assert capability.outputs == ("trajectory_analysis_result/1.2",)
 
 
 def test_trajectory_analysis_workflow_compiles_with_normalized_contracts() -> None:
@@ -39,8 +39,8 @@ def test_trajectory_analysis_workflow_compiles_with_normalized_contracts() -> No
             "schema": "caddsuite.workflow/1",
             "name": "Coordinate metrics",
             "inputs": {
-                "request": {"contract": "trajectory_analysis_request/1.1"},
-                "processed": {"contract": "trajectory_processing_result/1.0"},
+                "request": {"contract": "trajectory_analysis_request/1.2"},
+                "processed": {"contract": "trajectory_processing_result/1.1"},
             },
             "stages": [
                 {
@@ -48,14 +48,14 @@ def test_trajectory_analysis_workflow_compiles_with_normalized_contracts() -> No
                     "kind": "trajectory.analyze",
                     "engine": "mdanalysis",
                     "input_contracts": {
-                        "request": "trajectory_analysis_request/1.1",
-                        "preprocessing": "trajectory_processing_result/1.0",
+                        "request": "trajectory_analysis_request/1.2",
+                        "preprocessing": "trajectory_processing_result/1.1",
                     },
                     "input_bindings": {
                         "request": "$request",
                         "preprocessing": "$processed",
                     },
-                    "output_contract": "trajectory_analysis_result/1.1",
+                    "output_contract": "trajectory_analysis_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "python_executable": "/engine/bin/python",
@@ -71,7 +71,7 @@ def test_trajectory_analysis_workflow_compiles_with_normalized_contracts() -> No
     )
     compiled = StageHandlerRegistry.discover().compile(workflow)
     assert compiled.task_order == ("metrics",)
-    assert compiled.tasks[0].output_contract == "trajectory_analysis_result/1.1"
+    assert compiled.tasks[0].output_contract == "trajectory_analysis_result/1.2"
 
 
 def test_analysis_preflight_reports_missing_engine_paths() -> None:
@@ -101,8 +101,8 @@ def test_gromacs_trajectory_capability_is_discovered_with_typed_ports() -> None:
         .capabilities.resolve("trajectory.process", "gromacs")
     )
     assert capability is not None
-    assert capability.inputs[0].contracts == ("trajectory_processing_request/1.0",)
-    assert capability.outputs == ("trajectory_processing_result/1.0",)
+    assert capability.inputs[0].contracts == ("trajectory_processing_request/1.1",)
+    assert capability.outputs == ("trajectory_processing_result/1.1",)
 
 
 def test_gromacs_trajectory_preflight_reports_missing_tools() -> None:
@@ -183,16 +183,16 @@ def test_processed_analysis_stage_discovers_plan_and_compiles_after_processing()
     snapshot = StageHandlerRegistry.discover().snapshot()
     capability = snapshot.capabilities.resolve("trajectory.analyze_processed", "mdanalysis")
     assert capability is not None
-    assert capability.inputs[0].contracts == ("trajectory_analysis_plan/1.0",)
-    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.0",)
+    assert capability.inputs[0].contracts == ("trajectory_analysis_plan/1.1",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.1",)
 
     workflow = WorkflowDefinition.model_validate(
         {
             "schema": "caddsuite.workflow/1",
             "name": "Processed trajectory metrics",
             "inputs": {
-                "request": {"contract": "trajectory_processing_request/1.0"},
-                "analysis_plan": {"contract": "trajectory_analysis_plan/1.0"},
+                "request": {"contract": "trajectory_processing_request/1.1"},
+                "analysis_plan": {"contract": "trajectory_analysis_plan/1.1"},
             },
             "stages": [
                 {
@@ -200,10 +200,10 @@ def test_processed_analysis_stage_discovers_plan_and_compiles_after_processing()
                     "kind": "trajectory.process",
                     "engine": "gromacs",
                     "input_contracts": {
-                        "request": "trajectory_processing_request/1.0",
+                        "request": "trajectory_processing_request/1.1",
                     },
                     "input_bindings": {"request": "$request"},
-                    "output_contract": "trajectory_processing_result/1.0",
+                    "output_contract": "trajectory_processing_result/1.1",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": "/engine/bin/gmx",
@@ -218,14 +218,14 @@ def test_processed_analysis_stage_discovers_plan_and_compiles_after_processing()
                     "engine": "mdanalysis",
                     "needs": ["process"],
                     "input_contracts": {
-                        "analysis_plan": "trajectory_analysis_plan/1.0",
-                        "preprocessing": "trajectory_processing_result/1.0",
+                        "analysis_plan": "trajectory_analysis_plan/1.1",
+                        "preprocessing": "trajectory_processing_result/1.1",
                     },
                     "input_bindings": {
                         "analysis_plan": "$analysis_plan",
                         "preprocessing": "process",
                     },
-                    "output_contract": "trajectory_analysis_result/1.1",
+                    "output_contract": "trajectory_analysis_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "python_executable": "/engine/bin/python",

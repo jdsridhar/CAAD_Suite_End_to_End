@@ -154,7 +154,7 @@
       "type": "string"
     }
   },
-  "$id": "caddsuite://schemas/trajectory_processing_result/1.0",
+  "$id": "caddsuite://schemas/trajectory_processing_result/1.1",
   "additionalProperties": false,
   "description": "Normalized processing output with raw/derived artifacts and frame metadata.",
   "properties": {
@@ -179,6 +179,19 @@
       ],
       "default": null
     },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
+    },
     "fit_selection": {
       "anyOf": [
         {
@@ -189,6 +202,19 @@
         }
       ],
       "default": null
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "frame_interval_ps": {
       "exclusiveMinimum": 0,
@@ -263,7 +289,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "trajectory_processing_result/1.0",
+      "default": "trajectory_processing_result/1.1",
       "title": "Schema Version",
       "type": "string"
     },

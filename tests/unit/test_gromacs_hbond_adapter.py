@@ -80,7 +80,7 @@ def request_pair() -> tuple[TrajectoryAnalysisRequest, TrajectoryProcessingResul
 
 def test_hbond_request_requires_verified_distinct_selections():
     request, _ = request_pair()
-    assert request.schema_version == "trajectory_analysis_request/1.1"
+    assert request.schema_version == "trajectory_analysis_request/1.2"
     with pytest.raises(ValidationError, match="verified selections"):
         TrajectoryAnalysisRequest(
             **{

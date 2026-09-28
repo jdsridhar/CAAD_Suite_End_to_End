@@ -356,6 +356,8 @@ def test_md_simulation_total_must_match_completed_segments(make_software: MakeSo
         "segments": segments,
     }
     assert MDSimulation(total_ns=1.0, **common).total_ns == 1.0
+    with pytest.raises(ValidationError, match="must be provided together"):
+        MDSimulation(total_ns=1.0, compound_id=new_ulid(), **common)
     with pytest.raises(ValidationError, match="completed segments"):
         MDSimulation(total_ns=2.0, **common)
 

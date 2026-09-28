@@ -239,12 +239,25 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/trajectory_analysis_result/1.1",
+  "$id": "caddsuite://schemas/trajectory_analysis_result/1.2",
   "additionalProperties": false,
   "description": "Normalized metric artifacts linked to their simulation and preprocessing result.",
   "properties": {
     "analyzer": {
       "$ref": "#/$defs/SoftwareRef"
+    },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
     },
     "engine_artifacts": {
       "additionalProperties": {
@@ -252,6 +265,19 @@
       },
       "title": "Engine Artifacts",
       "type": "object"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -293,7 +319,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "trajectory_analysis_result/1.1",
+      "default": "trajectory_analysis_result/1.2",
       "title": "Schema Version",
       "type": "string"
     },

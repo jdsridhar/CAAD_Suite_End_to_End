@@ -342,8 +342,34 @@
         "adapter": {
           "$ref": "#/$defs/SoftwareRef"
         },
+        "compound_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compound Id"
+        },
         "engine": {
           "$ref": "#/$defs/SoftwareRef"
+        },
+        "form_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Form Id"
         },
         "id": {
           "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -367,7 +393,7 @@
           "$ref": "#/$defs/MDProtocol"
         },
         "schema_version": {
-          "default": "md_simulation/1.0",
+          "default": "md_simulation/1.1",
           "title": "Schema Version",
           "type": "string"
         },

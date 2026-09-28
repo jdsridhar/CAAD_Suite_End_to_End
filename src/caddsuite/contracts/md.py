@@ -179,11 +179,13 @@ class SegmentRecord(ContractModel):
 
 
 class MDSimulation(VersionedContract):
-    schema_version: str = "md_simulation/1.0"
+    schema_version: str = "md_simulation/1.1"
 
     id: ULIDStr
     accession: MDAccession
     system_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     protocol: MDProtocol
     engine: SoftwareRef
     adapter: SoftwareRef
@@ -194,6 +196,8 @@ class MDSimulation(VersionedContract):
 
     @model_validator(mode="after")
     def _total_matches_completed_segments(self) -> MDSimulation:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("MDSimulation compound_id and form_id must be provided together")
         if self.segments:
             done = sum(
                 s.length_ns

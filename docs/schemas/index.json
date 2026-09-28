@@ -1,5 +1,5 @@
 {
-  "binding_energy": "binding_energy/1.2",
+  "binding_energy": "binding_energy/1.3",
   "binding_energy_plan": "binding_energy_plan/1.0",
   "binding_energy_request": "binding_energy_request/1.1",
   "binding_site": "binding_site/1.0",
@@ -16,7 +16,7 @@
   "interaction_analysis_request": "interaction_analysis_request/1.0",
   "interaction_profile": "interaction_profile/1.1",
   "legacy_import_report": "legacy_import_report/1.0",
-  "md_simulation": "md_simulation/1.0",
+  "md_simulation": "md_simulation/1.1",
   "md_stage_input": "md_stage_input/1.0",
   "md_stage_result": "md_stage_result/1.0",
   "md_system": "md_system/1.0",
@@ -38,10 +38,10 @@
   "task_attempt": "task_attempt/1.0",
   "trajectory": "trajectory/1.0",
   "trajectory_analysis": "trajectory_analysis/1.1",
-  "trajectory_analysis_plan": "trajectory_analysis_plan/1.0",
-  "trajectory_analysis_request": "trajectory_analysis_request/1.1",
-  "trajectory_analysis_result": "trajectory_analysis_result/1.1",
+  "trajectory_analysis_plan": "trajectory_analysis_plan/1.1",
+  "trajectory_analysis_request": "trajectory_analysis_request/1.2",
+  "trajectory_analysis_result": "trajectory_analysis_result/1.2",
   "trajectory_plot_request": "trajectory_plot_request/1.0",
-  "trajectory_processing_request": "trajectory_processing_request/1.0",
-  "trajectory_processing_result": "trajectory_processing_result/1.0"
+  "trajectory_processing_request": "trajectory_processing_request/1.1",
+  "trajectory_processing_result": "trajectory_processing_result/1.1"
 }

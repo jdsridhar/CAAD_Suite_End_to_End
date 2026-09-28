@@ -13,7 +13,7 @@ def test_gmx_mmpbsa_capability_is_discovered_with_normalized_contracts() -> None
     )
     assert capability is not None
     assert capability.inputs[0].contracts == ("binding_energy_request/1.1",)
-    assert capability.outputs == ("binding_energy/1.2",)
+    assert capability.outputs == ("binding_energy/1.3",)
 
 
 def test_gmx_mmpbsa_workflow_compiles_with_typed_request() -> None:
@@ -29,7 +29,7 @@ def test_gmx_mmpbsa_workflow_compiles_with_typed_request() -> None:
                     "engine": "gmx_mmpbsa",
                     "input_contracts": {"request": "binding_energy_request/1.1"},
                     "input_bindings": {"request": "$request"},
-                    "output_contract": "binding_energy/1.2",
+                    "output_contract": "binding_energy/1.3",
                     "params": {
                         "engine_parameters": {
                             "gmx_mmpbsa_executable": "/engine/bin/gmx_MMPBSA",
@@ -45,7 +45,7 @@ def test_gmx_mmpbsa_workflow_compiles_with_typed_request() -> None:
     )
     compiled = StageHandlerRegistry.discover().compile(workflow)
     assert compiled.task_order == ("energy",)
-    assert compiled.tasks[0].output_contract == "binding_energy/1.2"
+    assert compiled.tasks[0].output_contract == "binding_energy/1.3"
 
 
 def test_gmx_mmpbsa_preflight_reports_missing_configured_tools() -> None:
@@ -74,14 +74,14 @@ def test_processed_binding_energy_capability_compiles_after_trajectory_processin
     capability = snapshot.capabilities.resolve("binding_energy.analyze_processed", "gmx_mmpbsa")
     assert capability is not None
     assert capability.inputs[0].contracts == ("binding_energy_plan/1.0",)
-    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.0",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.1",)
 
     workflow = WorkflowDefinition.model_validate(
         {
             "schema": "caddsuite.workflow/1",
             "name": "Processed trajectory binding energy",
             "inputs": {
-                "processing_request": {"contract": "trajectory_processing_request/1.0"},
+                "processing_request": {"contract": "trajectory_processing_request/1.1"},
                 "energy_plan": {"contract": "binding_energy_plan/1.0"},
             },
             "stages": [
@@ -89,9 +89,9 @@ def test_processed_binding_energy_capability_compiles_after_trajectory_processin
                     "id": "process",
                     "kind": "trajectory.process",
                     "engine": "gromacs",
-                    "input_contracts": {"request": "trajectory_processing_request/1.0"},
+                    "input_contracts": {"request": "trajectory_processing_request/1.1"},
                     "input_bindings": {"request": "$processing_request"},
-                    "output_contract": "trajectory_processing_result/1.0",
+                    "output_contract": "trajectory_processing_result/1.1",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": "/engine/bin/gmx",
@@ -107,13 +107,13 @@ def test_processed_binding_energy_capability_compiles_after_trajectory_processin
                     "needs": ["process"],
                     "input_contracts": {
                         "plan": "binding_energy_plan/1.0",
-                        "preprocessing": "trajectory_processing_result/1.0",
+                        "preprocessing": "trajectory_processing_result/1.1",
                     },
                     "input_bindings": {
                         "plan": "$energy_plan",
                         "preprocessing": "process",
                     },
-                    "output_contract": "binding_energy/1.2",
+                    "output_contract": "binding_energy/1.3",
                     "params": {
                         "engine_parameters": {
                             "gmx_mmpbsa_executable": "/engine/bin/gmx_MMPBSA",

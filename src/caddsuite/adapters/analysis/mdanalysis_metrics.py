@@ -503,6 +503,8 @@ class MDAnalysisMetricsAdapter:
             id=new_ulid(),
             request_id=request.id,
             simulation_id=request.simulation_id,
+            compound_id=request.compound_id,
+            form_id=request.form_id,
             trajectory_id=request.trajectory_id,
             preprocessing_result_id=preprocessing.id,
             analyzer=SoftwareRef(

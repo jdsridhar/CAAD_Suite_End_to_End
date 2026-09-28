@@ -234,10 +234,13 @@ def _stage_request(source: Path, stage: Path) -> tuple[BindingEnergyRequest, dic
         },
     )
     simulation_id = new_ulid()
+    compound_id, form_id = new_ulid(), new_ulid()
     simulation = MDSimulation(
         id=simulation_id,
         accession="CMP0001_MD_001",
         system_id=system_id,
+        compound_id=compound_id,
+        form_id=form_id,
         protocol=MDProtocol(
             stages=(
                 MDStage(
@@ -447,6 +450,8 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
     processing_request = TrajectoryProcessingRequest(
         id=new_ulid(),
         simulation_id=request.simulation.id,
+        compound_id=request.simulation.compound_id,
+        form_id=request.simulation.form_id,
         topology=request.trajectory.topology,
         topology_format=request.topology_format,
         topology_has_connectivity=True,
@@ -494,6 +499,8 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
         id=new_ulid(),
         simulation_id=request.simulation.id,
         trajectory_id=new_ulid(),
+        compound_id=request.simulation.compound_id,
+        form_id=request.simulation.form_id,
         selections={
             "protein": protein_selection.model_copy(
                 update={"indices": None, "description": "protein"}
@@ -515,18 +522,18 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
             "schema": "caddsuite.workflow/1",
             "name": "PPARG processed trajectory analysis and MMGBSA",
             "inputs": {
-                "processing_request": {"contract": "trajectory_processing_request/1.0"},
+                "processing_request": {"contract": "trajectory_processing_request/1.1"},
                 "energy_plan": {"contract": "binding_energy_plan/1.0"},
-                "analysis_plan": {"contract": "trajectory_analysis_plan/1.0"},
+                "analysis_plan": {"contract": "trajectory_analysis_plan/1.1"},
             },
             "stages": [
                 {
                     "id": "process",
                     "kind": "trajectory.process",
                     "engine": "gromacs",
-                    "input_contracts": {"request": "trajectory_processing_request/1.0"},
+                    "input_contracts": {"request": "trajectory_processing_request/1.1"},
                     "input_bindings": {"request": "$processing_request"},
-                    "output_contract": "trajectory_processing_result/1.0",
+                    "output_contract": "trajectory_processing_result/1.1",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": GMX,
@@ -543,14 +550,14 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                     "engine": "mdanalysis",
                     "needs": ["process"],
                     "input_contracts": {
-                        "analysis_plan": "trajectory_analysis_plan/1.0",
-                        "preprocessing": "trajectory_processing_result/1.0",
+                        "analysis_plan": "trajectory_analysis_plan/1.1",
+                        "preprocessing": "trajectory_processing_result/1.1",
                     },
                     "input_bindings": {
                         "analysis_plan": "$analysis_plan",
                         "preprocessing": "process",
                     },
-                    "output_contract": "trajectory_analysis_result/1.1",
+                    "output_contract": "trajectory_analysis_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "python_executable": MDA_PYTHON,
@@ -569,13 +576,13 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                     "needs": ["process"],
                     "input_contracts": {
                         "plan": "binding_energy_plan/1.0",
-                        "preprocessing": "trajectory_processing_result/1.0",
+                        "preprocessing": "trajectory_processing_result/1.1",
                     },
                     "input_bindings": {
                         "plan": "$energy_plan",
                         "preprocessing": "process",
                     },
-                    "output_contract": "binding_energy/1.2",
+                    "output_contract": "binding_energy/1.3",
                     "params": {
                         "engine_parameters": {
                             "gmx_mmpbsa_executable": MMPBSA,
@@ -647,12 +654,16 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
         assert len(outcome.tasks) == 3
         trajectory_result = outcome.outputs["trajectory_analysis"][0].value
         assert trajectory_result.simulation_id == request.simulation.id
+        assert trajectory_result.compound_id == request.simulation.compound_id
+        assert trajectory_result.form_id == request.simulation.form_id
         assert {metric.name for metric in trajectory_result.metrics} == {
             "mindist_protein_ligand",
             "contacts_protein_ligand",
         }
         result = outcome.outputs["energy"][0].value
         assert result.method is BindingEnergyMethod.MM_GBSA
+        assert result.compound_id == request.simulation.compound_id
+        assert result.form_id == request.simulation.form_id
         assert result.frames.n_used == 11
         assert result.temperature_K == pytest.approx(request.temperature_K)
         assert result.tool.version

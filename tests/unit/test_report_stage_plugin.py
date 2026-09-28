@@ -94,8 +94,8 @@ def test_report_capability_exposes_normalized_md_energy_and_qm_inputs() -> None:
     }
     assert contracts == {
         "md_stage_result/1.0",
-        "trajectory_analysis_result/1.1",
-        "binding_energy/1.2",
+        "trajectory_analysis_result/1.2",
+        "binding_energy/1.3",
         "qm_calculation/1.2",
         "qm_result/2.1",
     }

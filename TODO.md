@@ -774,3 +774,14 @@ When the user says **CONTINUE**:
 - [x] Added report mismatch coverage and updated the real PySCF ethanol integration to carry the explicit compound_id end to end. Real PySCF/report test passed; full scripts/check.sh passed with 709 passed, 36 skipped.
 - [x] Added ADR-0056. Legacy records remain readable with missing optional IDs; MD and binding-energy identity propagation remain incomplete.
 - [-] Next: add stable compound_id linkage to MDSimulation and derived trajectory-analysis/MMGBSA plans/results, preserving older records and validating identity mismatches.
+
+
+### Session log - 2026-09-28, explicit Compound/Form identity through MD
+
+- [x] Versioned MDSimulation to 1.1 with optional paired compound_id/form_id.
+- [x] Versioned trajectory processing request/result, analysis plan/request/result, and BindingEnergyResult contracts; IDs propagate from the simulation request through GROMACS processing and MDAnalysis, while MM/GBSA inherits IDs from its linked MDSimulation.
+- [x] Added pair validation and plan-to-processed-trajectory mismatch checks. Report generation rejects trajectory or binding-energy compound IDs absent from the report's Compound set.
+- [x] Added integration assertions for shared simulation, Compound, and Form IDs across trajectory metrics and MM/GBSA. Real PPARG scheduler composition passed with GROMACS, MDAnalysis, and gmx_MMPBSA in 53.59 s.
+- [x] Full quality gate: 709 passed, 36 skipped; Ruff, format, strict mypy, import contracts, and schemas pass.
+- [x] Added ADR-0057. The PPARG source itself lacks a registered Compound record, so this integration proves ID propagation but not identity verification against standardized chemistry.
+- [-] Next: connect MD stage results and parameterized MDSystem to registered Compound/Form records, strengthen report-level form checks, and then exercise a unified real identity-linked MD/QM/report workflow.
