@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Design a prespecified, broader redocking benchmark: dataset inclusion criteria, references, endpoints (top-1/top-k/best sampled), replicate plan, and failed-preparation accounting. |
-| **Next task** | Select and freeze a scientifically defensible dataset and protocol before running additional docking calculations; retain v1/v2 as pilot evidence only. |
+| **Current task** | [-] Implement the deterministic RCSB candidate-capture and eligibility audit described in docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md; preserve all exclusions before docking. |
+| **Next task** | Inspect the eligible universe, freeze a 30-cluster manifest and source hashes, then run the resource-feasibility pilot under the locked protocol. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | General redocking accuracy remains unvalidated: the v2 pilot has 1/3 top-1 successes; the 1M17 run sampled near-native poses at ranks 3 and 8, but top-1 failed. Dataset scope and workload are not yet defined. |
 
@@ -845,7 +845,8 @@ When the user says **CONTINUE**:
 
 - [x] **P0 diagnostic subtask — Site-local receptor experiment:** separate v2 retained whole residues within the ligand-defined docking box expanded by 8 Å; it resolves Meeko preparation for 3ERT and 1M17, retains all failures, and repeats 5NIU with identical pose-file hash and RMSDs. Results: 3ERT top pose 1.2351 Å (pass); 5NIU 12.9228 Å and 1M17 5.9434 Å (fail). Frozen v1 is unchanged. See docs/validation/G-DOCK-10.md and benchmarks/redocking/pilot_v2/site-crop-box8-20260929/.
 - [x] **P0 — Scientific redocking diagnostic:** v2 resolves two Meeko preparation failures without changing v1; it yields 1/3 top-1 cases under 2 Å. Descriptive review of 1M17 shows near-native poses at ranks 3 and 8 (best 1.1234 Å), but the fixed top-1 endpoint still fails. This supports sampling in that one run and is consistent with a ranking limitation; it does not prove the cause or general accuracy. No post-hoc tuning or extra docking was performed. See docs/validation/G-DOCK-10.md and docs/validation/G-DOCK-11.md.
-- [-] **P1 — Broader scientific validation:** prespecify dataset inclusion, independent reference structures, top-1/top-k/best-sampled endpoints, replicate strategy, and failed-preparation accounting before selecting and freezing the dataset. Expand beyond the three-case compatibility pilot only after this protocol is reviewed. Current pilot supports no general accuracy claim.
+- [x] **P1 protocol gate:** drafted the preregistered 30-target-cluster RCSB cohort, eligibility/exclusion rules, locked Meeko/Vina protocol, three-seed design, top-1 primary endpoint, top-5/best-sampled secondary endpoints, failure denominator, and cluster-bootstrap reporting in docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md. No new cohort has been selected or docked.
+- [-] **P1 — Broader scientific validation:** implement candidate capture/eligibility review, freeze the cohort and run the preregistered 90-attempt redocking benchmark. Current pilot supports no general accuracy claim.
 - [ ] **P1 — Engine-enabled continuous validation:** host optional real-engine tests in isolated, licensed environments where feasible. The core gate reports optional integrations as skips; multi-form Vina and PySCF were separately executed and passed as recorded in G-FORM-FANOUT-1. Avoid bundling licensed engines.
 - [ ] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%; improve with focused failure-path tests without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
@@ -862,3 +863,10 @@ When the user says **CONTINUE**:
 - [x] Executed 5NIU/8YZ, 3ERT/OHT and 1M17/AQ4. The crop enabled the two previously blocked preparations; top-1 recovery was 1/3. The 5NIU repeat matched pose bytes and RMSDs.
 - [x] Audited all nine preserved 1M17 poses without rerunning docking: rank 1 RMSD 5.9434 Å; ranks 3 and 8 RMSDs 1.8170 Å and 1.1234 Å, respectively. Score penalties from rank 1 were 0.096 and 0.217 kcal/mol.
 - [x] Recorded methods, results, provenance and limits in docs/validation/G-DOCK-10.md and docs/validation/G-DOCK-11.md. P0 diagnostic closed; broader validation remains open.
+
+
+### Session log — 2026-09-29, expanded redocking validation protocol
+
+- [x] Researched primary and authoritative sources for the RCSB CC0 policy, weekly 30%-identity polymer-entity clusters, Vina run controls, and CASF-2016's distinct pose/scoring evaluation tasks.
+- [x] Drafted docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md before selecting or docking a new cohort. It defines 30 sequence-distinct targets, fixed structure/ligand criteria, deterministic seeded selection, three seeds per case, top-1 as primary, top-5 and best sampled pose as separate secondary metrics, all-attempt failure accounting, and cluster bootstrap uncertainty.
+- [ ] Implement deterministic candidate capture, curation decisions and frozen dataset manifest before launching docking.
