@@ -1,0 +1,16 @@
+{
+  "candidate_catalog": "candidate_catalog.json",
+  "candidate_catalog_sha256": "ebf3c963d03907c7876c5a2e5ba48bc8a545538b2ac6db316ff05f3a211a6818",
+  "captured_at_utc": "2026-09-28T21:37:28.724927+00:00",
+  "captured_entity_count": 151247,
+  "cluster_count_with_candidates": 18555,
+  "cluster_file_source_sha256": "b13c69a556795b04c53e4fb337362e350b67ee145121442ac18b27a2c5f37db7",
+  "cluster_file_stored_sha256": "53bf1cf0959d8633bdea491afecf38d485d0970fb2f480c850b897e24ced7178",
+  "clustered_candidate_entity_count": 151223,
+  "page_count": 16,
+  "pilot_excluded_entity_count": 2,
+  "query_sha256": "2c596315b1d2a8d2a08b1c876bd336ccc19390c40b3155909f9fcb0cdf9fe620",
+  "reported_entity_count": 151247,
+  "schema": "caddsuite.redocking-candidate-capture/1",
+  "uncategorized_entity_count": 22
+}

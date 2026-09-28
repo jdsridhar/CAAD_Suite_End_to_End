@@ -23,12 +23,12 @@ CASF-2016 is a recognized scoring-function benchmark with distinct scoring, rank
 
 A candidate complex is eligible when all of the following hold:
 
-1. Experimental X-ray structure with reported resolution at or better than 2.5 Å.
+1. Experimental X-ray structure with reported resolution at or better than 2.5 Å; target protein entity has at least 50 amino-acid residues.
 2. One non-covalently bound, non-polymer organic ligand with 15–50 heavy atoms; ligand heavy atoms are C, N, O, S, P, F, Cl, Br, or I.
-3. Ligand has unambiguous component identity, bond orders, stereochemistry where specified, and an observed coordinate for every heavy atom.
+3. Ligand has unambiguous component identity, bond orders, stereochemistry where specified, and an observed coordinate for every heavy atom. For each ligand atom, select the highest-occupancy alternate record; reject a tie between alternate IDs or selected occupancy below 0.80.
 4. One protein polymer entity is the receptor target; the selected ligand copy has at least one receptor heavy atom within 4.0 Å.
 5. No covalent connection between the ligand and protein, and no non-protein cofactor or metal within 6.0 Å of ligand heavy atoms.
-6. No unresolved protein backbone atom within 8.0 Å of the ligand; alternate conformers and occupancy must be resolvable by the fixed selection rule recorded in the curation manifest.
+6. No unresolved protein backbone atom within 8.0 Å of the ligand. For observed residues, use the distance from the highest-occupancy selected Cα (or another observed backbone atom if Cα is absent); reject any locally incomplete backbone. For fully unobserved residues that cannot be assigned coordinates, conservatively reject if their sequence position is within five residues of a protein residue with any atom within 8.0 Å of the ligand. Protein alternate conformers are selected coherently per residue by highest summed occupancy (tie: A, then lexical); shared blank-altloc atoms are retained. Record the selected conformers and occupancy policy.
 
 All water molecules will be omitted from the docking receptor using the same policy. Record waters within 5.0 Å of the native ligand as a limitation/descriptor; do not select cases based on whether water removal improves docking. Protein binding sites contacting another protein entity within 6.0 Å are excluded from this first monomeric-pocket cohort and recorded as exclusions.
 
@@ -42,7 +42,7 @@ All water molecules will be omitted from the docking receptor using the same pol
 
 ## Locked preparation and docking protocol
 
-- Use the crystallographic ligand graph and observed heavy-atom coordinates. Map ligand atoms to the CCD/component graph; reject ambiguous graph or atom mapping before cohort freeze.
+- Use the crystallographic ligand graph and observed heavy-atom coordinates. Map ligand atoms to the CCD/component graph; reject ambiguous graph or atom mapping before cohort freeze. The captured protein polymer entity must also meet the 50-residue minimum.
 - Add ligand hydrogens and calculate Gasteiger charges with the pinned Meeko version. Preserve stereo and report formal charge, tautomer/protonation assumptions, and atom mapping.
 - Prepare the selected protein entity using the pinned Meeko receptor preparation path. No manual residue repair or minimization. Any automated structure completion is recorded with its exact software, version, input/output hashes, and per-residue changes.
 - Use the v2 site-local protocol consistently: box center is the mean of native ligand heavy-atom coordinates; each side length is max(native ligand coordinate range + 10.0 Å, 22.0 Å). Retain complete receptor residues having any atom within the box expanded by 8.0 Å. This is a distinct, explicitly named receptor-selection protocol; it is not claimed to be equivalent to full-receptor docking.
