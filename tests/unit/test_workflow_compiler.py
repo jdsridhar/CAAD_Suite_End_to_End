@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
 from caddsuite.workflow.compiler import WorkflowCompileError, WorkflowCompiler
 from caddsuite.workflow.definition import WorkflowDefinition
@@ -74,7 +75,12 @@ def _capabilities() -> tuple[StageCapability, ...]:
 )
 def test_examples_compile_against_declared_capabilities(workflow_name: str) -> None:
     workflow = WorkflowDefinition.from_yaml(REPO_ROOT / "workflows" / workflow_name)
-    compiled = WorkflowCompiler(_capabilities()).compile(workflow)
+    compiler = (
+        StageHandlerRegistry.discover()
+        if workflow_name == "admet_docking_report.yaml"
+        else WorkflowCompiler(_capabilities())
+    )
+    compiled = compiler.compile(workflow)
 
     assert compiled.name == workflow.name
     assert set(compiled.task_order) == {stage.id for stage in workflow.stages}

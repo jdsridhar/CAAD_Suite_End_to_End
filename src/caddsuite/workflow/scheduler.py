@@ -50,6 +50,7 @@ class TaskInvocation:
     subject_id: str | None
     inputs: Mapping[str, tuple[VersionedContract, ...]]
     decisions: tuple[Decision, ...] = ()
+    run_id: str | None = None
 
 
 class StageHandler(Protocol):
@@ -317,12 +318,15 @@ class WorkflowScheduler:
         subject_id: str | None,
         inputs: Mapping[str, tuple[VersionedContract, ...]],
     ) -> tuple[TaskOutcome, ProducedValue | None]:
+        normalized_params = dict(task.params)
+        if getattr(handler, "cache_scope", "global") == "run":
+            normalized_params["workflow_run_id"] = run_id
         cache_key = build_cache_key(
             contract_version=task.output_contract or "caddsuite.no_output/1.0",
             adapter_id=handler.adapter_id,
             adapter_version=handler.adapter_version,
             engine_version=handler.engine_version,
-            normalized_params=dict(task.params),
+            normalized_params=normalized_params,
             input_artifact_hashes=handler.artifact_hashes(inputs),
         )
         record = self._tasks.find_instance(
@@ -357,6 +361,7 @@ class WorkflowScheduler:
             subject_id,
             inputs,
             self._decisions.for_task(record.id) if self._decisions is not None else (),
+            run_id=run_id,
         )
         if task.gate is not None and record.state is TaskState.READY:
             context, allowed = handler.gate_context(inputs)

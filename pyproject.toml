@@ -60,6 +60,7 @@ vina = "caddsuite.application.vina_stage_plugin:plugin_factory"
 rdkit_rules = "caddsuite.application.property_stage_plugin:plugin_factory"
 dimorphite_dl = "caddsuite.application.protonation_stage_plugin:plugin_factory"
 evidence_gate = "caddsuite.application.gate_stage_plugin:plugin_factory"
+report = "caddsuite.application.report_stage_plugin:plugin_factory"
 
 [project.entry-points."caddsuite.qm_engines"]
 pyscf = "caddsuite.adapters.qm.pyscf_plugin:plugin_factory"

@@ -6,6 +6,12 @@ inputs:
     contract: compound/1.0
   target_structure:
     contract: structure/1.0
+  prepared_receptor:
+    contract: prepared_receptor/1.0
+  binding_site:
+    contract: binding_site/1.0
+  conformers:
+    contract: conformer/1.1
 stages:
   - id: admet
     kind: property_prediction
@@ -52,12 +58,20 @@ stages:
     for_each: compound
     needs: [configured_filter]
     input_contracts:
-      ligand: compound_form/1.0
-      target: structure/1.0
+      compound: compound/1.0
+      form: compound_form/1.0
+      conformer: conformer/1.1
+      receptor: prepared_receptor/1.0
+      target_structure: structure/1.0
+      site: binding_site/1.0
     input_bindings:
-      ligand: configured_filter
-      target: $target_structure
-    output_contract: docking_run/1.0
+      compound: $compounds
+      form: configured_filter
+      conformer: $conformers
+      receptor: $prepared_receptor
+      target_structure: $target_structure
+      site: $binding_site
+    output_contract: docking_result/1.0
     params:
       exhaustiveness: 16
       num_modes: 9
@@ -67,8 +81,10 @@ stages:
     needs: [admet, dock]
     input_contracts:
       property_results: property_prediction_set/1.0
-      docking_results: docking_run/1.0
+      compounds: compound/1.0
+      docking_results: docking_result/1.0
     input_bindings:
+      compounds: $compounds
       property_results: admet
       docking_results: dock
     output_contract: report_bundle/1.0

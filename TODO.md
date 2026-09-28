@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production workflow stage composition (reopened after runtime acceptance audit) |
-| **Current task** | [-] 13.7 Register executable production handlers for the published property prediction, protonation, gate, Vina, and report workflow; validate discovered runtime. |
-| **Next task** | Implement missing built-in stages, then extend toward pose/complex preparation, MD analysis/MMGBSA, and QM using valid contracts. |
+| **Current task** | [-] 13.7 Run the corrected ADMET/protonation/gate/Vina/report template through an engine-backed workflow once valid prepared-receptor, binding-site, conformer inputs and explicit Vina executable settings are supplied. |
+| **Next task** | Add or integrate validated receptor/site/conformer preparation stages and then extend production runtime coverage to MD analysis/MMGBSA and QM. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -367,9 +367,10 @@ When the user says **CONTINUE**:
   - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
   - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The current scheduler returns one contract per task, so run-all is deliberately not offered; multi-form fan-out remains open.
   - [x] Register an engine-neutral evidence gate that exposes only explicitly configured PropertyPredictionSet endpoints; configure the example's admet.qed -> predictions.qed binding and verify pass/fail evaluation. Three gate runtime tests pass.
-  - [ ] Implement report workflow handler using provenance builder, existing renderers, CAS and ReportBundle.
-  - [ ] Reconcile the example against actual capabilities: Vina requires form, conformer, prepared receptor, target structure and binding-site ports, and emits docking_result/1.0; the example currently provides ligand/target and declares docking_run/1.0. Add only valid preparation stages and explicit inputs before claiming compile/runtime readiness.
-  - [ ] Validate published workflow end-to-end with real registry/runtime, then remove fake-capability-only claims from compiler test conclusions.
+  - [x] Implement run-scoped report stage using the existing provenance builder/renderers, content-addressed artifacts and ReportBundle; pass run_id through TaskInvocation and include it in report cache identity. SQLite/CAS runtime test covers rendered JSON/HTML registration.
+  - [x] Reconcile workflow contracts with installed Vina capability: exact form/conformer/prepared-receptor/target/site ports and docking_result/1.0 output are declared as normalized inputs/output. The published workflow compiles against the production registry.
+  - [x] Execute the production-registry ADMET -> report subworkflow with SQLite task/provenance persistence and CAS JSON/HTML rendering. The complete docking workflow still awaits engine-backed Vina configuration and valid receptor/site/conformer inputs.
+  - [ ] Add automated preparation stages or a validated import path for normalized receptor/site/conformer inputs; run the complete engine-backed Vina -> report workflow.
 
 - [x] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
@@ -530,6 +531,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-28 | Added production evidence gate and run-scoped report handler. The published five-stage workflow now compiles against the discovered production registry after its Vina ports/output were reconciled; a separate real-runtime ADMET -> report test checks task provenance and CAS HTML/JSON. Full suite after the report runtime/compiler-test updates: 686 passed, 35 skipped. Full Vina pipeline still needs normalized receptor/site/conformer inputs and explicit executable settings. |
 | 2026-09-28 | Added production discovered RDKit property and Dimorphite-DL protonation handlers. Property, protonation-decision, and existing descriptor regressions: 15 passed; full suite after engine-neutral gate registration: 682 passed, 35 skipped. Ruff, format, and focused strict mypy pass. Protonation requires explicit single-form selection when ambiguous; run-all remains unavailable because each scheduler task currently emits one contract. Report stage and real-registry end-to-end workflow remain open. |
 | 2026-09-28 | Re-audited phase status against task gates: closed implementation phases 6, 8, 10, 11, 13, and 15; V1 pilot execution and V2 QM reference comparison are complete with limitations preserved. Phase 4 pilot records a failed pose-recovery target without accuracy claims; V5 is measured but unqualified; V6 is characterized in G-MD-20 with equilibrium and production stability explicitly unclaimed. |
 | 2026-09-28 | V6 MD characterization: copied the 2M2D_LIG input system to a user-cache staging directory and ran a 125 ps CPU NPT check with GROMACS 2026.3, dt 2 fs (4 fs HMR unverified), v-rescale 303.15 K, isotropic C-rescale 1 bar, seed 20260928. grompp had no warnings; all 62,500 steps completed with no LINCS warning. Post-25 ps temperature mean 303.169 K (GROMACS error estimate 0.26 K); pressure mean -4.91 bar (error estimate 9.8 bar, RMS fluctuation 117 bar); volume mean 492.487 nm3. Initial volume relaxation and pressure noise prevent equilibrium/production claims. Full report: docs/validation/G-MD-20.md; raw outputs retained outside Git under user cache. |
