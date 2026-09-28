@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production workflow stage composition (reopened after runtime acceptance audit) |
-| **Current task** | [-] 13.7 Register executable production handlers for the published property prediction, protonation, Vina, and report workflow; validate discovered runtime. |
+| **Current task** | [-] 13.7 Register executable production handlers for the published property prediction, protonation, gate, Vina, and report workflow; validate discovered runtime. |
 | **Next task** | Implement missing built-in stages, then extend toward pose/complex preparation, MD analysis/MMGBSA, and QM using valid contracts. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
@@ -366,6 +366,7 @@ When the user says **CONTINUE**:
   - [x] Reinstall editable metadata and verify the production registry discovers property_prediction/rdkit_rules.
   - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
   - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The current scheduler returns one contract per task, so run-all is deliberately not offered; multi-form fan-out remains open.
+  - [ ] Implement the production gate stage and declared ADMET evidence paths; the published workflow's gate kind is not registered, and RDKit's gate context is currently empty.
   - [ ] Implement report workflow handler using provenance builder, existing renderers, CAS and ReportBundle.
   - [ ] Validate published workflow end-to-end with real registry/runtime, then remove fake-capability-only claims from compiler test conclusions.
 
