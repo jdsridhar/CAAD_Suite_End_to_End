@@ -10,9 +10,15 @@ from pydantic import JsonValue
 from caddsuite.application.handlers import StageHandlerRegistration
 from caddsuite.application.report_builder import build_provenance_report
 from caddsuite.application.runtime import LocalRuntimeServices
+from caddsuite.contracts.analysis import (
+    BindingEnergyResult,
+    TrajectoryAnalysisResult,
+)
 from caddsuite.contracts.base import ArtifactRef, VersionedContract
 from caddsuite.contracts.docking import DockingResult
+from caddsuite.contracts.md import MDStageResult
 from caddsuite.contracts.properties import PropertyPredictionSet
+from caddsuite.contracts.qm import QMCalculation, QMResult
 from caddsuite.contracts.registry import Compound
 from caddsuite.contracts.reporting import (
     ReportArtifact,
@@ -63,6 +69,16 @@ class ReportStageHandler:
             return str(value.compound_id)
         if isinstance(value, DockingResult):
             return str(value.run.form_id)
+        if isinstance(value, MDStageResult):
+            return str(value.system_id)
+        if isinstance(value, TrajectoryAnalysisResult):
+            return str(value.simulation_id)
+        if isinstance(value, BindingEnergyResult):
+            return value.accession
+        if isinstance(value, QMCalculation):
+            return str(value.form_id)
+        if isinstance(value, QMResult):
+            return str(value.calculation_id)
         raise TypeError(f"report stage cannot identify {type(value).__name__}")
 
     def artifact_hashes(
@@ -101,6 +117,36 @@ class ReportStageHandler:
             raise ValueError("property_results must contain PropertyPredictionSet contracts")
         if not all(isinstance(item, DockingResult) for item in docks):
             raise ValueError("docking_results must contain DockingResult contracts")
+        md_results = invocation.inputs.get("md_results", ())
+        trajectory_results = invocation.inputs.get("trajectory_results", ())
+        binding_results = invocation.inputs.get("binding_energy_results", ())
+        qm_calculations = invocation.inputs.get("qm_calculations", ())
+        qm_results = invocation.inputs.get("qm_results", ())
+        typed_ports = (
+            ("md_results", md_results, MDStageResult),
+            ("trajectory_results", trajectory_results, TrajectoryAnalysisResult),
+            ("binding_energy_results", binding_results, BindingEnergyResult),
+            ("qm_calculations", qm_calculations, QMCalculation),
+            ("qm_results", qm_results, QMResult),
+        )
+        for port, values, expected in typed_ports:
+            if not all(isinstance(item, expected) for item in values):
+                raise ValueError(f"{port} must contain {expected.__name__} contracts")
+        md_results = cast(tuple[MDStageResult, ...], md_results)
+        trajectory_results = cast(tuple[TrajectoryAnalysisResult, ...], trajectory_results)
+        binding_results = cast(tuple[BindingEnergyResult, ...], binding_results)
+        qm_calculations = cast(tuple[QMCalculation, ...], qm_calculations)
+        qm_results = cast(tuple[QMResult, ...], qm_results)
+        accession_prefixes = {item.accession for item in compounds if isinstance(item, Compound)}
+        for result in binding_results:
+            if result.accession.rsplit("_", 2)[0] not in accession_prefixes:
+                raise ValueError("binding-energy result accession does not match report compounds")
+        calculations_by_id = {item.id: item for item in qm_calculations}
+        if any(item.calculation_id not in calculations_by_id for item in qm_results):
+            raise ValueError("each QMResult must have its matching QMCalculation in the report")
+        for calculation in qm_calculations:
+            if calculation.accession.rsplit("_", 2)[0] not in accession_prefixes:
+                raise ValueError("QM calculation accession does not match report compounds")
 
         result_sections: dict[ReportSectionName, JsonValue] = {
             ReportSectionName.PROJECT: {
@@ -118,6 +164,106 @@ class ReportStageHandler:
             result_sections[ReportSectionName.DOCKING_RESULTS] = [
                 item.model_dump(mode="json") for item in docks if isinstance(item, DockingResult)
             ]
+        if md_results:
+            result_sections[ReportSectionName.MD_METHOD] = [
+                {
+                    "system_id": str(item.system_id),
+                    "stage_kind": item.stage_kind.value,
+                    "engine": item.engine.model_dump(mode="json"),
+                    "adapter": item.adapter.model_dump(mode="json"),
+                }
+                for item in md_results
+                if isinstance(item, MDStageResult)
+            ]
+            result_sections[ReportSectionName.MD_PARAMETERS] = [
+                item.model_dump(mode="json")
+                for item in md_results
+                if isinstance(item, MDStageResult)
+            ]
+        if trajectory_results:
+            analyses = [
+                item.model_dump(mode="json")
+                for item in trajectory_results
+                if isinstance(item, TrajectoryAnalysisResult)
+            ]
+            result_sections[ReportSectionName.TRAJECTORY_ANALYSES] = cast(JsonValue, analyses)
+            rmsd = [
+                metric.model_dump(mode="json")
+                for item in trajectory_results
+                if isinstance(item, TrajectoryAnalysisResult)
+                for metric in item.metrics
+                if "rmsd" in metric.name.casefold()
+            ]
+            rmsf = [
+                metric.model_dump(mode="json")
+                for item in trajectory_results
+                if isinstance(item, TrajectoryAnalysisResult)
+                for metric in item.metrics
+                if "rmsf" in metric.name.casefold()
+            ]
+            if rmsd:
+                result_sections[ReportSectionName.RMSD] = cast(JsonValue, rmsd)
+            if rmsf:
+                result_sections[ReportSectionName.RMSF] = cast(JsonValue, rmsf)
+        if binding_results:
+            result_sections[ReportSectionName.MM_PBSA_GBSA] = [
+                item.model_dump(mode="json")
+                for item in binding_results
+                if isinstance(item, BindingEnergyResult)
+            ]
+        if qm_calculations:
+            result_sections[ReportSectionName.DFT_METHOD] = [
+                item.model_dump(mode="json")
+                for item in qm_calculations
+                if isinstance(item, QMCalculation)
+            ]
+        if qm_results:
+            normalized_qm = [item for item in qm_results if isinstance(item, QMResult)]
+            result_sections[ReportSectionName.QUANTUM_PROPERTIES] = [
+                item.model_dump(mode="json") for item in normalized_qm
+            ]
+            homo = [
+                {"calculation_id": str(item.calculation_id), "value_eV": item.orbitals.homo_eV}
+                for item in normalized_qm
+                if item.orbitals is not None
+            ]
+            lumo = [
+                {"calculation_id": str(item.calculation_id), "value_eV": item.orbitals.lumo_eV}
+                for item in normalized_qm
+                if item.orbitals is not None
+            ]
+            gaps = [
+                {"calculation_id": str(item.calculation_id), "value_eV": item.orbitals.gap_eV}
+                for item in normalized_qm
+                if item.orbitals is not None
+            ]
+            dipoles = [
+                {"calculation_id": str(item.calculation_id), "value_D": item.dipole_D}
+                for item in normalized_qm
+                if item.dipole_D is not None
+            ]
+            mep = [
+                {
+                    "calculation_id": str(item.calculation_id),
+                    "volumetric": {
+                        name: artifact.model_dump(mode="json")
+                        for name, artifact in item.volumetric.items()
+                    },
+                    "metadata": item.volumetric_metadata,
+                }
+                for item in normalized_qm
+                if item.volumetric
+            ]
+            if homo:
+                result_sections[ReportSectionName.HOMO] = cast(JsonValue, homo)
+            if lumo:
+                result_sections[ReportSectionName.LUMO] = cast(JsonValue, lumo)
+            if gaps:
+                result_sections[ReportSectionName.HOMO_LUMO_GAP] = cast(JsonValue, gaps)
+            if dipoles:
+                result_sections[ReportSectionName.DIPOLE] = cast(JsonValue, dipoles)
+            if mep:
+                result_sections[ReportSectionName.MEP] = cast(JsonValue, mep)
         graph = run_lineage(self.services.sessions, run_id=invocation.run_id)
         graph["attempts"] = [
             attempt
@@ -181,6 +327,25 @@ class ReportStagePlugin:
                 ),
                 CapabilityInput(
                     name="docking_results", contracts=(DockingResult.schema_id(),), required=False
+                ),
+                CapabilityInput(
+                    name="md_results", contracts=(MDStageResult.schema_id(),), required=False
+                ),
+                CapabilityInput(
+                    name="trajectory_results",
+                    contracts=(TrajectoryAnalysisResult.schema_id(),),
+                    required=False,
+                ),
+                CapabilityInput(
+                    name="binding_energy_results",
+                    contracts=(BindingEnergyResult.schema_id(),),
+                    required=False,
+                ),
+                CapabilityInput(
+                    name="qm_calculations", contracts=(QMCalculation.schema_id(),), required=False
+                ),
+                CapabilityInput(
+                    name="qm_results", contracts=(QMResult.schema_id(),), required=False
                 ),
             ),
             outputs=(ReportBundle.schema_id(),),

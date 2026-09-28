@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.8 Validate MM/GBSA stage execution and connect trajectory stages to actual MD outputs; expose typed MD/QM evidence in reports. |
+| **Current task** | [-] 13.8 Validate MM/GBSA stage execution and connect trajectory/MD/QM runtime outputs through a composed workflow and report. |
 | **Next task** | Run MM/GBSA handler against the archived 11-frame fixture, then exercise GROMACS processing to MDAnalysis on suitable real trajectory data; connect MD/QM evidence to reports and rerun acceptance gates. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
@@ -711,5 +711,6 @@ When the user says **CONTINUE**:
 - [x] Full scripts/check.sh: Ruff, format (329 files), strict mypy (195 source files), import-linter (254 files), schemas, and 699 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
 - [ ] Real handler-level trajectory processing to MDAnalysis run remains unverified: current environment lacks the configured MDAnalysis runtime and archived trajectory fixture. This is a validation requirement, not evidence that analysis succeeded.
 - [x] Added discovered binding_energy/gmx_mmpbsa stage using the existing adapter and strict reviewed-profile validation. It hash-verifies/stages all declared source artifacts, retains native reports and logs, and normalizes BindingEnergyResult. Focused stage/adapter tests: 14 passed.
-- [x] Full scripts/check.sh after both trajectory and MM/GBSA registrations: Ruff, format (331 files), strict mypy (196 source files), import-linter (255 files), schemas, and 702 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
-- [ ] Engine-backed MM/GBSA stage execution remains unverified because the archived G-MD-18 fixture and gmx_MMPBSA environment are not configured in this WSL session. Typed MD/QM report wiring remains next; preserve the engine-runtime validation requirement.
+- [x] Full scripts/check.sh after both trajectory and MM/GBSA registrations: Ruff, format (331 files), strict mypy (196 source files), import-linter (255 files), schemas, and 704 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
+- [x] Report stage now accepts typed MDStageResult, TrajectoryAnalysisResult, BindingEnergyResult, QMCalculation, and QMResult inputs. It preserves normalized payloads and exposes explicit method, parameter, RMSD/RMSF, MM/GBSA, HOMO/LUMO/gap, dipole, and MEP sections when evidence exists. Rendered JSON regression verifies MM/GBSA and QM values and identity linkage.
+- [ ] Engine-backed MM/GBSA stage execution remains unverified because the archived G-MD-18 fixture and gmx_MMPBSA environment are not configured in this WSL session. Full compatible MD-to-report workflow composition is still outstanding.
