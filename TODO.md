@@ -6,11 +6,11 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 7 — MD migration (scientific validation follow-up) |
-| **Current task** | [-] V6: determine whether the existing 0.1 ps smoke run supports any stability claim and scope a meaningful longer check |
-| **Next task** | Revisit the Phase 4 redocking accuracy failure after the MD validation gaps are characterized |
+| **Current phase** | Phase 13 - production workflow stage composition (reopened after runtime acceptance audit) |
+| **Current task** | [-] 13.7 Register executable production handlers for the published property prediction, protonation, Vina, and report workflow; validate discovered runtime. |
+| **Next task** | Implement missing built-in stages, then extend toward pose/complex preparation, MD analysis/MMGBSA, and QM using valid contracts. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
-| **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
+| **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -118,7 +118,7 @@ When the user says **CONTINUE**:
   - [x] Scheduler architecture and learning notes documented in docs/architecture/WORKFLOW_SCHEDULER.md.
   - **Gate result:** full check passes, including 186 tests at the Phase 3.11 checkpoint; the later full repository gate now has 195 tests. Scientific engine handlers and CLI execution wiring remain in their migration phases.
 
-## Phase 4 — Docking migration `[-]`
+## Phase 4 — Docking migration [x]
 
 - [x] 4.1 Golden tests pinning legacy behaviour (standardize, embed, normalize_input, make_box, build_complex, collect_scores) on G-DOCK-1 inputs
 - [x] 4.2 `chem.standardize` (policy object) + `chem.embed` (seeded, artifact digest checked) + registry import (project-scoped InChIKey deduplication; every raw input retained)
@@ -174,7 +174,7 @@ When the user says **CONTINUE**:
   - [x] Full core gate: 257 passed, 5 optional-engine skips; lint, format, strict mypy (89 files), import-linter and schemas pass.
   - [x] Existing 5NIU/RC8 real Vina workflow plus complex-builder integration passes; AutoDock4 engine integration also passes.
   - [x] G-DOCK-4 executed with 5NIU/8YZ, Vina `f458505-mod`, seed 42, exhaustiveness 16, 9 poses; full ranked RMSDs recorded in `docs/validation/G-DOCK-4.md`.
-  - [!] G-DOCK-4 target (<2 Å) failed: top pose 12.3928 Å; best of nine 10.3426 Å. No accuracy claim; investigate across a benchmark before changing thresholds.
+  - [x] G-DOCK-4 <2 Å pose-recovery target missed (top 12.3928 Å; best of nine 10.3426 Å). The fixed three-case pilot is documented in G-DOCK-8: only 5NIU reached Vina and failed; 3ERT/1M17 failed receptor preparation. Negative result and adapter boundary are recorded; no threshold changed and no docking-accuracy claim is made.
 
 ## Phase 5 — ADMET integration `[x]`
 
@@ -359,7 +359,15 @@ When the user says **CONTINUE**:
   - [x] Render HTML, JSON, CSV and PDF; assert docking available, MD not_run and interpretation disclaimer.
   - [x] Real engine-backed demo passed in 166.85 s; report scope and redocking limitation documented in docs/validation/G-REPORT-1.md.
 
-## Phase 13 — API + UI [x]
+## Phase 13 — API + UI [-] (reopened: advertised non-engine stages are not executable in production runtime)
+
+- [-] 13.7 Runtime stage composition
+  - [x] Add discovered RDKit rules property-prediction stage using the existing predictor/contract, recording endpoints, effective parameters, predictor version and stable compound lineage.
+  - [x] Reinstall editable metadata and verify the production registry discovers property_prediction/rdkit_rules.
+  - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
+  - [ ] Implement pH protonation handler with persisted ambiguity decision/run-all semantics.
+  - [ ] Implement report workflow handler using provenance builder, existing renderers, CAS and ReportBundle.
+  - [ ] Validate published workflow end-to-end with real registry/runtime, then remove fake-capability-only claims from compiler test conclusions.
 
 - [x] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
@@ -493,16 +501,16 @@ When the user says **CONTINUE**:
 - [x] V3 MDAnalysis vs gmx metrics on 2M2D_LIG (8.5; G-MD-14)
 - [x] V4 MM-GBSA per-frame agreement on 11 frames (9.4; G-MD-18)
 - [x] V5 AmberTools → GROMACS comparison measured a 0.59447 kcal/mol total-energy delta (0.000177 relative); acceptance tolerance is null and the profile remains disabled. Characterization complete, compatibility not qualified; see G-MD-5.
-- [ ] V6 Temperature/pressure stability checks on the tiny MD integration run (7.6)
+- [x] V6 Bounded 125 ps NPT characterization completed on 2M2D_LIG (G-MD-20): no integration failure, temperature near target, initial volume relaxation, and noisy pressure. This does not establish production stability or equilibrium.
 - [x] V7 Known-molecule ADMET descriptor sanity (5.2)
 
 ## Testing tasks (cross-phase)
 
-- [ ] T1 Unit tests per module (from 2.4 on)
-- [ ] T2 Adapter golden tests (plans + normalizers on recorded real outputs)
+- [x] T1 Unit tests span the application/core, adapter families and worker boundaries. Phase 14 enforcement reports core 86.68% and adapters 70.95% statement coverage; worker coverage remains separately reported without a misleading aggregate threshold (docs/testing/COVERAGE_BASELINE.md).
+- [x] T2 Family-specific adapter tests cover plans, parsing/normalization and failure cases; recorded docking, QM, MM/GBSA, trajectory and MD-plan fixtures are mapped in docs/testing/ADAPTER_CONFORMANCE.md. Engine-backed runs remain separately gated.
 - [x] T3 Workflow tests with fake handlers (3.11)
 - [x] T4 Engine-marked integration tests (auto-skip when the engine is absent); all available engines were enabled and passed in the Phase 7 gate.
-- [ ] T5 Regression suite vs legacy golden datasets (MIGRATION_PLAN §3)
+- [x] T5 Legacy regressions cover G-DOCK-1/2, G-MD-1/2/3/4, and G-DFT-1/3. G-DOCK-4 is retained as a measured failure; G-DFT-2 remains a manual-only validation scope, not a claimed automated regression (docs/architecture/MIGRATION_PLAN.md §3).
 
 ## Documentation tasks (cross-phase)
 
@@ -520,7 +528,8 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
-| 2026-09-28 | Re-audited phase status against task gates: closed implementation phases 6, 8, 10, 11, 13, and 15; V1 pilot execution and V2 QM reference comparison are complete with limitations preserved. Phase 4 accuracy remains a documented failure; V5 measurement is complete but unqualified; V6 is the current open stability-validation item. |
+| 2026-09-28 | Re-audited phase status against task gates: closed implementation phases 6, 8, 10, 11, 13, and 15; V1 pilot execution and V2 QM reference comparison are complete with limitations preserved. Phase 4 pilot records a failed pose-recovery target without accuracy claims; V5 is measured but unqualified; V6 is characterized in G-MD-20 with equilibrium and production stability explicitly unclaimed. |
+| 2026-09-28 | V6 MD characterization: copied the 2M2D_LIG input system to a user-cache staging directory and ran a 125 ps CPU NPT check with GROMACS 2026.3, dt 2 fs (4 fs HMR unverified), v-rescale 303.15 K, isotropic C-rescale 1 bar, seed 20260928. grompp had no warnings; all 62,500 steps completed with no LINCS warning. Post-25 ps temperature mean 303.169 K (GROMACS error estimate 0.26 K); pressure mean -4.91 bar (error estimate 9.8 bar, RMS fluctuation 117 bar); volume mean 492.487 nm3. Initial volume relaxation and pressure noise prevent equilibrium/production claims. Full report: docs/validation/G-MD-20.md; raw outputs retained outside Git under user cache. |
 | 2026-09-28 | Closed Phase 18 pre-release packaging verification on clean commit 483aba0: wheel and sdist built; fresh Python 3.14.4 sdist install passed CLI, DB migration 0007, and migration-resource checks. Wheel SHA-256 9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7; sdist SHA-256 7ddb4135a8c18b928841f179e238b1939eb7ee173b344e533752794658a81543. Hosted package matrix 36367704078 and Quality 36367704039 passed. No public release tag/upload was created. |
 | 2026-09-28 | Updated wheel metadata to `Requires-Python >=3.11,<3.15` and added Node/npm engine bounds. Built the constrained wheel (SHA-256 `9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7`), then installed it in clean Python 3.11–3.14 environments; CLI, Alembic 0007, and packaged migration resources passed on each. Added `.github/workflows/package-matrix.yml`, runtime support documentation, and selected pip wheel/sdist as the distribution channel. Full repo gate and npm11 web gate pass; hosted package matrix and Quality both passed after push (runs 36367704078 and 36367704039). |
 | 2026-09-28 | Release support decision: pip wheel/sdist is the distributable; Conda remains for the locked developer/engine environment and no Conda package recipe will be added without user demand. Added a Linux x86_64 Python 3.11–3.14 package smoke matrix and constrained `requires-python` to that tested range. Browser Node/npm engine requirements now match Vite/OpenAPI tooling. Fresh wheel install + CLI + migration 0007 passed locally across Python 3.11/3.12/3.13/3.14. |
@@ -652,7 +661,7 @@ When the user says **CONTINUE**:
 - [x] Added `caddsuite reproduce PACKAGE [--output REPORT.json]`; report explicitly uses `diagnostics_only` and `execution_status=not_attempted`. Report files are never overwritten.
 - [x] Local repository gate: Ruff, formatting, strict mypy (181 files), import-linter, schemas, and 652 tests pass (34 environment/data gated skips, one upstream Starlette/httpx deprecation warning).
 - [x] Coverage gate: core 86.32% (7,787/9,021), adapters 73.31% (3,904/5,325), workers 32.99%; core and adapter targets pass.
-- [ ] Limitation recorded: stage-handler registration does not probe engine executables, licenses, or runtime dependencies. Replay staging and execution remain incomplete; no reproduction is claimed.
+- [x] Limitation was accurate for the initial diagnostics-only stage; later phases completed guarded replay, normalized result export, tolerance comparison, and a real Psi4 replay/compare check. API-only source execution remains outside replay scope.
 
 
 ### Session log — replay execution foundation (2026-09-27)
@@ -663,4 +672,4 @@ When the user says **CONTINUE**:
 - [x] End-to-end no-engine fixture execution verifies a successful run and lineage artifact; this validates runtime wiring, not scientific-engine reproducibility.
 - [x] Export integrity-manifested normalized task-cache outputs in `results.json`, with project-scoped task/run identity; regression checks exact contract schema and values.
 - [x] Versioned contract-specific comparison API is implemented and covered for numeric tolerances, policy serialization, mismatched contracts, and artifact hash differences.
-- [ ] Next: wire exported and replayed normalized run outputs to the comparison API, then validate with a representative real engine export/replay.
+- [x] Completed later in Phase 15.2: exported/replayed normalized results are connected to comparison, and a real Psi4 fresh-environment export → replay → compare run passed (docs/validation/G-REPRO-PSI4-1.md).

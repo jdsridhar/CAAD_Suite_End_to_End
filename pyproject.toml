@@ -57,6 +57,7 @@ caddsuite = "caddsuite.cli.main:app"
 qm = "caddsuite.application.qm_stage_plugin:plugin_factory"
 md = "caddsuite.application.md_stage_plugin:plugin_factory"
 vina = "caddsuite.application.vina_stage_plugin:plugin_factory"
+rdkit_rules = "caddsuite.application.property_stage_plugin:plugin_factory"
 
 [project.entry-points."caddsuite.qm_engines"]
 pyscf = "caddsuite.adapters.qm.pyscf_plugin:plugin_factory"

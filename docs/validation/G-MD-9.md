@@ -13,7 +13,7 @@ opened for writing.
 | `step4.1_equilibration.gro` | `9e7f3ab35eb4e8c6d7a07f00a099bd3a88b5ea128ed9fc3b23dc41cf8757fd8e` |
 | `step5_production.mdp` | `feb4f43cca76e71458a47325beecd3ce702b02d78cf2a4ee10749cb5c0fc3dc1` |
 | `topol.top` | `29dd63c47b3e0380e914e5141f496f89d17e83acb7a0b53ad43fea83cadc8ffc` |
-| `index.ndx` | `f246ff7d2f33f73f25dfd6506b6a3592f88bebce5aba2cbb9f936df46146d8` |
+| index.ndx | f246ff7d2f33f73f25dfd6506b6a3592f88bebdfce5aba2cbb9f936df46146d8 |
 
 The test uses a private MDP copy with only `dt = 0.002 ps` and `nsteps = 50`, a total of `0.1 ps`.
 The original MDP's other settings are retained. A second derived index copy has one final LF
