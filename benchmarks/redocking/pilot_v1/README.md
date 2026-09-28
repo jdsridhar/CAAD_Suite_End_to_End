@@ -15,6 +15,8 @@ The two added mmCIF files and CCD ideal SDF files were retrieved from the offici
 
 The pinned v1 protocol has now been attempted through the CADD Suite workflow runtime for all three cases. 5NIU/8YZ completed with nine poses, but the top pose missed the <2.0 angstrom criterion (12.9228 angstrom). Meeko receptor preparation rejected 3ERT/OHT and 1M17/AQ4 on explicit-valence errors before Vina ran; these cases remain documented failures with no docking scores. This small pilot is an adapter-compatibility result, not a three-complex accuracy estimate. The prior 12.3928 angstrom 5NIU result used a different site center and remains separately identified as historical evidence. See docs/validation/G-DOCK-8.md, `benchmarks/redocking/diagnose_receptor_geometry.py`, and the hash-manifested run directory for results, compatibility diagnostics, and provenance.
 
+The separate controlled CPU scaling pilot runs Vina on adapter-produced 5NIU/8YZ PDBQT inputs at one and two CPU cores, with three paired seeds. Median CLI time was 74.279 s at one core and 35.999 s at two cores (2.063× ratio). This measures only Vina CLI execution at exhaustiveness 4, not full adapter runtime or general docking throughput. See `docs/validation/G-DOCK-9.md`, `benchmarks/redocking/benchmark_vina_cpu.py`, and `runs/perf-cpu-v1-20260928/`.
+
 ## Reproduce the adapter pilot
 
 From the repository root in WSL, set `CADDSUITE_PDBFIXER_PYTHON` to the isolated environment containing PDBFixer, OpenMM, Meeko, and Vina, and set `CADDSUITE_REDOCKING_RUN_DIR` to a new persistent output directory. Then run:
