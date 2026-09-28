@@ -8,7 +8,7 @@
 |---|---|
 | **Current phase** | Phase 18 — Packaging and release |
 | **Current task** | [-] 18.3 release packaging and clean-build gates |
-| **Next task** | Add or explicitly defer remaining artifact/platform/license gates; then publish a pre-release only when all checks can be tied to a clean commit |
+| **Next task** | Decide whether to add a Conda recipe; verify the supported Python/platform release matrix and perform a final release-asset/license review before any tag or upload |
 | **Last completed** | Phase 17 documentation gate; installation/user/developer/API/methodology references cross-linked and checked. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -520,6 +520,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-28 | Clean-worktree validation at commit `1926ff1`: full Python gate 674 passed/35 skipped; clean `npm ci` + API schema/type/build/Playwright gate passed (one browser E2E, 21 s). Built wheel and sdist from that clean checkout; wheel hash matched the documented artifact. Installed the clean sdist in a fresh Python 3.14 environment and verified CLI, migration revision 0007, and license/migration files. Remaining release decisions: Conda recipe and broader Python/platform matrix; no tag or package upload made. |
 | 2026-09-28 | Generated exact-lock dependency license metadata inventory: 198 Conda core packages match `caddsuite.lock.txt`; 283 npm package records from installed manifests plus registry metadata for platform-optional packages; zero unresolved expressions. CSV and scope note are in `docs/release/licenses/`. Marked engineering inventory complete while retaining distribution/engine/model legal review as a release gate. |
 | 2026-09-28 | Python wheel first failed due duplicate Hatchling inclusion of Alembic migrations; removed redundant force-include config. Built 0.1.0.dev0 wheel, installed into a fresh Python 3.14 virtualenv, verified CLI version, database upgrade to revision 0007, eight migrations and LICENSE/NOTICE in the archive. Evidence in `docs/release/PACKAGING.md`; platform matrix, sdist, Conda recipe, and locked transitive-license inventory remain release gates. |
 | 2026-09-28 | Phase 17 documentation coverage and local links checked; frozen legacy source checksum manifest verified. Started Phase 18 license/versioning audit. Found and corrected browser package `ISC`/`1.0.0` metadata mismatch to Apache-2.0/`0.1.0-dev.0`; added license review, version policy, and changelog. Full transitive distribution license inventory remains pending before any binary/web bundle release. |
