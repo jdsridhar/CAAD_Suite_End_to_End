@@ -146,3 +146,29 @@ def test_gromacs_trajectory_index_artifact_uses_ndx_extension() -> None:
         _input_relative_path(str(index.artifact_id), index, request, index)
         == f"inputs/{index.artifact_id}.ndx"
     )
+
+
+def test_gromacs_tpr_format_label_materializes_canonical_extension() -> None:
+    topology = ArtifactRef(artifact_id=new_ulid(), role="topology", sha256="a" * 64)
+    trajectory = ArtifactRef(artifact_id=new_ulid(), role="trajectory", sha256="b" * 64)
+    request = TrajectoryProcessingRequest(
+        id=new_ulid(),
+        simulation_id=new_ulid(),
+        topology=topology,
+        topology_format="GROMACS TPR",
+        topology_has_connectivity=True,
+        trajectory_format="XTC",
+        expected_atom_count=1,
+        segments=(
+            TrajectorySegmentInput(
+                artifact=trajectory,
+                output_start_time_ps=0,
+                n_frames=1,
+                frame_interval_ps=1,
+            ),
+        ),
+        transforms=(TrajectoryTransform.MAKE_MOLECULES_WHOLE,),
+    )
+    assert _input_relative_path(str(topology.artifact_id), topology, request) == (
+        f"inputs/{topology.artifact_id}.tpr"
+    )

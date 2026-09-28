@@ -780,6 +780,7 @@ def _execute(request: dict[str, Any], root: Path) -> dict[str, Any]:
             "topology_format": request["topology_format"],
             "output_group_index": group_index,
             "output_group_name": request["output_group_name"],
+            "output_group_atom_count": request["output_group_atom_count"],
             "fit_group_index": fit_index,
             "fit_group_name": fit_name,
             "fit_group_atom_count": fit_count,

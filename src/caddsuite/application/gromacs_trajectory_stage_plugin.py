@@ -166,7 +166,8 @@ class GromacsTrajectoryStageHandler:
                 raise StageExecutionFailure(
                     "MD.GROMACS_TRAJECTORY_RESULT_OUTPUTS", "worker output role/path is invalid"
                 )
-            output_ref = outputs.get(relative)
+            planned_path = f"{self.settings.output_dir}/{relative}"
+            output_ref = outputs.get(planned_path)
             if output_ref is None:
                 raise StageExecutionFailure(
                     "MD.GROMACS_TRAJECTORY_RESULT_OUTPUTS",
@@ -314,7 +315,10 @@ def _input_relative_path(
         extension = request.topology_format
     else:
         extension = request.trajectory_format
-    suffix = extension.casefold()
+    suffix = {
+        "gromacs tpr": "tpr",
+        "gromacs_tpr": "tpr",
+    }.get(extension.casefold(), extension.casefold())
     if not suffix.isalnum():
         raise StageExecutionFailure(
             "MD.TRAJECTORY_FORMAT_INVALID", "request contains an unsafe file format"
