@@ -43,6 +43,9 @@ stages:
     output_contract: compound_form/1.0
     gate: admet.qed >= 0.4
     on_fail: exclude
+    params:
+      field_bindings:
+        admet.qed: predictions.qed
   - id: dock
     kind: docking
     engine: vina
