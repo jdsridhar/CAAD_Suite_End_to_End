@@ -1,6 +1,6 @@
 # Redocking benchmark protocol — proposed preregistration
 
-**Status:** Protocol draft completed before selecting a new cohort or running additional docking. No new cohort is frozen and no new docking calculation is authorized by this document alone.
+**Status:** Protocol frozen before cohort selection. The 30-case cohort was selected and frozen before any new docking; no new docking calculation has yet been run.
 **Scope:** Pose recovery for a rigid-receptor AutoDock Vina workflow. This does not validate affinity prediction, virtual-screening enrichment, prospective performance, MD, or DFT.
 
 ## Rationale
@@ -49,6 +49,7 @@ All water molecules will be omitted from the docking receptor using the same pol
 - Freeze and record Vina executable SHA-256, version, scoring function (vina), Meeko version, environment, command argv, and all input hashes before the first run.
 - Run each complex at three fixed seeds: 42, 43, and 44; exhaustiveness=16, num_modes=9, energy_range=3 kcal/mol, cpu=2. Run serially in the initial cohort to avoid resource contention. Do not change settings after observing outcomes.
 - Store raw receptor/ligand files, every pose, stdout/stderr, normalized score/RMSD table, preparation diagnostics, and a checksum manifest. Record runner commit/source hash before launch.
+- After independent eligibility review, use REDOCK-001/seed 42 as the resource-feasibility attempt and count it as one of the 90 preregistered attempts. Record peak RSS, wall time, and CPU use; if host resource exhaustion prevents continuation, stop and issue a versioned protocol amendment before changing any locked setting. See docs/validation/REDOCKING_RESOURCE_PREFLIGHT.md.
 
 ## Endpoints and statistics
 
@@ -72,7 +73,7 @@ Report case-level values and an overall rate with a 95% cluster bootstrap confid
 
 - Validate native ligand identity, heavy-atom count, atom mapping, stereochemistry, coordinate integrity, and box containment before docking.
 - Validate each generated pose graph and heavy-atom count before RMSD calculation. A failed identity or pose parse is a categorized failure, never an omitted observation.
-- Independently review a blinded subset of curation records before the cohort is frozen; resolve discrepancies before executing engines.
+- Independently review a blinded subset of curation records before any docking; resolve discrepancies before executing engines. This review is pending after the manifest freeze; if it finds a selection-affecting error, correct and version the manifest and document the deviation before execution.
 - Report top-1, top-5, and best-sampled results separately. A near-native pose among returned modes is evidence of sampling in that run; it is not a top-ranked success.
 - Docking scores are not experimental binding free energies. Redocking into a crystal-derived receptor tests retrospective pose recovery under a particular preparation protocol and does not demonstrate prospective biological activity.
 
@@ -89,4 +90,4 @@ The selected structural files may be redistributed with this benchmark under the
 
 ## Status and next gate
 
-This is a proposed, fully specified protocol. The next gate is to implement and review the deterministic RCSB candidate-capture/curation tool, inspect the eligible universe and exclusion reasons, freeze the 30-cluster cohort and its manifests, then run a resource-feasibility pilot before the full 90-attempt batch. If fewer than 30 clusters qualify, amend the protocol before running docking. No broader accuracy claim will be made from the current three-case pilot.
+The protocol was preregistered before selection. Deterministic capture and structure-level curation selected 30 eligible cases from 30 distinct 30%-identity sequence clusters after reviewing 762 polymer-entity candidates across 755 unique mmCIF files (732 ineligible, 30 selected); the 151,247-entity capture also records candidates not assessed after cohort completion or due to cluster representation. The frozen manifest and per-candidate decisions are in benchmarks/redocking/pilot_v3/cohort-30-20260929/. No docking has been run on this cohort. Next, independently review a blinded subset of curation records, check artifact integrity and repository packaging, then run the locked resource-feasibility pilot before the full 90-attempt batch. No broader accuracy claim will be made from the current three-case pilot.

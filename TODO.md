@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Implement structure-level mmCIF eligibility review with explicit reasons; then freeze a 30-cluster manifest before any docking. |
-| **Next task** | Run the locked resource-feasibility pilot, then the preregistered 90-attempt cohort; preserve failures and report the planned endpoints. |
+| **Current task** | [-] Obtain independent blinded review; prepare the release-safe cohort bundle and preserve the full verified 514 MB curation set; no new-cohort docking has started. |
+| **Next task** | Reconcile the returned blind review and freeze the release bundle; then run REDOCK-001/seed 42 as attempt 1/90 and proceed with the remaining locked attempts if host resources permit. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
-| **Blocking questions** | General redocking accuracy remains unvalidated: the v2 pilot has 1/3 top-1 successes; the 1M17 run sampled near-native poses at ranks 3 and 8, but top-1 failed. Dataset scope and workload are not yet defined. |
+| **Blocking questions** | General redocking accuracy remains unvalidated: the v2 pilot has 1/3 top-1 successes; the 1M17 run sampled near-native poses at ranks 3 and 8, but top-1 failed. The new 30-case cohort is frozen; blinded review, release-safe artifact packaging, and resource feasibility are the immediate gates. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -845,8 +845,8 @@ When the user says **CONTINUE**:
 
 - [x] **P0 diagnostic subtask — Site-local receptor experiment:** separate v2 retained whole residues within the ligand-defined docking box expanded by 8 Å; it resolves Meeko preparation for 3ERT and 1M17, retains all failures, and repeats 5NIU with identical pose-file hash and RMSDs. Results: 3ERT top pose 1.2351 Å (pass); 5NIU 12.9228 Å and 1M17 5.9434 Å (fail). Frozen v1 is unchanged. See docs/validation/G-DOCK-10.md and benchmarks/redocking/pilot_v2/site-crop-box8-20260929/.
 - [x] **P0 — Scientific redocking diagnostic:** v2 resolves two Meeko preparation failures without changing v1; it yields 1/3 top-1 cases under 2 Å. Descriptive review of 1M17 shows near-native poses at ranks 3 and 8 (best 1.1234 Å), but the fixed top-1 endpoint still fails. This supports sampling in that one run and is consistent with a ranking limitation; it does not prove the cause or general accuracy. No post-hoc tuning or extra docking was performed. See docs/validation/G-DOCK-10.md and docs/validation/G-DOCK-11.md.
-- [x] **P1 protocol gate:** drafted the preregistered 30-target-cluster RCSB cohort, eligibility/exclusion rules, locked Meeko/Vina protocol, three-seed design, top-1 primary endpoint, top-5/best-sampled secondary endpoints, failure denominator, and cluster-bootstrap reporting in docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md. No new cohort has been selected or docked.
-- [-] **P1 — Broader scientific validation:** deterministic RCSB candidate capture is implemented and count-reconciled; structure-level eligibility review, frozen cohort selection, resource-feasibility pilot, and preregistered 90-attempt redocking benchmark remain. Current pilot supports no general accuracy claim.
+- [x] **P1 protocol gate:** drafted the preregistered 30-target-cluster RCSB cohort, eligibility/exclusion rules, locked Meeko/Vina protocol, three-seed design, top-1 primary endpoint, top-5/best-sampled secondary endpoints, failure denominator, and cluster-bootstrap reporting in docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md. A 30-case cohort has since been frozen; no docking has been run on it.
+- [-] **P1 — Broader scientific validation:** deterministic RCSB candidate capture is implemented and count-reconciled; 30-case structure-level curation and cohort freeze are complete (30 clusters; 762 polymer-entity candidates reviewed across 755 unique mmCIF files); blinded review, artifact package/integrity gate, resource-feasibility pilot, and preregistered 90-attempt redocking remain. Current pilot supports no general accuracy claim.
 - [ ] **P1 — Engine-enabled continuous validation:** host optional real-engine tests in isolated, licensed environments where feasible. The core gate reports optional integrations as skips; multi-form Vina and PySCF were separately executed and passed as recorded in G-FORM-FANOUT-1. Avoid bundling licensed engines.
 - [ ] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%; improve with focused failure-path tests without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
@@ -871,11 +871,21 @@ When the user says **CONTINUE**:
 - [x] Drafted docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md before selecting or docking a new cohort. It defines 30 sequence-distinct targets, fixed structure/ligand criteria, deterministic seeded selection, three seeds per case, top-1 as primary, top-5 and best sampled pose as separate secondary metrics, all-attempt failure accounting, and cluster bootstrap uncertainty.
 - [x] Implemented deterministic, paginated RCSB candidate capture and local join to the pinned weekly 30%-identity entity clusters. Captured 151,247 hits: 151,223 assigned to 18,555 clusters, 22 absent from the cluster snapshot, and 2 frozen-pilot entities excluded; counts reconcile. Raw pages, query, cluster snapshot, hashes, receipt, and seeded order are retained under benchmarks/redocking/pilot_v3/candidate-capture-20260929-v2/.
 - [x] Added six focused candidate-capture unit tests; all passed. The capture is a broad prefilter and does not establish structure-level ligand/protein eligibility.
-- [-] Implement structure-level mmCIF eligibility review, explicitly classify examined candidates, inspect the eligible universe, and freeze the cohort before docking.
+- [x] Implement structure-level mmCIF eligibility review, explicitly classify examined candidates, inspect the eligible universe, and freeze 30 eligible cases from 30 sequence clusters before docking (762 polymer-entity candidates reviewed across 755 unique mmCIF files). Focused tests and full repository gate pass.
 
 
 ### Session log — 2026-09-29, continuation checkpoint
 
-- [x] Reconciled the TODO checkpoint with the current worktree: capture implementation is present; eligibility audit and cohort freeze remain.
-- [x] Full scripts/check.sh passed after capture/protocol changes: Ruff, formatting (338 files), strict mypy (196 source files), import contracts (255 files), schema freshness, and 730 passed / 37 skipped. Two upstream Starlette/httpx deprecation warnings remain.
-- [-] Implement structure-level eligibility review and record each considered candidate's outcome.
+- [x] Reconciled the TODO checkpoint with the current worktree: capture, structure-level eligibility audit, and cohort freeze are now complete; no cohort docking has started.
+- [x] Full scripts/check.sh passed after capture/protocol changes: Ruff, formatting (341 files), strict mypy (196 source files), import contracts (255 files), schema freshness, and 739 passed / 37 skipped. Two upstream Starlette/httpx deprecation warnings remain.
+- [x] Implement structure-level eligibility review and record each considered candidate's outcome; freeze 30 eligible cases (30 clusters; 762 polymer-entity candidates reviewed across 755 unique mmCIF files).
+
+
+### Session log - 2026-09-29, redocking cohort curation
+
+- [x] Implemented structure-level mmCIF eligibility review and deterministic 30-cluster selection; 30 eligible representatives were frozen after 762 polymer-entity candidates reviewed across 755 unique mmCIF files. No redocking has run.
+- [x] Focused curation tests: 9 passed. Full scripts/check.sh: 739 passed, 37 skipped; Ruff, formatting, strict mypy (196 files), import contracts (255 files), and schema freshness pass. Two upstream Starlette/httpx deprecation warnings remain.
+- [x] Verify cohort integrity: manifest self-hash, 151,247 decision rows and ledger hash, 30 unique selected clusters, exact status totals, and both compressed/decompressed SHA-256 for all 755 unique mmCIFs referenced by reviewed entities. 762 entity-level candidates were reviewed (732 ineligible, 30 selected).
+- [x] Prepare a six-case blind review packet (3 selected, 3 ineligible), with randomized labels and a separate unblinding key.
+- [x] Record resource preflight in docs/validation/REDOCKING_RESOURCE_PREFLIGHT.md: WSL2/16 CPUs/7.6 GiB/770 GiB free; Vina f458505-mod and Meeko 0.7.1 are in the existing cadd environment; Vina SHA-256 recorded. No docking run.
+- [-] Obtain independent blinded review and build the release-safe cohort bundle. Full working cohort remains 514 MB (426 MB structures, 86 MB decision ledger, 1.4 MB manifest); do not commit raw output wholesale.
