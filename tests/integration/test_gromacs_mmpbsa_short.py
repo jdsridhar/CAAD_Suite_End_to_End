@@ -8,6 +8,8 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -16,6 +18,8 @@ from caddsuite.adapters.binding_energy.gmx_mmpbsa import (
     GromacsMMPBSAParameters,
 )
 from caddsuite.adapters.binding_energy.gmx_mmpbsa_results import parse_gmx_mmpbsa_results
+from caddsuite.application.binding_energy_stage_plugin import GromacsMMPBSAStagePlugin
+from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.contracts.analysis import BindingEnergyMethod, BindingEnergyRequest, FrameSelection
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.md import (
@@ -34,8 +38,11 @@ from caddsuite.contracts.md import (
 )
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
+from caddsuite.workflow.definition import StageDefinition
+from caddsuite.workflow.scheduler import TaskInvocation
 
 DATA_ROOT = os.environ.get("CADDSUITE_MDSUITE_DATA")
+STAGE_DATA_ROOT = os.environ.get("CADDSUITE_GMX_MMPBSA_STAGE_DATA")
 GMX = os.environ.get("CADDSUITE_GROMACS_EXECUTABLE")
 MMPBSA = os.environ.get("CADDSUITE_GMX_MMPBSA_EXECUTABLE")
 MMPBSA_PYTHON = os.environ.get("CADDSUITE_GMX_MMPBSA_PYTHON")
@@ -399,3 +406,73 @@ def test_11_frame_result_matches_archived_per_frame_components(tmp_path: Path):
         f"max by component={component_errors}",
         sep="",
     )
+
+
+def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
+    tmp_path: Path,
+) -> None:
+    assert DATA_ROOT is not None
+    assert GMX is not None
+    assert MMPBSA is not None
+    assert MMPBSA_PYTHON is not None
+    source = (
+        Path(STAGE_DATA_ROOT)
+        if STAGE_DATA_ROOT is not None
+        else Path(DATA_ROOT) / "projects/2M2D_LIG/gromacs"
+    )
+    request, staged = _stage_request(source, tmp_path / "stage-input")
+    source_paths = tuple(source / relative for relative in request.source_artifacts)
+    source_hashes = {path: _sha256(path) for path in source_paths}
+
+    with LocalWorkflowRuntime.open(
+        data_root=tmp_path / "runtime",
+        handlers=lambda _services: {"validation_placeholder": object()},
+    ) as runtime:
+        for artifact in request.source_artifacts.values():
+            staged_path = staged[str(artifact.artifact_id)]
+            blob = runtime.services.artifacts.put_file(staged_path)
+            assert blob.sha256 == artifact.sha256
+
+        stage = StageDefinition.model_validate(
+            {
+                "id": "mmgbsa",
+                "kind": "binding_energy",
+                "engine": "gmx_mmpbsa",
+                "params": {
+                    "engine_parameters": {
+                        "gmx_mmpbsa_executable": MMPBSA,
+                        "gmx_executable": GMX,
+                        "ambertools_bin": str(Path(MMPBSA).resolve().parent),
+                        "python_executable": MMPBSA_PYTHON,
+                        "worker_script": str(
+                            Path(__file__).resolve().parents[2]
+                            / "src/caddsuite_worker/gmx_mmpbsa_worker.py"
+                        ),
+                        "timeout_seconds": 3600,
+                        "mpi_launch_retries": 0,
+                    }
+                },
+            }
+        )
+        handler = GromacsMMPBSAStagePlugin._build(stage, runtime.services)
+        result = handler.execute(
+            cast(
+                TaskInvocation,
+                SimpleNamespace(inputs={"request": (request,)}),
+            )
+        )
+        assert result.method is BindingEnergyMethod.MM_GBSA
+        assert result.frames.n_used == 11
+        assert result.temperature_K == pytest.approx(request.temperature_K)
+        assert result.tool.version
+        assert {"FINAL_RESULTS_MMGBSA.dat", "FINAL_RESULTS_MMGBSA.csv"} <= {
+            Path(name).name for name in result.output_artifacts
+        }
+        assert result.log_artifacts
+        for artifact in (
+            *result.output_artifacts.values(),
+            *result.log_artifacts.values(),
+        ):
+            assert artifact.sha256 is not None
+            assert runtime.services.artifacts.verify(artifact.sha256)
+    assert source_hashes == {path: _sha256(path) for path in source_paths}

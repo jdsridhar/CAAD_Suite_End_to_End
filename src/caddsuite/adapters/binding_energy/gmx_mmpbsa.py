@@ -113,8 +113,9 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _read_gromacs_index(path: Path, atom_count: int) -> dict[str, set[int]]:
+def _read_gromacs_index(path: Path, atom_count: int) -> tuple[dict[str, set[int]], tuple[str, ...]]:
     groups: dict[str, set[int]] = {}
+    group_order: list[str] = []
     current: str | None = None
     values: list[int] = []
 
@@ -125,7 +126,14 @@ def _read_gromacs_index(path: Path, atom_count: int) -> dict[str, set[int]]:
             raise GromacsMMPBSAPlanError(
                 f"GROMACS index group {current!r} is empty or contains duplicate atoms"
             )
-        groups[current] = set(values)
+        atom_ids = set(values)
+        previous = groups.get(current)
+        if previous is not None and previous != atom_ids:
+            raise GromacsMMPBSAPlanError(
+                f"GROMACS index repeats group name {current!r} with different atom membership"
+            )
+        groups.setdefault(current, atom_ids)
+        group_order.append(current)
 
     try:
         lines = path.read_text(encoding="utf-8", errors="strict").splitlines()
@@ -138,8 +146,8 @@ def _read_gromacs_index(path: Path, atom_count: int) -> dict[str, set[int]]:
         if line.startswith("[") and line.endswith("]"):
             store_current()
             current = line[1:-1].strip()
-            if not current or current in groups:
-                raise GromacsMMPBSAPlanError("GROMACS index has an empty or duplicate group name")
+            if not current:
+                raise GromacsMMPBSAPlanError("GROMACS index contains an empty group name")
             values = []
             continue
         if current is None:
@@ -154,7 +162,7 @@ def _read_gromacs_index(path: Path, atom_count: int) -> dict[str, set[int]]:
     store_current()
     if not groups:
         raise GromacsMMPBSAPlanError("GROMACS index contains no groups")
-    return groups
+    return groups, tuple(group_order)
 
 
 def _safe_relative_path(value: str) -> PurePosixPath:
@@ -410,7 +418,7 @@ class GromacsMMPBSAAdapter:
             raise GromacsMMPBSAPlanError("verified protein and ligand index artifacts are required")
         index_path = artifact_path(protein.indices)
         topology_path = artifact_path(root_topology)
-        index_groups = _read_gromacs_index(files[index_path], request.system.n_atoms)
+        index_groups, group_order = _read_gromacs_index(files[index_path], request.system.n_atoms)
         for name, selection in (("protein", protein), ("ligand", ligand)):
             group_name = request.selection_groups[name]
             if group_name not in index_groups:
@@ -423,9 +431,8 @@ class GromacsMMPBSAAdapter:
             index_groups[request.selection_groups["ligand"]]
         ):
             raise GromacsMMPBSAPlanError("protein and ligand GROMACS index groups overlap")
-        ordered_groups = list(index_groups)
         group_indices = {
-            name: ordered_groups.index(request.selection_groups[name])
+            name: group_order.index(request.selection_groups[name])
             for name in ("protein", "ligand")
         }
         includes = validate_topology_include_closure(topology_path, files)

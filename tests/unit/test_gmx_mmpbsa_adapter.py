@@ -14,6 +14,7 @@ from caddsuite.adapters.binding_energy.gmx_mmpbsa import (
     GromacsMMPBSAAdapter,
     GromacsMMPBSAParameters,
     GromacsMMPBSAPlanError,
+    _read_gromacs_index,
     validate_topology_include_closure,
 )
 from caddsuite.contracts.analysis import BindingEnergyRequest, FrameSelection
@@ -23,6 +24,7 @@ from caddsuite_worker.gmx_mmpbsa_worker import (
     WorkerFailure,
     _model_text,
     _read_index,
+    _read_index_details,
 )
 from caddsuite_worker.gmx_mmpbsa_worker import (
     _run as run_worker,
@@ -196,9 +198,33 @@ def test_named_index_group_parser_checks_range_duplicates_and_empty_groups(tmp_p
     with pytest.raises(WorkerFailure, match="repeats atoms"):
         _read_index(path, 3)
 
+    path.write_text("[ Duplicate ]\n1\n[ Duplicate ]\n1\n[ LIG ]\n3\n", encoding="utf-8")
+    groups, order = _read_index_details(path, 3)
+    assert groups == {"Duplicate": {1}, "LIG": {3}}
+    assert order == ("Duplicate", "Duplicate", "LIG")
+    path.write_text("[ LIG ]\n1\n[LIG]\n2\n", encoding="utf-8")
+    with pytest.raises(WorkerFailure, match="different atom membership"):
+        _read_index_details(path, 3)
+
     path.write_text("[ Protein ]\n4\n", encoding="utf-8")
     with pytest.raises(WorkerFailure, match="outside the declared MDSystem"):
         _read_index(path, 3)
+
+
+def test_index_reader_preserves_actual_group_numbers_and_allows_identical_duplicates(
+    tmp_path: Path,
+):
+    path = tmp_path / "duplicate-groups.ndx"
+    path.write_text(
+        "[ Duplicate ]\n1\n[ Duplicate ]\n1\n[ Protein ]\n2\n[LIG]\n3\n[LIG]\n3\n",
+        encoding="utf-8",
+    )
+    groups, order = _read_gromacs_index(path, 3)
+    assert groups == {"Duplicate": {1}, "Protein": {2}, "LIG": {3}}
+    assert order == ("Duplicate", "Duplicate", "Protein", "LIG", "LIG")
+    path.write_text("[ LIG ]\n1\n[LIG]\n2\n", encoding="utf-8")
+    with pytest.raises(GromacsMMPBSAPlanError, match="different atom membership"):
+        _read_gromacs_index(path, 3)
 
 
 def test_worker_input_explicitly_renders_physical_settings_and_protocol_temperature(tmp_path: Path):
@@ -380,6 +406,8 @@ raise SystemExit(child.returncode)
     assert (output / "FINAL_RESULTS_MMGBSA.csv").read_text(encoding="utf-8") == csv
     assert (output / "mmpbsa.in").is_file()
     assert (output / "gromacs_version.stdout.txt").is_file()
+    assert (output / "gmx_mmpbsa.stdout.txt").read_text().count("attempt") == 2
+    assert (output / "gmx_mmpbsa.stderr.txt").read_text().count("attempt") == 2
     assert result["effective_parameters"]["gromacs_group_indices_zero_based"] == [1, 2]
 
 

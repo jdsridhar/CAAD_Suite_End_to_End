@@ -68,8 +68,9 @@ def _confined(root: Path, value: object, label: str) -> Path:
     return resolved
 
 
-def _read_index(path: Path, atom_count: int) -> dict[str, set[int]]:
+def _read_index_details(path: Path, atom_count: int) -> tuple[dict[str, set[int]], tuple[str, ...]]:
     groups: dict[str, set[int]] = {}
+    group_order: list[str] = []
     current: str | None = None
     values: list[int] = []
 
@@ -78,7 +79,14 @@ def _read_index(path: Path, atom_count: int) -> dict[str, set[int]]:
             return
         if not values or len(values) != len(set(values)):
             raise WorkerFailure(f"GROMACS index group {current!r} is empty or repeats atoms")
-        groups[current] = set(values)
+        atom_ids = set(values)
+        previous = groups.get(current)
+        if previous is not None and previous != atom_ids:
+            raise WorkerFailure(
+                f"GROMACS index repeats group name {current!r} with different atom membership"
+            )
+        groups.setdefault(current, atom_ids)
+        group_order.append(current)
 
     try:
         lines = path.read_text(encoding="utf-8", errors="strict").splitlines()
@@ -91,12 +99,12 @@ def _read_index(path: Path, atom_count: int) -> dict[str, set[int]]:
         if line.startswith("[") and line.endswith("]"):
             save()
             current = line[1:-1].strip()
-            if not current or current in groups:
-                raise WorkerFailure("GROMACS index contains an empty or duplicate group name")
+            if not current:
+                raise WorkerFailure("GROMACS index contains an empty group name")
             values = []
             continue
         if current is None:
-            raise WorkerFailure("GROMACS index contains atom numbers before the first group")
+            raise WorkerFailure("GROMACS index contains atom numbers before its first group")
         try:
             row = [int(token) for token in line.split()]
         except ValueError as exc:
@@ -107,7 +115,12 @@ def _read_index(path: Path, atom_count: int) -> dict[str, set[int]]:
     save()
     if not groups:
         raise WorkerFailure("GROMACS index has no groups")
-    return groups
+    return groups, tuple(group_order)
+
+
+def _read_index(path: Path, atom_count: int) -> dict[str, set[int]]:
+    """Return unique named groups; exact duplicate definitions share one atom set."""
+    return _read_index_details(path, atom_count)[0]
 
 
 def _validate_topology_closure(root: Path, topology: str, expected: list[str]) -> None:
@@ -360,7 +373,7 @@ def _run(request_path: Path, output_arg: str) -> None:
         or protein_name == ligand_name
     ):
         raise WorkerFailure("protein and ligand group names must be explicit and distinct")
-    index_groups = _read_index(selected_paths["index"], atom_count)
+    index_groups, group_order = _read_index_details(selected_paths["index"], atom_count)
     if protein_name not in index_groups or ligand_name not in index_groups:
         raise WorkerFailure(
             f"named index group not found: protein={protein_name!r}, ligand={ligand_name!r}"
@@ -377,10 +390,7 @@ def _run(request_path: Path, output_arg: str) -> None:
     overlap = protein_atoms & ligand_atoms
     if overlap:
         raise WorkerFailure(f"protein and ligand groups overlap at {len(overlap)} atom(s)")
-    group_ids = [
-        list(index_groups).index(protein_name),
-        list(index_groups).index(ligand_name),
-    ]
+    group_ids = [group_order.index(protein_name), group_order.index(ligand_name)]
     declared_group_ids = request.get("selection_group_indices_zero_based")
     if declared_group_ids != {"protein": group_ids[0], "ligand": group_ids[1]}:
         raise WorkerFailure(
@@ -568,6 +578,22 @@ def _run(request_path: Path, output_arg: str) -> None:
         raise WorkerFailure("refusing to overwrite existing native MM/GBSA report outputs")
     final_dat.replace(target_dat)
     final_csv.replace(target_csv)
+    attempts = [
+        str(record.get("label", "")).removeprefix("gmx_mmpbsa_attempt_")
+        for record in records
+        if str(record.get("label", "")).startswith("gmx_mmpbsa_attempt_")
+    ]
+    for stream_name in ("stdout", "stderr"):
+        aggregate = bytearray()
+        for attempt_number in attempts:
+            attempt_log = output / f"gmx_mmpbsa.attempt-{attempt_number}.{stream_name}.txt"
+            aggregate.extend(
+                f"=== gmx_MMPBSA attempt {attempt_number} {stream_name} ===\n".encode()
+            )
+            aggregate.extend(attempt_log.read_bytes())
+            if not aggregate.endswith(b"\n"):
+                aggregate.extend(b"\n")
+        (output / f"gmx_mmpbsa.{stream_name}.txt").write_bytes(aggregate)
     (output / "commands.json").write_text(
         json.dumps(records, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )

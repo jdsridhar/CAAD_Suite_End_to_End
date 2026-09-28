@@ -20,7 +20,7 @@ Scope: capabilities discovered from installed stage-handler entry points in the 
 | binding_energy | gmx_mmpbsa | BindingEnergyRequest | BindingEnergyResult (reviewed MM/GBSA profile only) |
 | gate / report | platform | configured evidence / report inputs | normalized decision / ReportBundle |
 
-The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. There is still no production system-builder stage. The MM/GBSA stage registration now exists, while engine/data-backed handler execution remains to be verified. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
+The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. There is still no production system-builder stage. The MM/GBSA stage is registered and has a copied-input real-engine handler smoke on the available 11-frame data; G-MD-18's separate archived benchmark remains data-specific. Neither smoke nor benchmark establishes experimental binding affinity. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
 
 ## Integration gaps and scientific constraints
 

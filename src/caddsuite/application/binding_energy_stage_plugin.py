@@ -99,6 +99,12 @@ class GromacsMMPBSAStageHandler:
 
         parameters = self.settings.model_dump(mode="json")
         try:
+            plan = self.engine.plan_request(
+                request,
+                parameters=parameters,
+                staged_inputs=staged,
+                working_directory=work,
+            )
             worker_request = self.engine.worker_request(
                 request,
                 parameters=self.settings,
@@ -110,12 +116,6 @@ class GromacsMMPBSAStageHandler:
             request_path.write_text(
                 json.dumps(worker_request, sort_keys=True, allow_nan=False) + "\n",
                 encoding="utf-8",
-            )
-            plan = self.engine.plan_request(
-                request,
-                parameters=parameters,
-                staged_inputs=staged,
-                working_directory=work,
             )
         except (OSError, ValueError, TypeError) as exc:
             raise StageExecutionFailure("BINDING_ENERGY.PREPARATION_FAILED", str(exc)) from exc
