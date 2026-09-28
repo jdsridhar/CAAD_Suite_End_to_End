@@ -6,11 +6,11 @@
 
 | | |
 |---|---|
-| **Current phase** | Post-phase audit - scientific validation limitations and release readiness |
-| **Current task** | [-] Evaluate a separate, explicitly defined Vina site-local receptor preparation protocol against the frozen v1 failures and sensitivity case. |
-| **Next task** | Establish whether receptor cropping bounded by the docking box and scoring neighborhood can avoid remote malformed residues without excluding relevant receptor atoms; compare a separately versioned run against v1 and retain all failures. |
+| **Current phase** | Post-phase audit — broader scientific validation planning |
+| **Current task** | [-] Design a prespecified, broader redocking benchmark: dataset inclusion criteria, references, endpoints (top-1/top-k/best sampled), replicate plan, and failed-preparation accounting. |
+| **Next task** | Select and freeze a scientifically defensible dataset and protocol before running additional docking calculations; retain v1/v2 as pilot evidence only. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
-| **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
+| **Blocking questions** | General redocking accuracy remains unvalidated: the v2 pilot has 1/3 top-1 successes; the 1M17 run sampled near-native poses at ranks 3 and 8, but top-1 failed. Dataset scope and workload are not yet defined. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -838,17 +838,27 @@ When the user says **CONTINUE**:
 - [x] Added and passed the guard rejecting a QM pose whose DockingRun differs from the supplied run; the engine is not invoked on mismatch. Fixed a malformed PySCF remediation tuple on its validation-error path.
 - [x] Full scripts/check.sh: 723 passed, 37 skipped; Ruff, format, strict mypy (196 files), import contracts (255 files), schemas pass. Two pre-existing Starlette/httpx deprecation warnings.
 - [x] Phase 13.7 runtime composition gate complete. Validation evidence: `docs/validation/G-FORM-FANOUT-1.md`; decision: ADR-0060.
-- [x] Phase audit reconciled stale historical TODO entries against completed later evidence. Current highest-priority open item: scientifically reviewed redocking compatibility/pose-recovery follow-up; the fixed v1 benchmark remains a failed/limited result and no accuracy claim is made.
+- [x] Phase audit reconciled stale historical TODO entries against completed later evidence. At that checkpoint, the highest-priority open item was the redocking follow-up. Superseded by the versioned v2 experiment and G-DOCK-11 diagnostic; the fixed v1 result remains unchanged and no general accuracy claim is made.
 
 
 ## Current pending work and priority (2026-09-29)
 
-- [-] **P0 — Scientific redocking follow-up:** coordinate and source-sequence inspection links the 3ERT PRO A 552 valence failure to a partially observed C-terminal residue that PDBFixer completed while two terminal sequence residues remained unresolved. In 1M17, seven parser-failing residues are 22.43–34.46 Å from the native ligand. This motivates a separately versioned site-local receptor experiment, not silent v1 repair. Preserve v1; define cropping from the docking box/scoring neighborhood, retain hashes and all case outcomes, and assess pose sensitivity on 5NIU before interpreting alternative results. See `docs/validation/G-DOCK-8.md` and `docs/validation/REDOCKING_PILOT_V1.md`.
-- [ ] **P1 — Broader scientific validation:** expand beyond the three-case compatibility pilot only after a defensible dataset and endpoint are specified; include known complexes and independently validated analysis references. Current pilot supports no general accuracy claim.
+- [x] **P0 diagnostic subtask — Site-local receptor experiment:** separate v2 retained whole residues within the ligand-defined docking box expanded by 8 Å; it resolves Meeko preparation for 3ERT and 1M17, retains all failures, and repeats 5NIU with identical pose-file hash and RMSDs. Results: 3ERT top pose 1.2351 Å (pass); 5NIU 12.9228 Å and 1M17 5.9434 Å (fail). Frozen v1 is unchanged. See docs/validation/G-DOCK-10.md and benchmarks/redocking/pilot_v2/site-crop-box8-20260929/.
+- [x] **P0 — Scientific redocking diagnostic:** v2 resolves two Meeko preparation failures without changing v1; it yields 1/3 top-1 cases under 2 Å. Descriptive review of 1M17 shows near-native poses at ranks 3 and 8 (best 1.1234 Å), but the fixed top-1 endpoint still fails. This supports sampling in that one run and is consistent with a ranking limitation; it does not prove the cause or general accuracy. No post-hoc tuning or extra docking was performed. See docs/validation/G-DOCK-10.md and docs/validation/G-DOCK-11.md.
+- [-] **P1 — Broader scientific validation:** prespecify dataset inclusion, independent reference structures, top-1/top-k/best-sampled endpoints, replicate strategy, and failed-preparation accounting before selecting and freezing the dataset. Expand beyond the three-case compatibility pilot only after this protocol is reviewed. Current pilot supports no general accuracy claim.
 - [ ] **P1 — Engine-enabled continuous validation:** host optional real-engine tests in isolated, licensed environments where feasible. The core gate reports optional integrations as skips; multi-form Vina and PySCF were separately executed and passed as recorded in G-FORM-FANOUT-1. Avoid bundling licensed engines.
 - [ ] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%; improve with focused failure-path tests without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
 - [ ] **P3 — Product polish:** investigate documented Mol* bundle-size and optional h264 Node builtin warnings; not a blocker for scientific core/runtime acceptance.
 
 
-- [x] P0 diagnostic update: source mmCIF and prepared coordinates were inspected read-only; possible terminal-cap mechanism and ligand-to-residue distances are recorded in `docs/validation/G-DOCK-8.md`. No receptor artifact or frozen benchmark result was modified.
+- [x] P0 diagnostic update: source mmCIF and prepared coordinates were inspected read-only; the possible terminal-cap mechanism and ligand-to-residue distances are recorded in docs/validation/G-DOCK-8.md. No source receptor or frozen v1 benchmark result was modified.
+- [x] P0 v2 experiment: versioned site-local receptor selection enabled all three Meeko/Vina cases; hashes, commands, logs, scores, RMSDs and outcomes are preserved. v1 remains frozen. V2 addresses compatibility, not general pose accuracy.
+- [x] P0 closure: review of all nine 1M17 poses found near-native poses below rank 1; documented in docs/validation/G-DOCK-11.md. No post-hoc tuning or additional docking was justified by this three-case pilot.
+
+### Session log — 2026-09-29, site-local receptor and 1M17 diagnostic
+
+- [x] Implemented the shell-free, separately versioned Vina/Meeko experiment runner with frozen-v1 checksum verification and hash-linked per-case artifacts.
+- [x] Executed 5NIU/8YZ, 3ERT/OHT and 1M17/AQ4. The crop enabled the two previously blocked preparations; top-1 recovery was 1/3. The 5NIU repeat matched pose bytes and RMSDs.
+- [x] Audited all nine preserved 1M17 poses without rerunning docking: rank 1 RMSD 5.9434 Å; ranks 3 and 8 RMSDs 1.8170 Å and 1.1234 Å, respectively. Score penalties from rank 1 were 0.096 and 0.217 kcal/mol.
+- [x] Recorded methods, results, provenance and limits in docs/validation/G-DOCK-10.md and docs/validation/G-DOCK-11.md. P0 diagnostic closed; broader validation remains open.

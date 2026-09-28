@@ -8,3 +8,8 @@
 *.gz binary
 # Preserve downloaded RCSB mmCIF source bytes and ignore archive trailing padding spaces.
 benchmarks/redocking/pilot_v1/structures/*.cif -text -whitespace
+# Preserve fixed-column docking outputs and raw engine logs byte-for-byte.
+*.pdbqt -text -whitespace
+*.log -text -whitespace
+*.pdb -text -whitespace
+*.sdf -text -whitespace

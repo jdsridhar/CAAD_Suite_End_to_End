@@ -1,0 +1,573 @@
+{
+  "case_id": "3ert-oht",
+  "docking": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/vina",
+      "--receptor",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/receptor.pdbqt",
+      "--ligand",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/ligand.pdbqt",
+      "--center_x",
+      "31.574552",
+      "--center_y",
+      "-1.5903793",
+      "--center_z",
+      "25.599483",
+      "--size_x",
+      "22",
+      "--size_y",
+      "22",
+      "--size_z",
+      "22",
+      "--exhaustiveness",
+      "16",
+      "--num_modes",
+      "9",
+      "--energy_range",
+      "3",
+      "--cpu",
+      "2",
+      "--seed",
+      "42",
+      "--out",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/poses.pdbqt"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 29.375,
+    "stderr_path": "vina.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "vina.stdout.log",
+    "stdout_sha256": "599f9696ba89ccec917966f8e82c85448a6e0234fd94ee06b5dcdf6f33993942"
+  },
+  "ligand_preparation": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+      "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_ligand.py",
+      "--mol",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/ligands/3ert-oht_native.sdf",
+      "--out",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/ligand.pdbqt",
+      "--charge_model",
+      "gasteiger",
+      "--add_index_map"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 0.937,
+    "stderr_path": "meeko_ligand.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "meeko_ligand.stdout.log",
+    "stdout_sha256": "8f13b69c763278d183de36bb0149cb01e2557ff091944fa32edea3812f1eda92"
+  },
+  "native_ligand_sha256": "6be1b1b5753b0d93fcf0c4afc08c46943d9bb377746a18a3577e4dad084845b5",
+  "native_ligand_source": "benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/ligands/3ert-oht_native.sdf",
+  "pdb_id": "3ERT",
+  "pose_export": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+      "/home/sridhar/miniconda3/envs/cadd/bin/mk_export.py",
+      "--write_sdf",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/poses.sdf",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/poses.pdbqt"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 0.971,
+    "stderr_path": "meeko_export.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "meeko_export.stdout.log",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "poses": [
+    {
+      "heavy_atom_count": 29,
+      "rank": 1,
+      "score_kcal_mol": -9.926,
+      "symmetry_corrected_no_fit_rmsd_A": 1.2351
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 2,
+      "score_kcal_mol": -9.807,
+      "symmetry_corrected_no_fit_rmsd_A": 1.2355
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 3,
+      "score_kcal_mol": -8.888,
+      "symmetry_corrected_no_fit_rmsd_A": 5.1708
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 4,
+      "score_kcal_mol": -8.754,
+      "symmetry_corrected_no_fit_rmsd_A": 5.2656
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 5,
+      "score_kcal_mol": -7.986,
+      "symmetry_corrected_no_fit_rmsd_A": 10.3118
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 6,
+      "score_kcal_mol": -7.258,
+      "symmetry_corrected_no_fit_rmsd_A": 10.862
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 7,
+      "score_kcal_mol": -7.08,
+      "symmetry_corrected_no_fit_rmsd_A": 10.0809
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 8,
+      "score_kcal_mol": -7.002,
+      "symmetry_corrected_no_fit_rmsd_A": 11.4796
+    },
+    {
+      "heavy_atom_count": 29,
+      "rank": 9,
+      "score_kcal_mol": -6.991,
+      "symmetry_corrected_no_fit_rmsd_A": 11.189
+    }
+  ],
+  "receptor_crop_sha256": "e35a3ee32c8db21d8822b28653e7971aa17f9017d821d67004e9a42f4fd32489",
+  "receptor_preparation": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+      "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
+      "--read_pdb",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/receptor_crop.pdb",
+      "--write_pdbqt",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/receptor.pdbqt",
+      "--write_json",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/3ert-oht/receptor.json"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 2.513,
+    "stderr_path": "meeko_receptor.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "meeko_receptor.stdout.log",
+    "stdout_sha256": "a5aea9fd036ece96cb351369a32a085d0d272651bb9fb1e948922e116ef6b385"
+  },
+  "receptor_source": "benchmarks/redocking/pilot_v1/prepared/3ert_protein.pdb",
+  "receptor_source_sha256": "aeea5c44210eda8567709e4318b0ab58162b3b2b9f7f3bf34e61d0df7b2471a4",
+  "removed_residues": [
+    [
+      "A",
+      " 306",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 307",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 308",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 309",
+      " ",
+      "SER"
+    ],
+    [
+      "A",
+      " 310",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 311",
+      " ",
+      "THR"
+    ],
+    [
+      "A",
+      " 312",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 313",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 314",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 315",
+      " ",
+      "MET"
+    ],
+    [
+      "A",
+      " 316",
+      " ",
+      "VAL"
+    ],
+    [
+      "A",
+      " 317",
+      " ",
+      "SER"
+    ],
+    [
+      "A",
+      " 318",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 320",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 321",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 369",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 371",
+      " ",
+      "THR"
+    ],
+    [
+      "A",
+      " 372",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 373",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 441",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 442",
+      " ",
+      "GLY"
+    ],
+    [
+      "A",
+      " 443",
+      " ",
+      "GLU"
+    ],
+    [
+      "A",
+      " 462",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 463",
+      " ",
+      "SER"
+    ],
+    [
+      "A",
+      " 464",
+      " ",
+      "SER"
+    ],
+    [
+      "A",
+      " 465",
+      " ",
+      "THR"
+    ],
+    [
+      "A",
+      " 466",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 467",
+      " ",
+      "LYS"
+    ],
+    [
+      "A",
+      " 468",
+      " ",
+      "SER"
+    ],
+    [
+      "A",
+      " 469",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 470",
+      " ",
+      "GLU"
+    ],
+    [
+      "A",
+      " 471",
+      " ",
+      "GLU"
+    ],
+    [
+      "A",
+      " 473",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 477",
+      " ",
+      "ARG"
+    ],
+    [
+      "A",
+      " 480",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 481",
+      " ",
+      "LYS"
+    ],
+    [
+      "A",
+      " 483",
+      " ",
+      "THR"
+    ],
+    [
+      "A",
+      " 484",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 485",
+      " ",
+      "THR"
+    ],
+    [
+      "A",
+      " 487",
+      " ",
+      "ILE"
+    ],
+    [
+      "A",
+      " 488",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 489",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 490",
+      " ",
+      "MET"
+    ],
+    [
+      "A",
+      " 491",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 492",
+      " ",
+      "LYS"
+    ],
+    [
+      "A",
+      " 493",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 494",
+      " ",
+      "GLY"
+    ],
+    [
+      "A",
+      " 495",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 496",
+      " ",
+      "THR"
+    ],
+    [
+      "A",
+      " 497",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 498",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 499",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 500",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 501",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 502",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 504",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 505",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 506",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 508",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 509",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 545",
+      " ",
+      "ASP"
+    ],
+    [
+      "A",
+      " 546",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 547",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 548",
+      " ",
+      "ARG"
+    ],
+    [
+      "A",
+      " 549",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 551",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 552",
+      " ",
+      "PRO"
+    ]
+  ],
+  "retained_residue_count": 180,
+  "site_center_A": [
+    31.574551724137933,
+    -1.5903793103448276,
+    25.599482758620688
+  ],
+  "site_size_A": [
+    22.0,
+    22.0,
+    22.0
+  ],
+  "source_residue_count": 247,
+  "status": "docked"
+}

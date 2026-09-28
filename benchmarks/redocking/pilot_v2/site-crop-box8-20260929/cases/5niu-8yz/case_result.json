@@ -1,0 +1,279 @@
+{
+  "case_id": "5niu-8yz",
+  "docking": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/vina",
+      "--receptor",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/receptor.pdbqt",
+      "--ligand",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/ligand.pdbqt",
+      "--center_x",
+      "4.7011818",
+      "--center_y",
+      "12.375614",
+      "--center_z",
+      "188.79718",
+      "--size_x",
+      "28.341",
+      "--size_y",
+      "22",
+      "--size_z",
+      "22",
+      "--exhaustiveness",
+      "16",
+      "--num_modes",
+      "9",
+      "--energy_range",
+      "3",
+      "--cpu",
+      "2",
+      "--seed",
+      "42",
+      "--out",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/poses.pdbqt"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 147.866,
+    "stderr_path": "vina.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "vina.stdout.log",
+    "stdout_sha256": "7bfc6c7f19c5c623a2dd177ceae1996e44b400d940bd72a8770a1d1078623482"
+  },
+  "ligand_preparation": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+      "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_ligand.py",
+      "--mol",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/ligands/5niu-8yz_native.sdf",
+      "--out",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/ligand.pdbqt",
+      "--charge_model",
+      "gasteiger",
+      "--add_index_map"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 1.019,
+    "stderr_path": "meeko_ligand.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "meeko_ligand.stdout.log",
+    "stdout_sha256": "8f13b69c763278d183de36bb0149cb01e2557ff091944fa32edea3812f1eda92"
+  },
+  "native_ligand_sha256": "db5a25ea14bfdafa56a6e19de541957a220147e1479def86ac3046b236f5fe6b",
+  "native_ligand_source": "benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/ligands/5niu-8yz_native.sdf",
+  "pdb_id": "5NIU",
+  "pose_export": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+      "/home/sridhar/miniconda3/envs/cadd/bin/mk_export.py",
+      "--write_sdf",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/poses.sdf",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/poses.pdbqt"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 1.161,
+    "stderr_path": "meeko_export.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "meeko_export.stdout.log",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "poses": [
+    {
+      "heavy_atom_count": 44,
+      "rank": 1,
+      "score_kcal_mol": -7.154,
+      "symmetry_corrected_no_fit_rmsd_A": 12.9228
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 2,
+      "score_kcal_mol": -7.1,
+      "symmetry_corrected_no_fit_rmsd_A": 12.8838
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 3,
+      "score_kcal_mol": -7.053,
+      "symmetry_corrected_no_fit_rmsd_A": 11.9376
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 4,
+      "score_kcal_mol": -6.846,
+      "symmetry_corrected_no_fit_rmsd_A": 12.7658
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 5,
+      "score_kcal_mol": -6.698,
+      "symmetry_corrected_no_fit_rmsd_A": 10.4035
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 6,
+      "score_kcal_mol": -6.687,
+      "symmetry_corrected_no_fit_rmsd_A": 10.8452
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 7,
+      "score_kcal_mol": -6.648,
+      "symmetry_corrected_no_fit_rmsd_A": 8.3184
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 8,
+      "score_kcal_mol": -6.598,
+      "symmetry_corrected_no_fit_rmsd_A": 10.3505
+    },
+    {
+      "heavy_atom_count": 44,
+      "rank": 9,
+      "score_kcal_mol": -6.426,
+      "symmetry_corrected_no_fit_rmsd_A": 8.3973
+    }
+  ],
+  "receptor_crop_sha256": "5e612ce5c900feac468b58e393c9ba69902902c981c6c548cc3b309a3727249b",
+  "receptor_preparation": {
+    "argv": [
+      "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+      "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
+      "--read_pdb",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/receptor_crop.pdb",
+      "--write_pdbqt",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/receptor.pdbqt",
+      "--write_json",
+      "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/receptor.json"
+    ],
+    "returncode": 0,
+    "runtime_seconds": 3.212,
+    "stderr_path": "meeko_receptor.stderr.log",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_path": "meeko_receptor.stdout.log",
+    "stdout_sha256": "3439eb66b3f7d6ebc0da61b3d715c323ebc5b5f65f6a398a0880d3c5a08bd73e"
+  },
+  "receptor_source": "benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/preparation_jobs/prepare_5niu-8yz-01M3JMZHSBF9WNY74VZ1J5PBS0/prepared_receptor.pdb",
+  "receptor_source_sha256": "4639e8b5b0baffd66947df703b080769a2dbb6fb4c3359be92fcdc50d4898cca",
+  "removed_residues": [
+    [
+      "A",
+      "  31",
+      " ",
+      "GLU"
+    ],
+    [
+      "A",
+      "  32",
+      " ",
+      "TYR"
+    ],
+    [
+      "A",
+      "  75",
+      " ",
+      "LYS"
+    ],
+    [
+      "A",
+      "  83",
+      " ",
+      "GLN"
+    ],
+    [
+      "A",
+      " 106",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 131",
+      " ",
+      "ASN"
+    ],
+    [
+      "A",
+      " 132",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 133",
+      " ",
+      "PRO"
+    ],
+    [
+      "A",
+      " 134",
+      " ",
+      "TYR"
+    ],
+    [
+      "A",
+      " 135",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 136",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 137",
+      " ",
+      "ALA"
+    ],
+    [
+      "A",
+      " 138",
+      " ",
+      "LEU"
+    ],
+    [
+      "A",
+      " 139",
+      " ",
+      "GLU"
+    ],
+    [
+      "A",
+      " 140",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 141",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 142",
+      " ",
+      "HIS"
+    ],
+    [
+      "A",
+      " 143",
+      " ",
+      "HIS"
+    ]
+  ],
+  "retained_residue_count": 108,
+  "site_center_A": [
+    4.701181818181818,
+    12.375613636363637,
+    188.79718181818183
+  ],
+  "site_size_A": [
+    28.341,
+    22.0,
+    22.0
+  ],
+  "source_residue_count": 126,
+  "status": "docked"
+}

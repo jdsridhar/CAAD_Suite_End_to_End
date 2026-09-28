@@ -1,0 +1,4 @@
+
+Files written:
+ /home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/receptor.json <-- parameterized receptor
+/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v2/site-crop-box8-20260929/cases/5niu-8yz/receptor.pdbqt <-- static (i.e., rigid) receptor input file
