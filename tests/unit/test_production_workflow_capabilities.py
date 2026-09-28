@@ -10,6 +10,7 @@ import yaml
 from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.chem.standardize import make_compound, standardize_smiles
+from caddsuite.contracts.registry import Conformer
 from caddsuite.contracts.reporting import ReportBundle
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
@@ -25,11 +26,13 @@ def test_admet_docking_report_template_compiles_with_discovered_plugins() -> Non
         "admet",
         "protonate",
         "configured_filter",
+        "embed",
         "dock",
         "report",
     )
-    assert compiled.tasks[3].output_contract == "docking_result/1.0"
-    assert compiled.tasks[4].output_contract == "report_bundle/1.0"
+    tasks = {task.stage_id: task for task in compiled.tasks}
+    assert tasks["dock"].output_contract == "docking_result/1.0"
+    assert tasks["report"].output_contract == "report_bundle/1.0"
 
 
 def test_discovered_runtime_executes_admet_to_report_subworkflow(tmp_path: Path) -> None:
@@ -51,9 +54,30 @@ def test_discovered_runtime_executes_admet_to_report_subworkflow(tmp_path: Path)
                     "params": {"endpoints": ["qed", "physicochemistry"]},
                 },
                 {
+                    "id": "protonate",
+                    "kind": "chemistry.protonate",
+                    "engine": "dimorphite_dl",
+                    "for_each": "compound",
+                    "input_contracts": {"compound": "compound/1.0"},
+                    "input_bindings": {"compound": "$compounds"},
+                    "output_contract": "compound_form/1.0",
+                    "params": {"target_ph": 7.4, "ambiguous_microstates": "require_decision"},
+                },
+                {
+                    "id": "embed",
+                    "kind": "chemistry.embed",
+                    "engine": "rdkit_etkdg",
+                    "for_each": "compound",
+                    "needs": ["protonate"],
+                    "input_contracts": {"form": "compound_form/1.0"},
+                    "input_bindings": {"form": "protonate"},
+                    "output_contract": "conformer/1.1",
+                    "params": {"policy": {"seed": 42, "optimizer": "MMFF94"}},
+                },
+                {
                     "id": "report",
                     "kind": "report",
-                    "needs": ["admet"],
+                    "needs": ["admet", "embed"],
                     "input_contracts": {
                         "compounds": "compound/1.0",
                         "property_results": "property_prediction_set/1.0",
@@ -66,7 +90,7 @@ def test_discovered_runtime_executes_admet_to_report_subworkflow(tmp_path: Path)
                     "params": {"formats": ["json", "html"]},
                 },
             ],
-            "outputs": {"report": "report"},
+            "outputs": {"report": "report", "conformer": "embed"},
         }
     )
     compiled = registry.compile(workflow)
@@ -107,6 +131,12 @@ def test_discovered_runtime_executes_admet_to_report_subworkflow(tmp_path: Path)
             inputs={"compounds": (compound,)},
         )
         assert not outcome.failures
+        conformer = outcome.outputs["conformer"][0].value
+        assert isinstance(conformer, Conformer)
+        assert conformer.schema_id() == "conformer/1.1"
+        assert conformer.seed == 42
+        assert conformer.structure.sha256 is not None
+        assert runtime.services.artifacts.verify(conformer.structure.sha256)
         bundle = outcome.outputs["report"][0].value
         assert isinstance(bundle, ReportBundle)
         assert {item.format for item in bundle.artifacts} == {"json", "html"}

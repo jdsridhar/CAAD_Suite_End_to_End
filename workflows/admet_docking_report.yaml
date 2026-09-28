@@ -1,6 +1,6 @@
 schema: caddsuite.workflow/1
 name: ADMET, docking and report
-description: A short configurable screen; the example gate is illustrative and is not a platform default.
+description: Configurable example; QED threshold is illustrative. Supply a compatible prepared receptor/site and configure installed Vina/Meeko executable paths before execution.
 inputs:
   compounds:
     contract: compound/1.0
@@ -10,8 +10,6 @@ inputs:
     contract: prepared_receptor/1.0
   binding_site:
     contract: binding_site/1.0
-  conformers:
-    contract: conformer/1.1
 stages:
   - id: admet
     kind: property_prediction
@@ -52,11 +50,25 @@ stages:
     params:
       field_bindings:
         admet.qed: predictions.qed
+  - id: embed
+    kind: chemistry.embed
+    engine: rdkit_etkdg
+    for_each: compound
+    needs: [configured_filter]
+    input_contracts:
+      form: compound_form/1.0
+    input_bindings:
+      form: configured_filter
+    output_contract: conformer/1.1
+    params:
+      policy:
+        seed: 42
+        optimizer: MMFF94
   - id: dock
     kind: docking
     engine: vina
     for_each: compound
-    needs: [configured_filter]
+    needs: [configured_filter, embed]
     input_contracts:
       compound: compound/1.0
       form: compound_form/1.0
@@ -67,7 +79,7 @@ stages:
     input_bindings:
       compound: $compounds
       form: configured_filter
-      conformer: $conformers
+      conformer: embed
       receptor: $prepared_receptor
       target_structure: $target_structure
       site: $binding_site

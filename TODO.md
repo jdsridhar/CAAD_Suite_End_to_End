@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production workflow stage composition (reopened after runtime acceptance audit) |
-| **Current task** | [-] 13.7 Run the corrected ADMET/protonation/gate/Vina/report template through an engine-backed workflow once valid prepared-receptor, binding-site, conformer inputs and explicit Vina executable settings are supplied. |
-| **Next task** | Add or integrate validated receptor/site/conformer preparation stages and then extend production runtime coverage to MD analysis/MMGBSA and QM. |
+| **Current task** | [-] 13.7 Run the corrected ADMET/protonation/gate/embed/Vina/report template through Vina once a compatible prepared receptor, binding site and explicit Vina/Meeko executables are configured. |
+| **Next task** | Add or integrate validated receptor/site preparation stages, then extend production runtime coverage to MD analysis/MMGBSA and QM. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -366,11 +366,12 @@ When the user says **CONTINUE**:
   - [x] Reinstall editable metadata and verify the production registry discovers property_prediction/rdkit_rules.
   - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
   - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The current scheduler returns one contract per task, so run-all is deliberately not offered; multi-form fan-out remains open.
+  - [x] Register seeded RDKit ETKDG embedding as a production stage using the existing chemistry function; record seed, optimizer, RDKit version and SDF CAS artifact. The real runtime regression now executes protonation -> embedding and verifies the output artifact.
   - [x] Register an engine-neutral evidence gate that exposes only explicitly configured PropertyPredictionSet endpoints; configure the example's admet.qed -> predictions.qed binding and verify pass/fail evaluation. Three gate runtime tests pass.
   - [x] Implement run-scoped report stage using the existing provenance builder/renderers, content-addressed artifacts and ReportBundle; pass run_id through TaskInvocation and include it in report cache identity. SQLite/CAS runtime test covers rendered JSON/HTML registration.
   - [x] Reconcile workflow contracts with installed Vina capability: exact form/conformer/prepared-receptor/target/site ports and docking_result/1.0 output are declared as normalized inputs/output. The published workflow compiles against the production registry.
-  - [x] Execute the production-registry ADMET -> report subworkflow with SQLite task/provenance persistence and CAS JSON/HTML rendering. The complete docking workflow still awaits engine-backed Vina configuration and valid receptor/site/conformer inputs.
-  - [ ] Add automated preparation stages or a validated import path for normalized receptor/site/conformer inputs; run the complete engine-backed Vina -> report workflow.
+  - [x] Execute the production-registry ADMET -> protonation -> embedding -> report subworkflow with SQLite task/provenance persistence and CAS conformer/JSON/HTML artifacts. The complete docking workflow still awaits engine-backed Vina configuration and valid receptor/site inputs.
+  - [ ] Add automated preparation stages or a validated import path for compatible normalized receptor/site inputs; run the complete engine-backed Vina -> report workflow.
 
 - [x] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
