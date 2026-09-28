@@ -27,6 +27,15 @@ The handler also needed to resolve output paths reported relative to the worker 
 
 ## Reproduction setup
 
+The opt-in integration test is `tests/integration/test_trajectory_stage_composition.py`. With the isolated analysis environment and engine paths set, run:
+
+```bash
+CADDSUITE_PPARG_TRAJECTORY_DATA=/path/to/ergosterol \
+CADDSUITE_GROMACS_EXECUTABLE=/path/to/gmx \
+CADDSUITE_MDA_PYTHON=/path/to/caddsuite-mdanalysis/bin/python \
+  pytest -q tests/integration/test_trajectory_stage_composition.py
+```
+
 Create the isolated analysis environment with Python 3.12 and install `environments/mdanalysis.lock.txt`. Ensure the existing project environment contains the editable CADD Suite package, and install GROMACS 2026.x separately. Supply those interpreter and executable paths to the discovered stage handlers. The independent source directory above is read-only from the test’s perspective; the handlers stage hash-verified copies in their private run directory.
 
 The evidence data root contains SQLite runtime state, content-addressed outputs, logs, and provenance. It is local validation data and is not committed to the repository.
