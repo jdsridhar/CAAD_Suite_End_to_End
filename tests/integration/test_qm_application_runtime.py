@@ -14,7 +14,16 @@ from typer.testing import CliRunner
 from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.runtime import LocalRuntimeServices, LocalWorkflowRuntime
 from caddsuite.cli.main import app
+from caddsuite.contracts.base import SoftwareRef
 from caddsuite.contracts.execution import TaskAttempt
+from caddsuite.contracts.registry import (
+    ChemicalIdentity,
+    Compound,
+    InputRecord,
+    StandardizationRecord,
+    StandardizationStep,
+)
+from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
 from caddsuite.workflow.definition import WorkflowDefinition
@@ -45,6 +54,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                 "calculation": {"contract": "qm_calculation/1.1"},
                 "form": {"contract": "compound_form/1.0"},
                 "conformer": {"contract": "conformer/1.1"},
+                "compound": {"contract": "compound/1.0"},
             },
             "stages": [
                 {
@@ -63,9 +73,26 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                     },
                     "output_contract": "qm_result/2.0",
                     "params": {"engine_parameters": params},
-                }
+                },
+                {
+                    "id": "report",
+                    "kind": "report",
+                    "needs": ["qm"],
+                    "input_contracts": {
+                        "compounds": "compound/1.0",
+                        "qm_calculations": "qm_calculation/1.1",
+                        "qm_results": "qm_result/2.0",
+                    },
+                    "input_bindings": {
+                        "compounds": "$compound",
+                        "qm_calculations": "$calculation",
+                        "qm_results": "qm",
+                    },
+                    "output_contract": "report_bundle/1.0",
+                    "params": {"formats": ["json", "html"], "title": "Ethanol QM report"},
+                },
             ],
-            "outputs": {"result": "qm"},
+            "outputs": {"result": "qm", "report": "report"},
         }
     )
     compiled = registry.compile(workflow)
@@ -105,15 +132,57 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
             session.add(run)
             session.flush()
             run_id = run.id
+            project_id = str(project.id)
+        from rdkit import Chem
+
+        molecule = Chem.MolFromSmiles(form.smiles)
+        assert molecule is not None
+        compound = Compound(
+            id=form.compound_id,
+            accession="CMP0001",
+            project_id=project_id,
+            name="ethanol",
+            input_record=InputRecord(source="manual", original_text=form.smiles),
+            parent=ChemicalIdentity(
+                canonical_smiles=Chem.MolToSmiles(molecule, canonical=True),
+                inchi=Chem.MolToInchi(molecule),
+                inchikey=Chem.MolToInchiKey(molecule),
+                formula=Chem.rdMolDescriptors.CalcMolFormula(molecule),
+                formal_charge=form.formal_charge,
+                heavy_atom_count=molecule.GetNumHeavyAtoms(),
+            ),
+            standardization=StandardizationRecord(
+                policy="identity-preserving ethanol test fixture",
+                steps=(StandardizationStep(operation="canonicalize", changed=False),),
+                toolkit=SoftwareRef(
+                    name="RDKit",
+                    version=Chem.rdBase.rdkitVersion,
+                    kind=SoftwareKind.LIBRARY,
+                    license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+                ),
+            ),
+        )
         outcome = runtime.run(
             compiled,
             run_id=run_id,
-            inputs={"calculation": calculation, "form": form, "conformer": conformer},
+            inputs={
+                "calculation": calculation,
+                "form": form,
+                "conformer": conformer,
+                "compound": compound,
+            },
         )
         assert not outcome.failures
         result = outcome.outputs["result"][0].value
         assert result.schema_version == "qm_result/2.0"
         assert result.total_energy_Eh < 0.0
+        report = outcome.outputs["report"][0].value
+        assert report.project_id == compound.project_id
+        assert {item.format for item in report.artifacts} == {"json", "html"}
+        assert all(
+            item.artifact.sha256 and runtime.services.artifacts.verify(item.artifact.sha256)
+            for item in report.artifacts
+        )
         with runtime.sessions() as session:
             attempt_row = session.scalar(select(TaskAttemptRow))
         assert attempt_row is not None

@@ -755,3 +755,12 @@ When the user says **CONTINUE**:
 - [x] Opt-in real integration passed: 66,195 atoms, 1,001 frames (0-100 ns), stride 100 trajectory metrics; MM/GBSA used 11 frames. Runtime 44.88 s. This validates scheduler/runtime composition only, not converged affinity or experimental binding.
 - [x] Added ADR-0054 and updated G-MMPBSA validation notes.
 - [-] Next: add a scheduler-composed QM to report test using a real registered compound/form/conformer identity, then design how trajectory and binding-energy normalized results carry an explicit compound identity instead of relying on accession strings.
+
+
+### Session log - 2026-09-28, scheduler-composed QM reporting
+
+- [x] Extended the opt-in PySCF application test to compile and execute QM calculation followed by the discovered report handler.
+- [x] Built an RDKit-derived registered Compound from the same ethanol SMILES as the CompoundForm; form, conformer, calculation, and report candidate accession are linked explicitly. The real QM result is paired with its calculation in the report.
+- [x] Real PySCF run passed (3.29 s); JSON and HTML report outputs were emitted and verified by CAS SHA-256. This is technical workflow validation using ethanol, not drug-discovery evidence.
+- [x] Added ADR-0055 to document the identity chain and the current accession-prefix report linkage limitation.
+- [-] Next: add explicit compound identity to QM calculation/result lineage and design equivalent stable identity linkage for MD simulation, trajectory analysis, and binding-energy contracts before claiming a complete end-to-end candidate report.
