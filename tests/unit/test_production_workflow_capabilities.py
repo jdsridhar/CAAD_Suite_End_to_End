@@ -14,7 +14,7 @@ from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.chem.standardize import make_compound, standardize_smiles
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
-from caddsuite.contracts.registry import Conformer
+from caddsuite.contracts.registry import CompoundFormSet, Conformer
 from caddsuite.contracts.reporting import ReportBundle
 from caddsuite.contracts.structure import (
     BindingSite,
@@ -23,10 +23,13 @@ from caddsuite.contracts.structure import (
     Structure,
     StructureSource,
 )
-from caddsuite.domain.enums import LicenseClass, SoftwareKind
+from caddsuite.domain.enums import LicenseClass, SoftwareKind, TaskState
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.artifacts import register_blob
+from caddsuite.storage.decisions import DecisionStore
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
+from caddsuite.storage.task_state import TaskStateStore
+from caddsuite.validation.decisions import Decision
 from caddsuite.workflow.definition import StageDefinition, WorkflowDefinition
 from caddsuite.workflow.scheduler import StageHandler, TaskInvocation
 
@@ -245,3 +248,82 @@ def test_blind_binding_site_stage_registers_method_and_receptor_lineage(tmp_path
         assert site.method is BindingSiteMethod.BLIND_WHOLE_PROTEIN
         assert site.source_receptor == prepared_ref
         assert site.volume_A3 > 0
+
+
+def test_real_multi_form_enumeration_fans_out_to_independent_conformers(tmp_path: Path) -> None:
+    workflow_path = Path(__file__).resolve().parents[2] / "workflows" / "multi_form_embedding.yaml"
+    workflow = WorkflowDefinition.from_yaml(workflow_path)
+    registry = StageHandlerRegistry.discover()
+    compiled = registry.compile(workflow)
+
+    with LocalWorkflowRuntime.open(
+        data_root=tmp_path / "multi-form-runtime",
+        handlers=lambda services: registry.build_handlers(workflow, services),
+    ) as runtime:
+        with runtime.sessions.begin() as session:
+            project = ProjectRow(slug="multi-form-runtime", name="Multi-form runtime")
+            session.add(project)
+            session.flush()
+            run = WorkflowRunRow(
+                project_id=project.id,
+                accession="RUN-MULTIFORM-001",
+                workflow_hash="e" * 64,
+                config_hash="f" * 64,
+                status="running",
+                started_at=datetime.now(UTC),
+            )
+            session.add(run)
+            session.flush()
+            project_id, run_id = project.id, run.id
+
+        compound = make_compound(
+            standardize_smiles("NCC(=O)O"),
+            compound_id=new_ulid(),
+            project_id=project_id,
+            accession="CMP0001",
+            name="glycine",
+            original_text="NCC(=O)O",
+            source="manual",
+        )
+        first = runtime.run(
+            compiled,
+            run_id=run_id,
+            inputs={"compounds": (compound,)},
+        )
+        pause = next(task for task in first.tasks if task.state is TaskState.AWAITING_DECISION)
+        request = pause.decision_request
+        assert request is not None
+        run_all = next(option for option in request.options if option.key == "run_all")
+        decision = Decision(
+            request=request,
+            chosen_key=run_all.key,
+            decided_by="automated integration fixture",
+            decided_at=datetime.now(UTC),
+        )
+        DecisionStore(runtime.sessions).submit(
+            pause.task_id,
+            decision,
+            expected_version=TaskStateStore(runtime.sessions).get(pause.task_id).version,
+        )
+
+        resumed = runtime.run(
+            compiled,
+            run_id=run_id,
+            inputs={"compounds": (compound,)},
+        )
+
+        assert not resumed.failures
+        enumeration = next(task for task in resumed.tasks if task.stage_id == "enumerate_forms")
+        assert isinstance(enumeration.result, CompoundFormSet)
+        forms = enumeration.result.items
+        assert len(forms) > 1
+        embed_tasks = [task for task in resumed.tasks if task.stage_id == "embed_each_form"]
+        assert {task.subject_id for task in embed_tasks} == {str(form.id) for form in forms}
+        assert {task.state for task in embed_tasks} == {TaskState.SUCCEEDED}
+        conformers = [item.value for item in resumed.outputs["conformers"]]
+        assert {item.form_id for item in conformers} == {form.id for form in forms}
+        assert all(
+            item.structure.sha256 is not None
+            and runtime.services.artifacts.verify(item.structure.sha256)
+            for item in conformers
+        )
