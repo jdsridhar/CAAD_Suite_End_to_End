@@ -7,7 +7,7 @@ name = "caddsuite"
 dynamic = ["version"]
 description = "Extensible, reproducible computational drug-discovery platform: engine-independent docking, MD, MM/GBSA and QM workflows through adapters, with full provenance."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.15"
 license = "Apache-2.0"
 keywords = ["drug discovery", "docking", "molecular dynamics", "quantum chemistry", "provenance", "workflow"]
 classifiers = [

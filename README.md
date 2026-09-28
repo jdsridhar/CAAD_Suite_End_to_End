@@ -47,6 +47,10 @@ Keep the repository and data on the Linux filesystem (`~/…`), not under `/mnt/
 - [Scientific methods and validation index](docs/SCIENTIFIC_METHODS.md) · [API reference](docs/api/README.md)
 - [Developer setup](docs/dev/DEVELOPER_SETUP.md) · [Plugin development](docs/dev/PLUGIN_DEVELOPMENT.md) · [Learning notes](docs/dev/LEARNING_NOTES.md)
 
+## Runtime support
+
+The core Python wheel is smoke-tested on Linux x86_64 with Python 3.11–3.14. Scientific engine support is narrower and documented per adapter; see the [runtime matrix](docs/release/SUPPORT_MATRIX.md).
+
 ## License
 
 CADD Suite is licensed under the [Apache License 2.0](LICENSE). The [NOTICE](NOTICE) file identifies project attribution and clarifies that third-party scientific engines and services are not distributed here.

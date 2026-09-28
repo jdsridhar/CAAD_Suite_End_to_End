@@ -9,5 +9,5 @@ Generated 2026-09-28 for the exact CADD Suite Conda lock and npm web lock. The C
 See [`DEPENDENCY_LICENSE_INVENTORY.csv`](DEPENDENCY_LICENSE_INVENTORY.csv), and read [`../LICENSE_REVIEW.md`](../LICENSE_REVIEW.md) for scope, policy, and release obligations. Regenerate and review this inventory whenever either lock changes or a new distribution artifact is introduced.
 
 - Conda lock SHA-256: `e4ec360c46b153357c884a4c8fce3f6e6897e289c71ccdc76579b3828c4e8adb`
-- npm lock SHA-256: `95a5f3a4f3a90b42f7b29d4eff0416103692823992de78d70dbff597eb70c87b`
+- npm lock SHA-256: `7869b346ef3572098d47cc50003ff5956cec7989e8ab14308829fbe794005e8f`
 - Inventory CSV SHA-256: `b063fa6e1c89a48881a4777e35d82423539a248f9cce441849ed753f387ec3d3`

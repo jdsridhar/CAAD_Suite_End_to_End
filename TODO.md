@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 18 — Packaging and release |
-| **Current task** | [-] 18.3 release packaging and clean-build gates |
-| **Next task** | Decide whether to add a Conda recipe; verify the supported Python/platform release matrix and perform a final release-asset/license review before any tag or upload |
+| **Current task** | [-] 18.3 validate hosted package matrix and finalize clean-release gate |
+| **Next task** | Confirm hosted Python package matrix, produce final artifacts from the exact clean commit, and review release validation/licensing before any public tag/upload |
 | **Last completed** | Phase 17 documentation gate; installation/user/developer/API/methodology references cross-linked and checked. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -461,7 +461,7 @@ When the user says **CONTINUE**:
 
 - [x] 18.1 Engineering license inventory covers the 198-package exact Conda core lock and 283 npm lock entries with no missing license expressions (`docs/release/licenses/`). Reviewed project Apache-2.0/NOTICE and corrected web package metadata. Distribution-specific compatibility/notices and external engine/model licenses remain user/release gates; this is not a legal opinion.
 - [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
-- [-] 18.3 Python wheel and sdist build/install smoke tests passed in fresh Python 3.14 venvs; fixed duplicate Alembic migration packaging and verified migration revision 0007 plus LICENSE/NOTICE (`docs/release/PACKAGING.md`). Conda recipe, supported platform matrix, and clean-tag release build remain pending. D3 working name remains CADD Suite.
+- [-] 18.3 Python wheel and sdist build/install smoke tests passed in fresh Python 3.14 venvs; fixed duplicate Alembic migration packaging and verified migration revision 0007 plus LICENSE/NOTICE (`docs/release/PACKAGING.md`). Added a four-version Linux x86_64 wheel smoke workflow and explicit support matrix; Python metadata now caps at <3.15. Conda is retained as the development/engine environment format (no package recipe); cross-OS support and clean-tag release build remain pending. D3 working name remains CADD Suite.
 
 ---
 
@@ -520,6 +520,8 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-28 | Updated wheel metadata to `Requires-Python >=3.11,<3.15` and added Node/npm engine bounds. Built the constrained wheel (SHA-256 `9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7`), then installed it in clean Python 3.11–3.14 environments; CLI, Alembic 0007, and packaged migration resources passed on each. Added `.github/workflows/package-matrix.yml`, runtime support documentation, and selected pip wheel/sdist as the distribution channel. Full repo gate and npm11 web gate pass; hosted workflow result remains to be observed after push. |
+| 2026-09-28 | Release support decision: pip wheel/sdist is the distributable; Conda remains for the locked developer/engine environment and no Conda package recipe will be added without user demand. Added a Linux x86_64 Python 3.11–3.14 package smoke matrix and constrained `requires-python` to that tested range. Browser Node/npm engine requirements now match Vite/OpenAPI tooling. Fresh wheel install + CLI + migration 0007 passed locally across Python 3.11/3.12/3.13/3.14. |
 | 2026-09-28 | Clean-worktree validation at commit `1926ff1`: full Python gate 674 passed/35 skipped; clean `npm ci` + API schema/type/build/Playwright gate passed (one browser E2E, 21 s). Built wheel and sdist from that clean checkout; wheel hash matched the documented artifact. Installed the clean sdist in a fresh Python 3.14 environment and verified CLI, migration revision 0007, and license/migration files. Remaining release decisions: Conda recipe and broader Python/platform matrix; no tag or package upload made. |
 | 2026-09-28 | Generated exact-lock dependency license metadata inventory: 198 Conda core packages match `caddsuite.lock.txt`; 283 npm package records from installed manifests plus registry metadata for platform-optional packages; zero unresolved expressions. CSV and scope note are in `docs/release/licenses/`. Marked engineering inventory complete while retaining distribution/engine/model legal review as a release gate. |
 | 2026-09-28 | Python wheel first failed due duplicate Hatchling inclusion of Alembic migrations; removed redundant force-include config. Built 0.1.0.dev0 wheel, installed into a fresh Python 3.14 virtualenv, verified CLI version, database upgrade to revision 0007, eight migrations and LICENSE/NOTICE in the archive. Evidence in `docs/release/PACKAGING.md`; platform matrix, sdist, Conda recipe, and locked transitive-license inventory remain release gates. |

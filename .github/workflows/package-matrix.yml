@@ -1,0 +1,32 @@
+name: Python package matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  install-smoke:
+    name: Wheel install / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the built package
+        run: python -m pip install .
+      - name: Verify CLI and packaged migrations
+        env:
+          CADDSUITE_DATA_ROOT: ${{ runner.temp }}/caddsuite-data
+        run: |
+          caddsuite version
+          caddsuite db upgrade
+          python -c "from importlib.resources import files; p=files('caddsuite.storage').joinpath('migrations/versions/0007_project_artifact_links.py'); assert p.is_file(), p"
