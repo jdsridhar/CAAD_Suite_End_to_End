@@ -8,7 +8,7 @@
 |---|---|
 | **Current phase** | Phase 16 — Benchmarking and research framing |
 | **Current task** | [-] 16.2 broaden controlled performance benchmarks |
-| **Next task** | Benchmark additional representative workload sizes and report resource limits; then complete the Phase 1.8 prior-art survey before deciding whether Phase 16.3 has a research question |
+| **Next task** | Benchmark additional representative workload sizes and report resource limits; then decide whether a scoped Phase 16.3 research question is warranted based on the prior-art survey |
 | **Last completed** | Phase 15 reproducibility gate: real Psi4 CLI run exported, recreated from explicit lock in a clean environment, replayed, and compared within the declared tolerance. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -78,7 +78,7 @@ When the user says **CONTINUE**:
 - [x] 1.5 `TODO.md`
 - [x] 1.6 User review of audit + architecture
 - [x] 1.7 Resolve Q1–Q6, D1–D3; update ADR-0011 status; record answers in ADRs
-- [ ] 1.8 Prior-art survey (can overlap Phase 2): AiiDA, BioExcel Building Blocks (biobb), Galaxy CompChem, DockStream, QCEngine/QCSchema, OpenFF Interchange, HTMD/PlayMolecule, KNIME. Check whether any component should be *adopted* rather than built, and ground any novelty claim (req. §66)
+- [x] 1.8 Scoped prior-art survey: AiiDA, BioBB, Galaxy, DockStream, QCSchema/QCEngine, OpenFF Interchange, and KNIME. Findings, adoption triggers, and limits on novelty claims are in `docs/architecture/PRIOR_ART_SURVEY.md`. HTMD/PlayMolecule and commercial platforms remain outside this first-pass survey; this is not an exhaustive literature or market review.
 
 ## Phase 2 — Domain/data model + repository scaffold `[x]`
 
@@ -448,7 +448,7 @@ When the user says **CONTINUE**:
   - [x] Capture production-adapter baseline for 5NIU/8YZ: 144.03 s wall time, 2 requested CPU cores, exhaustiveness 16, 9 poses, seed 42, 4,096 MiB requested memory, WSL2 on Intel i5-14450HX. Timing is the full four-step adapter stage, not Vina kernel time; peak memory was not measured.
   - [x] Compare 1 vs 2 CPU cores at identical exhaustiveness, modes, paired seeds, receptor, ligand and site using three repeats per setting; report variability and hardware limitations in `docs/validation/G-DOCK-9.md`. Median CLI runtime: 74.279 s (1 core), 35.999 s (2 cores), 2.063× ratio; exact raw outputs and provenance are hash-manifested.
   - [ ] Benchmark additional representative workload sizes and report resource limits; current result covers one complex and does not measure peak memory.
-- [ ] 16.3 Research framing (only if a genuine gap is found in 1.8): question, hypothesis, datasets, baselines, metrics, statistics, limitations
+- [ ] 16.3 Research framing: no novelty claim yet. Consider a measured study of explicit docking-to-MD cross-engine compatibility gates only after defining a multi-engine/multi-complex dataset, comparator, and useful measurable endpoint; see `docs/architecture/PRIOR_ART_SURVEY.md`.
 
 ## Phase 17 — Documentation `[ ]`
 
@@ -520,6 +520,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-28 | Completed scoped prior-art survey for AiiDA, BioBB, Galaxy, DockStream, QCSchema/QCEngine, OpenFF Interchange, and KNIME. Documented reuse/interop decisions, reassessment triggers, and why the general platform concept does not support a novelty claim. HTMD/PlayMolecule and commercial products remain outside this scoped pass. Phase 16.3 remains pending a dataset and measurable research question. |
 | 2026-09-28 | Phase 16.2 controlled Vina CLI CPU scaling pilot completed for 5NIU/8YZ: 3 paired seeds each at 1 and 2 cores, exhaustiveness 4. Median 74.279 s vs 35.999 s (2.063×), all six successful, paired pose hashes identical. Recorded method/results/limits in G-DOCK-9, linked pilot README, and retained hash-verified result files. Broader workloads and peak memory remain pending. |
 | 2026-09-26 | Decision UI audit: confirmed WorkflowScheduler catches unrecognized handler exceptions as failures and has no DecisionRequest outcome/persistence path; no code currently writes ValidationIssueRow. DecisionStore only resumes a task already in AWAITING_DECISION when a separately constructed Decision is supplied. ADR-0045 records why the browser must wait for durable scheduler-owned request persistence and optimistic resume semantics. Next work is this backend integration before decision UI. |
 | 2026-09-26 | Phase 13.3 project run history: added newest-first project-scoped persisted run summaries with a strict 1-100 result limit and browser reopen-through-status behavior. Regression confirms project isolation, summary identity/status, and invalid-limit rejection. ADR-0044 records the contract. TypeScript, generated API drift check and production build pass. Decision resolution and browser E2E remain. |
