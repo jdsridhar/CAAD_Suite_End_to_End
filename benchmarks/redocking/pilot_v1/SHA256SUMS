@@ -13,3 +13,4 @@ badf5ad650559c8710fc6f03dab6f2dd676927800dc9864c0df5904e8da1e0ed  ../../../tests
 bcce351d8614d956e68f781d7a086ab8b2910c2706fb28ce8e1fcb8b82862ebe  prepared/1m17_report.json
 ca37d8bf0aaab94e2e0d6fdbe1c74b9399038e29fbf37a34ed773c12fa0a77b9  ligands/AQ4_ideal.sdf
 e8c7271e05869603188a51b18290b4b77b7f1143744439bcae747b8091b4d4fa  ../../../tests/data/golden/docking_g1/receptors/8YZ_ideal.sdf
+1b835e43904dcd4811aab07a61a3b4a7fa2a802f3575ba8190e0345edc62bc6a  manifest.json

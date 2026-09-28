@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit - scientific validation limitations and release readiness |
-| **Current task** | [-] Audit and address redocking scientific-validation gaps without changing the frozen pilot protocol silently.7. |
-| **Next task** | Diagnose 3ERT/1M17 Meeko receptor compatibility failures and the 5NIU pose-recovery miss; any new preparation protocol must be explicit, reviewed, and separately validated. |
+| **Current task** | [-] Evaluate a separate, explicitly defined Vina site-local receptor preparation protocol against the frozen v1 failures and sensitivity case. |
+| **Next task** | Establish whether receptor cropping bounded by the docking box and scoring neighborhood can avoid remote malformed residues without excluding relevant receptor atoms; compare a separately versioned run against v1 and retain all failures. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -843,9 +843,12 @@ When the user says **CONTINUE**:
 
 ## Current pending work and priority (2026-09-29)
 
-- [ ] **P0 — Scientific redocking follow-up:** investigate the documented 3ERT/1M17 Meeko receptor-preparation failures and the 5NIU top-ranked pose-recovery miss. Preserve the frozen v1 protocol/results. Do not delete/repair residues, swap preparation engines, or retune docking silently; record any alternative as a separately reviewed protocol with input hashes and per-case failures retained. See `docs/validation/G-DOCK-8.md` and `docs/validation/REDOCKING_PILOT_V1.md`.
+- [-] **P0 — Scientific redocking follow-up:** coordinate and source-sequence inspection links the 3ERT PRO A 552 valence failure to a partially observed C-terminal residue that PDBFixer completed while two terminal sequence residues remained unresolved. In 1M17, seven parser-failing residues are 22.43–34.46 Å from the native ligand. This motivates a separately versioned site-local receptor experiment, not silent v1 repair. Preserve v1; define cropping from the docking box/scoring neighborhood, retain hashes and all case outcomes, and assess pose sensitivity on 5NIU before interpreting alternative results. See `docs/validation/G-DOCK-8.md` and `docs/validation/REDOCKING_PILOT_V1.md`.
 - [ ] **P1 — Broader scientific validation:** expand beyond the three-case compatibility pilot only after a defensible dataset and endpoint are specified; include known complexes and independently validated analysis references. Current pilot supports no general accuracy claim.
 - [ ] **P1 — Engine-enabled continuous validation:** host optional real-engine tests in isolated, licensed environments where feasible. The core gate reports optional integrations as skips; multi-form Vina and PySCF were separately executed and passed as recorded in G-FORM-FANOUT-1. Avoid bundling licensed engines.
 - [ ] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%; improve with focused failure-path tests without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
 - [ ] **P3 — Product polish:** investigate documented Mol* bundle-size and optional h264 Node builtin warnings; not a blocker for scientific core/runtime acceptance.
+
+
+- [x] P0 diagnostic update: source mmCIF and prepared coordinates were inspected read-only; possible terminal-cap mechanism and ligand-to-residue distances are recorded in `docs/validation/G-DOCK-8.md`. No receptor artifact or frozen benchmark result was modified.

@@ -12,7 +12,19 @@ def test_redocking_pilot_manifest_pins_eligible_source_inputs() -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     cases = manifest["cases"]
     assert manifest["schema"] == "caddsuite.redocking-benchmark/1"
-    assert manifest["status"] == "curated_inputs_only"
+    assert manifest["status"] == "executed_with_upstream_failures"
+    execution = manifest["execution"]
+    summary = (MANIFEST_PATH.parent / execution["summary_path"]).resolve(strict=True)
+    assert not summary.is_symlink()
+    assert hashlib.sha256(summary.read_bytes()).hexdigest() == execution["summary_sha256"]
+    run = json.loads(summary.read_text(encoding="utf-8"))
+    assert run["dataset_id"] == manifest["dataset_id"]
+    assert run["case_count"] == 3
+    assert run["successes"] == execution["primary_pose_recovery_success_count"] == 0
+    assert sum(case["status"] == "succeeded" for case in run["cases"]) == 1
+    assert set(execution["end_to_end_failed_case_ids"]) == {
+        case["case_id"] for case in run["cases"] if case["status"] == "failed"
+    }
     assert len(cases) == 3
     assert len({case["case_id"] for case in cases}) == len(cases)
 

@@ -69,10 +69,22 @@
       "source": "https://www.rcsb.org/structure/1M17"
     }
   ],
-  "status": "curated_inputs_only",
+  "status": "executed_with_upstream_failures",
   "limitations": [
     "The three structures form a pilot set and do not support broad docking-accuracy claims.",
-    "Docking outcomes have not yet been generated for 3ERT or 1M17.",
-    "The existing 5NIU/8YZ baseline misses the predeclared 2.0 angstrom top-pose target."
-  ]
+    "Only 5NIU/8YZ reached Vina; 3ERT/OHT and 1M17/AQ4 failed during Meeko receptor preparation and have no docking scores.",
+    "The top-ranked 5NIU/8YZ pose missed the prespecified 2.0 angstrom criterion; best-of-nine is secondary and does not change the primary outcome."
+  ],
+  "execution": {
+    "run_id": "vina-pilot-v1-20260928",
+    "summary_path": "runs/vina-pilot-v1-20260928/summary.json",
+    "summary_sha256": "7ba5536461047c324d8fd8aa20848854354a031e78741ce0cf51e0d4fd8e8973",
+    "vina_invoked_case_count": 1,
+    "end_to_end_failed_case_ids": [
+      "3ert-oht",
+      "1m17-aq4"
+    ],
+    "primary_pose_recovery_success_count": 0,
+    "interpretation": "Completed fixed-protocol compatibility/pose-recovery pilot; the two pre-docking failures remain failures, and the sole Vina case missed the prespecified top-pose threshold."
+  }
 }
