@@ -37,7 +37,7 @@ from caddsuite.contracts.qm import (
     QMProtocol,
     QMResult,
 )
-from caddsuite.contracts.registry import CompoundForm, CompoundFormKind, Conformer
+from caddsuite.contracts.registry import CompoundForm, CompoundFormKind, CompoundFormSet, Conformer
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
@@ -123,6 +123,17 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         kind=CompoundFormKind.PARENT_NEUTRAL,
         smiles="CCO",
         formal_charge=0,
+    )
+    form_set = CompoundFormSet(
+        id=new_ulid(),
+        compound_id=compound.id,
+        items=(compound_form,),
+        ph=7.4,
+        method=_software("Dimorphite-DL"),
+        precision=0.0,
+        max_variants=16,
+        candidate_count=1,
+        selection="unambiguous",
     )
     energy = BindingEnergyResult(
         id=new_ulid(),
@@ -225,7 +236,7 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
                 SimpleNamespace(
                     inputs={
                         "compounds": (compound,),
-                        "compound_forms": (compound_form,),
+                        "compound_forms": (form_set,),
                         "conformers": (conformer,),
                         "md_results": (md,),
                         "trajectory_results": (trajectory,),

@@ -50,14 +50,20 @@ class VinaStagePlugin:
                 CapabilityInput(name="site", contracts=(BindingSite.schema_id(),)),
             ),
             outputs=(DockingResult.schema_id(),),
-            for_each=("compound",),
+            for_each=("compound", "compound_form"),
             iteration_contracts={
                 "compound": (
                     Compound.schema_id(),
                     CompoundForm.schema_id(),
                     Conformer.schema_id(),
-                )
+                ),
+                "compound_form": (
+                    Compound.schema_id(),
+                    CompoundForm.schema_id(),
+                    Conformer.schema_id(),
+                ),
             },
+            fanout_anchor={"compound_form": "form"},
         )
         return (StageHandlerRegistration(capability, self._build, self._preflight),)
 

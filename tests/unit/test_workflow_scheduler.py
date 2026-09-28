@@ -10,10 +10,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from caddsuite.contracts.base import ArtifactRef, VersionedContract
-from caddsuite.contracts.registry import CompoundForm, CompoundFormKind
+from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
+from caddsuite.contracts.registry import CompoundForm, CompoundFormKind, CompoundFormSet
 from caddsuite.contracts.reporting import ReportArtifact, ReportBundle
-from caddsuite.domain.enums import TaskState
+from caddsuite.domain.enums import LicenseClass, SoftwareKind, TaskState
 from caddsuite.domain.errors import ExecutionCancelled
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import CommandSpec, LocalExecutor
@@ -25,9 +25,10 @@ from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
 from caddsuite.storage.result_cache import ResultCache
 from caddsuite.storage.task_state import TaskStateStore
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
-from caddsuite.workflow.compiler import WorkflowCompiler
-from caddsuite.workflow.definition import WorkflowDefinition
+from caddsuite.workflow.compiler import TaskInput, TaskTemplate, WorkflowCompiler
+from caddsuite.workflow.definition import RetryPolicy, WorkflowDefinition
 from caddsuite.workflow.scheduler import (
+    ProducedValue,
     StageExecutionFailure,
     TaskInvocation,
     WorkflowScheduler,
@@ -611,3 +612,58 @@ def test_scheduler_records_cancelled_attempt_and_stops_workflow(scheduler_env) -
             session.query(TaskAttemptRow).filter_by(task_id=outcome.tasks[0].task_id).one()
         )
     assert attempts.get(attempt_row.id).status.value == "cancelled"
+
+
+def test_scheduler_expands_form_collection_to_stable_individual_subjects(scheduler_env) -> None:
+    tasks, cache, _run_id, _second_run_id, project_id, _attempts, _sessions = scheduler_env
+    parent_id = new_ulid()
+    forms = (
+        _form(project_id, "microstate-a").model_copy(update={"compound_id": parent_id}),
+        _form(project_id, "microstate-b").model_copy(update={"compound_id": parent_id}),
+    )
+    batch = CompoundFormSet(
+        id=new_ulid(),
+        compound_id=parent_id,
+        items=forms,
+        ph=7.4,
+        method=SoftwareRef(
+            name="Dimorphite-DL",
+            version="2",
+            kind=SoftwareKind.LIBRARY,
+            license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+        ),
+        precision=0.0,
+        max_variants=16,
+        candidate_count=2,
+        selection="all",
+    )
+
+    class FormHandler:
+        def subject_key(self, scope: str, value: VersionedContract) -> str:
+            assert scope == "compound_form"
+            assert isinstance(value, CompoundForm)
+            return str(value.id)
+
+    scheduler = WorkflowScheduler(task_store=tasks, result_cache=cache, handlers={})
+    task = TaskTemplate(
+        stage_id="embed",
+        kind="chemistry.embed",
+        engine="rdkit_etkdg",
+        dependencies=("enumerate",),
+        inputs=(TaskInput(name="forms", source="enumerate", contract="compound_form/1.0"),),
+        output_contract="conformer/1.1",
+        for_each="compound_form",
+        fanout_inputs=("forms",),
+        fanout_anchor="forms",
+        params={},
+        gate=None,
+        on_fail="stop",
+        retry=RetryPolicy(),
+    )
+
+    executions = scheduler._materialize(
+        task, FormHandler(), {"forms": (ProducedValue(parent_id, batch),)}
+    )
+
+    assert [subject_id for subject_id, _ in executions] == [str(form.id) for form in forms]
+    assert [values["forms"][0].id for _, values in executions] == [form.id for form in forms]

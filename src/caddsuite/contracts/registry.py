@@ -20,6 +20,7 @@ from pydantic import Field, StringConstraints, model_validator
 from caddsuite.contracts.base import (
     ArtifactRef,
     CompoundAccession,
+    ContractBatch,
     ContractModel,
     NonEmptyStr,
     PHValue,
@@ -108,6 +109,34 @@ class CompoundForm(VersionedContract):
                 "a protonated microstate must record the pH and the tool that produced it "
                 "(ADR-0014); unrecorded protonation is what made legacy results irreproducible"
             )
+        return self
+
+
+class CompoundFormSet(ContractBatch):
+    """Auditable enumeration/selection result for one compound's calculation microstates."""
+
+    schema_version: str = "compound_form_set/1.0"
+
+    id: ULIDStr
+    compound_id: ULIDStr
+    items: tuple[CompoundForm, ...] = Field(min_length=1)
+    ph: PHValue
+    method: SoftwareRef
+    precision: Annotated[float, Field(ge=0)]
+    max_variants: Annotated[int, Field(ge=1)]
+    candidate_count: Annotated[int, Field(ge=1)]
+    selection: Literal["unambiguous", "selected", "all"]
+
+    @model_validator(mode="after")
+    def _forms_match_batch(self) -> CompoundFormSet:
+        if self.candidate_count < len(self.items):
+            raise ValueError("candidate_count cannot be smaller than the retained form count")
+        if any(item.compound_id != self.compound_id for item in self.items):
+            raise ValueError("every CompoundForm in a set must belong to its batch Compound")
+        if len({item.id for item in self.items}) != len(self.items):
+            raise ValueError("CompoundForm IDs in a set must be unique")
+        if len({item.smiles for item in self.items}) != len(self.items):
+            raise ValueError("duplicate molecular forms must be deduplicated before batching")
         return self
 
 

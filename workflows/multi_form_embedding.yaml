@@ -1,0 +1,38 @@
+schema: caddsuite.workflow/1
+name: Enumerate forms and embed independently
+description: >-
+  Demonstrates explicit microstate enumeration and one embedding task per selected
+  CompoundForm. Ambiguous compounds pause for a scientific choice; run-all branches
+  forms into independent downstream tasks rather than averaging their results.
+inputs:
+  compounds:
+    contract: compound/1.0
+stages:
+  - id: enumerate_forms
+    kind: chemistry.enumerate_forms
+    engine: dimorphite_dl
+    for_each: compound
+    input_contracts:
+      compound: compound/1.0
+    input_bindings:
+      compound: $compounds
+    output_contract: compound_form_set/1.0
+    params:
+      target_ph: 7.4
+      ambiguous_microstates: require_decision
+  - id: embed_each_form
+    kind: chemistry.embed
+    engine: rdkit_etkdg
+    for_each: compound_form
+    needs: [enumerate_forms]
+    input_contracts:
+      form: compound_form/1.0
+    input_bindings:
+      form: enumerate_forms
+    output_contract: conformer/1.1
+    params:
+      policy:
+        seed: 42
+        optimizer: MMFF94
+outputs:
+  conformers: embed_each_form

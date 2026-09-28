@@ -69,6 +69,7 @@
             {
               "enum": [
                 "compound",
+                "compound_form",
                 "pose",
                 "selected_pose",
                 "target"

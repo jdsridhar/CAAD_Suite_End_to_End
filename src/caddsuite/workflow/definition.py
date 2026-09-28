@@ -20,7 +20,7 @@ from caddsuite.contracts.base import Code, ContractModel, NonEmptyStr
 
 WorkflowSchema = Literal["caddsuite.workflow/1"]
 StageId = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,62}$")]
-ForEach = Literal["compound", "pose", "selected_pose", "target"]
+ForEach = Literal["compound", "compound_form", "pose", "selected_pose", "target"]
 FailurePolicy = Literal["exclude", "flag", "stop"]
 
 

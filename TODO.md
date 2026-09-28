@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance |
-| **Current task** | [-] 13.7 Implement scientifically safe multi-form fan-out and explicit aggregation/decision semantics. |
+| **Current task** | [-] 13.7 Complete multi-form fan-out integration through downstream stages and document its validation gate. |
 | **Next task** | Complete the Phase 13 runtime gate, then audit remaining planned phases and reopen any gate whose evidence is incomplete. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
@@ -362,10 +362,17 @@ When the user says **CONTINUE**:
 ## Phase 13 — API + UI [-] (multi-form fan-out and final runtime acceptance remain open)
 
 - [-] 13.7 Runtime stage composition
+  - [x] Add homogeneous ContractBatch and versioned CompoundFormSet, retaining enumeration policy, selection, candidate count, and parent identity.
+  - [x] Keep chemistry.protonate backward compatible; add chemistry.enumerate_forms with explicit selected/all decision outcomes.
+  - [x] Compiler accepts collection-to-member edges only when producer mapping and consumer fan-out scope are both declared; add compound_form scope and explicit fan-out anchor capability metadata.
+  - [x] Scheduler expands declared batches, uses stable per-form task identities, preserves produced subject IDs, and supports adapter-supplied lineage matching.
+  - [x] Enable compound-form identity fan-out for RDKit embedding and Vina lineage joins; add run-all and compiler regression tests.
+  - [x] Add workflows/multi_form_embedding.yaml as an editable example and ADR-0060 explaining the explicit collection/fan-out contract. The production registry compiles the example.
+  - [x] Gate checkpoint (2026-09-29): scripts/check.sh passes (713 passed, 36 skipped; Ruff, strict mypy 196 files, import-linter and schema checks pass). scripts/check-web.sh passes API consistency, TypeScript, production build and Playwright E2E (1 passed). These establish platform regression health; configured multi-form Vina/QM runtime/lineage remains open.
   - [x] Add discovered RDKit rules property-prediction stage using the existing predictor/contract, recording endpoints, effective parameters, predictor version and stable compound lineage.
   - [x] Reinstall editable metadata and verify the production registry discovers property_prediction/rdkit_rules.
   - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
-  - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The current scheduler returns one contract per task, so run-all is deliberately not offered; multi-form fan-out remains open.
+  - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The legacy single-form stage remains unchanged. New chemistry.enumerate_forms preserves a CompoundFormSet; declared collection-to-member edges fan out with compound_form identity, and run-all requires the explicit ambiguity decision. Direct run-all, collection-edge compiler, embedding scope, and scheduler regressions pass. Remaining: configured form-level Vina and QM workflow execution/lineage validation. Reports preserve every member of the set without aggregating scientific measurements. The example compiles against installed production plugins; automated web and API gates pass.
   - [x] Register seeded RDKit ETKDG embedding as a production stage using the existing chemistry function; record seed, optimizer, RDKit version and SDF CAS artifact. The real runtime regression now executes protonation -> embedding and verifies the output artifact.
   - [x] Register the existing isolated PDBFixer protein-preparation handler behind a discovered stage plugin with explicit Python/worker paths, preflight, selected-chain/pH runtime validation, and environment provenance. The plugin is capability-discovered; configured real-engine preparation and full workflow runs are recorded below.
   - [x] Register an engine-independent blind whole-protein binding-site stage using the existing geometry implementation. It requires explicit chain selection, verifies the prepared mmCIF artifact hash and preserves receptor lineage; golden 5NIU runtime fixture passes. This is explicitly a blind search box, not a pocket-specific binding-site prediction.

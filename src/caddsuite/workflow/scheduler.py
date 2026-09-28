@@ -15,7 +15,7 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
+from caddsuite.contracts.base import ArtifactRef, ContractBatch, SoftwareRef, VersionedContract
 from caddsuite.contracts.execution import (
     AttemptArtifact,
     AttemptSoftware,
@@ -229,7 +229,11 @@ class WorkflowScheduler:
                     bound[port.name] = tuple(
                         ProducedValue(
                             handler.subject_key(task.for_each, value)
-                            if task.for_each is not None and port.name in task.fanout_inputs
+                            if (
+                                task.for_each is not None
+                                and port.name in task.fanout_inputs
+                                and not isinstance(value, ContractBatch)
+                            )
                             else None,
                             value,
                         )
@@ -282,21 +286,39 @@ class WorkflowScheduler:
                 ),
             )
 
-        anchor_name = task.fanout_inputs[0] if task.fanout_inputs else None
+        anchor_name = task.fanout_anchor or (task.fanout_inputs[0] if task.fanout_inputs else None)
         if anchor_name is None:
             raise ValueError(f"fan-out stage {task.stage_id!r} has no fan-out input")
-        anchors = bound[anchor_name]
+
+        def expanded(value: VersionedContract) -> tuple[VersionedContract, ...]:
+            return value.items if isinstance(value, ContractBatch) else (value,)
+
+        anchors = tuple(
+            (None if isinstance(item.value, ContractBatch) else item.subject_id, value)
+            for item in bound[anchor_name]
+            for value in expanded(item.value)
+        )
         materialized = []
-        for anchor in anchors:
-            key = anchor.subject_id or handler.subject_key(task.for_each, anchor.value)
+        matcher = getattr(handler, "matches_subject", None)
+        for anchor_subject_id, anchor in anchors:
+            key = anchor_subject_id or handler.subject_key(task.for_each, anchor)
             item_inputs: dict[str, tuple[VersionedContract, ...]] = {}
             for name, group in bound.items():
                 if name in task.fanout_inputs:
-                    matches = tuple(
-                        item.value
+                    candidates = tuple(
+                        (item.subject_id, candidate)
                         for item in group
-                        if (item.subject_id or handler.subject_key(task.for_each, item.value))
-                        == key
+                        for candidate in expanded(item.value)
+                    )
+                    matches = tuple(
+                        candidate
+                        for candidate_subject_id, candidate in candidates
+                        if (
+                            matcher(task.for_each, anchor, candidate)
+                            if callable(matcher)
+                            else candidate_subject_id == key
+                            or handler.subject_key(task.for_each, candidate) == key
+                        )
                     )
                     if len(matches) != 1:
                         raise ValueError(

@@ -156,6 +156,17 @@ class VersionedContract(ContractModel):
         return value
 
 
+class ContractBatch(VersionedContract):
+    """One normalized task result containing an explicit homogeneous contract collection.
+
+    The collection expands only at a downstream stage whose capability declares the
+    collection-to-item contract relation. The batch itself remains cacheable and traceable
+    as one scheduler task result.
+    """
+
+    items: tuple[VersionedContract, ...]
+
+
 def register_upcaster(name: str, from_major: int) -> Callable[[Upcaster], Upcaster]:
     """Register a function migrating payloads of ``name`` from major N to N+1."""
 

@@ -257,3 +257,66 @@ def test_compiler_rejects_disabled_dependencies_and_disabled_outputs() -> None:
     codes = {issue.code for issue in exc_info.value.issues}
     assert "DEPENDENCY_DISABLED" in codes
     assert "OUTPUT_DISABLED" in codes
+
+
+def test_compiler_accepts_declared_form_collection_fanout_only_at_form_scope() -> None:
+    producer = StageCapability(
+        kind="chemistry.enumerate_forms",
+        engine="dimorphite_dl",
+        inputs=(CapabilityInput(name="compound", contracts=("compound/1.0",)),),
+        outputs=("compound_form_set/1.0",),
+        collection_outputs={"compound_form_set/1.0": "compound_form/1.0"},
+        for_each=("compound",),
+        iteration_contracts={"compound": ("compound/1.0",)},
+    )
+    consumer = StageCapability(
+        kind="docking_forms",
+        inputs=(CapabilityInput(name="form", contracts=("compound_form/1.0",)),),
+        outputs=("docking_run/1.0",),
+        for_each=("compound_form",),
+        iteration_contracts={"compound_form": ("compound_form/1.0",)},
+        fanout_anchor={"compound_form": "form"},
+    )
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "branch-on-forms",
+            "inputs": {"compounds": {"contract": "compound/1.0"}},
+            "stages": [
+                {
+                    "id": "enumerate",
+                    "kind": "chemistry.enumerate_forms",
+                    "engine": "dimorphite_dl",
+                    "for_each": "compound",
+                    "input_contracts": {"compound": "compound/1.0"},
+                    "input_bindings": {"compound": "$compounds"},
+                    "output_contract": "compound_form_set/1.0",
+                },
+                {
+                    "id": "dock_forms",
+                    "kind": "docking_forms",
+                    "for_each": "compound_form",
+                    "needs": ["enumerate"],
+                    "input_contracts": {"form": "compound_form/1.0"},
+                    "input_bindings": {"form": "enumerate"},
+                    "output_contract": "docking_run/1.0",
+                },
+            ],
+            "outputs": {"docking": "dock_forms"},
+        }
+    )
+
+    compiled = WorkflowCompiler((producer, consumer)).compile(workflow)
+
+    assert compiled.tasks[1].for_each == "compound_form"
+    assert compiled.tasks[1].fanout_anchor == "form"
+    assert compiled.tasks[1].fanout_inputs == ("form",)
+
+
+def test_multi_form_embedding_example_compiles_against_production_plugins() -> None:
+    workflow = WorkflowDefinition.from_yaml(REPO_ROOT / "workflows" / "multi_form_embedding.yaml")
+    compiled = StageHandlerRegistry.discover().compile(workflow)
+
+    assert compiled.task_order == ("enumerate_forms", "embed_each_form")
+    assert compiled.tasks[1].for_each == "compound_form"
+    assert compiled.tasks[1].fanout_anchor == "form"

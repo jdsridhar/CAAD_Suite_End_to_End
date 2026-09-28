@@ -79,3 +79,30 @@ def test_ambiguous_input_pauses_then_resumes_with_one_selected_form() -> None:
     )
     assert isinstance(form, CompoundForm)
     assert form.compound_id == compound.id
+
+
+def test_multi_form_stage_returns_auditable_form_set_for_run_all() -> None:
+    compound = _compound("NCC(=O)O")
+    handler = DimorphiteStageHandler(_stage(), batch_output=True)
+    base = {"compound": (compound,)}
+    with pytest.raises(DecisionRequired) as raised:
+        handler.execute(cast(TaskInvocation, SimpleNamespace(inputs=base, decisions=())))
+    request = raised.value.request
+    decision = Decision(
+        request=request,
+        chosen_key="run_all",
+        decided_by="test",
+        decided_at=datetime.now(UTC),
+    )
+
+    result = handler.execute(
+        cast(TaskInvocation, SimpleNamespace(inputs=base, decisions=(decision,)))
+    )
+
+    from caddsuite.contracts.registry import CompoundFormSet
+
+    assert isinstance(result, CompoundFormSet)
+    assert result.selection == "all"
+    assert result.compound_id == compound.id
+    assert len(result.items) > 1
+    assert {form.compound_id for form in result.items} == {compound.id}

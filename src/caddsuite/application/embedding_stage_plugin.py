@@ -41,7 +41,7 @@ class RDKitEmbeddingStageHandler:
 
     def subject_key(self, scope: str, value: VersionedContract) -> str:
         if isinstance(value, CompoundForm):
-            return str(value.compound_id)
+            return str(value.id if scope == "compound_form" else value.compound_id)
         raise TypeError(f"conformer embedding cannot identify {type(value).__name__}")
 
     def artifact_hashes(
@@ -96,8 +96,12 @@ class RDKitEmbeddingStagePlugin:
             engine="rdkit_etkdg",
             inputs=(CapabilityInput(name="form", contracts=(CompoundForm.schema_id(),)),),
             outputs=(Conformer.schema_id(),),
-            for_each=("compound",),
-            iteration_contracts={"compound": (CompoundForm.schema_id(),)},
+            for_each=("compound", "compound_form"),
+            iteration_contracts={
+                "compound": (CompoundForm.schema_id(),),
+                "compound_form": (CompoundForm.schema_id(),),
+            },
+            fanout_anchor={"compound_form": "form"},
         )
         return (StageHandlerRegistration(capability, self._build),)
 

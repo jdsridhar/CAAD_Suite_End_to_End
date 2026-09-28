@@ -56,6 +56,7 @@ class TaskTemplate:
     output_contract: str | None
     for_each: str | None
     fanout_inputs: tuple[str, ...]
+    fanout_anchor: str | None
     params: Mapping[str, object]
     gate: str | None
     on_fail: FailurePolicy
@@ -146,7 +147,18 @@ class WorkflowCompiler:
                     if not producer.enabled:
                         continue
                     actual = producer.output_contract
-                    if actual is not None and expected != actual:
+                    source_capability = resolved.get(producer.id)
+                    collection_item = (
+                        source_capability.collection_outputs.get(actual)
+                        if actual is not None and source_capability is not None
+                        else None
+                    )
+                    accepts_collection_item = (
+                        stage.for_each is not None
+                        and expected == collection_item
+                        and expected in capability.iteration_contracts.get(stage.for_each, ())
+                    )
+                    if actual is not None and expected != actual and not accepts_collection_item:
                         issue(
                             "EDGE_CONTRACT_MISMATCH",
                             f"port {input_name!r} expects {expected!r}, but stage "
@@ -202,6 +214,11 @@ class WorkflowCompiler:
                     output_contract=stage.output_contract,
                     for_each=stage.for_each,
                     fanout_inputs=fanout_inputs,
+                    fanout_anchor=(
+                        capability.fanout_anchor.get(stage.for_each)
+                        if stage.for_each is not None
+                        else None
+                    ),
                     params=dict(stage.params),
                     gate=stage.gate,
                     on_fail=stage.on_fail,
@@ -282,6 +299,14 @@ class WorkflowCompiler:
                     "INPUT_CONTRACT_UNSUPPORTED",
                     f"input port {name!r} does not accept {contract!r}; "
                     f"accepted: {list(port.contracts)}",
+                    stage.id,
+                )
+
+        for item_contract in capability.collection_outputs.values():
+            if item_contract not in self.contract_ids:
+                report(
+                    "CONTRACT_UNKNOWN",
+                    f"collection output references unregistered item contract {item_contract!r}",
                     stage.id,
                 )
 

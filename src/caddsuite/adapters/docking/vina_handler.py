@@ -97,10 +97,25 @@ class VinaDockingHandler:
         if isinstance(value, Compound):
             return str(value.id)
         if isinstance(value, CompoundForm):
-            return str(value.compound_id)
+            return str(value.id if scope == "compound_form" else value.compound_id)
         if isinstance(value, Conformer):
-            return str(value.compound_id or value.form_id)
+            return str(
+                value.form_id if scope == "compound_form" else value.compound_id or value.form_id
+            )
         raise TypeError(f"Vina fan-out cannot identify {type(value).__name__}")
+
+    def matches_subject(
+        self, scope: str, anchor: VersionedContract, candidate: VersionedContract
+    ) -> bool:
+        if scope != "compound_form" or not isinstance(anchor, CompoundForm):
+            return self.subject_key(scope, anchor) == self.subject_key(scope, candidate)
+        if isinstance(candidate, CompoundForm):
+            return candidate.id == anchor.id
+        if isinstance(candidate, Conformer):
+            return candidate.form_id == anchor.id
+        if isinstance(candidate, Compound):
+            return candidate.id == anchor.compound_id
+        return False
 
     def artifact_hashes(
         self, inputs: Mapping[str, tuple[VersionedContract, ...]]

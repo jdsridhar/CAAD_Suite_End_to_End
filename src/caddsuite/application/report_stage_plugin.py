@@ -19,7 +19,7 @@ from caddsuite.contracts.docking import DockingResult
 from caddsuite.contracts.md import MDStageResult
 from caddsuite.contracts.properties import PropertyPredictionSet
 from caddsuite.contracts.qm import QMCalculation, QMResult
-from caddsuite.contracts.registry import Compound, CompoundForm, Conformer
+from caddsuite.contracts.registry import Compound, CompoundForm, CompoundFormSet, Conformer
 from caddsuite.contracts.reporting import (
     ReportArtifact,
     ReportBundle,
@@ -111,9 +111,20 @@ class ReportStageHandler:
         project_id = next(iter(projects))
         if invocation.run_id is None:
             raise ValueError("report stage requires scheduler-provided workflow run identity")
-        compound_forms = invocation.inputs.get("compound_forms", ())
-        if not all(isinstance(item, CompoundForm) for item in compound_forms):
-            raise ValueError("compound_forms must contain CompoundForm contracts")
+        raw_compound_forms = invocation.inputs.get("compound_forms", ())
+        compound_forms: tuple[CompoundForm, ...] = tuple(
+            form
+            for item in raw_compound_forms
+            for form in (item.items if isinstance(item, CompoundFormSet) else (item,))
+            if isinstance(form, CompoundForm)
+        )
+        if len(compound_forms) != sum(
+            len(item.items) if isinstance(item, CompoundFormSet) else 1
+            for item in raw_compound_forms
+        ):
+            raise ValueError(
+                "compound_forms must contain CompoundForm or CompoundFormSet contracts"
+            )
         conformers = invocation.inputs.get("conformers", ())
         if not all(isinstance(item, Conformer) for item in conformers):
             raise ValueError("conformers must contain Conformer contracts")
@@ -397,7 +408,7 @@ class ReportStagePlugin:
                 CapabilityInput(name="compounds", contracts=(Compound.schema_id(),)),
                 CapabilityInput(
                     name="compound_forms",
-                    contracts=(CompoundForm.schema_id(),),
+                    contracts=(CompoundForm.schema_id(), CompoundFormSet.schema_id()),
                     required=False,
                 ),
                 CapabilityInput(

@@ -38,6 +38,8 @@ class StageCapability(ContractModel):
     outputs: tuple[NonEmptyStr, ...] = ()
     for_each: tuple[ForEach, ...] = ()
     iteration_contracts: dict[ForEach, tuple[NonEmptyStr, ...]] = Field(default_factory=dict)
+    collection_outputs: dict[NonEmptyStr, NonEmptyStr] = Field(default_factory=dict)
+    fanout_anchor: dict[ForEach, NonEmptyStr] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def capability_is_consistent(self) -> StageCapability:
@@ -50,6 +52,19 @@ class StageCapability(ContractModel):
             raise ValueError(f"capability {self.kind!r} repeats a fan-out scope")
         if set(self.iteration_contracts) - set(self.for_each):
             raise ValueError("iteration contracts declare an unsupported fan-out scope")
+        if set(self.fanout_anchor) - set(self.for_each):
+            raise ValueError("fan-out anchors declare an unsupported fan-out scope")
+        output_contracts = set(self.outputs)
+        if set(self.collection_outputs) - output_contracts:
+            raise ValueError("collection outputs must map a declared output contract")
+        for scope, port_name in self.fanout_anchor.items():
+            port = next((port for port in self.inputs if port.name == port_name), None)
+            if port is None or not set(port.contracts).intersection(
+                self.iteration_contracts.get(scope, ())
+            ):
+                raise ValueError(
+                    f"fan-out anchor {port_name!r} must accept an iteration contract for {scope!r}"
+                )
         accepted_inputs = {contract for port in self.inputs for contract in port.contracts}
         for scope, contracts in self.iteration_contracts.items():
             if not contracts or not set(contracts) <= accepted_inputs:
