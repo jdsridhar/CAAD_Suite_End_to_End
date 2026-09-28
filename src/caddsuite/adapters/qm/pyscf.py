@@ -111,7 +111,7 @@ class PySCFQMAdapter:
                     message=str(exc),
                     remediation=(
                         "Check the linked CompoundForm and Conformer, SDF hash, "
-                        "supported method, and PySCF environment."
+                        "supported method, and PySCF environment.",
                     ),
                     rule_version="1",
                 ),

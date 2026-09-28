@@ -488,3 +488,178 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
         )
         <= 1e-8
     )
+
+
+@pytest.mark.engine("PySCF")
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not PYSCF_PYTHON,
+    reason="set CADDSUITE_PYSCF_PYTHON for multi-form application execution",
+)
+def test_pyscf_runtime_executes_distinct_form_linked_calculations(tmp_path: Path) -> None:
+    from rdkit import Chem
+
+    from caddsuite.chem.embed import EmbeddingPolicy, embed_conformer
+    from caddsuite.chem.protonation import (
+        ProtonationPolicy,
+        enumerate_microstates,
+        resolve_microstates,
+    )
+    from caddsuite.chem.standardize import make_compound, standardize_smiles
+    from caddsuite.contracts.base import ArtifactRef, EntityRef
+    from caddsuite.contracts.qm import QMCalculation, QMModel, QMProtocol
+    from caddsuite.contracts.registry import Conformer
+    from caddsuite.domain.identity import new_ulid
+    from caddsuite.storage.artifacts import register_blob
+
+    assert PYSCF_PYTHON is not None
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "Multi-form PySCF lineage integration",
+            "inputs": {
+                "calculations": {"contract": "qm_calculation/1.2"},
+                "forms": {"contract": "compound_form/1.0"},
+                "conformers": {"contract": "conformer/1.1"},
+            },
+            "stages": [
+                {
+                    "id": "qm_each_form",
+                    "kind": "quantum_chemistry",
+                    "engine": "caddsuite.qm.pyscf",
+                    "for_each": "compound_form",
+                    "input_contracts": {
+                        "calculation": "qm_calculation/1.2",
+                        "form": "compound_form/1.0",
+                        "conformer": "conformer/1.1",
+                    },
+                    "input_bindings": {
+                        "calculation": "$calculations",
+                        "form": "$forms",
+                        "conformer": "$conformers",
+                    },
+                    "output_contract": "qm_result/2.1",
+                    "params": {
+                        "engine_parameters": {
+                            "python_executable": PYSCF_PYTHON,
+                            "worker_source_directory": str(ROOT / "src"),
+                            "memory_mb": 2000,
+                            "max_cycle": 100,
+                            "timeout_seconds": 300,
+                        }
+                    },
+                }
+            ],
+            "outputs": {"results": "qm_each_form"},
+        }
+    )
+    registry = StageHandlerRegistry.discover()
+    compiled = registry.compile(workflow)
+    with LocalWorkflowRuntime.open(
+        data_root=tmp_path / "multi-form-pyscf",
+        handlers=lambda services: registry.build_handlers(workflow, services),
+    ) as runtime:
+        with runtime.sessions.begin() as session:
+            project = ProjectRow(slug="multi-form-pyscf", name="Multi-form PySCF")
+            session.add(project)
+            session.flush()
+            run = WorkflowRunRow(
+                project_id=project.id,
+                accession="RUN-MULTIQM-001",
+                workflow_hash="1" * 64,
+                config_hash="2" * 64,
+                status="running",
+            )
+            session.add(run)
+            session.flush()
+            project_id, run_id = project.id, run.id
+
+        compound = make_compound(
+            standardize_smiles("NCC(=O)O"),
+            compound_id=new_ulid(),
+            project_id=project_id,
+            accession="CMP0001",
+            name="glycine",
+            original_text="NCC(=O)O",
+            source="manual",
+        )
+        enumeration = enumerate_microstates(
+            compound_id=compound.id,
+            parent_smiles=compound.parent.canonical_smiles,
+            policy=ProtonationPolicy(ph=7.4),
+        )
+        forms = resolve_microstates(enumeration, "run_all")
+        assert len(forms) > 1
+
+        def register_geometry(data: bytes, role: str) -> ArtifactRef:
+            blob = runtime.services.artifacts.put_bytes(data)
+            with runtime.sessions.begin() as session:
+                row = register_blob(
+                    session,
+                    blob,
+                    kind="ligand_conformer",
+                    media_type="chemical/x-mdl-sdfile",
+                    original_name=f"{new_ulid()}.sdf",
+                )
+            return ArtifactRef(artifact_id=row.id, role=role, sha256=blob.sha256)
+
+        conformers: list[Conformer] = []
+        calculations: list[QMCalculation] = []
+        for index, form in enumerate(forms, start=1):
+            embedded = embed_conformer(
+                form,
+                policy=EmbeddingPolicy(seed=4815 + index, optimizer="MMFF94"),
+                register_artifact=register_geometry,
+            ).conformer
+            conformers.append(embedded)
+            molecule = Chem.MolFromSmiles(form.smiles)
+            assert molecule is not None
+            electron_count = (
+                sum(atom.GetAtomicNum() for atom in Chem.AddHs(molecule).GetAtoms())
+                - form.formal_charge
+            )
+            multiplicity = 1 if electron_count % 2 == 0 else 2
+            calculations.append(
+                QMCalculation(
+                    id=new_ulid(),
+                    accession=f"CMP0001_QM_{index:03d}",
+                    form_id=form.id,
+                    compound_id=compound.id,
+                    geometry_source=EntityRef(kind="conformer", id=embedded.id),
+                    engine=SoftwareRef(
+                        name="PySCF",
+                        version="unknown",
+                        kind=SoftwareKind.ENGINE,
+                        license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+                    ),
+                    adapter=SoftwareRef(
+                        name="caddsuite.qm.pyscf",
+                        version="0.1.0",
+                        kind=SoftwareKind.ADAPTER,
+                        license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+                    ),
+                    model=QMModel(method="b3lyp", basis="6-31g*"),
+                    protocol=QMProtocol.SINGLE_POINT,
+                    charge=form.formal_charge,
+                    multiplicity=multiplicity,
+                    requested_properties=("total_energy_Eh",),
+                )
+            )
+
+        outcome = runtime.run(
+            compiled,
+            run_id=run_id,
+            inputs={
+                "calculations": tuple(calculations),
+                "forms": forms,
+                "conformers": tuple(conformers),
+            },
+        )
+
+        assert not outcome.failures, [task.error for task in outcome.failures]
+        calculation_tasks = [task for task in outcome.tasks if task.stage_id == "qm_each_form"]
+        assert len(calculation_tasks) == len(forms)
+        assert {task.subject_id for task in calculation_tasks} == {str(form.id) for form in forms}
+        results = [item.value for item in outcome.outputs["results"]]
+        assert {item.form_id for item in results} == {form.id for form in forms}
+        assert all(item.convergence.scf_converged for item in results)

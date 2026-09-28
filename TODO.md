@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance |
-| **Current task** | [-] 13.7 Complete multi-form fan-out integration through downstream stages and document its validation gate. |
-| **Next task** | Complete the Phase 13 runtime gate, then audit remaining planned phases and reopen any gate whose evidence is incomplete. |
+| **Current task** | [-] Audit remaining acceptance gaps and prioritize scientific validation / release follow-up after Phase 13.7. |
+| **Next task** | Audit remaining acceptance and scientific validation gaps, then continue the highest-priority incomplete task. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -359,9 +359,9 @@ When the user says **CONTINUE**:
   - [x] Render HTML, JSON, CSV and PDF; assert docking available, MD not_run and interpretation disclaimer.
   - [x] Real engine-backed demo passed in 166.85 s; report scope and redocking limitation documented in docs/validation/G-REPORT-1.md.
 
-## Phase 13 — API + UI [-] (multi-form fan-out and final runtime acceptance remain open)
+## Phase 13 — API + UI [-] (13.7 multi-form gate complete; phase closeout audit remains)
 
-- [-] 13.7 Runtime stage composition
+- [x] 13.7 Runtime stage composition
   - [x] Add homogeneous ContractBatch and versioned CompoundFormSet, retaining enumeration policy, selection, candidate count, and parent identity.
   - [x] Keep chemistry.protonate backward compatible; add chemistry.enumerate_forms with explicit selected/all decision outcomes.
   - [x] Compiler accepts collection-to-member edges only when producer mapping and consumer fan-out scope are both declared; add compound_form scope and explicit fan-out anchor capability metadata.
@@ -372,12 +372,11 @@ When the user says **CONTINUE**:
   - [x] Run real engine-backed single-form paths using compound_form scope: Vina/Meeko + PDBFixer integration passed (168.51 s); PySCF (5.92 s) and PSI4 (7.14 s) application workflows passed. These validate adapters in that scope but do not prove a multi-microstate engine-scheduled execution.
   - [x] Real scheduled multi-form Dimorphite-DL -> RDKit test pauses for the persisted run_all decision, resumes the same run, and verifies distinct per-form tasks, conformer lineage and CAS hashes.
   - [x] Prevent cache collisions across different compounds and QM settings by hashing normalized Compound and full QM input contracts; regression tests prove changed identities/models change cache identity.
-  - [x] Latest full gate before real multi-form integration: 721 passed, 36 skipped; web/API/TypeScript/build/Playwright gate passed (1 browser E2E).
-  - [x] Gate checkpoint (2026-09-29): scripts/check.sh passes (721 passed, 36 skipped; Ruff, strict mypy 196 files, import-linter and schema checks pass). scripts/check-web.sh passes API consistency, TypeScript, production build and Playwright E2E (1 passed). These establish platform regression health; configured multi-form Vina/QM runtime/lineage remains open.
+  - [x] Final core gate (2026-09-29): scripts/check.sh passes (723 passed, 37 skipped; Ruff, format, strict mypy 196 files, import-linter and schema checks pass). Web/API/TypeScript/build/Playwright gate passed earlier on this unchanged presentation/API surface (1 browser E2E).
   - [x] Add discovered RDKit rules property-prediction stage using the existing predictor/contract, recording endpoints, effective parameters, predictor version and stable compound lineage.
   - [x] Reinstall editable metadata and verify the production registry discovers property_prediction/rdkit_rules.
   - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
-  - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The legacy single-form stage remains unchanged. New chemistry.enumerate_forms preserves a CompoundFormSet; declared collection-to-member edges fan out with compound_form identity, and run-all requires the explicit ambiguity decision. Direct run-all, collection-edge compiler, embedding scope, and scheduler regressions pass. Single-form tasks through compound_form scope pass real Vina/Meeko and PySCF integration; synthetic multi-form scheduler/lineage tests and all three production-registry workflow compile checks pass. Real scheduled multi-form Dimorphite-DL -> RDKit embedding passed after persisted run_all decision; every child form has a distinct task, linked conformer, and verified CAS artifact. Real Vina/Meeko, PySCF, and PSI4 integrations pass in compound_form scope, and two-form scheduler/matcher tests pass. Remaining: a real multi-form scheduled Vina/QM engine run and explicit pose-linked QM lineage test. Reports preserve all forms without score aggregation.
+  - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The legacy single-form stage remains unchanged. New chemistry.enumerate_forms preserves a CompoundFormSet; declared collection-to-member edges fan out with compound_form identity, and run-all requires the explicit ambiguity decision. Direct run-all, collection-edge compiler, embedding scope, and scheduler regressions pass. Single-form tasks through compound_form scope pass real Vina/Meeko and PySCF integration; synthetic multi-form scheduler/lineage tests and all three production-registry workflow compile checks pass. Real scheduled multi-form Dimorphite-DL -> RDKit embedding passed after persisted run_all decision; every child form has a distinct task, linked conformer, and verified CAS artifact. Real multi-form scheduled Vina/Meeko docking on two RDKit-enumerated RC8 tautomers passed; two distinct task attempts/results and CAS lineage were verified. Real scheduled PySCF executed two Dimorphite-DL glycine forms with distinct identities and converged SCF results. A pose from a different DockingRun is rejected before QM engine execution. Reports preserve all forms without score aggregation; tautomer enumeration is not a solution-population estimate.
   - [x] Register seeded RDKit ETKDG embedding as a production stage using the existing chemistry function; record seed, optimizer, RDKit version and SDF CAS artifact. The real runtime regression now executes protonation -> embedding and verifies the output artifact.
   - [x] Register the existing isolated PDBFixer protein-preparation handler behind a discovered stage plugin with explicit Python/worker paths, preflight, selected-chain/pH runtime validation, and environment provenance. The plugin is capability-discovered; configured real-engine preparation and full workflow runs are recorded below.
   - [x] Register an engine-independent blind whole-protein binding-site stage using the existing geometry implementation. It requires explicit chain selection, verifies the prepared mmCIF artifact hash and preserves receptor lineage; golden 5NIU runtime fixture passes. This is explicitly a blind search box, not a pocket-specific binding-site prediction.
@@ -736,7 +735,7 @@ When the user says **CONTINUE**:
 - [x] Real discovered GROMACS trajectory-processing → MDAnalysis analysis handler composition passed on the independent PPARG/ergosterol production dataset. It processed 66,195 atoms × 1,001 frames (0–100 ns; 100 ps) and generated min-distance/contact summaries from 11 sampled frames. CAS output/log hashes verified. Two format/result-contract integration defects and an output-path mapping defect were fixed. This is software/runtime validation only; geometric results do not establish binding or force-field quality. See docs/validation/G-TJ-1.md.
 
 - [x] Real discovered GROMACS trajectory-processing → MDAnalysis analysis handler composition passed on the independent PPARG/ergosterol production dataset. It processed 66,195 atoms × 1,001 frames (0–100 ns; 100 ps) and generated min-distance/contact summaries from 11 sampled frames. CAS output/log hashes verified. Two format/result-contract integration defects and an output-path mapping defect were fixed. This is software/runtime validation only; geometric results do not establish binding or force-field quality. See `docs/validation/G-TJ-1.md`.
-- [-] Next Phase 13 task: run a compatible composed trajectory → MM/GBSA → report flow with shared identities/provenance, then include normalized QM evidence and verify report generation across the composition. Full scientific validation and broader Phase 16–18 remain open.
+- [x] The earlier composed trajectory → MM/GBSA → QM → report task was completed in G-WORKFLOW-2 (five real scheduler tasks with explicit Compound/Form IDs and report JSON assertions). Phase 13.7 multi-form engine gate is now complete; remaining platform work is audited below.
 
 - [x] Full scripts/check.sh after trajectory-stage corrections: 706 passed, 36 skipped; Ruff, formatting (331 files), strict mypy (196 source files), import contracts (255 files), and schemas passed. Two existing Starlette/httpx deprecation warnings remain.
 
@@ -809,7 +808,7 @@ When the user says **CONTINUE**:
 - [x] Full scripts/check.sh passed: 709 passed, 36 skipped; Ruff, formatting, strict mypy, import contracts, and schemas pass.
 - [x] Real PySCF -> report integration passed with Compound and CompoundForm inputs. Real PPARG GROMACS -> MDAnalysis/MMGBSA scheduler workflow passed with linked IDs in 54.25 s.
 - [x] Added ADR-0058. The PPARG test identifiers verify linkage consistency but do not certify the archived ligand against a standardized Compound structure.
-- [-] Next: construct one integrated candidate workflow with a genuinely registered ligand structure/Form feeding both MD and QM, and verify that all reports consume those exact normalized identities; then continue outstanding Phase 13-18 tasks.
+- [x] Completed by the registered MD/QM candidate report composition below (G-WORKFLOW-2); the next open item is the multi-form gate and subsequent phase audit.
 
 ### Session log - 2026-09-28, PPARG ligand identity audit
 
@@ -817,7 +816,7 @@ When the user says **CONTINUE**:
 - [x] Identified the ligand formula as C28H44O3 (ergosterol peroxide); topology heavy-atom connectivity is isomorphic to the PubChem CID 102004971 3D reference when bond order is ignored.
 - [x] Transferred coordinates by graph mapping and compared 10 PDB-derived stereocentres; all CIP labels match the PubChem 3D record. Recorded source URLs, hashes, method, and scientific limits in docs/validation/G-LIGAND-IDENTITY-1.md.
 - [x] Confirmed source PDB/topology were read-only. Existing CGenFF penalty 190.7 and unsupported peroxide limitation remains unresolved and must be shown in reports.
-- [-] Next: use this verified molecular identity and a hash-registered structure artifact to compose the actual scheduler MD trajectory/MMGBSA and QM stages into one report workflow; do not imply the legacy parameterization is scientifically validated.
+- [x] Used the verified identity and registered structure in G-WORKFLOW-2. The legacy CGenFF peroxide limitation remains explicit; composition proves lineage/runtime only, not parameterization validity.
 
 
 ### Session log - 2026-09-28, registered MD/QM candidate report composition
@@ -829,4 +828,14 @@ When the user says **CONTINUE**:
 - [x] Full no-engine repository gate: Ruff, formatting (332 files), strict mypy (196 source files), import contracts (255 files), schema freshness, and 709 passed / 36 skipped. Two upstream Starlette/httpx deprecation warnings remain.
 - [x] Added ADR-0059 and refreshed the G-MMPBSA stage note to point to the end-to-end composition evidence.
 - [x] Web gate: API schema check, TypeScript, Vite production build and Playwright Chromium E2E passed (1 browser test, 21.1 s) with the cached per-user libasound path; no system packages were changed. Mol* h264 optional Node-builtin and bundle-size warnings remain documented.
-- [-] Next first incomplete Phase 13 item: implement scientifically safe multi-form fan-out and decision/aggregation semantics; do not implicitly select one form or silently combine microstate results.
+- [x] Multi-form collection fan-out, persisted ambiguity decision, per-form RDKit conformers, real two-form Vina and PySCF stage execution, pose/run lineage rejection, and no-aggregation reporting are implemented and gated. See ADR-0060 and G-FORM-FANOUT-1. Next: audit Phase 13 closeout and remaining acceptance gaps; continue without implying experimental validation.
+
+
+### Session log - 2026-09-29, real multi-form docking and QM gate
+
+- [x] Real scheduled Vina/Meeko integration docked two distinct RDKit-enumerated RC8 tautomer forms. Both form-specific tasks succeeded and produced distinct DockingRun/DockingResult identities; artifact hashes, task provenance, report rendering, and original-form complex assembly checks passed (174.03 s). Tautomer enumeration is a candidate set, not a population prediction.
+- [x] Real scheduled PySCF integration calculated two Dimorphite-DL glycine forms independently; both retained Compound/Form/Conformer lineage and converged. Focused engine test passed (17.53 s).
+- [x] Added and passed the guard rejecting a QM pose whose DockingRun differs from the supplied run; the engine is not invoked on mismatch. Fixed a malformed PySCF remediation tuple on its validation-error path.
+- [x] Full scripts/check.sh: 723 passed, 37 skipped; Ruff, format, strict mypy (196 files), import contracts (255 files), schemas pass. Two pre-existing Starlette/httpx deprecation warnings.
+- [x] Phase 13.7 runtime composition gate complete. Validation evidence: `docs/validation/G-FORM-FANOUT-1.md`; decision: ADR-0060.
+- [-] Next: audit outstanding acceptance/scientific validation and release gates against current repository state, then continue the highest-priority incomplete item.

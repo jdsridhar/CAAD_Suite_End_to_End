@@ -11,7 +11,8 @@ from types import SimpleNamespace
 
 import pytest
 from rdkit import Chem
-from rdkit.Chem import rdMolAlign, rdMolDescriptors
+from rdkit.Chem import AllChem, rdMolAlign, rdMolDescriptors
+from rdkit.Chem.MolStandardize import rdMolStandardize
 
 from caddsuite.adapters.docking.autodock4_handler import AutoDock4DockingHandler
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
@@ -263,6 +264,48 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
             sha256=ligand_blob.sha256,
         ),
     )
+    tautomer_molecules = rdMolStandardize.TautomerEnumerator().Enumerate(parent_mol)
+    alternate = next(
+        molecule
+        for molecule in tautomer_molecules
+        if Chem.MolToSmiles(molecule, canonical=True, isomericSmiles=True) != canonical_smiles
+    )
+    alternate_smiles = Chem.MolToSmiles(alternate, canonical=True, isomericSmiles=True)
+    alternate_form = CompoundForm(
+        id=new_ulid(),
+        compound_id=compound_id,
+        kind=CompoundFormKind.TAUTOMER,
+        smiles=alternate_smiles,
+        formal_charge=Chem.GetFormalCharge(alternate),
+    )
+    alternate_3d = Chem.AddHs(Chem.MolFromSmiles(alternate_smiles))
+    assert AllChem.EmbedMolecule(alternate_3d, randomSeed=42) == 0
+    assert AllChem.MMFFOptimizeMolecule(alternate_3d, maxIters=1000) in {0, 1}
+    alternate_sdf = tmp_path / "alternate_tautomer.sdf"
+    with Chem.SDWriter(str(alternate_sdf)) as writer:
+        writer.write(alternate_3d)
+    alternate_blob = store.put_file(alternate_sdf)
+    with sessions.begin() as session:
+        alternate_row = register_blob(
+            session,
+            alternate_blob,
+            kind="ligand_conformer_sdf",
+            media_type="chemical/x-mdl-sdfile",
+            original_name=alternate_sdf.name,
+        )
+        alternate_artifact_id = alternate_row.id
+    alternate_conformer = Conformer(
+        id=new_ulid(),
+        form_id=alternate_form.id,
+        compound_id=compound_id,
+        generator="RDKit ETKDGv3 + MMFF",
+        seed=42,
+        structure=ArtifactRef(
+            artifact_id=alternate_artifact_id,
+            role="ligand_conformer_sdf",
+            sha256=alternate_blob.sha256,
+        ),
+    )
     site = BindingSite(
         id=new_ulid(),
         target_id=target_id,
@@ -291,22 +334,30 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
             run_id=run_id,
             inputs={
                 "compound": (compound,),
-                "form": (form,),
-                "conformer": (conformer,),
+                "form": (form, alternate_form),
+                "conformer": (conformer, alternate_conformer),
                 "receptor": (prepared,),
                 "target_structure": (structure,),
                 "site": (site,),
             },
         )
         assert not outcome.failures
-        result = outcome.outputs["result"][0].value
-        assert isinstance(result, DockingResult)
+        results = [item.value for item in outcome.outputs["result"]]
+        assert len(results) == 2
+        assert all(isinstance(item, DockingResult) for item in results)
+        results_by_form = {item.run.form_id: item for item in results}
+        assert set(results_by_form) == {form.id, alternate_form.id}
+        result = results_by_form[form.id]
+        assert len({item.run.id for item in results}) == 2
         with sessions() as session:
-            attempt_row = session.query(TaskAttemptRow).one()
-        attempt = TaskAttempt.model_validate(attempt_row.payload)
+            attempt_rows = session.query(TaskAttemptRow).all()
+        attempts = [TaskAttempt.model_validate(row.payload) for row in attempt_rows]
+        assert len(attempts) == 2
+        assert all(item.status.value == "succeeded" for item in attempts)
+        assert all(item.resources is not None for item in attempts)
+        assert all(item.resources.cpu_cores == 2 for item in attempts if item.resources)
+        attempt = attempts[0]
         assert attempt.status.value == "succeeded"
-        assert attempt.resources is not None
-        assert attempt.resources.cpu_cores == 2
         assert len(attempt.steps) == 4
         assert {step.exit_code for step in attempt.steps} == {0}
         assert any(

@@ -147,6 +147,11 @@ class QMEngineStageHandler:
                     "QM.GEOMETRY_IDENTITY_MISMATCH",
                     "QM docking run does not belong to the selected compound form",
                 )
+            if pose.run_id != run.id:
+                raise StageExecutionFailure(
+                    "QM.POSE_DOCKING_RUN_MISMATCH",
+                    "QM pose does not belong to the selected DockingRun",
+                )
             contracts.update({"pose": pose, "docking_run": run})
             geometry_ref = pose.structure
         else:
