@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from collections.abc import Mapping
@@ -64,12 +65,27 @@ class QMEngineStageHandler:
 
     def subject_key(self, scope: str, value: VersionedContract) -> str:
         if isinstance(value, CompoundForm):
-            return str(value.compound_id)
+            return str(value.id if scope == "compound_form" else value.compound_id)
         if isinstance(value, QMCalculation):
             return str(value.form_id)
         if isinstance(value, Conformer):
-            return str(value.compound_id or value.form_id)
+            return str(
+                value.form_id if scope == "compound_form" else value.compound_id or value.form_id
+            )
         raise TypeError(f"QM stage cannot identify {type(value).__name__}")
+
+    def matches_subject(
+        self, scope: str, anchor: VersionedContract, candidate: VersionedContract
+    ) -> bool:
+        if scope != "compound_form" or not isinstance(anchor, CompoundForm):
+            return self.subject_key(scope, anchor) == self.subject_key(scope, candidate)
+        if isinstance(candidate, CompoundForm):
+            return candidate.id == anchor.id
+        if isinstance(candidate, QMCalculation):
+            return candidate.form_id == anchor.id
+        if isinstance(candidate, Conformer):
+            return candidate.form_id == anchor.id
+        return False
 
     def artifact_hashes(
         self, inputs: Mapping[str, tuple[VersionedContract, ...]]
@@ -77,6 +93,9 @@ class QMEngineStageHandler:
         hashes: dict[str, str] = {}
         for port, values in inputs.items():
             for index, value in enumerate(values):
+                hashes[f"{port}[{index}].contract"] = hashlib.sha256(
+                    value.model_dump_json().encode()
+                ).hexdigest()
                 refs = (getattr(value, "structure", None),)
                 if isinstance(value, Pose):
                     refs = (value.structure,)
@@ -109,6 +128,11 @@ class QMEngineStageHandler:
     def execute(self, invocation: TaskInvocation) -> QMResult:
         calculation = _one(invocation.inputs, "calculation", QMCalculation)
         form = _one(invocation.inputs, "form", CompoundForm)
+        if calculation.form_id != form.id:
+            raise StageExecutionFailure(
+                "QM.CALCULATION_FORM_MISMATCH",
+                "QM calculation form_id does not match the selected CompoundForm",
+            )
         contracts: dict[str, VersionedContract] = {"form": form}
         conformer: Conformer | None = None
         if calculation.geometry_source.kind == "conformer":

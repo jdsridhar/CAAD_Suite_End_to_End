@@ -62,6 +62,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                     "id": "qm",
                     "kind": "quantum_chemistry",
                     "engine": "caddsuite.qm.pyscf",
+                    "for_each": "compound_form",
                     "input_contracts": {
                         "calculation": "qm_calculation/1.2",
                         "form": "compound_form/1.0",
@@ -231,6 +232,7 @@ def test_psi4_application_run_records_normalized_result_and_provenance(tmp_path:
                     "id": "qm",
                     "kind": "quantum_chemistry",
                     "engine": "caddsuite.qm.psi4",
+                    "for_each": "compound_form",
                     "input_contracts": {
                         "calculation": "qm_calculation/1.2",
                         "form": "compound_form/1.0",
@@ -339,6 +341,7 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
                 "id": "qm",
                 "kind": "quantum_chemistry",
                 "engine": "caddsuite.qm.psi4",
+                "for_each": "compound_form",
                 "input_contracts": {
                     "calculation": "qm_calculation/1.2",
                     "form": "compound_form/1.0",

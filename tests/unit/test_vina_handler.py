@@ -94,8 +94,8 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                 {
                     "id": "dock",
                     "kind": "docking",
+                    "for_each": "compound_form",
                     "engine": "vina",
-                    "for_each": "compound",
                     "input_contracts": {
                         "compound": "compound/1.0",
                         "form": "compound_form/1.0",

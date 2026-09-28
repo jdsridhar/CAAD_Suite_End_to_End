@@ -320,3 +320,25 @@ def test_multi_form_embedding_example_compiles_against_production_plugins() -> N
     assert compiled.task_order == ("enumerate_forms", "embed_each_form")
     assert compiled.tasks[1].for_each == "compound_form"
     assert compiled.tasks[1].fanout_anchor == "form"
+
+
+def test_multi_form_docking_example_compiles_form_and_conformer_joins() -> None:
+    workflow = WorkflowDefinition.from_yaml(REPO_ROOT / "workflows" / "multi_form_docking.yaml")
+    compiled = StageHandlerRegistry.discover().compile(workflow)
+
+    dock = compiled.tasks[-1]
+    assert dock.stage_id == "dock_each_form"
+    assert dock.for_each == "compound_form"
+    assert dock.fanout_anchor == "form"
+    assert dock.fanout_inputs == ("compound", "conformer", "form")
+
+
+def test_multi_form_qm_example_compiles_with_per_form_calculation_join() -> None:
+    workflow = WorkflowDefinition.from_yaml(REPO_ROOT / "workflows" / "multi_form_qm.yaml")
+    compiled = StageHandlerRegistry.discover().compile(workflow)
+
+    qm = compiled.tasks[-1]
+    assert qm.stage_id == "qm_each_form"
+    assert qm.for_each == "compound_form"
+    assert qm.fanout_anchor == "form"
+    assert qm.fanout_inputs == ("calculation", "conformer", "form")

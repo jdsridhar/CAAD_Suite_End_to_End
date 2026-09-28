@@ -50,6 +50,15 @@ class QMStagePlugin:
                     ),
                 ),
                 outputs=(QMResult.schema_id(),),
+                for_each=("compound_form",),
+                iteration_contracts={
+                    "compound_form": (
+                        QMCalculation.schema_id(),
+                        CompoundForm.schema_id(),
+                        Conformer.schema_id(),
+                    )
+                },
+                fanout_anchor={"compound_form": "form"},
             )
             result.append(
                 StageHandlerRegistration(

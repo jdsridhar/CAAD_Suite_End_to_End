@@ -18,7 +18,7 @@ compound, pH, enumerator version, policy, candidate count, and explicit selectio
 (unambiguous, selected, or all). A collection expands only when the producing capability
 declares its member contract and the receiving stage declares a matching iteration scope.
 compound_form tasks use form identity, and adapters may define lineage-aware matching for
-parent compounds and conformers. Vina and conformer embedding expose this scope.
+parent compounds and conformers. Vina, conformer embedding, and QM calculations based on explicitly form-linked conformers expose this scope. The QM stage validates the calculation's form ID before staging geometry. Pose-based QM remains identity-checked against its selected docking run; the pose contract does not yet carry a form ID for independent collection matching.
 
 Each form is evaluated as its own task. The platform does not merge energies, docking scores,
 or other form-level measurements. A human decision remains required when enumeration is
@@ -29,7 +29,7 @@ auditable task output.
 
 - Existing workflows using chemistry.protonate retain their single-form contract.
 - A collection-to-scalar edge is a compiler error unless member fan-out is declared.
-- Cache/task identity is per selected form downstream; protonation enumeration is run-scoped.
+- Cache/task identity is per selected form downstream. Protonation input identity and complete QM calculation contracts participate in cache keys; protonation enumeration is also run-scoped.
 - Reports and future aggregation stages must retain all member identities and state any
   aggregation rule explicitly.
 - Protonation predictions and form populations remain model outputs with their existing

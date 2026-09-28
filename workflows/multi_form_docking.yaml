@@ -1,0 +1,76 @@
+schema: caddsuite.workflow/1
+name: Dock each explicitly selected molecular form
+description: >-
+  Enumerates pH-aware forms, embeds each form independently, then docks each form
+  against one explicitly prepared target/site. Replace path and artifact inputs for
+  the installation and target. Ambiguous enumeration requires an explicit user choice.
+inputs:
+  compounds:
+    contract: compound/1.0
+  receptor:
+    contract: prepared_receptor/1.0
+  target_structure:
+    contract: structure/1.0
+  site:
+    contract: binding_site/1.0
+stages:
+  - id: enumerate_forms
+    kind: chemistry.enumerate_forms
+    engine: dimorphite_dl
+    for_each: compound
+    input_contracts:
+      compound: compound/1.0
+    input_bindings:
+      compound: $compounds
+    output_contract: compound_form_set/1.0
+    params:
+      target_ph: 7.4
+      ambiguous_microstates: require_decision
+  - id: embed_each_form
+    kind: chemistry.embed
+    engine: rdkit_etkdg
+    for_each: compound_form
+    needs: [enumerate_forms]
+    input_contracts:
+      form: compound_form/1.0
+    input_bindings:
+      form: enumerate_forms
+    output_contract: conformer/1.1
+    params:
+      policy:
+        seed: 42
+        optimizer: MMFF94
+  - id: dock_each_form
+    kind: docking
+    engine: vina
+    for_each: compound_form
+    needs: [enumerate_forms, embed_each_form]
+    input_contracts:
+      compound: compound/1.0
+      form: compound_form/1.0
+      conformer: conformer/1.1
+      receptor: prepared_receptor/1.0
+      target_structure: structure/1.0
+      site: binding_site/1.0
+    input_bindings:
+      compound: $compounds
+      form: enumerate_forms
+      conformer: embed_each_form
+      receptor: $receptor
+      target_structure: $target_structure
+      site: $site
+    output_contract: docking_result/1.0
+    params:
+      docking_parameters:
+        exhaustiveness: 8
+        num_modes: 9
+        energy_range_kcal_mol: 3.0
+        cpu_cores: 1
+      engine_parameters:
+        vina_executable: /absolute/path/to/vina
+        meeko_python: /absolute/path/to/python
+        mk_prepare_receptor: /absolute/path/to/mk_prepare_receptor.py
+        mk_prepare_ligand: /absolute/path/to/mk_prepare_ligand.py
+        mk_export: /absolute/path/to/mk_export.py
+outputs:
+  docking_results: dock_each_form

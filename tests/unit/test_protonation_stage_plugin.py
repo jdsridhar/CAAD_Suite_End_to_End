@@ -106,3 +106,15 @@ def test_multi_form_stage_returns_auditable_form_set_for_run_all() -> None:
     assert result.compound_id == compound.id
     assert len(result.items) > 1
     assert {form.compound_id for form in result.items} == {compound.id}
+
+
+def test_protonation_cache_identity_includes_normalized_compound_input() -> None:
+    compound = _compound("CCO")
+    handler = DimorphiteStageHandler(_stage())
+
+    first_hashes = handler.artifact_hashes({"compound": (compound,)})
+    second_hashes = handler.artifact_hashes(
+        {"compound": (compound.model_copy(update={"id": new_ulid()}),)}
+    )
+
+    assert first_hashes["compound[0]"] != second_hashes["compound[0]"]

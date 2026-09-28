@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from typing import cast
 
@@ -53,7 +54,11 @@ class DimorphiteStageHandler:
     def artifact_hashes(
         self, inputs: Mapping[str, tuple[VersionedContract, ...]]
     ) -> Mapping[str, str]:
-        return {}
+        return {
+            f"compound[{index}]": hashlib.sha256(value.model_dump_json().encode()).hexdigest()
+            for index, value in enumerate(inputs.get("compound", ()))
+            if isinstance(value, Compound)
+        }
 
     def gate_context(
         self, inputs: Mapping[str, tuple[VersionedContract, ...]]

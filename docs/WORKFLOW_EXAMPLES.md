@@ -37,3 +37,20 @@ The example currently expects a normalized source `Structure` artifact and regis
 ## Runtime smoke evidence
 
 The configured single-run stage-composition smoke is recorded in [G-WORKFLOW-1](validation/G-WORKFLOW-1.md), including its input hash, run identity, report hashes, scientific scope, and the configuration defect it exposed.
+
+
+## Explicit molecular-form fan-out
+
+- workflows/multi_form_embedding.yaml demonstrates protonation enumeration followed by
+  one seeded conformer generation per selected CompoundForm.
+- workflows/multi_form_docking.yaml adds independent Vina tasks for each form. Supply the
+  prepared receptor, target structure and binding site as registered normalized contracts,
+  and replace the example executable paths with installed Vina/Meeko paths.
+- workflows/multi_form_qm.yaml accepts preconfigured QMCalculation and Conformer values
+  and joins each to its enumerated CompoundForm by form ID. Its QM calculations must use
+  conformer geometry. Pose-based calculations require a selected pose and docking run with
+  matching form lineage; they are not expanded from an unlinked pose collection.
+
+For ambiguous protonation enumeration, the workflow pauses for a human choice. Selecting
+run_all creates independent downstream tasks per form. Scores and energies remain attached
+to their form; the platform does not average them implicitly.

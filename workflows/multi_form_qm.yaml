@@ -1,0 +1,47 @@
+schema: caddsuite.workflow/1
+name: Run QM independently for matching molecular forms
+description: >-
+  Enumerates calculation forms and runs each preconfigured QMCalculation with the
+  matching form and conformer identity. Calculations must use conformer geometry;
+  pose-based QM requires an explicitly selected pose linked to its docking run.
+inputs:
+  compounds:
+    contract: compound/1.0
+  calculations:
+    contract: qm_calculation/1.2
+  conformers:
+    contract: conformer/1.1
+stages:
+  - id: enumerate_forms
+    kind: chemistry.enumerate_forms
+    engine: dimorphite_dl
+    for_each: compound
+    input_contracts:
+      compound: compound/1.0
+    input_bindings:
+      compound: $compounds
+    output_contract: compound_form_set/1.0
+    params:
+      target_ph: 7.4
+      ambiguous_microstates: require_decision
+  - id: qm_each_form
+    kind: quantum_chemistry
+    engine: caddsuite.qm.pyscf
+    for_each: compound_form
+    needs: [enumerate_forms]
+    input_contracts:
+      calculation: qm_calculation/1.2
+      form: compound_form/1.0
+      conformer: conformer/1.1
+    input_bindings:
+      calculation: $calculations
+      form: enumerate_forms
+      conformer: $conformers
+    output_contract: qm_result/2.1
+    params:
+      engine_parameters:
+        python_executable: /absolute/path/to/pyscf/bin/python
+        n_threads: 1
+        memory_gb: 2
+outputs:
+  quantum_results: qm_each_form

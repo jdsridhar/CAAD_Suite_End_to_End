@@ -10,8 +10,9 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from caddsuite.chem.standardize import make_compound, standardize_smiles
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
-from caddsuite.contracts.registry import CompoundForm, CompoundFormKind, CompoundFormSet
+from caddsuite.contracts.registry import Compound, CompoundForm, CompoundFormKind, CompoundFormSet
 from caddsuite.contracts.reporting import ReportArtifact, ReportBundle
 from caddsuite.domain.enums import LicenseClass, SoftwareKind, TaskState
 from caddsuite.domain.errors import ExecutionCancelled
@@ -667,3 +668,158 @@ def test_scheduler_expands_form_collection_to_stable_individual_subjects(schedul
 
     assert [subject_id for subject_id, _ in executions] == [str(form.id) for form in forms]
     assert [values["forms"][0].id for _, values in executions] == [form.id for form in forms]
+
+
+def test_scheduler_runs_each_compound_form_as_an_independent_task(scheduler_env) -> None:
+    tasks, cache, run_id, _second_run_id, project_id, _attempts, _sessions = scheduler_env
+    compound = make_compound(
+        standardize_smiles("CCO"),
+        compound_id=new_ulid(),
+        project_id=project_id,
+        accession="CMP0002",
+        name="ethanol",
+        original_text="CCO",
+        source="manual",
+    )
+    forms = (
+        CompoundForm(
+            id=new_ulid(),
+            compound_id=compound.id,
+            kind=CompoundFormKind.PARENT_NEUTRAL,
+            smiles="CCO",
+            formal_charge=0,
+        ),
+        CompoundForm(
+            id=new_ulid(),
+            compound_id=compound.id,
+            kind=CompoundFormKind.PROTONATED_MICROSTATE,
+            smiles="CC[OH2+]",
+            formal_charge=1,
+            ph=7.4,
+            method=SoftwareRef(
+                name="fixture-enumerator",
+                version="1",
+                kind=SoftwareKind.LIBRARY,
+                license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+            ),
+        ),
+    )
+    form_set = CompoundFormSet(
+        id=new_ulid(),
+        compound_id=compound.id,
+        items=forms,
+        ph=7.4,
+        method=SoftwareRef(
+            name="fixture-enumerator",
+            version="1",
+            kind=SoftwareKind.LIBRARY,
+            license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+        ),
+        precision=0.0,
+        max_variants=16,
+        candidate_count=2,
+        selection="all",
+    )
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "run each form independently",
+            "inputs": {"compounds": {"contract": "compound/1.0"}},
+            "stages": [
+                {
+                    "id": "enumerate",
+                    "kind": "fixture.enumerate",
+                    "for_each": "compound",
+                    "input_contracts": {"compound": "compound/1.0"},
+                    "input_bindings": {"compound": "$compounds"},
+                    "output_contract": "compound_form_set/1.0",
+                },
+                {
+                    "id": "calculate",
+                    "kind": "fixture.calculate",
+                    "for_each": "compound_form",
+                    "needs": ["enumerate"],
+                    "input_contracts": {"form": "compound_form/1.0"},
+                    "input_bindings": {"form": "enumerate"},
+                    "output_contract": "compound_form/1.0",
+                },
+            ],
+            "outputs": {"forms": "calculate"},
+        }
+    )
+    capabilities = (
+        StageCapability(
+            kind="fixture.enumerate",
+            inputs=(CapabilityInput(name="compound", contracts=("compound/1.0",)),),
+            outputs=("compound_form_set/1.0",),
+            collection_outputs={"compound_form_set/1.0": "compound_form/1.0"},
+            for_each=("compound",),
+            iteration_contracts={"compound": ("compound/1.0",)},
+        ),
+        StageCapability(
+            kind="fixture.calculate",
+            inputs=(CapabilityInput(name="form", contracts=("compound_form/1.0",)),),
+            outputs=("compound_form/1.0",),
+            for_each=("compound_form",),
+            iteration_contracts={"compound_form": ("compound_form/1.0",)},
+            fanout_anchor={"compound_form": "form"},
+        ),
+    )
+
+    class EnumerateHandler:
+        adapter_id = "fixture.enumerator"
+        adapter_version = "1"
+        engine_version = "1"
+
+        def subject_key(self, scope: str, value: VersionedContract) -> str:
+            assert scope == "compound"
+            assert isinstance(value, Compound)
+            return str(value.id)
+
+        def artifact_hashes(
+            self, _inputs: Mapping[str, tuple[VersionedContract, ...]]
+        ) -> Mapping[str, str]:
+            return {}
+
+        def gate_context(self, _inputs):
+            return {}, frozenset()
+
+        def execute(self, _invocation: TaskInvocation) -> VersionedContract:
+            return form_set
+
+    class CalculateHandler(EnumerateHandler):
+        adapter_id = "fixture.calculator"
+
+        def subject_key(self, scope: str, value: VersionedContract) -> str:
+            assert scope == "compound_form"
+            assert isinstance(value, CompoundForm)
+            return str(value.id)
+
+        def artifact_hashes(
+            self, inputs: Mapping[str, tuple[VersionedContract, ...]]
+        ) -> Mapping[str, str]:
+            form = inputs["form"][0]
+            return {"form": hashlib.sha256(form.model_dump_json().encode()).hexdigest()}
+
+        def execute(self, invocation: TaskInvocation) -> VersionedContract:
+            return invocation.inputs["form"][0]
+
+    scheduler = WorkflowScheduler(
+        task_store=tasks,
+        result_cache=cache,
+        handlers={
+            "enumerate": EnumerateHandler(),
+            "calculate": CalculateHandler(),
+        },
+    )
+    outcome = scheduler.run(
+        WorkflowCompiler(capabilities).compile(workflow),
+        run_id=run_id,
+        inputs={"compounds": compound},
+    )
+
+    form_tasks = [task for task in outcome.tasks if task.stage_id == "calculate"]
+    assert len(form_tasks) == 2
+    assert {task.subject_id for task in form_tasks} == {str(form.id) for form in forms}
+    assert {task.state.value for task in form_tasks} == {"succeeded"}
+    assert {value.value.id for value in outcome.outputs["forms"]} == {form.id for form in forms}
