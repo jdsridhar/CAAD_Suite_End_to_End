@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.8 Add production-discovered stage handlers for trajectory processing/analysis and MM/GBSA, then expose typed MD/QM evidence in reports. |
-| **Next task** | Add one-run MD analysis and MM/GBSA runtime evidence, then a QM workflow stage; address candidate evidence/report linking and rerun acceptance gates. |
+| **Current task** | [-] 13.8 Add MM/GBSA stage execution, connect trajectory stages to actual MD outputs, and expose typed MD/QM evidence in reports. |
+| **Next task** | Add a discovered MM/GBSA stage, then exercise GROMACS processing to MDAnalysis on suitable real trajectory data; connect MD/QM evidence to reports and rerun acceptance gates. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -704,6 +704,10 @@ When the user says **CONTINUE**:
 
 ### Session log - 2026-09-28, production capability audit
 
-- [x] Confirmed GROMACS/OpenMM MD and Psi4/PySCF QM have discovered workflow capabilities. Trajectory processing, trajectory analysis, MM/GBSA, and system building do not yet have production stage registrations.
+- [x] Initial capability audit confirmed GROMACS/OpenMM MD and Psi4/PySCF QM registrations, with no trajectory, MM/GBSA, or system-builder handlers at that audit baseline. This session added the trajectory processing/analysis registrations.
 - [x] Recorded exact normalized inputs and MM/GBSA reviewed CHARMM-GROMACS/TPR-XTC constraints before integration work.
-- [ ] Next: implement and test trajectory processing and analysis stage handlers that preserve artifact hashes, argv logs, environment provenance, and current adapter capability validation.
+- [x] Added production-discovered GROMACS trajectory-processing and MDAnalysis trajectory-analysis handlers. Processing consumes typed topology/segments/time metadata, hash-verifies staging inputs (including .ndx index paths), executes adapter plans via shared shell-free runtime, and normalizes/registers outputs. Analysis consumes explicit analysis request plus processing result, preserving the existing metrics adapter validation and normalized contract.
+- [x] Added shared planned-stage execution with confined working directories/output paths, shell-free argv execution, timeout/nonzero handling, CAS registration, and provenance recording; unit tests cover missing/escaping outputs and failed commands.
+- [x] Full scripts/check.sh: Ruff, format (329 files), strict mypy (195 source files), import-linter (254 files), schemas, and 699 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
+- [ ] Real handler-level trajectory processing to MDAnalysis run remains unverified: current environment lacks the configured MDAnalysis runtime and archived trajectory fixture. This is a validation requirement, not evidence that analysis succeeded.
+- [ ] Next: implement discovered MM/GBSA stage with its existing strict CHARMM-GROMACS/TPR-XTC compatibility checks; then compose analysis outputs into report and connect MD/QM result evidence.
