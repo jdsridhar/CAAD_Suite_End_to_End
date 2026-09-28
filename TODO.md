@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.8 Integrate MD analysis/MM/GBSA and QM stages into production-discovered workflows, preserving compatibility checks and recorded scientific choices. |
+| **Current task** | [-] 13.8 Add production-discovered stage handlers for trajectory processing/analysis and MM/GBSA, then expose typed MD/QM evidence in reports. |
 | **Next task** | Add one-run MD analysis and MM/GBSA runtime evidence, then a QM workflow stage; address candidate evidence/report linking and rerun acceptance gates. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
@@ -701,3 +701,9 @@ When the user says **CONTINUE**:
 - [x] Ran the discovered eight-stage workflow against pinned 5NIU and ethanol. All eight tasks succeeded, Vina ran, and report JSON/HTML/CSV artifacts were retained with CAS hashes under /home/sridhar/caddsuite-workflow-evidence-20260928. Detailed scope is in docs/validation/G-WORKFLOW-1.md.
 - [x] Repository gate: Ruff, format, strict mypy (192 files), import contracts, schemas, and 689 tests passed; 34 environment/data-gated tests skipped.
 - [ ] Next: production-discovered runtime composition for MD trajectory analysis/MMGBSA and QM; the workflow plumbing smoke is not scientific validation.
+
+### Session log - 2026-09-28, production capability audit
+
+- [x] Confirmed GROMACS/OpenMM MD and Psi4/PySCF QM have discovered workflow capabilities. Trajectory processing, trajectory analysis, MM/GBSA, and system building do not yet have production stage registrations.
+- [x] Recorded exact normalized inputs and MM/GBSA reviewed CHARMM-GROMACS/TPR-XTC constraints before integration work.
+- [ ] Next: implement and test trajectory processing and analysis stage handlers that preserve artifact hashes, argv logs, environment provenance, and current adapter capability validation.

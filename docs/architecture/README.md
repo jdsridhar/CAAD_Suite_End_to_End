@@ -130,3 +130,8 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [Installation](../INSTALLATION.md) · [User guide](../USER_GUIDE.md) · [Configuration](../CONFIGURATION.md) · [Troubleshooting](../TROUBLESHOOTING.md)
 - [API reference](../api/README.md) · [Scientific methods and validation index](../SCIENTIFIC_METHODS.md)
 - [Prior-art survey](PRIOR_ART_SURVEY.md)
+
+
+## Runtime integration status
+
+- [Production workflow stage gap audit](PRODUCTION_WORKFLOW_GAP_AUDIT.md): discovered capabilities, missing MD-analysis/energy stage registrations, compatibility limits, and migration sequence.
