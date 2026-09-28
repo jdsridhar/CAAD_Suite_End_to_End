@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production workflow stage composition (reopened after runtime acceptance audit) |
-| **Current task** | [-] 13.7 Run the corrected ADMET/protonation/gate/embed/Vina/report template through Vina once a compatible prepared receptor, binding site and explicit Vina/Meeko executables are configured. |
+| **Current task** | [-] 13.7 Compose and execute the full corrected ADMET/protonation/gate/embed/Vina/report template through the discovered runtime; standalone real PDBFixer/Vina integrations now pass. |
 | **Next task** | Wire/configure the PDBFixer and blind-site stages in the example with explicit chain, pH and executable decisions, qualify the engine-backed run, then extend production runtime coverage to MD analysis/MMGBSA and QM. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
@@ -373,7 +373,8 @@ When the user says **CONTINUE**:
   - [x] Implement run-scoped report stage using the existing provenance builder/renderers, content-addressed artifacts and ReportBundle; pass run_id through TaskInvocation and include it in report cache identity. SQLite/CAS runtime test covers rendered JSON/HTML registration.
   - [x] Reconcile workflow contracts with installed Vina capability: exact form/conformer/prepared-receptor/target/site ports and docking_result/1.0 output are declared as normalized inputs/output. The published workflow compiles against the production registry.
   - [x] Execute the production-registry ADMET -> protonation -> embedding -> report subworkflow with SQLite task/provenance persistence and CAS conformer/JSON/HTML artifacts. The complete docking workflow still awaits engine-backed Vina configuration and valid receptor/site inputs.
-  - [ ] Wire the registered PDBFixer/blind-site stages into the example while requiring explicit chain/pH choices, and configure user-installed Vina/Meeko paths; then execute the full Vina -> report workflow.
+  - [x] Verify configured WSL PDBFixer and Vina/Meeko engine integrations: `CADDSUITE_PDBFIXER_PYTHON=/home/sridhar/miniconda3/envs/cadd/bin/python .venv/bin/pytest -q tests/unit/test_pdbfixer_handler.py tests/unit/test_vina_handler.py` => 2 passed in 196.65 s. This is an engine/handler integration, not a single scheduled run of the published ADMET-to-report template.
+  - [ ] Wire the registered PDBFixer/blind-site stages into the example with explicit target chain and pH configuration, configure installed Vina/Meeko paths without embedding machine-specific paths in the portable example, and execute the full scheduled Vina -> report workflow. Preserve the explicit microstate decision pause; do not choose a form silently.
 
 - [x] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
@@ -682,3 +683,9 @@ When the user says **CONTINUE**:
 - [x] Export integrity-manifested normalized task-cache outputs in `results.json`, with project-scoped task/run identity; regression checks exact contract schema and values.
 - [x] Versioned contract-specific comparison API is implemented and covered for numeric tolerances, policy serialization, mismatched contracts, and artifact hash differences.
 - [x] Completed later in Phase 15.2: exported/replayed normalized results are connected to comparison, and a real Psi4 fresh-environment export → replay → compare run passed (docs/validation/G-REPRO-PSI4-1.md).
+
+### Session log - 2026-09-28, engine integration continuation
+
+- [x] Resumed from TODO.md and inspected WSL Git state; user-owned untracked `timer.dat` remains untouched.
+- [x] Completed the configured real PDBFixer and Vina/Meeko handler integration: 2 passed in 196.65 s. Engine paths were supplied through the test environment, not persisted in workflow configuration.
+- [ ] Still in progress: execute ADMET, protonation, configurable gate, embedding, docking, and reporting under one compiled `LocalWorkflowRuntime` run. Current integration result does not establish that cross-stage acceptance criterion.

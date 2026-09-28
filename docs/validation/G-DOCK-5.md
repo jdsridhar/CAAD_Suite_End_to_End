@@ -24,3 +24,14 @@ The previously recorded 5NIU/8YZ top-ranked-pose symmetry-corrected RMSD is **12
 - Compute the predeclared symmetry-corrected, no-fit top-pose RMSD and report the all-case success fraction. Keep best-of-nine secondary.
 
 Until those tasks are complete, do not report an aggregate pilot accuracy estimate or claim broad docking validation. The benchmark is a small protocol pilot only.
+
+## Adapter integration rerun (2026-09-28)
+
+The configured WSL engine check ran the isolated PDBFixer regression and the production Vina/Meeko integration in the same pytest invocation:
+
+```bash
+CADDSUITE_PDBFIXER_PYTHON=/home/sridhar/miniconda3/envs/cadd/bin/python \
+  .venv/bin/pytest -q tests/unit/test_pdbfixer_handler.py tests/unit/test_vina_handler.py
+```
+
+Result: **2 passed in 196.65 s**. This confirms the opt-in real-engine preparation and docking handler regressions execute in the configured environment. It does not rerun or revise the recorded RMSD measurement, complete the three-case pilot, or demonstrate that the published ADMET/protonation/gate/embed/Vina/report workflow executes as one scheduler run.
