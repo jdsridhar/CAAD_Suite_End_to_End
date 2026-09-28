@@ -1,0 +1,4 @@
+
+Files written:
+ /home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/receptor.json <-- parameterized receptor
+/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/receptor.pdbqt <-- static (i.e., rigid) receptor input file

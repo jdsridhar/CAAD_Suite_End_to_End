@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 16 — Benchmarking and research framing |
-| **Current task** | [-] 16.1 build and execute a reproducible redocking benchmark dataset and protocol |
-| **Next task** | Complete native coordinate mapping and standardized Vina runs for 3ERT/OHT and 1M17/AQ4; then assess measurements in Phase 16.2 |
+| **Current task** | [-] 16.2 compare docking-stage throughput at controlled CPU settings |
+| **Next task** | Measure controlled Vina adapter runtime at 1 vs 2 CPU cores on the same successful pilot case; revisit Meeko-incompatible cases as a separately versioned preparation study |
 | **Last completed** | Phase 15 reproducibility gate: real Psi4 CLI run exported, recreated from explicit lock in a clean environment, replayed, and compared within the declared tolerance. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -434,16 +434,19 @@ When the user says **CONTINUE**:
 
 ## Phase 16 — Benchmarking + research `[ ]`
 
-- [-] 16.1 Re-docking benchmark (set of known complexes) and optional enrichment study
+- [x] 16.1 Re-docking benchmark (set of known complexes) and optional enrichment study
   - [x] Curate a pinned three-complex pilot from CC0 RCSB X-ray structures: 5NIU/8YZ, 3ERT/OHT, and 1M17/AQ4. Record receptor chain, ligand author/label chain and residue, resolution, source path, and SHA-256 in benchmarks/redocking/pilot_v1/manifest.json.
   - [x] Predeclare site-restricted redocking preparation, fixed Vina settings, symmetry-corrected no-fit RMSD, top-rank <2.0 angstrom success criterion, per-case reporting, and limitations in docs/validation/REDOCKING_PILOT_V1.md. Preserve the known 5NIU miss as a failed baseline.
   - [x] Add a manifest/integrity test for the pinned raw structures and ligand graph files.
   - [x] Re-executed the production Vina handler integration locally on 5NIU/8YZ; it passed (157.90 s) with Vina `f458505-mod`, Meeko 0.7.1, PDBFixer 1.12.0, OpenMM 8.4.0; see `docs/validation/G-DOCK-5.md`.
   - [x] Implement CCD graph/name/element validated native ligand coordinate mapping for 3ERT/OHT and 1M17/AQ4; coordinate-bearing SDFs generated and covered by focused tests. See `benchmarks/redocking/native_ligand.py` and `docs/validation/G-DOCK-6.md`.
   - [x] Prepare 3ERT and 1M17 author chain A with the production PDBFixer worker (pH 7.4, no waters, fill internal gaps); retain request/response and mmCIF/PDB outputs with hashes. Record unresolved termini and the modeled 1M17 internal gap in `docs/validation/G-DOCK-7.md`.
-  - [ ] Execute the fixed Vina protocol across all three cases; retain fresh per-pose diagnostics for 5NIU. No docking outcomes are claimed for the new cases.
-  - **Current limit:** existing 5NIU/8YZ top-pose RMSD 12.3928 Å misses the <2.0 Å criterion; two added pilot cases have no outcomes yet.
-- [ ] 16.2 Performance benchmarks (throughput vs resource settings)
+  - [x] Execute the fixed centroid-centered protocol through the workflow runtime for all three cases; retain normalized 5NIU poses and provenance, plus failed Meeko task records for 3ERT and 1M17. Record the top-pose miss and adapter compatibility boundary in `docs/validation/G-DOCK-8.md`; all run files and diagnostic JSON are hash-manifested.
+  - **Gate result:** completed pilot execution, not broad accuracy validation. Vina reached docking for 1/3 cases; top-pose success was 0/1 among executed cases and end-to-end workflow completion was 1/3. 3ERT/1M17 have no scores and must remain explicit upstream failures.
+  - [x] Post-run decision: preserve 3ERT and 1M17 as explicit adapter preparation failures in v1. No alternate preparer, bad-residue deletion, or coordinate repair is admitted into the fixed protocol; any remediation requires a new protocol version and validation gate.
+- [-] 16.2 Performance benchmarks (throughput vs resource settings)
+  - [x] Capture production-adapter baseline for 5NIU/8YZ: 144.03 s wall time, 2 requested CPU cores, exhaustiveness 16, 9 poses, seed 42, 4,096 MiB requested memory, WSL2 on Intel i5-14450HX. Timing is the full four-step adapter stage, not Vina kernel time; peak memory was not measured.
+  - [ ] Compare 1 vs 2 CPU cores at identical exhaustiveness, modes, seed, receptor and site using repeated runs; report variability and hardware limits.
 - [ ] 16.3 Research framing (only if a genuine gap is found in 1.8): question, hypothesis, datasets, baselines, metrics, statistics, limitations
 
 ## Phase 17 — Documentation `[ ]`

@@ -1,0 +1,18 @@
+[RDKit] ERROR:[17:02:35] Explicit valence for atom # 10 C, 5, is greater than permitted
+Traceback (most recent call last):
+  File "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/cli/mk_prepare_receptor.py", line 628, in main
+    polymer = Polymer.from_pdb_string(
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/polymer.py", line 1101, in from_pdb_string
+    tmp_raw_input_mols = cls._pdb_to_residue_mols(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/polymer.py", line 1897, in _pdb_to_residue_mols
+    pdbmol, _, missed_altloc, needed_altloc = _aux_altloc_mol_build(
+                                              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/utils/rdkitutils.py", line 415, in _aux_altloc_mol_build
+    _ = Chem.SanitizeMol(pdbmol)
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+rdkit.Chem.rdchem.AtomValenceException: Explicit valence for atom # 10 C, 5, is greater than permitted

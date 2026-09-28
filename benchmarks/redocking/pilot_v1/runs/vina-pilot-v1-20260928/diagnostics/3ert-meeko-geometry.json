@@ -1,0 +1,43 @@
+{
+  "failed_residue_count": 1,
+  "findings": [
+    {
+      "atom": {
+        "element": "C",
+        "index": 10,
+        "name": "CA",
+        "neighbors": [
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "C",
+            "name": "CB"
+          },
+          {
+            "element": "H",
+            "name": "HA"
+          },
+          {
+            "element": "C",
+            "name": "C"
+          },
+          {
+            "element": "O",
+            "name": "OXT"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 10 C, 5, is greater than permitted",
+      "residue_id": "552",
+      "residue_name": "PRO"
+    }
+  ],
+  "input": "prepared_receptor.pdb",
+  "input_sha256": "daaf60ef3dd39d1ab6c15ec5bf23d2b69ab88409779961e4dc80da5070bb5b0f",
+  "interpretation": "RDKit distance-inferred residue graph diagnostic only; a failure does not by itself establish incorrect experimental chemistry.",
+  "residue_count": 247,
+  "schema": "caddsuite.meeko-residue-geometry-diagnostic/1"
+}

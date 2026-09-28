@@ -1,0 +1,19 @@
+{
+  "case_id": "3ert-oht",
+  "ccd_id": "OHT",
+  "failures": [
+    {
+      "error": "meeko_receptor exited with status 1: [RDKit] ERROR:[17:02:35] Explicit valence for atom # 10 C, 5, is greater than permitted\nTraceback (most recent call last):\n  File \"/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py\", line 6, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/cli/mk_prepare_receptor.py\", line 628, in main\n    polymer = Polymer.from_pdb_string(\n              ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/polymer.py\", line 1101, in from_pdb_string\n    tmp_raw_input_mols = cls._pdb_to_residue_mols(\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/polymer.py\", line 1897, in _pdb_to_residue_mols\n    pdbmol, _, missed_altloc, needed_altloc = _aux_altloc_mol_build(\n                                              ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/utils/rdkitutils.py\", line 415, in _aux_altloc_mol_build\n    _ = Chem.SanitizeMol(pdbmol)\n        ^^^^^^^^^^^^^^^^^^^^^^^^\nrdkit.Chem.rdchem.AtomValenceException: Explicit valence for atom # 10 C, 5, is greater than permitted\n",
+      "stage_id": "dock",
+      "state": "failed"
+    }
+  ],
+  "input_structure_sha256": "93e5225a94e21f490089666c0cab160bcc33ee6701b0a44d69eb99cedf771427",
+  "native_ligand_sha256": "6be1b1b5753b0d93fcf0c4afc08c46943d9bb377746a18a3577e4dad084845b5",
+  "pdb_id": "3ERT",
+  "prepared_receptor_pdb_sha256": "daaf60ef3dd39d1ab6c15ec5bf23d2b69ab88409779961e4dc80da5070bb5b0f",
+  "primary_success": false,
+  "provenance_artifact": true,
+  "status": "failed",
+  "target_A": 2.0
+}

@@ -1,0 +1,1520 @@
+{
+  "artifacts": [
+    {
+      "id": "01M3JMZHS89S272X1KZN9A33VC",
+      "kind": "raw_structure_mmcif",
+      "media_type": "chemical/x-mmcif",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "badf5ad650559c8710fc6f03dab6f2dd676927800dc9864c0df5904e8da1e0ed",
+      "size_bytes": 505731
+    },
+    {
+      "id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "kind": "execution_stderr",
+      "media_type": "text/plain",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "id": "01M3JMZM5SYTSN8BEFBJBA70DG",
+      "kind": "execution_stdout",
+      "media_type": "text/plain",
+      "producer_attempt_id": null,
+      "sha256": "445ca6c537784ac5dc9a5031cde2ff708f971e7ac6fc6b3b7b0dc7efa2741e19",
+      "size_bytes": 734
+    },
+    {
+      "id": "01M3JMZM5X0EB4085PRFEYFWNE",
+      "kind": "prepared_receptor_mmcif",
+      "media_type": "chemical/x-mmcif",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "3a71b0e24873ea1bfd782a98248e907ac15423d4ff8f5126cc1c988be61cd525",
+      "size_bytes": 255613
+    },
+    {
+      "id": "01M3JMZM5ZVJQES8W817011209",
+      "kind": "prepared_receptor_pdb",
+      "media_type": "chemical/x-pdb",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "4639e8b5b0baffd66947df703b080769a2dbb6fb4c3359be92fcdc50d4898cca",
+      "size_bytes": 163723
+    },
+    {
+      "id": "01M3JMZM62GK6VSQ44MQD88EM5",
+      "kind": "worker_request",
+      "media_type": "application/json",
+      "producer_attempt_id": null,
+      "sha256": "a3ab997b86a7dde763fdc8306c63383a7e58ac210b92abfa89f19e0f8a4e0dab",
+      "size_bytes": 676
+    },
+    {
+      "id": "01M3JMZM6BQQW3GWQ21N3NDSKZ",
+      "kind": "ligand_conformer_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "db5a25ea14bfdafa56a6e19de541957a220147e1479def86ac3046b236f5fe6b",
+      "size_bytes": 6606
+    },
+    {
+      "id": "01M3JMZPRX926YXW05NW2TA8RD",
+      "kind": "execution_stdout",
+      "media_type": "text/plain",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "c2529382bd247b292f90116b7ac11d3c4e3f25f16167f5aa7ec863b71a70f437",
+      "size_bytes": 414
+    },
+    {
+      "id": "01M3JMZQN0ZAY8755961G5GMCS",
+      "kind": "execution_stdout",
+      "media_type": "text/plain",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "8f13b69c763278d183de36bb0149cb01e2557ff091944fa32edea3812f1eda92",
+      "size_bytes": 135
+    },
+    {
+      "id": "01M3JN3ZW0RHG6SRZ23A4BPSBF",
+      "kind": "execution_stdout",
+      "media_type": "text/plain",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "3354d694c0fcabca1c630efe6b589afee54f2379ff67089b2cbed4709ab499d7",
+      "size_bytes": 2369
+    },
+    {
+      "id": "01M3JN40RQRN337G1CHTSV9T5G",
+      "kind": "meeko_receptor_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "927db5dcffc78f3ca0a49ad69480d8f4af89286ce1c1d829b692de20208a3344",
+      "size_bytes": 98960
+    },
+    {
+      "id": "01M3JN40RZCR40YHBK1CG9Z5XN",
+      "kind": "meeko_receptor_parameters",
+      "media_type": "application/json",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "468455e34e3bd9fc361b313eb53e3f3038b51fe7ec4ec50cacc3d237e5cf1d27",
+      "size_bytes": 3893245
+    },
+    {
+      "id": "01M3JN40S2ECFDBRYN4PY9Z6FW",
+      "kind": "meeko_ligand_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "3e96f9e48cefc9fee358c1a8c8c60f742c423cdd253a497c466529346010fcfd",
+      "size_bytes": 5053
+    },
+    {
+      "id": "01M3JN40S5WVHJE2SQ8MWXZRNE",
+      "kind": "vina_poses_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "689320205265167b095d2fdd94d73143038013f5f36cd6bd615317990ee84e71",
+      "size_bytes": 47448
+    },
+    {
+      "id": "01M3JN40S73PFD1V8HBK0ZA7J7",
+      "kind": "meeko_export_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "ea0bb3685117993d96290bbfc06f3c8ff6d3250d4ed1f97d3f4f9316beac79d4",
+      "size_bytes": 60618
+    },
+    {
+      "id": "01M3JN40SRN70PF8295JMWAQ1F",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "833f2cb3bd4e1ae46fcb8ab36b995c6508ca9d5b1b2aabe0dc810842248d11a3",
+      "size_bytes": 6736
+    },
+    {
+      "id": "01M3JN40STXEH21D411XDGPMBY",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "8e1aec4da962f85f83edd5d04ba39c23eafa7506304fcd67615c83fd99ea0fa8",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40SYTP69VMG87ZW555P0",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "552c8644f8aa58bf9373d0ba06f45d9f6c1a6bcb20270c892c87bb11b1954ae5",
+      "size_bytes": 6734
+    },
+    {
+      "id": "01M3JN40T0GAKNCJQHKFDH13PC",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "9602b30701bdc862afceb97742ef5eebe70928df92396ab9b0943ec50c6a5919",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40T408ZCJVRYZPEKRK8M",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "b52f16286efd7558e97f3da6165e03e558e502ec6a950a211696e22152c4d2ad",
+      "size_bytes": 6736
+    },
+    {
+      "id": "01M3JN40T6TM7GDCKYFF8RQ5ZK",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "b8602106c97e94e2962c766325894261134fac4ee28825ac68f20bae49b91d91",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40TAXHPH4BZAW1ZGF6H4",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "28ec3b6381d0b760a776ec834d08617a86055082e8580e37f33ea6b3f369a5aa",
+      "size_bytes": 6736
+    },
+    {
+      "id": "01M3JN40TCYBWZ287S8AY2GFG1",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "a268af9a104ad8171181b27851a8c434b693a8ca88b098be85e460a1bf62cb47",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40TG5YNN5FCXSRHSTRBE",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "7560f2c6b81f81503f88e8423e0834af3a726e73ca46071e5d1db2fe4ef357f4",
+      "size_bytes": 6734
+    },
+    {
+      "id": "01M3JN40TJ2NASJB0M7D3ZFW6B",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "6c54d8c247108aaf733217433a7945f2ca1905198fe5e8d25ec24a0fcd65be63",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40TP24BT62HEGV8FFTJB",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "751f50057c0ec0b0265c70f05a21d29f872e24a3d4e98cf49e2097debb86e5be",
+      "size_bytes": 6736
+    },
+    {
+      "id": "01M3JN40TRFHN6T9X9QVPHDX22",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "4eae95b014da2227d82bdd802cdc0bc0067bca082d2bacacce15f7e1928e8d4d",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40TWRRKP1658825DDGAJ",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "a7163f6a1955fc55c2f0cc764624f5897209350bb7e8213114bd827204d52800",
+      "size_bytes": 6736
+    },
+    {
+      "id": "01M3JN40TYXV51QPEN0VPCCM0J",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "6ce235f741c787e04c89ef11dd9b1fc253dfef9c14a55d43341fb278bd6eacc5",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40V2M8P19B0H1ER8G0PA",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "f7e23617d15dc50291c094886c200f5cd8ad36b393ca4ff2ce8d32a973b8ce2c",
+      "size_bytes": 6735
+    },
+    {
+      "id": "01M3JN40V4S45ESH5P72C3MW5M",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "c6997c3583b7e2405c369a0f409ecde290e7436ca78a9772cc666edb4d7184a6",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN40V8R7BC29P2JMZ9BH2V",
+      "kind": "normalized_pose_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "5655ac86e040d5aa44b26cd699b8e9377c34f24ebae125034e538cf81ddd3a31",
+      "size_bytes": 6735
+    },
+    {
+      "id": "01M3JN40VAPW4K4ZGKHP5W0C6F",
+      "kind": "raw_vina_pose_pdbqt",
+      "media_type": "chemical/x-pdbqt",
+      "producer_attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "sha256": "d7212ddd55a2cd9aa614c97728afd0d94fe1167e11412d08983305077d518423",
+      "size_bytes": 5272
+    },
+    {
+      "id": "01M3JN43WX04PV42KG43MCHWQC",
+      "kind": "raw_structure_mmcif",
+      "media_type": "chemical/x-mmcif",
+      "producer_attempt_id": null,
+      "sha256": "849bd2548dffb7ddcb7229a05202c1e2e41019a1fd69ec39483654cf984fc4d0",
+      "size_bytes": 307709
+    },
+    {
+      "id": "01M3JN464XDK5XPW2GDX7SV4F9",
+      "kind": "execution_stdout",
+      "media_type": "text/plain",
+      "producer_attempt_id": null,
+      "sha256": "5ced9b2a79b6f2a183d5c933dcada5c3572c98948ee1af8de265272acaef1b47",
+      "size_bytes": 1123
+    },
+    {
+      "id": "01M3JN4652AWC5Z633JH2T2F7M",
+      "kind": "prepared_receptor_mmcif",
+      "media_type": "chemical/x-mmcif",
+      "producer_attempt_id": null,
+      "sha256": "4954140fadaa4d03cb9d217b09070c41a956c17a77d2a4b4cf2ff4a03cc9c9c4",
+      "size_bytes": 657696
+    },
+    {
+      "id": "01M3JN4655X2F8MM62BNTK1T8X",
+      "kind": "prepared_receptor_pdb",
+      "media_type": "chemical/x-pdb",
+      "producer_attempt_id": null,
+      "sha256": "ddd827214f95bd659c31606b7e20e6e9b20b4a060eafd88ade10d922ed8dfe9a",
+      "size_bytes": 422403
+    },
+    {
+      "id": "01M3JN4657VMEGXRTA3XJT7WNT",
+      "kind": "worker_request",
+      "media_type": "application/json",
+      "producer_attempt_id": null,
+      "sha256": "b7575e8e6914f97575a132baee004b54b8382753b9493de0457a21a1b1dee694",
+      "size_bytes": 676
+    },
+    {
+      "id": "01M3JN466FDB5555GDSQQVR4MY",
+      "kind": "ligand_conformer_sdf",
+      "media_type": "chemical/x-mdl-sdfile",
+      "producer_attempt_id": null,
+      "sha256": "74e90b46b94c1a27a112bc917312601b2621475a751900b52be8026b933f2e1c",
+      "size_bytes": 4422
+    },
+    {
+      "id": "01M3JN478SC1KAD6H0TTF1K88P",
+      "kind": "execution_stderr",
+      "media_type": "text/plain",
+      "producer_attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "sha256": "ccfbf13092b6df12665e28b6768658dd72234bdbcd3b3a964d46935036a7aa88",
+      "size_bytes": 1248
+    }
+  ],
+  "attempts": [
+    {
+      "attempt_no": 1,
+      "ended_at": "2026-09-28T00:02:32.432379+00:00",
+      "id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "payload": {
+        "artifacts": [
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM6BQQW3GWQ21N3NDSKZ",
+              "role": "ligand_conformer_sdf",
+              "sha256": "db5a25ea14bfdafa56a6e19de541957a220147e1479def86ac3046b236f5fe6b"
+            },
+            "direction": "used",
+            "role": "ligand_conformer_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZHS89S272X1KZN9A33VC",
+              "role": "raw_structure_mmcif",
+              "sha256": "badf5ad650559c8710fc6f03dab6f2dd676927800dc9864c0df5904e8da1e0ed"
+            },
+            "direction": "used",
+            "role": "raw_structure_mmcif"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5X0EB4085PRFEYFWNE",
+              "role": "prepared_receptor_mmcif",
+              "sha256": "3a71b0e24873ea1bfd782a98248e907ac15423d4ff8f5126cc1c988be61cd525"
+            },
+            "direction": "used",
+            "role": "prepared_receptor_mmcif"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5ZVJQES8W817011209",
+              "role": "prepared_receptor_pdb",
+              "sha256": "4639e8b5b0baffd66947df703b080769a2dbb6fb4c3359be92fcdc50d4898cca"
+            },
+            "direction": "used",
+            "role": "prepared_receptor_pdb"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SYTSN8BEFBJBA70DG",
+              "role": "stdout",
+              "sha256": "445ca6c537784ac5dc9a5031cde2ff708f971e7ac6fc6b3b7b0dc7efa2741e19"
+            },
+            "direction": "used",
+            "role": "stdout"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM62GK6VSQ44MQD88EM5",
+              "role": "worker_request",
+              "sha256": "a3ab997b86a7dde763fdc8306c63383a7e58ac210b92abfa89f19e0f8a4e0dab"
+            },
+            "direction": "used",
+            "role": "worker_request"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "used",
+            "role": "stderr"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZPRX926YXW05NW2TA8RD",
+              "role": "stdout",
+              "sha256": "c2529382bd247b292f90116b7ac11d3c4e3f25f16167f5aa7ec863b71a70f437"
+            },
+            "direction": "generated",
+            "role": "stdout_log"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "generated",
+            "role": "stderr_log"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZQN0ZAY8755961G5GMCS",
+              "role": "stdout",
+              "sha256": "8f13b69c763278d183de36bb0149cb01e2557ff091944fa32edea3812f1eda92"
+            },
+            "direction": "generated",
+            "role": "stdout_log"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN3ZW0RHG6SRZ23A4BPSBF",
+              "role": "stdout",
+              "sha256": "3354d694c0fcabca1c630efe6b589afee54f2379ff67089b2cbed4709ab499d7"
+            },
+            "direction": "generated",
+            "role": "stdout_log"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stdout",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "generated",
+            "role": "stdout_log"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40SRN70PF8295JMWAQ1F",
+              "role": "normalized_pose_sdf",
+              "sha256": "833f2cb3bd4e1ae46fcb8ab36b995c6508ca9d5b1b2aabe0dc810842248d11a3"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40STXEH21D411XDGPMBY",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "8e1aec4da962f85f83edd5d04ba39c23eafa7506304fcd67615c83fd99ea0fa8"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40SYTP69VMG87ZW555P0",
+              "role": "normalized_pose_sdf",
+              "sha256": "552c8644f8aa58bf9373d0ba06f45d9f6c1a6bcb20270c892c87bb11b1954ae5"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40T0GAKNCJQHKFDH13PC",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "9602b30701bdc862afceb97742ef5eebe70928df92396ab9b0943ec50c6a5919"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40T408ZCJVRYZPEKRK8M",
+              "role": "normalized_pose_sdf",
+              "sha256": "b52f16286efd7558e97f3da6165e03e558e502ec6a950a211696e22152c4d2ad"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40T6TM7GDCKYFF8RQ5ZK",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "b8602106c97e94e2962c766325894261134fac4ee28825ac68f20bae49b91d91"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TAXHPH4BZAW1ZGF6H4",
+              "role": "normalized_pose_sdf",
+              "sha256": "28ec3b6381d0b760a776ec834d08617a86055082e8580e37f33ea6b3f369a5aa"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TCYBWZ287S8AY2GFG1",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "a268af9a104ad8171181b27851a8c434b693a8ca88b098be85e460a1bf62cb47"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TG5YNN5FCXSRHSTRBE",
+              "role": "normalized_pose_sdf",
+              "sha256": "7560f2c6b81f81503f88e8423e0834af3a726e73ca46071e5d1db2fe4ef357f4"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TJ2NASJB0M7D3ZFW6B",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "6c54d8c247108aaf733217433a7945f2ca1905198fe5e8d25ec24a0fcd65be63"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TP24BT62HEGV8FFTJB",
+              "role": "normalized_pose_sdf",
+              "sha256": "751f50057c0ec0b0265c70f05a21d29f872e24a3d4e98cf49e2097debb86e5be"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TRFHN6T9X9QVPHDX22",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "4eae95b014da2227d82bdd802cdc0bc0067bca082d2bacacce15f7e1928e8d4d"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TWRRKP1658825DDGAJ",
+              "role": "normalized_pose_sdf",
+              "sha256": "a7163f6a1955fc55c2f0cc764624f5897209350bb7e8213114bd827204d52800"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40TYXV51QPEN0VPCCM0J",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "6ce235f741c787e04c89ef11dd9b1fc253dfef9c14a55d43341fb278bd6eacc5"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40V2M8P19B0H1ER8G0PA",
+              "role": "normalized_pose_sdf",
+              "sha256": "f7e23617d15dc50291c094886c200f5cd8ad36b393ca4ff2ce8d32a973b8ce2c"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40V4S45ESH5P72C3MW5M",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "c6997c3583b7e2405c369a0f409ecde290e7436ca78a9772cc666edb4d7184a6"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40V8R7BC29P2JMZ9BH2V",
+              "role": "normalized_pose_sdf",
+              "sha256": "5655ac86e040d5aa44b26cd699b8e9377c34f24ebae125034e538cf81ddd3a31"
+            },
+            "direction": "generated",
+            "role": "normalized_pose_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40VAPW4K4ZGKHP5W0C6F",
+              "role": "raw_vina_pose_pdbqt",
+              "sha256": "d7212ddd55a2cd9aa614c97728afd0d94fe1167e11412d08983305077d518423"
+            },
+            "direction": "generated",
+            "role": "raw_vina_pose_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZHS89S272X1KZN9A33VC",
+              "role": "raw_structure_mmcif",
+              "sha256": "badf5ad650559c8710fc6f03dab6f2dd676927800dc9864c0df5904e8da1e0ed"
+            },
+            "direction": "generated",
+            "role": "raw_structure_mmcif"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5X0EB4085PRFEYFWNE",
+              "role": "prepared_receptor_mmcif",
+              "sha256": "3a71b0e24873ea1bfd782a98248e907ac15423d4ff8f5126cc1c988be61cd525"
+            },
+            "direction": "generated",
+            "role": "prepared_receptor_mmcif"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5ZVJQES8W817011209",
+              "role": "prepared_receptor_pdb",
+              "sha256": "4639e8b5b0baffd66947df703b080769a2dbb6fb4c3359be92fcdc50d4898cca"
+            },
+            "direction": "generated",
+            "role": "prepared_receptor_pdb"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM6BQQW3GWQ21N3NDSKZ",
+              "role": "ligand_conformer_input_sdf",
+              "sha256": "db5a25ea14bfdafa56a6e19de541957a220147e1479def86ac3046b236f5fe6b"
+            },
+            "direction": "generated",
+            "role": "ligand_conformer_input_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZPRX926YXW05NW2TA8RD",
+              "role": "stdout",
+              "sha256": "c2529382bd247b292f90116b7ac11d3c4e3f25f16167f5aa7ec863b71a70f437"
+            },
+            "direction": "generated",
+            "role": "stdout"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "generated",
+            "role": "stderr"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZQN0ZAY8755961G5GMCS",
+              "role": "stdout",
+              "sha256": "8f13b69c763278d183de36bb0149cb01e2557ff091944fa32edea3812f1eda92"
+            },
+            "direction": "generated",
+            "role": "stdout"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN3ZW0RHG6SRZ23A4BPSBF",
+              "role": "stdout",
+              "sha256": "3354d694c0fcabca1c630efe6b589afee54f2379ff67089b2cbed4709ab499d7"
+            },
+            "direction": "generated",
+            "role": "stdout"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stdout",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "generated",
+            "role": "stdout"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40RQRN337G1CHTSV9T5G",
+              "role": "meeko_receptor_pdbqt",
+              "sha256": "927db5dcffc78f3ca0a49ad69480d8f4af89286ce1c1d829b692de20208a3344"
+            },
+            "direction": "generated",
+            "role": "meeko_receptor_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40RZCR40YHBK1CG9Z5XN",
+              "role": "meeko_receptor_parameters",
+              "sha256": "468455e34e3bd9fc361b313eb53e3f3038b51fe7ec4ec50cacc3d237e5cf1d27"
+            },
+            "direction": "generated",
+            "role": "meeko_receptor_parameters"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40S2ECFDBRYN4PY9Z6FW",
+              "role": "meeko_ligand_pdbqt",
+              "sha256": "3e96f9e48cefc9fee358c1a8c8c60f742c423cdd253a497c466529346010fcfd"
+            },
+            "direction": "generated",
+            "role": "meeko_ligand_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40S5WVHJE2SQ8MWXZRNE",
+              "role": "vina_poses_pdbqt",
+              "sha256": "689320205265167b095d2fdd94d73143038013f5f36cd6bd615317990ee84e71"
+            },
+            "direction": "generated",
+            "role": "vina_poses_pdbqt"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN40S73PFD1V8HBK0ZA7J7",
+              "role": "meeko_export_sdf",
+              "sha256": "ea0bb3685117993d96290bbfc06f3c8ff6d3250d4ed1f97d3f4f9316beac79d4"
+            },
+            "direction": "generated",
+            "role": "meeko_export_sdf"
+          }
+        ],
+        "attempt_no": 1,
+        "ended_at": "2026-09-28T00:02:32.432379Z",
+        "environment": {
+          "captured_at": "2026-09-28T00:00:05.846674Z",
+          "id": "01M3JMZHPP9Z1A518T7SKNX2WM",
+          "key_packages": {
+            "numpy": "2.4.6",
+            "openbabel": "3.1.1",
+            "openmm": "8.4.0",
+            "python": "3.11.15",
+            "rdkit": "2025.03.6",
+            "sqlalchemy": "2.0.51",
+            "vina": "1.2.7"
+          },
+          "kind": "conda",
+          "lock": {
+            "artifact_id": "01M3JMZHPMG1MYJ47DC7QNMEWM",
+            "role": "environment_lock",
+            "sha256": "828474a00d7a95374799c2a2caf6e24f35b81f8a7bf08dd5d9ed31195798eaa5"
+          },
+          "lock_sha256": "828474a00d7a95374799c2a2caf6e24f35b81f8a7bf08dd5d9ed31195798eaa5",
+          "name": "cadd",
+          "prefix": "/home/sridhar/miniconda3/envs/cadd",
+          "schema_version": "software_environment/1.0"
+        },
+        "error": null,
+        "executor": "local",
+        "host": {
+          "cpu_model": "Intel(R) Core(TM) i5-14450HX",
+          "gpus": [
+            {
+              "driver_version": "591.44",
+              "index": 0,
+              "memory_MiB": 8151,
+              "name": "NVIDIA GeForce RTX 5050 Laptop GPU"
+            }
+          ],
+          "hostname": "SridharJD",
+          "is_wsl": true,
+          "kernel": "6.18.33.2-microsoft-standard-WSL2",
+          "logical_cpus": 16,
+          "machine": "x86_64",
+          "memory_GiB": 7.61,
+          "os": "Linux",
+          "os_release": "Ubuntu 26.04 LTS"
+        },
+        "id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+        "parameters": {
+          "docking_parameters": {
+            "cpu_cores": 2,
+            "energy_range_kcal_mol": 3.0,
+            "exhaustiveness": 16,
+            "num_modes": 9,
+            "seed": 42
+          },
+          "engine_parameters": {
+            "meeko_python": "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+            "memory_MiB": 4096,
+            "mk_export": "/home/sridhar/miniconda3/envs/cadd/bin/mk_export.py",
+            "mk_prepare_ligand": "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_ligand.py",
+            "mk_prepare_receptor": "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
+            "vina_executable": "/home/sridhar/miniconda3/envs/cadd/bin/vina"
+          }
+        },
+        "platform": {
+          "git_commit": "81e34f31ed49ef11362472638379e8f0108e0db2",
+          "git_dirty": true,
+          "version": "0.1.0.dev0"
+        },
+        "resources": {
+          "cpu_cores": 2,
+          "gpu_count": 0,
+          "gpu_memory_MiB_per_gpu": null,
+          "memory_MiB": 4096
+        },
+        "schema_version": "task_attempt/1.0",
+        "software": [
+          {
+            "role": "adapter",
+            "software": {
+              "environment_id": null,
+              "kind": "adapter",
+              "license_class": "unknown",
+              "name": "docking.vina",
+              "version": "0.2.0"
+            }
+          },
+          {
+            "role": "engine",
+            "software": {
+              "environment_id": null,
+              "kind": "engine",
+              "license_class": "unknown",
+              "name": "vina",
+              "version": "AutoDock Vina f458505-mod"
+            }
+          }
+        ],
+        "started_at": "2026-09-28T00:00:08.405917Z",
+        "status": "succeeded",
+        "steps": [
+          {
+            "argv": [
+              "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+              "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
+              "--read_pdb",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/artifacts/sha256/46/39/4639e8b5b0baffd66947df703b080769a2dbb6fb4c3359be92fcdc50d4898cca",
+              "--write_pdbqt",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/receptor.pdbqt",
+              "--write_json",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/receptor.json"
+            ],
+            "cwd": "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6",
+            "env_subset": {},
+            "exit_code": 0,
+            "pid": 705,
+            "process_start_time": 2618.0
+          },
+          {
+            "argv": [
+              "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+              "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_ligand.py",
+              "--mol",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/ligand_input.sdf",
+              "--out",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/ligand.pdbqt",
+              "--charge_model",
+              "gasteiger",
+              "--add_index_map"
+            ],
+            "cwd": "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6",
+            "env_subset": {},
+            "exit_code": 0,
+            "pid": 740,
+            "process_start_time": 2880.0
+          },
+          {
+            "argv": [
+              "/home/sridhar/miniconda3/envs/cadd/bin/vina",
+              "--receptor",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/receptor.pdbqt",
+              "--ligand",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/ligand.pdbqt",
+              "--center_x",
+              "4.7011818",
+              "--center_y",
+              "12.375614",
+              "--center_z",
+              "188.79718",
+              "--size_x",
+              "28.341",
+              "--size_y",
+              "22",
+              "--size_z",
+              "22",
+              "--exhaustiveness",
+              "16",
+              "--num_modes",
+              "9",
+              "--energy_range",
+              "3",
+              "--cpu",
+              "2",
+              "--seed",
+              "42",
+              "--out",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/poses.pdbqt"
+            ],
+            "cwd": "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6",
+            "env_subset": {},
+            "exit_code": 0,
+            "pid": 772,
+            "process_start_time": 2970.0
+          },
+          {
+            "argv": [
+              "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+              "/home/sridhar/miniconda3/envs/cadd/bin/mk_export.py",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/poses.pdbqt",
+              "--write_sdf",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6/poses.exported.sdf"
+            ],
+            "cwd": "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JMZM6Y60CSEJ5N2CP8VTK6",
+            "env_subset": {},
+            "exit_code": 0,
+            "pid": 888,
+            "process_start_time": 16919.0
+          }
+        ],
+        "task_id": "01M3JMZM6FJKKNVHB2BHVYTQP5"
+      },
+      "stage_id": "dock",
+      "started_at": "2026-09-28T00:00:08.405917+00:00",
+      "status": "succeeded",
+      "task_id": "01M3JMZM6FJKKNVHB2BHVYTQP5"
+    },
+    {
+      "attempt_no": 1,
+      "ended_at": "2026-09-28T00:02:39.001932+00:00",
+      "id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "payload": {
+        "artifacts": [
+          {
+            "artifact": {
+              "artifact_id": "01M3JN466FDB5555GDSQQVR4MY",
+              "role": "ligand_conformer_sdf",
+              "sha256": "74e90b46b94c1a27a112bc917312601b2621475a751900b52be8026b933f2e1c"
+            },
+            "direction": "used",
+            "role": "ligand_conformer_sdf"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN43WX04PV42KG43MCHWQC",
+              "role": "raw_structure_mmcif",
+              "sha256": "849bd2548dffb7ddcb7229a05202c1e2e41019a1fd69ec39483654cf984fc4d0"
+            },
+            "direction": "used",
+            "role": "raw_structure_mmcif"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN4652AWC5Z633JH2T2F7M",
+              "role": "prepared_receptor_mmcif",
+              "sha256": "4954140fadaa4d03cb9d217b09070c41a956c17a77d2a4b4cf2ff4a03cc9c9c4"
+            },
+            "direction": "used",
+            "role": "prepared_receptor_mmcif"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN4655X2F8MM62BNTK1T8X",
+              "role": "prepared_receptor_pdb",
+              "sha256": "ddd827214f95bd659c31606b7e20e6e9b20b4a060eafd88ade10d922ed8dfe9a"
+            },
+            "direction": "used",
+            "role": "prepared_receptor_pdb"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN464XDK5XPW2GDX7SV4F9",
+              "role": "stdout",
+              "sha256": "5ced9b2a79b6f2a183d5c933dcada5c3572c98948ee1af8de265272acaef1b47"
+            },
+            "direction": "used",
+            "role": "stdout"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN4657VMEGXRTA3XJT7WNT",
+              "role": "worker_request",
+              "sha256": "b7575e8e6914f97575a132baee004b54b8382753b9493de0457a21a1b1dee694"
+            },
+            "direction": "used",
+            "role": "worker_request"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "used",
+            "role": "stderr"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stdout",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "direction": "generated",
+            "role": "stdout_log"
+          },
+          {
+            "artifact": {
+              "artifact_id": "01M3JN478SC1KAD6H0TTF1K88P",
+              "role": "stderr",
+              "sha256": "ccfbf13092b6df12665e28b6768658dd72234bdbcd3b3a964d46935036a7aa88"
+            },
+            "direction": "generated",
+            "role": "stderr_log"
+          }
+        ],
+        "attempt_no": 1,
+        "ended_at": "2026-09-28T00:02:39.001932Z",
+        "environment": {
+          "captured_at": "2026-09-28T00:00:05.846674Z",
+          "id": "01M3JMZHPP9Z1A518T7SKNX2WM",
+          "key_packages": {
+            "numpy": "2.4.6",
+            "openbabel": "3.1.1",
+            "openmm": "8.4.0",
+            "python": "3.11.15",
+            "rdkit": "2025.03.6",
+            "sqlalchemy": "2.0.51",
+            "vina": "1.2.7"
+          },
+          "kind": "conda",
+          "lock": {
+            "artifact_id": "01M3JMZHPMG1MYJ47DC7QNMEWM",
+            "role": "environment_lock",
+            "sha256": "828474a00d7a95374799c2a2caf6e24f35b81f8a7bf08dd5d9ed31195798eaa5"
+          },
+          "lock_sha256": "828474a00d7a95374799c2a2caf6e24f35b81f8a7bf08dd5d9ed31195798eaa5",
+          "name": "cadd",
+          "prefix": "/home/sridhar/miniconda3/envs/cadd",
+          "schema_version": "software_environment/1.0"
+        },
+        "error": {
+          "cause": null,
+          "code": "DOCKING.MEEKO_RECEPTOR_FAILED",
+          "engine_excerpt": null,
+          "inputs": [
+            {
+              "artifact_id": "01M3JN466FDB5555GDSQQVR4MY",
+              "role": "ligand_conformer_sdf",
+              "sha256": "74e90b46b94c1a27a112bc917312601b2621475a751900b52be8026b933f2e1c"
+            },
+            {
+              "artifact_id": "01M3JN43WX04PV42KG43MCHWQC",
+              "role": "raw_structure_mmcif",
+              "sha256": "849bd2548dffb7ddcb7229a05202c1e2e41019a1fd69ec39483654cf984fc4d0"
+            },
+            {
+              "artifact_id": "01M3JN4652AWC5Z633JH2T2F7M",
+              "role": "prepared_receptor_mmcif",
+              "sha256": "4954140fadaa4d03cb9d217b09070c41a956c17a77d2a4b4cf2ff4a03cc9c9c4"
+            },
+            {
+              "artifact_id": "01M3JN4655X2F8MM62BNTK1T8X",
+              "role": "prepared_receptor_pdb",
+              "sha256": "ddd827214f95bd659c31606b7e20e6e9b20b4a060eafd88ade10d922ed8dfe9a"
+            },
+            {
+              "artifact_id": "01M3JN464XDK5XPW2GDX7SV4F9",
+              "role": "stdout",
+              "sha256": "5ced9b2a79b6f2a183d5c933dcada5c3572c98948ee1af8de265272acaef1b47"
+            },
+            {
+              "artifact_id": "01M3JN4657VMEGXRTA3XJT7WNT",
+              "role": "worker_request",
+              "sha256": "b7575e8e6914f97575a132baee004b54b8382753b9493de0457a21a1b1dee694"
+            },
+            {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "message": "meeko_receptor exited with status 1: [RDKit] ERROR:[17:02:38] Explicit valence for atom # 1 C, 7, is greater than permitted\nTraceback (most recent call last):\n  File \"/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py\", line 6, in <module>\n    sys.exit(main())\n             ^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/cli/mk_prepare_receptor.py\", line 628, in main\n    polymer = Polymer.from_pdb_string(\n              ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/polymer.py\", line 1101, in from_pdb_string\n    tmp_raw_input_mols = cls._pdb_to_residue_mols(\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/polymer.py\", line 1897, in _pdb_to_residue_mols\n    pdbmol, _, missed_altloc, needed_altloc = _aux_altloc_mol_build(\n                                              ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sridhar/miniconda3/envs/cadd/lib/python3.11/site-packages/meeko/utils/rdkitutils.py\", line 415, in _aux_altloc_mol_build\n    _ = Chem.SanitizeMol(pdbmol)\n        ^^^^^^^^^^^^^^^^^^^^^^^^\nrdkit.Chem.rdchem.AtomValenceException: Explicit valence for atom # 1 C, 7, is greater than permitted\n",
+          "partial_outputs": [
+            {
+              "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+              "role": "stdout",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "artifact_id": "01M3JN478SC1KAD6H0TTF1K88P",
+              "role": "stderr",
+              "sha256": "ccfbf13092b6df12665e28b6768658dd72234bdbcd3b3a964d46935036a7aa88"
+            }
+          ],
+          "remediation": [
+            "Review recorded inputs and engine logs; retry only if the cause is transient."
+          ],
+          "retryable": true,
+          "stage_id": "dock",
+          "task_id": "01M3JN466HNRZ2KPEGXRMN41BE"
+        },
+        "executor": "local",
+        "host": {
+          "cpu_model": "Intel(R) Core(TM) i5-14450HX",
+          "gpus": [
+            {
+              "driver_version": "591.44",
+              "index": 0,
+              "memory_MiB": 8151,
+              "name": "NVIDIA GeForce RTX 5050 Laptop GPU"
+            }
+          ],
+          "hostname": "SridharJD",
+          "is_wsl": true,
+          "kernel": "6.18.33.2-microsoft-standard-WSL2",
+          "logical_cpus": 16,
+          "machine": "x86_64",
+          "memory_GiB": 7.61,
+          "os": "Linux",
+          "os_release": "Ubuntu 26.04 LTS"
+        },
+        "id": "01M3JN466M3V9ES58J5TWNJBC6",
+        "parameters": {
+          "docking_parameters": {
+            "cpu_cores": 2,
+            "energy_range_kcal_mol": 3.0,
+            "exhaustiveness": 16,
+            "num_modes": 9,
+            "seed": 42
+          },
+          "engine_parameters": {
+            "meeko_python": "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+            "memory_MiB": 4096,
+            "mk_export": "/home/sridhar/miniconda3/envs/cadd/bin/mk_export.py",
+            "mk_prepare_ligand": "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_ligand.py",
+            "mk_prepare_receptor": "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
+            "vina_executable": "/home/sridhar/miniconda3/envs/cadd/bin/vina"
+          }
+        },
+        "platform": {
+          "git_commit": "81e34f31ed49ef11362472638379e8f0108e0db2",
+          "git_dirty": true,
+          "version": "0.1.0.dev0"
+        },
+        "resources": {
+          "cpu_cores": 2,
+          "gpu_count": 0,
+          "gpu_memory_MiB_per_gpu": null,
+          "memory_MiB": 4096
+        },
+        "schema_version": "task_attempt/1.0",
+        "software": [
+          {
+            "role": "adapter",
+            "software": {
+              "environment_id": null,
+              "kind": "adapter",
+              "license_class": "unknown",
+              "name": "docking.vina",
+              "version": "0.2.0"
+            }
+          },
+          {
+            "role": "engine",
+            "software": {
+              "environment_id": null,
+              "kind": "engine",
+              "license_class": "unknown",
+              "name": "vina",
+              "version": "AutoDock Vina f458505-mod"
+            }
+          }
+        ],
+        "started_at": "2026-09-28T00:02:37.908772Z",
+        "status": "failed",
+        "steps": [
+          {
+            "argv": [
+              "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+              "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
+              "--read_pdb",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/artifacts/sha256/dd/d8/ddd827214f95bd659c31606b7e20e6e9b20b4a060eafd88ade10d922ed8dfe9a",
+              "--write_pdbqt",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JN466R734T7EJGY660PZ2A/receptor.pdbqt",
+              "--write_json",
+              "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JN466R734T7EJGY660PZ2A/receptor.json"
+            ],
+            "cwd": "/home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v1/runs/vina-pilot-v1-20260928/platform/runs/docking/vina-01M3JN466R734T7EJGY660PZ2A",
+            "env_subset": {},
+            "exit_code": 1,
+            "pid": 1100,
+            "process_start_time": 17568.0
+          }
+        ],
+        "task_id": "01M3JN466HNRZ2KPEGXRMN41BE"
+      },
+      "stage_id": "dock",
+      "started_at": "2026-09-28T00:02:37.908772+00:00",
+      "status": "failed",
+      "task_id": "01M3JN466HNRZ2KPEGXRMN41BE"
+    }
+  ],
+  "edges": [
+    {
+      "artifact_id": "01M3JMZHS89S272X1KZN9A33VC",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_structure_mmcif"
+    },
+    {
+      "artifact_id": "01M3JMZHS89S272X1KZN9A33VC",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "raw_structure_mmcif"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stderr"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stderr_log"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout_log"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "stderr"
+    },
+    {
+      "artifact_id": "01M3JMZM5SYTSN8BEFBJBA70DG",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "stdout"
+    },
+    {
+      "artifact_id": "01M3JMZM5X0EB4085PRFEYFWNE",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "prepared_receptor_mmcif"
+    },
+    {
+      "artifact_id": "01M3JMZM5X0EB4085PRFEYFWNE",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "prepared_receptor_mmcif"
+    },
+    {
+      "artifact_id": "01M3JMZM5ZVJQES8W817011209",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "prepared_receptor_pdb"
+    },
+    {
+      "artifact_id": "01M3JMZM5ZVJQES8W817011209",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "prepared_receptor_pdb"
+    },
+    {
+      "artifact_id": "01M3JMZM62GK6VSQ44MQD88EM5",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "worker_request"
+    },
+    {
+      "artifact_id": "01M3JMZM6BQQW3GWQ21N3NDSKZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "ligand_conformer_input_sdf"
+    },
+    {
+      "artifact_id": "01M3JMZM6BQQW3GWQ21N3NDSKZ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "used",
+      "role": "ligand_conformer_sdf"
+    },
+    {
+      "artifact_id": "01M3JMZPRX926YXW05NW2TA8RD",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout"
+    },
+    {
+      "artifact_id": "01M3JMZPRX926YXW05NW2TA8RD",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout_log"
+    },
+    {
+      "artifact_id": "01M3JMZQN0ZAY8755961G5GMCS",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout"
+    },
+    {
+      "artifact_id": "01M3JMZQN0ZAY8755961G5GMCS",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout_log"
+    },
+    {
+      "artifact_id": "01M3JN3ZW0RHG6SRZ23A4BPSBF",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout"
+    },
+    {
+      "artifact_id": "01M3JN3ZW0RHG6SRZ23A4BPSBF",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "stdout_log"
+    },
+    {
+      "artifact_id": "01M3JN40RQRN337G1CHTSV9T5G",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "meeko_receptor_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40RZCR40YHBK1CG9Z5XN",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "meeko_receptor_parameters"
+    },
+    {
+      "artifact_id": "01M3JN40S2ECFDBRYN4PY9Z6FW",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "meeko_ligand_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40S5WVHJE2SQ8MWXZRNE",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "vina_poses_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40S73PFD1V8HBK0ZA7J7",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "meeko_export_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40SRN70PF8295JMWAQ1F",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40STXEH21D411XDGPMBY",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40SYTP69VMG87ZW555P0",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40T0GAKNCJQHKFDH13PC",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40T408ZCJVRYZPEKRK8M",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40T6TM7GDCKYFF8RQ5ZK",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40TAXHPH4BZAW1ZGF6H4",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40TCYBWZ287S8AY2GFG1",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40TG5YNN5FCXSRHSTRBE",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40TJ2NASJB0M7D3ZFW6B",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40TP24BT62HEGV8FFTJB",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40TRFHN6T9X9QVPHDX22",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40TWRRKP1658825DDGAJ",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40TYXV51QPEN0VPCCM0J",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40V2M8P19B0H1ER8G0PA",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40V4S45ESH5P72C3MW5M",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JN40V8R7BC29P2JMZ9BH2V",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "normalized_pose_sdf"
+    },
+    {
+      "artifact_id": "01M3JN40VAPW4K4ZGKHP5W0C6F",
+      "attempt_id": "01M3JMZM6MP9PXQYVV1EQS6V6V",
+      "direction": "generated",
+      "role": "raw_vina_pose_pdbqt"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "generated",
+      "role": "stdout_log"
+    },
+    {
+      "artifact_id": "01M3JMZM5SHFPSN4WY30ZB2XQZ",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "stderr"
+    },
+    {
+      "artifact_id": "01M3JN43WX04PV42KG43MCHWQC",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "raw_structure_mmcif"
+    },
+    {
+      "artifact_id": "01M3JN464XDK5XPW2GDX7SV4F9",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "stdout"
+    },
+    {
+      "artifact_id": "01M3JN4652AWC5Z633JH2T2F7M",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "prepared_receptor_mmcif"
+    },
+    {
+      "artifact_id": "01M3JN4655X2F8MM62BNTK1T8X",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "prepared_receptor_pdb"
+    },
+    {
+      "artifact_id": "01M3JN4657VMEGXRTA3XJT7WNT",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "worker_request"
+    },
+    {
+      "artifact_id": "01M3JN466FDB5555GDSQQVR4MY",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "used",
+      "role": "ligand_conformer_sdf"
+    },
+    {
+      "artifact_id": "01M3JN478SC1KAD6H0TTF1K88P",
+      "attempt_id": "01M3JN466M3V9ES58J5TWNJBC6",
+      "direction": "generated",
+      "role": "stderr_log"
+    }
+  ],
+  "root_attempt_id": "01M3JN466M3V9ES58J5TWNJBC6"
+}

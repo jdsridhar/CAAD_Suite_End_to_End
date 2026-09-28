@@ -1,0 +1,249 @@
+{
+  "failed_residue_count": 7,
+  "findings": [
+    {
+      "atom": {
+        "element": "C",
+        "index": 1,
+        "name": "CD",
+        "neighbors": [
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "H",
+            "name": "HD2"
+          },
+          {
+            "element": "H",
+            "name": "HD3"
+          },
+          {
+            "element": "C",
+            "name": "CG"
+          },
+          {
+            "element": "C",
+            "name": "CA"
+          },
+          {
+            "element": "C",
+            "name": "C"
+          },
+          {
+            "element": "O",
+            "name": "O"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 1 C, 7, is greater than permitted",
+      "residue_id": "966",
+      "residue_name": "PRO"
+    },
+    {
+      "atom": {
+        "element": "C",
+        "index": 4,
+        "name": "CB",
+        "neighbors": [
+          {
+            "element": "C",
+            "name": "CA"
+          },
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "H",
+            "name": "HB2"
+          },
+          {
+            "element": "H",
+            "name": "HB3"
+          },
+          {
+            "element": "O",
+            "name": "OG"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 4 C, 5, is greater than permitted",
+      "residue_id": "967",
+      "residue_name": "SER"
+    },
+    {
+      "atom": {
+        "element": "C",
+        "index": 1,
+        "name": "CD",
+        "neighbors": [
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "H",
+            "name": "HD2"
+          },
+          {
+            "element": "H",
+            "name": "HD3"
+          },
+          {
+            "element": "C",
+            "name": "CG"
+          },
+          {
+            "element": "O",
+            "name": "O"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 1 C, 5, is greater than permitted",
+      "residue_id": "968",
+      "residue_name": "PRO"
+    },
+    {
+      "atom": {
+        "element": "C",
+        "index": 2,
+        "name": "CA",
+        "neighbors": [
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "H",
+            "name": "HA"
+          },
+          {
+            "element": "C",
+            "name": "CB"
+          },
+          {
+            "element": "C",
+            "name": "C"
+          },
+          {
+            "element": "O",
+            "name": "O"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 2 C, 5, is greater than permitted",
+      "residue_id": "969",
+      "residue_name": "THR"
+    },
+    {
+      "atom": {
+        "element": "C",
+        "index": 2,
+        "name": "CA",
+        "neighbors": [
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "H",
+            "name": "HA"
+          },
+          {
+            "element": "C",
+            "name": "CB"
+          },
+          {
+            "element": "C",
+            "name": "C"
+          },
+          {
+            "element": "O",
+            "name": "O"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 2 C, 5, is greater than permitted",
+      "residue_id": "970",
+      "residue_name": "ASP"
+    },
+    {
+      "atom": {
+        "element": "C",
+        "index": 2,
+        "name": "CA",
+        "neighbors": [
+          {
+            "element": "N",
+            "name": "N"
+          },
+          {
+            "element": "H",
+            "name": "HA"
+          },
+          {
+            "element": "C",
+            "name": "CB"
+          },
+          {
+            "element": "C",
+            "name": "C"
+          },
+          {
+            "element": "O",
+            "name": "O"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 2 C, 5, is greater than permitted",
+      "residue_id": "972",
+      "residue_name": "ASN"
+    },
+    {
+      "atom": {
+        "element": "C",
+        "index": 7,
+        "name": "CG",
+        "neighbors": [
+          {
+            "element": "C",
+            "name": "CB"
+          },
+          {
+            "element": "H",
+            "name": "HG2"
+          },
+          {
+            "element": "H",
+            "name": "HG3"
+          },
+          {
+            "element": "C",
+            "name": "CD"
+          },
+          {
+            "element": "N",
+            "name": "NH1"
+          }
+        ]
+      },
+      "chain": "A",
+      "error": "Explicit valence for atom # 7 C, 5, is greater than permitted",
+      "residue_id": "975",
+      "residue_name": "ARG"
+    }
+  ],
+  "input": "prepared_receptor.pdb",
+  "input_sha256": "ddd827214f95bd659c31606b7e20e6e9b20b4a060eafd88ade10d922ed8dfe9a",
+  "interpretation": "RDKit distance-inferred residue graph diagnostic only; a failure does not by itself establish incorrect experimental chemistry.",
+  "residue_count": 324,
+  "schema": "caddsuite.meeko-residue-geometry-diagnostic/1"
+}
