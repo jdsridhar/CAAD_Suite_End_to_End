@@ -1,0 +1,482 @@
+ecosystem,name,version,license_expression,source
+conda-caddsuite,_openmp_mutex,4.5,BSD-3-Clause,installed conda-meta
+conda-caddsuite,_python_abi3_support,1.0,MIT,installed conda-meta
+conda-caddsuite,alembic,1.20.0,MIT,installed conda-meta
+conda-caddsuite,annotated-doc,0.0.5,MIT,installed conda-meta
+conda-caddsuite,annotated-types,0.8.0,MIT,installed conda-meta
+conda-caddsuite,anyio,4.15.1,MIT,installed conda-meta
+conda-caddsuite,ast-serialize,0.11.2,MIT,installed conda-meta
+conda-caddsuite,biopython,1.88,LicenseRef-Biopython,installed conda-meta
+conda-caddsuite,brotli,1.2.0,MIT,installed conda-meta
+conda-caddsuite,brotli-bin,1.2.0,MIT,installed conda-meta
+conda-caddsuite,bzip2,1.0.8,bzip2-1.0.6,installed conda-meta
+conda-caddsuite,ca-certificates,2026.8.13,MPL-2.0,installed conda-meta
+conda-caddsuite,cairo,1.18.6,LGPL-2.1-only or MPL-1.1,installed conda-meta
+conda-caddsuite,certifi,2026.7.22,ISC,installed conda-meta
+conda-caddsuite,charset-normalizer,3.5.1,MIT,installed conda-meta
+conda-caddsuite,click,8.5.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,cloudpickle,3.1.2,BSD-3-Clause,installed conda-meta
+conda-caddsuite,colorama,0.4.6,BSD-3-Clause,installed conda-meta
+conda-caddsuite,contourpy,1.4.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,coverage,7.16.1,Apache-2.0,installed conda-meta
+conda-caddsuite,cpython,3.12.14,Python-2.0,installed conda-meta
+conda-caddsuite,cycler,0.12.1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,cyrus-sasl,2.1.28,BSD-3-Clause-Attribution,installed conda-meta
+conda-caddsuite,defusedxml,0.7.1,PSF 2.0,installed conda-meta
+conda-caddsuite,dimorphite-dl,2.0.2,Apache-2.0,installed conda-meta
+conda-caddsuite,dnspython,2.8.0,ISC,installed conda-meta
+conda-caddsuite,editables,0.6,MIT,installed conda-meta
+conda-caddsuite,eigen-abi,5.0.1.80,MPL-2.0,installed conda-meta
+conda-caddsuite,email-validator,2.3.0,Unlicense,installed conda-meta
+conda-caddsuite,email_validator,2.3.0,Unlicense,installed conda-meta
+conda-caddsuite,exceptiongroup,1.3.1,MIT and PSF-2.0,installed conda-meta
+conda-caddsuite,fastapi,0.141.1,MIT,installed conda-meta
+conda-caddsuite,fastapi-cli,0.0.32,MIT,installed conda-meta
+conda-caddsuite,fastapi-core,0.141.1,MIT,installed conda-meta
+conda-caddsuite,fastar,0.12.0,MIT,installed conda-meta
+conda-caddsuite,font-ttf-dejavu-sans-mono,2.37,BSD-3-Clause,installed conda-meta
+conda-caddsuite,font-ttf-inconsolata,3.000,OFL-1.1,installed conda-meta
+conda-caddsuite,font-ttf-source-code-pro,2.038,OFL-1.1,installed conda-meta
+conda-caddsuite,font-ttf-ubuntu,0.83,LicenseRef-Ubuntu-Font-Licence-Version-1.0,installed conda-meta
+conda-caddsuite,fontconfig,2.18.3,MIT,installed conda-meta
+conda-caddsuite,fonts-conda-ecosystem,1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,fonts-conda-forge,1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,fonttools,4.65.0,MIT,installed conda-meta
+conda-caddsuite,freetype,2.14.3,GPL-2.0-only OR FTL,installed conda-meta
+conda-caddsuite,freetype-py,2.3.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,fribidi,1.0.17,LGPL-2.1-or-later,installed conda-meta
+conda-caddsuite,graphite2,1.3.15,LGPL-2.0-or-later,installed conda-meta
+conda-caddsuite,greenlet,3.5.6,MIT,installed conda-meta
+conda-caddsuite,grimp,3.17,BSD-2-Clause,installed conda-meta
+conda-caddsuite,h11,0.16.0,MIT,installed conda-meta
+conda-caddsuite,h2,4.4.1,MIT,installed conda-meta
+conda-caddsuite,hatchling,1.32.4,MIT,installed conda-meta
+conda-caddsuite,hpack,4.2.0,MIT,installed conda-meta
+conda-caddsuite,httpcore,1.0.9,BSD-3-Clause,installed conda-meta
+conda-caddsuite,httptools,0.8.0,MIT,installed conda-meta
+conda-caddsuite,httpx,0.28.1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,hyperframe,6.1.0,MIT,installed conda-meta
+conda-caddsuite,hypothesis,6.168.1,MPL-2.0,installed conda-meta
+conda-caddsuite,icu,78.3,MIT,installed conda-meta
+conda-caddsuite,idna,3.20,BSD-3-Clause,installed conda-meta
+conda-caddsuite,import-linter,2.15,BSD-2-Clause,installed conda-meta
+conda-caddsuite,importlib-metadata,9.0.1,Apache-2.0,installed conda-meta
+conda-caddsuite,iniconfig,2.3.0,MIT,installed conda-meta
+conda-caddsuite,jinja2,3.1.6,BSD-3-Clause,installed conda-meta
+conda-caddsuite,joblib,1.6.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,keyutils,1.6.3,LGPL-2.1-or-later,installed conda-meta
+conda-caddsuite,kiwisolver,1.5.1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,krb5,1.22.2,MIT,installed conda-meta
+conda-caddsuite,lcms2,2.19.1,MIT,installed conda-meta
+conda-caddsuite,ld_impl_linux-64,2.46.1,GPL-3.0-only,installed conda-meta
+conda-caddsuite,lerc,4.2.0,Apache-2.0,installed conda-meta
+conda-caddsuite,libblas,3.11.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,libboost,1.86.0,BSL-1.0,installed conda-meta
+conda-caddsuite,libboost-python,1.86.0,BSL-1.0,installed conda-meta
+conda-caddsuite,libbrotlicommon,1.2.0,MIT,installed conda-meta
+conda-caddsuite,libbrotlidec,1.2.0,MIT,installed conda-meta
+conda-caddsuite,libbrotlienc,1.2.0,MIT,installed conda-meta
+conda-caddsuite,libcblas,3.11.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,libdeflate,1.25,MIT,installed conda-meta
+conda-caddsuite,libedit,3.1.20250104,BSD-2-Clause,installed conda-meta
+conda-caddsuite,libexpat,2.8.4,MIT,installed conda-meta
+conda-caddsuite,libffi,3.7.0,MIT,installed conda-meta
+conda-caddsuite,libfreetype,2.14.3,GPL-2.0-only OR FTL,installed conda-meta
+conda-caddsuite,libfreetype6,2.14.3,GPL-2.0-only OR FTL,installed conda-meta
+conda-caddsuite,libgcc,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libgcc-ng,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libgfortran,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libgfortran5,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libglib,2.90.0,LGPL-2.1-or-later,installed conda-meta
+conda-caddsuite,libgomp,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libharfbuzz,14.5.0,MIT,installed conda-meta
+conda-caddsuite,libiconv,1.18,LGPL-2.1-only,installed conda-meta
+conda-caddsuite,libjpeg-turbo,3.2.0,IJG AND BSD-3-Clause AND Zlib,installed conda-meta
+conda-caddsuite,liblapack,3.11.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,liblzma,5.8.3,0BSD,installed conda-meta
+conda-caddsuite,libnsl,2.0.1,LGPL-2.1-only,installed conda-meta
+conda-caddsuite,libntlm,1.8,LGPL-2.1-or-later,installed conda-meta
+conda-caddsuite,libopenblas,0.3.34,BSD-3-Clause,installed conda-meta
+conda-caddsuite,libpng,1.6.58,zlib-acknowledgement,installed conda-meta
+conda-caddsuite,libpq,18.6,PostgreSQL,installed conda-meta
+conda-caddsuite,libpython,3.12.14,Python-2.0,installed conda-meta
+conda-caddsuite,libraqm,0.11.0,MIT,installed conda-meta
+conda-caddsuite,librdkit,2025.09.6,BSD-3-Clause,installed conda-meta
+conda-caddsuite,libsqlite,3.53.4,blessing,installed conda-meta
+conda-caddsuite,libstdcxx,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libstdcxx-ng,16.2.0,GPL-3.0-only WITH GCC-exception-3.1,installed conda-meta
+conda-caddsuite,libtiff,4.7.2,HPND,installed conda-meta
+conda-caddsuite,libuuid,2.42.4,BSD-3-Clause,installed conda-meta
+conda-caddsuite,libuv,1.52.1,MIT,installed conda-meta
+conda-caddsuite,libwebp-base,1.6.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,libxcb,1.17.0,MIT,installed conda-meta
+conda-caddsuite,libxcrypt,4.4.38,LGPL-2.1-or-later,installed conda-meta
+conda-caddsuite,libzlib,1.3.2,Zlib,installed conda-meta
+conda-caddsuite,loguru,0.7.3,MIT,installed conda-meta
+conda-caddsuite,mako,1.4.1,MIT,installed conda-meta
+conda-caddsuite,markdown-it-py,4.2.0,MIT,installed conda-meta
+conda-caddsuite,markupsafe,3.0.3,BSD-3-Clause,installed conda-meta
+conda-caddsuite,matplotlib-base,3.11.2,PSF-2.0,installed conda-meta
+conda-caddsuite,mdurl,0.1.2,MIT,installed conda-meta
+conda-caddsuite,munkres,1.1.4,Apache-2.0,installed conda-meta
+conda-caddsuite,mypy,2.3.1,MIT,installed conda-meta
+conda-caddsuite,mypy_extensions,1.1.0,MIT,installed conda-meta
+conda-caddsuite,ncurses,6.6,X11 AND BSD-3-Clause,installed conda-meta
+conda-caddsuite,numpy,2.5.3,BSD-3-Clause,installed conda-meta
+conda-caddsuite,openjpeg,2.5.4,BSD-2-Clause,installed conda-meta
+conda-caddsuite,openldap,2.6.13,OLDAP-2.8,installed conda-meta
+conda-caddsuite,openssl,3.6.4,Apache-2.0,installed conda-meta
+conda-caddsuite,packaging,26.3,Apache-2.0,installed conda-meta
+conda-caddsuite,pandas,3.0.6,BSD-3-Clause,installed conda-meta
+conda-caddsuite,pathspec,1.1.1,MPL-2.0,installed conda-meta
+conda-caddsuite,pcre2,10.47,BSD-3-Clause,installed conda-meta
+conda-caddsuite,pillow,12.3.0,HPND,installed conda-meta
+conda-caddsuite,pip,26.2.1,MIT,installed conda-meta
+conda-caddsuite,pixman,0.46.4,MIT,installed conda-meta
+conda-caddsuite,pluggy,1.6.0,MIT,installed conda-meta
+conda-caddsuite,psutil,7.2.2,BSD-3-Clause,installed conda-meta
+conda-caddsuite,pthread-stubs,0.4,MIT,installed conda-meta
+conda-caddsuite,pycairo,1.29.1,LGPL-2.1-only OR MPL-1.1,installed conda-meta
+conda-caddsuite,pydantic,2.13.5,MIT,installed conda-meta
+conda-caddsuite,pydantic-core,2.46.5,MIT,installed conda-meta
+conda-caddsuite,pydantic-extra-types,2.11.1,MIT,installed conda-meta
+conda-caddsuite,pydantic-settings,2.15.0,MIT,installed conda-meta
+conda-caddsuite,pygments,2.21.0,BSD-2-Clause,installed conda-meta
+conda-caddsuite,pyparsing,3.3.3,MIT,installed conda-meta
+conda-caddsuite,pytest,9.1.1,MIT,installed conda-meta
+conda-caddsuite,pytest-cov,7.1.0,MIT,installed conda-meta
+conda-caddsuite,python,3.12.14,Python-2.0,installed conda-meta
+conda-caddsuite,python-abi3,3.12,MIT,installed conda-meta
+conda-caddsuite,python-dateutil,2.9.0.post0,Apache-2.0,installed conda-meta
+conda-caddsuite,python-dotenv,1.2.3,BSD-3-Clause,installed conda-meta
+conda-caddsuite,python-gil,3.12.14,Python-2.0,installed conda-meta
+conda-caddsuite,python-librt,0.15.0,MIT,installed conda-meta
+conda-caddsuite,python-multipart,0.0.32,Apache-2.0,installed conda-meta
+conda-caddsuite,python_abi,3.12,BSD-3-Clause,installed conda-meta
+conda-caddsuite,pyyaml,6.0.3,MIT,installed conda-meta
+conda-caddsuite,qhull,2020.2,LicenseRef-Qhull,installed conda-meta
+conda-caddsuite,rdkit,2025.09.6,BSD-3-Clause,installed conda-meta
+conda-caddsuite,readline,8.3,GPL-3.0-only,installed conda-meta
+conda-caddsuite,reportlab,5.0.1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,rich,15.0.0,MIT,installed conda-meta
+conda-caddsuite,rich-toolkit,0.20.5,MIT,installed conda-meta
+conda-caddsuite,rlpycairo,0.4.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,ruff,0.16.8,MIT,installed conda-meta
+conda-caddsuite,setuptools,84.0.0,MIT,installed conda-meta
+conda-caddsuite,shellingham,1.5.4,MIT,installed conda-meta
+conda-caddsuite,six,1.17.0,MIT,installed conda-meta
+conda-caddsuite,sniffio,1.3.1,Apache-2.0,installed conda-meta
+conda-caddsuite,sortedcontainers,2.4.0,Apache-2.0,installed conda-meta
+conda-caddsuite,sqlalchemy,2.0.54,MIT,installed conda-meta
+conda-caddsuite,starlette,1.6.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,tk,8.6.13,TCL,installed conda-meta
+conda-caddsuite,tomli,2.4.1,MIT,installed conda-meta
+conda-caddsuite,tomlkit,0.15.1,MIT,installed conda-meta
+conda-caddsuite,trove-classifiers,2026.6.1.19,Apache-2.0,installed conda-meta
+conda-caddsuite,typer,0.27.2,MIT AND BSD-3-Clause,installed conda-meta
+conda-caddsuite,types-pyyaml,6.0.12.20260906,Apache-2.0 AND MIT,installed conda-meta
+conda-caddsuite,typing-extensions,4.16.0,PSF-2.0,installed conda-meta
+conda-caddsuite,typing-inspection,0.4.4,MIT,installed conda-meta
+conda-caddsuite,typing_extensions,4.16.0,PSF-2.0,installed conda-meta
+conda-caddsuite,tzdata,2026c,LicenseRef-Public-Domain,installed conda-meta
+conda-caddsuite,unicodedata2,18.0.0,Apache-2.0,installed conda-meta
+conda-caddsuite,uvicorn,0.53.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,uvicorn-standard,0.53.0,BSD-3-Clause,installed conda-meta
+conda-caddsuite,uvloop,0.22.1,MIT OR Apache-2.0,installed conda-meta
+conda-caddsuite,watchfiles,1.3.0,MIT,installed conda-meta
+conda-caddsuite,websockets,17.1,BSD-3-Clause,installed conda-meta
+conda-caddsuite,wheel,0.48.0,MIT,installed conda-meta
+conda-caddsuite,xorg-libice,1.1.2,MIT,installed conda-meta
+conda-caddsuite,xorg-libsm,1.2.6,MIT,installed conda-meta
+conda-caddsuite,xorg-libx11,1.8.13,MIT,installed conda-meta
+conda-caddsuite,xorg-libxau,1.0.12,MIT,installed conda-meta
+conda-caddsuite,xorg-libxdmcp,1.1.5,MIT,installed conda-meta
+conda-caddsuite,xorg-libxext,1.3.7,MIT,installed conda-meta
+conda-caddsuite,xorg-libxrender,0.9.12,MIT,installed conda-meta
+conda-caddsuite,yaml,0.2.5,MIT,installed conda-meta
+conda-caddsuite,zipp,4.1.0,MIT,installed conda-meta
+conda-caddsuite,zlib-ng,2.3.3,Zlib,installed conda-meta
+conda-caddsuite,zstd,1.5.7,BSD-3-Clause,installed conda-meta
+npm-web-lock,accepts,2.0.0,MIT,installed package metadata
+npm-web-lock,agent-base,7.1.4,MIT,installed package metadata
+npm-web-lock,@redocly/ajv,8.11.2,MIT,installed package metadata
+npm-web-lock,ansi-colors,4.1.3,MIT,installed package metadata
+npm-web-lock,argparse,2.0.1,Python-2.0,installed package metadata
+npm-web-lock,@types/argparse,2.0.17,MIT,installed package metadata
+npm-web-lock,bail,2.0.2,MIT,installed package metadata
+npm-web-lock,balanced-match,1.0.2,MIT,installed package metadata
+npm-web-lock,@types/benchmark,2.1.5,MIT,installed package metadata
+npm-web-lock,@rolldown/binding-android-arm-eabi,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-android-arm64,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-darwin-arm64,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-darwin-x64,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-freebsd-x64,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-linux-arm-gnueabihf,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-linux-arm64-gnu,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-linux-arm64-musl,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-linux-ppc64-gnu,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-linux-s390x-gnu,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-linux-x64-gnu,1.2.11,MIT,installed package metadata
+npm-web-lock,@rolldown/binding-linux-x64-musl,1.2.11,MIT,installed package metadata
+npm-web-lock,@rolldown/binding-openharmony-arm64,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-win32-arm64-msvc,1.2.11,MIT,npm registry metadata
+npm-web-lock,@rolldown/binding-win32-x64-msvc,1.2.11,MIT,npm registry metadata
+npm-web-lock,@types/body-parser,1.19.6,MIT,installed package metadata
+npm-web-lock,body-parser,2.3.0,MIT,installed package metadata
+npm-web-lock,brace-expansion,2.1.7,MIT,installed package metadata
+npm-web-lock,bytes,3.1.2,MIT,installed package metadata
+npm-web-lock,call-bind-apply-helpers,1.0.2,MIT,installed package metadata
+npm-web-lock,call-bound,1.0.4,MIT,installed package metadata
+npm-web-lock,ccount,2.0.1,MIT,installed package metadata
+npm-web-lock,change-case,5.4.4,MIT,installed package metadata
+npm-web-lock,character-entities,2.0.2,MIT,installed package metadata
+npm-web-lock,character-entities-html4,2.1.0,MIT,installed package metadata
+npm-web-lock,character-entities-legacy,3.0.0,MIT,installed package metadata
+npm-web-lock,character-reference-invalid,2.0.1,MIT,installed package metadata
+npm-web-lock,@babel/code-frame,7.29.7,MIT,installed package metadata
+npm-web-lock,colorette,1.4.0,MIT,installed package metadata
+npm-web-lock,comma-separated-tokens,2.0.3,MIT,installed package metadata
+npm-web-lock,compressible,2.0.18,MIT,installed package metadata
+npm-web-lock,@types/compression,1.8.1,MIT,installed package metadata
+npm-web-lock,compression,1.8.2,MIT,installed package metadata
+npm-web-lock,@redocly/config,0.22.0,MIT,installed package metadata
+npm-web-lock,@types/connect,3.4.38,MIT,installed package metadata
+npm-web-lock,content-disposition,1.1.0,MIT,installed package metadata
+npm-web-lock,content-type,1.0.5,MIT,installed package metadata
+npm-web-lock,accepts/node_modules/content-type,2.1.0,MIT,installed package metadata
+npm-web-lock,accepts/node_modules/content-type,2.1.0,MIT,installed package metadata
+npm-web-lock,accepts/node_modules/content-type,2.1.0,MIT,installed package metadata
+npm-web-lock,cookie,0.7.2,MIT,installed package metadata
+npm-web-lock,cookie-signature,1.2.2,MIT,installed package metadata
+npm-web-lock,cors,2.8.6,MIT,installed package metadata
+npm-web-lock,csstype,3.2.3,MIT,installed package metadata
+npm-web-lock,compression/node_modules/debug,2.6.9,MIT,installed package metadata
+npm-web-lock,@types/debug,4.1.13,MIT,installed package metadata
+npm-web-lock,debug,4.4.3,MIT,installed package metadata
+npm-web-lock,decode-named-character-reference,1.3.0,MIT,installed package metadata
+npm-web-lock,depd,2.0.0,MIT,installed package metadata
+npm-web-lock,dequal,2.0.3,MIT,installed package metadata
+npm-web-lock,destroy,1.2.0,MIT,installed package metadata
+npm-web-lock,detect-libc,2.1.2,Apache-2.0,installed package metadata
+npm-web-lock,devlop,1.1.0,MIT,installed package metadata
+npm-web-lock,dunder-proto,1.0.1,MIT,installed package metadata
+npm-web-lock,ee-first,1.1.1,MIT,installed package metadata
+npm-web-lock,encodeurl,2.0.0,MIT,installed package metadata
+npm-web-lock,es-define-property,1.0.1,MIT,installed package metadata
+npm-web-lock,es-errors,1.3.0,MIT,installed package metadata
+npm-web-lock,es-object-atoms,1.1.2,MIT,installed package metadata
+npm-web-lock,escape-html,1.0.3,MIT,installed package metadata
+npm-web-lock,escape-string-regexp,5.0.0,MIT,installed package metadata
+npm-web-lock,@types/estree,1.0.9,MIT,installed package metadata
+npm-web-lock,@types/estree-jsx,1.0.5,MIT,installed package metadata
+npm-web-lock,estree-util-is-identifier-name,3.0.0,MIT,installed package metadata
+npm-web-lock,etag,1.8.1,MIT,installed package metadata
+npm-web-lock,@types/express,5.0.6,MIT,installed package metadata
+npm-web-lock,express,5.2.1,MIT,installed package metadata
+npm-web-lock,@types/express-serve-static-core,5.1.3,MIT,installed package metadata
+npm-web-lock,extend,3.0.2,MIT,installed package metadata
+npm-web-lock,fast-deep-equal,3.1.3,MIT,installed package metadata
+npm-web-lock,fdir,6.5.0,MIT,installed package metadata
+npm-web-lock,finalhandler,2.1.1,MIT,installed package metadata
+npm-web-lock,forwarded,0.2.0,MIT,installed package metadata
+npm-web-lock,fp-ts,2.16.11,MIT,installed package metadata
+npm-web-lock,fresh,2.0.0,MIT,installed package metadata
+npm-web-lock,fsevents,2.3.3,MIT,npm registry package manifest (not installed on this platform)
+npm-web-lock,function-bind,1.1.2,MIT,installed package metadata
+npm-web-lock,get-intrinsic,1.3.0,MIT,installed package metadata
+npm-web-lock,get-proto,1.0.1,MIT,installed package metadata
+npm-web-lock,gopd,1.2.0,MIT,installed package metadata
+npm-web-lock,h264-mp4-encoder,1.0.12,MIT,installed package metadata
+npm-web-lock,has-symbols,1.1.0,MIT,installed package metadata
+npm-web-lock,hasown,2.0.4,MIT,installed package metadata
+npm-web-lock,@types/hast,3.0.5,MIT,installed package metadata
+npm-web-lock,hast-util-to-jsx-runtime,2.3.6,MIT,installed package metadata
+npm-web-lock,hast-util-whitespace,3.0.0,MIT,installed package metadata
+npm-web-lock,@babel/helper-validator-identifier,7.29.7,MIT,installed package metadata
+npm-web-lock,html-url-attributes,3.0.1,MIT,installed package metadata
+npm-web-lock,http-errors,2.0.1,MIT,installed package metadata
+npm-web-lock,@types/http-errors,2.0.5,MIT,installed package metadata
+npm-web-lock,https-proxy-agent,7.0.6,MIT,installed package metadata
+npm-web-lock,iconv-lite,0.7.3,MIT,installed package metadata
+npm-web-lock,immutable,5.1.9,MIT,installed package metadata
+npm-web-lock,index-to-position,1.2.0,MIT,installed package metadata
+npm-web-lock,inherits,2.0.4,ISC,installed package metadata
+npm-web-lock,inline-style-parser,0.2.7,MIT,installed package metadata
+npm-web-lock,io-ts,2.2.22,MIT,installed package metadata
+npm-web-lock,ipaddr.js,1.9.1,MIT,installed package metadata
+npm-web-lock,is-alphabetical,2.0.1,MIT,installed package metadata
+npm-web-lock,is-alphanumerical,2.0.1,MIT,installed package metadata
+npm-web-lock,is-decimal,2.0.1,MIT,installed package metadata
+npm-web-lock,is-hexadecimal,2.0.1,MIT,installed package metadata
+npm-web-lock,is-plain-obj,4.1.0,MIT,installed package metadata
+npm-web-lock,is-promise,4.0.0,MIT,installed package metadata
+npm-web-lock,js-levenshtein,1.1.6,MIT,installed package metadata
+npm-web-lock,js-tokens,4.0.0,MIT,installed package metadata
+npm-web-lock,js-yaml,4.3.2,MIT,installed package metadata
+npm-web-lock,json-schema-traverse,1.0.0,MIT,installed package metadata
+npm-web-lock,lightningcss,1.33.0,MPL-2.0,installed package metadata
+npm-web-lock,lightningcss-android-arm64,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-darwin-arm64,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-darwin-x64,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-freebsd-x64,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-linux-arm-gnueabihf,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-linux-arm64-gnu,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-linux-arm64-musl,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-linux-x64-gnu,1.33.0,MPL-2.0,installed package metadata
+npm-web-lock,lightningcss-linux-x64-musl,1.33.0,MPL-2.0,installed package metadata
+npm-web-lock,lightningcss-win32-arm64-msvc,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,lightningcss-win32-x64-msvc,1.33.0,MPL-2.0,npm registry package manifest (not installed on this platform)
+npm-web-lock,longest-streak,3.1.0,MIT,installed package metadata
+npm-web-lock,markdown-table,3.0.4,MIT,installed package metadata
+npm-web-lock,math-intrinsics,1.1.0,MIT,installed package metadata
+npm-web-lock,@types/mdast,4.0.4,MIT,installed package metadata
+npm-web-lock,mdast-util-find-and-replace,3.0.2,MIT,installed package metadata
+npm-web-lock,mdast-util-from-markdown,2.0.3,MIT,installed package metadata
+npm-web-lock,mdast-util-gfm,3.1.0,MIT,installed package metadata
+npm-web-lock,mdast-util-gfm-autolink-literal,2.0.1,MIT,installed package metadata
+npm-web-lock,mdast-util-gfm-footnote,2.1.0,MIT,installed package metadata
+npm-web-lock,mdast-util-gfm-strikethrough,2.0.0,MIT,installed package metadata
+npm-web-lock,mdast-util-gfm-table,2.0.0,MIT,installed package metadata
+npm-web-lock,mdast-util-gfm-task-list-item,2.0.0,MIT,installed package metadata
+npm-web-lock,mdast-util-mdx-expression,2.0.1,MIT,installed package metadata
+npm-web-lock,mdast-util-mdx-jsx,3.2.0,MIT,installed package metadata
+npm-web-lock,mdast-util-mdxjs-esm,2.0.1,MIT,installed package metadata
+npm-web-lock,mdast-util-phrasing,4.1.0,MIT,installed package metadata
+npm-web-lock,mdast-util-to-hast,13.2.1,MIT,installed package metadata
+npm-web-lock,mdast-util-to-markdown,2.1.2,MIT,installed package metadata
+npm-web-lock,mdast-util-to-string,4.0.0,MIT,installed package metadata
+npm-web-lock,media-typer,1.1.1,MIT,installed package metadata
+npm-web-lock,merge-descriptors,2.0.0,MIT,installed package metadata
+npm-web-lock,micromark,4.0.2,MIT,installed package metadata
+npm-web-lock,micromark-core-commonmark,2.0.3,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm,3.0.0,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm-autolink-literal,2.1.0,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm-footnote,2.1.0,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm-strikethrough,2.1.0,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm-table,2.1.2,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm-tagfilter,2.0.0,MIT,installed package metadata
+npm-web-lock,micromark-extension-gfm-task-list-item,2.1.0,MIT,installed package metadata
+npm-web-lock,micromark-factory-destination,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-factory-label,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-factory-space,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-factory-title,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-factory-whitespace,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-character,2.1.1,MIT,installed package metadata
+npm-web-lock,micromark-util-chunked,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-classify-character,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-combine-extensions,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-decode-numeric-character-reference,2.0.2,MIT,installed package metadata
+npm-web-lock,micromark-util-decode-string,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-encode,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-html-tag-name,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-normalize-identifier,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-resolve-all,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-sanitize-uri,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-subtokenize,2.1.0,MIT,installed package metadata
+npm-web-lock,micromark-util-symbol,2.0.1,MIT,installed package metadata
+npm-web-lock,micromark-util-types,2.0.2,MIT,installed package metadata
+npm-web-lock,mime-db,1.54.0,MIT,installed package metadata
+npm-web-lock,mime-types,3.0.2,MIT,installed package metadata
+npm-web-lock,minimatch,5.1.9,ISC,installed package metadata
+npm-web-lock,molstar,5.11.0,MIT,installed package metadata
+npm-web-lock,compression/node_modules/ms,2.0.0,MIT,installed package metadata
+npm-web-lock,@types/ms,2.1.0,MIT,installed package metadata
+npm-web-lock,ms,2.1.3,MIT,installed package metadata
+npm-web-lock,mutative,1.3.0,MIT,installed package metadata
+npm-web-lock,nanoid,3.3.19,MIT,installed package metadata
+npm-web-lock,negotiator,0.6.4,MIT,installed package metadata
+npm-web-lock,accepts/node_modules/negotiator,1.1.0,MIT,installed package metadata
+npm-web-lock,@types/node,22.20.4,MIT,installed package metadata
+npm-web-lock,object-assign,4.1.1,MIT,installed package metadata
+npm-web-lock,object-inspect,1.13.4,MIT,installed package metadata
+npm-web-lock,on-finished,2.4.1,MIT,installed package metadata
+npm-web-lock,on-headers,1.1.0,MIT,installed package metadata
+npm-web-lock,once,1.4.0,ISC,installed package metadata
+npm-web-lock,@redocly/openapi-core,1.34.20,MIT,installed package metadata
+npm-web-lock,openapi-fetch,0.17.0,MIT,installed package metadata
+npm-web-lock,openapi-typescript,7.13.0,MIT,installed package metadata
+npm-web-lock,openapi-typescript-helpers,0.1.0,MIT,installed package metadata
+npm-web-lock,parse-entities,4.0.2,MIT,installed package metadata
+npm-web-lock,parse-json,8.3.0,MIT,installed package metadata
+npm-web-lock,parseurl,1.3.3,MIT,installed package metadata
+npm-web-lock,path-to-regexp,8.4.2,MIT,installed package metadata
+npm-web-lock,picocolors,1.1.1,ISC,installed package metadata
+npm-web-lock,picomatch,4.0.7,MIT,installed package metadata
+npm-web-lock,playwright,1.63.0,Apache-2.0,installed package metadata
+npm-web-lock,playwright-core,1.63.0,Apache-2.0,installed package metadata
+npm-web-lock,@vitejs/plugin-react,6.1.1,MIT,installed package metadata
+npm-web-lock,@rolldown/pluginutils,1.0.1,MIT,installed package metadata
+npm-web-lock,pluralize,8.0.0,MIT,installed package metadata
+npm-web-lock,postcss,8.5.28,MIT,installed package metadata
+npm-web-lock,property-information,7.2.0,MIT,installed package metadata
+npm-web-lock,proxy-addr,2.0.8,MIT,installed package metadata
+npm-web-lock,@types/qs,6.15.1,MIT,installed package metadata
+npm-web-lock,qs,6.16.0,BSD-3-Clause,installed package metadata
+npm-web-lock,@types/range-parser,1.2.7,MIT,installed package metadata
+npm-web-lock,range-parser,1.3.0,MIT,installed package metadata
+npm-web-lock,raw-body,3.0.2,MIT,installed package metadata
+npm-web-lock,react,19.1.1,MIT,installed package metadata
+npm-web-lock,@types/react,19.1.16,MIT,installed package metadata
+npm-web-lock,react-dom,19.1.1,MIT,installed package metadata
+npm-web-lock,@types/react-dom,19.1.9,MIT,installed package metadata
+npm-web-lock,react-markdown,10.1.0,MIT,installed package metadata
+npm-web-lock,remark-gfm,4.0.1,MIT,installed package metadata
+npm-web-lock,remark-parse,11.0.0,MIT,installed package metadata
+npm-web-lock,remark-rehype,11.1.2,MIT,installed package metadata
+npm-web-lock,remark-stringify,11.0.0,MIT,installed package metadata
+npm-web-lock,require-from-string,2.0.2,MIT,installed package metadata
+npm-web-lock,rolldown,1.2.11,MIT,installed package metadata
+npm-web-lock,router,2.2.0,MIT,installed package metadata
+npm-web-lock,rxjs,7.8.2,Apache-2.0,installed package metadata
+npm-web-lock,safe-buffer,5.2.1,MIT,installed package metadata
+npm-web-lock,safer-buffer,2.1.2,MIT,installed package metadata
+npm-web-lock,@scarf/scarf,1.4.0,Apache-2.0,installed package metadata
+npm-web-lock,scheduler,0.26.0,MIT,installed package metadata
+npm-web-lock,@types/send,1.2.1,MIT,installed package metadata
+npm-web-lock,@types/send,1.2.1,MIT,installed package metadata
+npm-web-lock,@types/serve-static,2.2.0,MIT,installed package metadata
+npm-web-lock,serve-static,2.2.1,MIT,installed package metadata
+npm-web-lock,setprototypeof,1.2.0,ISC,installed package metadata
+npm-web-lock,side-channel,1.1.1,MIT,installed package metadata
+npm-web-lock,side-channel-list,1.0.1,MIT,installed package metadata
+npm-web-lock,side-channel-map,1.0.1,MIT,installed package metadata
+npm-web-lock,side-channel-weakmap,1.0.2,MIT,installed package metadata
+npm-web-lock,source-map-js,1.2.1,BSD-3-Clause,installed package metadata
+npm-web-lock,space-separated-tokens,2.0.2,MIT,installed package metadata
+npm-web-lock,statuses,2.0.2,MIT,installed package metadata
+npm-web-lock,stringify-entities,4.0.4,MIT,installed package metadata
+npm-web-lock,@ungap/structured-clone,1.4.0,ISC,installed package metadata
+npm-web-lock,style-to-js,1.1.21,MIT,installed package metadata
+npm-web-lock,style-to-object,1.0.14,MIT,installed package metadata
+npm-web-lock,supports-color,10.2.2,MIT,installed package metadata
+npm-web-lock,@types/swagger-ui-dist,3.30.6,MIT,installed package metadata
+npm-web-lock,swagger-ui-dist,5.33.0,Apache-2.0,installed package metadata
+npm-web-lock,@playwright/test,1.63.0,Apache-2.0,installed package metadata
+npm-web-lock,tinyglobby,0.2.17,MIT,installed package metadata
+npm-web-lock,toidentifier,1.0.1,MIT,installed package metadata
+npm-web-lock,trim-lines,3.0.1,MIT,installed package metadata
+npm-web-lock,trough,2.2.0,MIT,installed package metadata
+npm-web-lock,tslib,2.8.1,0BSD,installed package metadata
+npm-web-lock,type-fest,4.41.0,(MIT OR CC0-1.0),installed package metadata
+npm-web-lock,type-is,2.1.0,MIT,installed package metadata
+npm-web-lock,@oxc-project/types,0.151.0,MIT,installed package metadata
+npm-web-lock,typescript,5.9.3,Apache-2.0,installed package metadata
+npm-web-lock,undici-types,6.21.0,MIT,installed package metadata
+npm-web-lock,unified,11.0.5,MIT,installed package metadata
+npm-web-lock,parse-entities/node_modules/@types/unist,2.0.11,MIT,installed package metadata
+npm-web-lock,@types/unist,3.0.3,MIT,installed package metadata
+npm-web-lock,unist-util-is,6.0.1,MIT,installed package metadata
+npm-web-lock,unist-util-position,5.0.0,MIT,installed package metadata
+npm-web-lock,unist-util-stringify-position,4.0.0,MIT,installed package metadata
+npm-web-lock,unist-util-visit,5.1.0,MIT,installed package metadata
+npm-web-lock,unist-util-visit-parents,6.0.2,MIT,installed package metadata
+npm-web-lock,unpipe,1.0.0,MIT,installed package metadata
+npm-web-lock,uri-js-replace,1.0.1,MIT,installed package metadata
+npm-web-lock,vary,1.1.2,MIT,installed package metadata
+npm-web-lock,vfile,6.0.3,MIT,installed package metadata
+npm-web-lock,vfile-message,4.0.3,MIT,installed package metadata
+npm-web-lock,vite,8.3.1,MIT,installed package metadata
+npm-web-lock,wrappy,1.0.2,ISC,installed package metadata
+npm-web-lock,yaml-ast-parser,0.0.43,Apache-2.0,installed package metadata
+npm-web-lock,yargs-parser,21.1.1,ISC,installed package metadata
+npm-web-lock,zwitch,2.0.4,MIT,installed package metadata

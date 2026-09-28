@@ -459,9 +459,9 @@ When the user says **CONTINUE**:
 
 ## Phase 18 — Packaging and release `[ ]`
 
-- [x] 18.1 Engineering license review documented in `docs/release/LICENSE_REVIEW.md`; corrected private web package metadata to Apache-2.0. Full transitive locked-environment/bundle inventory remains a release gate; legal review is not claimed.
+- [x] 18.1 Engineering license inventory covers the 198-package exact Conda core lock and 283 npm lock entries with no missing license expressions (`docs/release/licenses/`). Reviewed project Apache-2.0/NOTICE and corrected web package metadata. Distribution-specific compatibility/notices and external engine/model licenses remain user/release gates; this is not a legal opinion.
 - [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
-- [-] 18.3 Python wheel build/install smoke test passed in a fresh Python 3.14 venv; fixed duplicate Alembic migration packaging and verified migration revision 0007 plus LICENSE/NOTICE in the wheel (`docs/release/PACKAGING.md`). Conda recipe, sdist/platform matrix, and clean-tag release build remain pending. D3 working name remains CADD Suite.
+- [-] 18.3 Python wheel and sdist build/install smoke tests passed in fresh Python 3.14 venvs; fixed duplicate Alembic migration packaging and verified migration revision 0007 plus LICENSE/NOTICE (`docs/release/PACKAGING.md`). Conda recipe, supported platform matrix, and clean-tag release build remain pending. D3 working name remains CADD Suite.
 
 ---
 
@@ -520,6 +520,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-28 | Generated exact-lock dependency license metadata inventory: 198 Conda core packages match `caddsuite.lock.txt`; 283 npm package records from installed manifests plus registry metadata for platform-optional packages; zero unresolved expressions. CSV and scope note are in `docs/release/licenses/`. Marked engineering inventory complete while retaining distribution/engine/model legal review as a release gate. |
 | 2026-09-28 | Python wheel first failed due duplicate Hatchling inclusion of Alembic migrations; removed redundant force-include config. Built 0.1.0.dev0 wheel, installed into a fresh Python 3.14 virtualenv, verified CLI version, database upgrade to revision 0007, eight migrations and LICENSE/NOTICE in the archive. Evidence in `docs/release/PACKAGING.md`; platform matrix, sdist, Conda recipe, and locked transitive-license inventory remain release gates. |
 | 2026-09-28 | Phase 17 documentation coverage and local links checked; frozen legacy source checksum manifest verified. Started Phase 18 license/versioning audit. Found and corrected browser package `ISC`/`1.0.0` metadata mismatch to Apache-2.0/`0.1.0-dev.0`; added license review, version policy, and changelog. Full transitive distribution license inventory remains pending before any binary/web bundle release. |
 | 2026-09-28 | Completed Phase 17.4 documentation coverage: added configuration, troubleshooting, scientific-methods index, and a focused API reference pointing to generated OpenAPI; cross-linked domain model, reproducibility, and validation records from README/architecture index. Remaining release-facing consistency check and frozen legacy integrity verification precede Phase 18. |
