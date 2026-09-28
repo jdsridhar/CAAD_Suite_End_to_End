@@ -80,7 +80,7 @@ def test_gromacs_stage_runs_through_registry_runtime_and_records_provenance(tmp_
             "name": "GROMACS runtime integration",
             "inputs": {
                 "system_build": {"contract": "system_build_result/1.0"},
-                "stage_input": {"contract": "md_stage_input/1.0"},
+                "stage_input": {"contract": "md_stage_input/1.1"},
             },
             "stages": [
                 {
@@ -89,13 +89,13 @@ def test_gromacs_stage_runs_through_registry_runtime_and_records_provenance(tmp_
                     "engine": "gromacs",
                     "input_contracts": {
                         "system_build": "system_build_result/1.0",
-                        "stage_input": "md_stage_input/1.0",
+                        "stage_input": "md_stage_input/1.1",
                     },
                     "input_bindings": {
                         "system_build": "$system_build",
                         "stage_input": "$stage_input",
                     },
-                    "output_contract": "md_stage_result/1.0",
+                    "output_contract": "md_stage_result/1.1",
                     "params": {"engine_parameters": engine_parameters},
                 }
             ],
@@ -141,7 +141,7 @@ def test_gromacs_stage_runs_through_registry_runtime_and_records_provenance(tmp_
             manifest,
             declarations={
                 "system_build": "system_build_result/1.0",
-                "stage_input": "md_stage_input/1.0",
+                "stage_input": "md_stage_input/1.1",
             },
             sessions=runtime.sessions,
             artifacts=runtime.services.artifacts,

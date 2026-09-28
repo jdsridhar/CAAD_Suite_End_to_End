@@ -579,6 +579,11 @@ class BindingEnergyRequest(VersionedContract):
     def _linked_md_inputs(self) -> BindingEnergyRequest:
         if self.system.id != self.simulation.system_id:
             raise ValueError("binding-energy simulation belongs to a different MDSystem")
+        if (self.system.compound_id, self.system.form_id) != (
+            self.simulation.compound_id,
+            self.simulation.form_id,
+        ):
+            raise ValueError("binding-energy MDSystem and simulation identify different candidates")
         if self.parameterization.id != self.system.parameterization_id:
             raise ValueError("binding-energy parameterization differs from the MDSystem")
         if self.trajectory.simulation_id != self.simulation.id:
@@ -719,6 +724,13 @@ class BindingEnergyPlan(VersionedContract):
     def _validate_plan(self) -> BindingEnergyPlan:
         if self.system.id != self.simulation.system_id:
             raise ValueError("binding-energy plan simulation belongs to a different MDSystem")
+        if (self.system.compound_id, self.system.form_id) != (
+            self.simulation.compound_id,
+            self.simulation.form_id,
+        ):
+            raise ValueError(
+                "binding-energy plan MDSystem and simulation identify different candidates"
+            )
         if self.parameterization.id != self.system.parameterization_id:
             raise ValueError("binding-energy plan parameterization differs from its MDSystem")
         if self.simulation.protocol.production is None:

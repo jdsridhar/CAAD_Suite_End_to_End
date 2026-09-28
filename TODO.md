@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.9 Establish stable candidate identity across QM, MD, trajectory-analysis, and binding-energy contracts; then compose all evidence into a single report. |
-| **Next task** | Extend the optional stable compound identity to MD simulations and downstream trajectory/MMGBSA results, then validate one identity-linked multi-evidence workflow. |
+| **Current task** | [-] 13.9 Complete stable candidate identity through MD system preparation, stage results, analysis, QM, and reports. |
+| **Next task** | Validate a unified Compound/Form-linked MD, trajectory analysis, MM/GBSA, QM, and report workflow, then proceed to remaining UI/reproducibility/benchmarking release tasks. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -785,3 +785,15 @@ When the user says **CONTINUE**:
 - [x] Full quality gate: 709 passed, 36 skipped; Ruff, format, strict mypy, import contracts, and schemas pass.
 - [x] Added ADR-0057. The PPARG source itself lacks a registered Compound record, so this integration proves ID propagation but not identity verification against standardized chemistry.
 - [-] Next: connect MD stage results and parameterized MDSystem to registered Compound/Form records, strengthen report-level form checks, and then exercise a unified real identity-linked MD/QM/report workflow.
+
+
+### Session log - 2026-09-28, identity through MD preparation and reporting
+
+- [x] Versioned MDSystem, MDStageInput, and MDStageResult with paired optional compound_id/form_id fields.
+- [x] CHARMM-GUI and Amber system-builder adapters preserve required Compound/Form IDs from SystemBuildRequest into MDSystem; MD execution validates stage-input IDs against MDSystem and copies identity into MDStageResult.
+- [x] Report accepts optional CompoundForm contracts and validates their Compound parent plus every explicitly linked QM, MD-stage, trajectory-analysis, and MM/GBSA Compound/Form pair.
+- [x] Added focused builder, MD handler, and report identity mismatch/propagation tests.
+- [x] Full scripts/check.sh passed: 709 passed, 36 skipped; Ruff, formatting, strict mypy, import contracts, and schemas pass.
+- [x] Real PySCF -> report integration passed with Compound and CompoundForm inputs. Real PPARG GROMACS -> MDAnalysis/MMGBSA scheduler workflow passed with linked IDs in 54.25 s.
+- [x] Added ADR-0058. The PPARG test identifiers verify linkage consistency but do not certify the archived ligand against a standardized Compound structure.
+- [-] Next: construct one integrated candidate workflow with a genuinely registered ligand structure/Form feeding both MD and QM, and verify that all reports consume those exact normalized identities; then continue outstanding Phase 13-18 tasks.

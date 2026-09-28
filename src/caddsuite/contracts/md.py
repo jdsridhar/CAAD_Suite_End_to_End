@@ -90,10 +90,12 @@ class AtomSelection(ContractModel):
 
 
 class MDSystem(VersionedContract):
-    schema_version: str = "md_system/1.0"
+    schema_version: str = "md_system/1.1"
 
     id: ULIDStr
     complex_id: ULIDStr | None = None
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     parameterization_id: ULIDStr
     builder: SoftwareRef
     box: BoxSpec
@@ -105,6 +107,12 @@ class MDSystem(VersionedContract):
     #: instead of a fixed index-group number (audit SCI-01)
     selections: dict[str, AtomSelection] = Field(default_factory=dict)
     engine_inputs: dict[str, dict[str, ArtifactRef]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _candidate_identity_is_paired(self) -> MDSystem:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("MDSystem compound_id and form_id must be provided together")
+        return self
 
 
 class MDStageKind(StrEnum):
@@ -220,15 +228,19 @@ class MDStageInput(VersionedContract):
     replace the artifact IDs and hashes recorded here.
     """
 
-    schema_version: str = "md_stage_input/1.0"
+    schema_version: str = "md_stage_input/1.1"
 
     id: ULIDStr
     system_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     stage_index: Annotated[int, Field(ge=0)]
     artifacts: dict[str, ArtifactRef] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _artifact_refs_are_hashed(self) -> MDStageInput:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("MD stage input compound_id and form_id must be provided together")
         missing = sorted(role for role, ref in self.artifacts.items() if ref.sha256 is None)
         if missing:
             raise ValueError(f"MD stage input artifacts must be hashed; missing SHA-256: {missing}")
@@ -238,9 +250,11 @@ class MDStageInput(VersionedContract):
 class MDStageResult(VersionedContract):
     """Normalized result for one completed MD protocol stage or segment."""
 
-    schema_version: str = "md_stage_result/1.0"
+    schema_version: str = "md_stage_result/1.1"
     id: ULIDStr
     system_id: ULIDStr
+    compound_id: ULIDStr | None = None
+    form_id: ULIDStr | None = None
     stage_input_id: ULIDStr
     stage_index: Annotated[int, Field(ge=0)]
     segment_index: Annotated[int, Field(ge=1)] = 1
@@ -253,6 +267,8 @@ class MDStageResult(VersionedContract):
 
     @model_validator(mode="after")
     def _outputs_are_hash_linked(self) -> MDStageResult:
+        if (self.compound_id is None) != (self.form_id is None):
+            raise ValueError("MD stage result compound_id and form_id must be provided together")
         missing = sorted(role for role, ref in self.artifacts.items() if ref.sha256 is None)
         if missing:
             raise ValueError(f"MD stage outputs must be hashed; missing SHA-256: {missing}")

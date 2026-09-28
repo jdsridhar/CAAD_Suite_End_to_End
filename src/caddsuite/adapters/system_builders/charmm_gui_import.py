@@ -645,6 +645,8 @@ def import_charmm_gui_gromacs_bundle(
         system = MDSystem(
             id=new_ulid(),
             complex_id=complex_model.id,
+            compound_id=request.compound_id,
+            form_id=request.form_id,
             parameterization_id=parameterization.id,
             builder=builder,
             box=box,

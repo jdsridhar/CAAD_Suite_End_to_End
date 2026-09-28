@@ -292,6 +292,8 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
             stage_input = MDStageInput(
                 id=new_ulid(),
                 system_id=result.system.id,
+                compound_id=result.system.compound_id,
+                form_id=result.system.form_id,
                 stage_index=0,
                 artifacts={"topology": topology_ref, "coordinates": coordinates_ref},
             )

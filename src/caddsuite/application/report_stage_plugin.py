@@ -19,7 +19,7 @@ from caddsuite.contracts.docking import DockingResult
 from caddsuite.contracts.md import MDStageResult
 from caddsuite.contracts.properties import PropertyPredictionSet
 from caddsuite.contracts.qm import QMCalculation, QMResult
-from caddsuite.contracts.registry import Compound
+from caddsuite.contracts.registry import Compound, CompoundForm
 from caddsuite.contracts.reporting import (
     ReportArtifact,
     ReportBundle,
@@ -111,6 +111,9 @@ class ReportStageHandler:
         project_id = next(iter(projects))
         if invocation.run_id is None:
             raise ValueError("report stage requires scheduler-provided workflow run identity")
+        compound_forms = invocation.inputs.get("compound_forms", ())
+        if not all(isinstance(item, CompoundForm) for item in compound_forms):
+            raise ValueError("compound_forms must contain CompoundForm contracts")
         props = invocation.inputs.get("property_results", ())
         docks = invocation.inputs.get("docking_results", ())
         if not all(isinstance(item, PropertyPredictionSet) for item in props):
@@ -149,6 +152,27 @@ class ReportStageHandler:
                 )
         calculations_by_id = {item.id: item for item in qm_calculations}
         compounds_by_id = {item.id: item for item in compounds if isinstance(item, Compound)}
+        forms_by_id = {item.id: item for item in compound_forms if isinstance(item, CompoundForm)}
+        for form in forms_by_id.values():
+            if form.compound_id not in compounds_by_id:
+                raise ValueError("report CompoundForm does not belong to a report Compound")
+        linked_pairs: list[tuple[str, str]] = []
+        for md_result in md_results:
+            if md_result.compound_id is not None and md_result.form_id is not None:
+                linked_pairs.append((md_result.compound_id, md_result.form_id))
+        for analysis_result in trajectory_results:
+            if analysis_result.compound_id is not None and analysis_result.form_id is not None:
+                linked_pairs.append((analysis_result.compound_id, analysis_result.form_id))
+        for energy_result in binding_results:
+            if energy_result.compound_id is not None and energy_result.form_id is not None:
+                linked_pairs.append((energy_result.compound_id, energy_result.form_id))
+        for calculation in qm_calculations:
+            if calculation.compound_id is not None:
+                linked_pairs.append((calculation.compound_id, calculation.form_id))
+        for compound_id, form_id in linked_pairs:
+            linked_form = forms_by_id.get(form_id)
+            if linked_form is None or linked_form.compound_id != compound_id:
+                raise ValueError("evidence compound/form IDs do not match a report CompoundForm")
         if any(item.calculation_id not in calculations_by_id for item in qm_results):
             raise ValueError("each QMResult must have its matching QMCalculation in the report")
         for calculation in qm_calculations:
@@ -342,6 +366,11 @@ class ReportStagePlugin:
             engine=None,
             inputs=(
                 CapabilityInput(name="compounds", contracts=(Compound.schema_id(),)),
+                CapabilityInput(
+                    name="compound_forms",
+                    contracts=(CompoundForm.schema_id(),),
+                    required=False,
+                ),
                 CapabilityInput(
                     name="property_results",
                     contracts=(PropertyPredictionSet.schema_id(),),

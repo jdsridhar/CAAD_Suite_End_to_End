@@ -626,6 +626,19 @@
           "title": "Composition",
           "type": "object"
         },
+        "compound_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compound Id"
+        },
         "engine_inputs": {
           "additionalProperties": {
             "additionalProperties": {
@@ -635,6 +648,19 @@
           },
           "title": "Engine Inputs",
           "type": "object"
+        },
+        "form_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Form Id"
         },
         "id": {
           "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -669,7 +695,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "md_system/1.0",
+          "default": "md_system/1.1",
           "title": "Schema Version",
           "type": "string"
         },

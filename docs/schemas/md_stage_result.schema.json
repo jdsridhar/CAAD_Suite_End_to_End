@@ -117,7 +117,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/md_stage_result/1.0",
+  "$id": "caddsuite://schemas/md_stage_result/1.1",
   "additionalProperties": false,
   "description": "Normalized result for one completed MD protocol stage or segment.",
   "properties": {
@@ -132,8 +132,34 @@
       "title": "Artifacts",
       "type": "object"
     },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
+    },
     "engine": {
       "$ref": "#/$defs/SoftwareRef"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
     },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -153,7 +179,7 @@
       "type": "number"
     },
     "schema_version": {
-      "default": "md_stage_result/1.0",
+      "default": "md_stage_result/1.1",
       "title": "Schema Version",
       "type": "string"
     },

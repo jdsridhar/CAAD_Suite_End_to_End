@@ -36,7 +36,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/md_stage_input/1.0",
+  "$id": "caddsuite://schemas/md_stage_input/1.1",
   "additionalProperties": false,
   "description": "Hash-linked inputs materialized for one engine stage.\n\nKeys in ``artifacts`` are logical roles such as ``md_parameters``, ``coordinates``,\n``topology``, ``reference_coordinates``, ``previous_checkpoint``, and\n``resume_checkpoint``. Adapters choose native staged filenames; those filenames never\nreplace the artifact IDs and hashes recorded here.",
   "properties": {
@@ -48,13 +48,39 @@
       "title": "Artifacts",
       "type": "object"
     },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
+    },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
+    },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "Id",
       "type": "string"
     },
     "schema_version": {
-      "default": "md_stage_input/1.0",
+      "default": "md_stage_input/1.1",
       "title": "Schema Version",
       "type": "string"
     },

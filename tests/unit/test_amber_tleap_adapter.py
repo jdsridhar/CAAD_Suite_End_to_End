@@ -718,6 +718,8 @@ def test_amber_normalizer_builds_linked_system_and_parameterization_contracts(
     assert result.parameterization.ff_family.value == "amber"
     assert result.parameterization.protein_ff == "ff14SB"
     assert result.system.n_atoms == complex_model.ligand_atom_count + 4
+    assert result.system.compound_id == request.compound_id
+    assert result.system.form_id == request.form_id
     assert result.system.selections["protein"].n_atoms == 4
     assert result.system.selections["ligand"].n_atoms == complex_model.ligand_atom_count
     assert set(result.system.engine_inputs) == {"gromacs"}

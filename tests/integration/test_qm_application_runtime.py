@@ -55,6 +55,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                 "form": {"contract": "compound_form/1.0"},
                 "conformer": {"contract": "conformer/1.1"},
                 "compound": {"contract": "compound/1.0"},
+                "form_record": {"contract": "compound_form/1.0"},
             },
             "stages": [
                 {
@@ -80,11 +81,13 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                     "needs": ["qm"],
                     "input_contracts": {
                         "compounds": "compound/1.0",
+                        "compound_forms": "compound_form/1.0",
                         "qm_calculations": "qm_calculation/1.2",
                         "qm_results": "qm_result/2.1",
                     },
                     "input_bindings": {
                         "compounds": "$compound",
+                        "compound_forms": "$form_record",
                         "qm_calculations": "$calculation",
                         "qm_results": "qm",
                     },
@@ -170,6 +173,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                 "form": form,
                 "conformer": conformer,
                 "compound": compound,
+                "form_record": form,
             },
         )
         assert not outcome.failures

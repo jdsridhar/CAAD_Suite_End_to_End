@@ -26,7 +26,7 @@ def test_md_stage_result_preserves_stage_provenance_and_hashed_outputs() -> None
         runtime_seconds=1.2,
         artifacts={"trajectory": artifact},
     )
-    assert result.schema_version == "md_stage_result/1.0"
+    assert result.schema_version == "md_stage_result/1.1"
     assert result.stage_index == 2
     assert result.artifacts["trajectory"].sha256 == "a" * 64
 

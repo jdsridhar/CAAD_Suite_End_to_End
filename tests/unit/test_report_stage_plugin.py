@@ -37,6 +37,7 @@ from caddsuite.contracts.qm import (
     QMProtocol,
     QMResult,
 )
+from caddsuite.contracts.registry import CompoundForm, CompoundFormKind
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
@@ -93,7 +94,7 @@ def test_report_capability_exposes_normalized_md_energy_and_qm_inputs() -> None:
         }
     }
     assert contracts == {
-        "md_stage_result/1.0",
+        "md_stage_result/1.1",
         "trajectory_analysis_result/1.2",
         "binding_energy/1.3",
         "qm_calculation/1.2",
@@ -113,10 +114,20 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         original_text=smiles,
         source="manual",
     )
+    form_id = new_ulid()
+    compound_form = CompoundForm(
+        id=form_id,
+        compound_id=compound.id,
+        kind=CompoundFormKind.PARENT_NEUTRAL,
+        smiles="CCO",
+        formal_charge=0,
+    )
     energy = BindingEnergyResult(
         id=new_ulid(),
         accession="CMP0001_MMPBSA_001",
         trajectory_id=new_ulid(),
+        compound_id=compound.id,
+        form_id=form_id,
         method=BindingEnergyMethod.MM_GBSA,
         model={"igb": 5, "pbradii": "mbondi2"},
         tool=_software("gmx_MMPBSA"),
@@ -132,6 +143,8 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
     md = MDStageResult(
         id=new_ulid(),
         system_id=new_ulid(),
+        compound_id=compound.id,
+        form_id=form_id,
         stage_input_id=new_ulid(),
         stage_index=0,
         stage_kind=MDStageKind.PRODUCTION,
@@ -145,6 +158,8 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         id=new_ulid(),
         request_id=new_ulid(),
         simulation_id=new_ulid(),
+        compound_id=compound.id,
+        form_id=form_id,
         trajectory_id=new_ulid(),
         preprocessing_result_id=new_ulid(),
         analyzer=_software("MDAnalysis"),
@@ -156,7 +171,7 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
     calculation = QMCalculation(
         id=new_ulid(),
         accession="CMP0001_QM_001",
-        form_id=new_ulid(),
+        form_id=form_id,
         compound_id=compound.id,
         geometry_source=EntityRef(kind="conformer", id=new_ulid()),
         engine=_software("PySCF"),
@@ -201,6 +216,7 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
                 SimpleNamespace(
                     inputs={
                         "compounds": (compound,),
+                        "compound_forms": (compound_form,),
                         "md_results": (md,),
                         "trajectory_results": (trajectory,),
                         "binding_energy_results": (energy,),
@@ -224,7 +240,7 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         assert sections["lumo"]["data"][0]["value_eV"] == 1.0
         assert sections["homo_lumo_gap"]["data"][0]["value_eV"] == 7.0
         assert sections["dipole"]["data"][0]["value_D"] == 1.4
-        with pytest.raises(ValueError, match="compound_id"):
+        with pytest.raises(ValueError, match="compound/form"):
             ReportStageHandler(stage, runtime.services).execute(
                 cast(
                     TaskInvocation,
@@ -235,6 +251,21 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
                                 calculation.model_copy(update={"compound_id": new_ulid()}),
                             ),
                             "qm_results": (qm,),
+                        },
+                        run_id=run_id,
+                    ),
+                )
+            )
+        with pytest.raises(ValueError, match="CompoundForm"):
+            ReportStageHandler(stage, runtime.services).execute(
+                cast(
+                    TaskInvocation,
+                    SimpleNamespace(
+                        inputs={
+                            "compounds": (compound,),
+                            "compound_forms": (
+                                compound_form.model_copy(update={"compound_id": new_ulid()}),
+                            ),
                         },
                         run_id=run_id,
                     ),

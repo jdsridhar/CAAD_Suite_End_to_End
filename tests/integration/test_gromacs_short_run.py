@@ -180,6 +180,8 @@ def _prepare_real_stage(
     stage_input = MDStageInput(
         id=new_ulid(),
         system_id=build.system.id,
+        compound_id=build.system.compound_id,
+        form_id=build.system.form_id,
         stage_index=2,
         artifacts={
             "topology": topology_ref,
@@ -306,6 +308,8 @@ def test_gromacs_interrupts_and_resumes_from_checkpoint_on_a_temporary_copy(tmp_
     resume_input = MDStageInput(
         id=new_ulid(),
         system_id=build.system.id,
+        compound_id=build.system.compound_id,
+        form_id=build.system.form_id,
         stage_index=2,
         artifacts={
             "topology": topology_ref,

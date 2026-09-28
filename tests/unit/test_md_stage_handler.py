@@ -9,6 +9,7 @@ from caddsuite.application.md_stage import MDExecutionStageHandler
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ArtifactRef
 from caddsuite.contracts.md import MDStageInput
+from caddsuite.contracts.system import SystemBuildResult
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
 from caddsuite.ports.adapters import AdapterContext, CommandStep, ExecutionPlan
@@ -77,16 +78,28 @@ def test_md_stage_handler_materializes_executes_and_registers_normalized_outputs
         executor=executor,
     )
     blob = artifacts.put_bytes(b"input")
+    base_build = _result()
+    compound_id, form_id = new_ulid(), new_ulid()
+    build = SystemBuildResult.model_validate(
+        {
+            **base_build.model_dump(mode="json"),
+            "system": {
+                **base_build.system.model_dump(mode="json"),
+                "compound_id": compound_id,
+                "form_id": form_id,
+            },
+        }
+    )
     stage_input = MDStageInput(
         id=new_ulid(),
-        system_id=_result().system.id,
+        system_id=build.system.id,
+        compound_id=compound_id,
+        form_id=form_id,
         stage_index=2,
         artifacts={
             "topology": ArtifactRef(artifact_id=new_ulid(), role="topology", sha256=blob.sha256)
         },
     )
-    build = _result()
-    stage_input = stage_input.model_copy(update={"system_id": build.system.id})
     fake = FakeMDEngine()
     handler = MDExecutionStageHandler(
         fake,
@@ -106,8 +119,10 @@ def test_md_stage_handler_materializes_executes_and_registers_normalized_outputs
     )
     try:
         result = handler.execute(invocation)
-        assert result.schema_version == "md_stage_result/1.0"
+        assert result.schema_version == "md_stage_result/1.1"
         assert result.system_id == build.system.id
+        assert result.compound_id == compound_id
+        assert result.form_id == form_id
         assert result.stage_index == 2
         assert result.runtime_seconds >= 0
         assert result.artifacts["md_log_1"].sha256 is not None

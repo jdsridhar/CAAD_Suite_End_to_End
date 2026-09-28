@@ -133,6 +133,8 @@ def test_importer_normalizes_counts_selection_box_and_protocol():
         request=request, complex_model=complex_model, bundle_files=files
     )
     assert result.system.n_atoms == 4
+    assert result.system.compound_id == request.compound_id
+    assert result.system.form_id == request.form_id
     assert result.system.composition == {"PROA": 1, "LIG": 1}
     assert result.system.selections["ligand"].n_atoms == 2
     assert result.system.selections["ligand"].verified

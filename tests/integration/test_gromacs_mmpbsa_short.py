@@ -197,9 +197,13 @@ def _stage_request(source: Path, stage: Path) -> tuple[BindingEnergyRequest, dic
         artifacts={name: refs[name] for name in relative_files if name.startswith("toppar/")},
     )
     system_id = new_ulid()
+    simulation_id = new_ulid()
+    compound_id, form_id = new_ulid(), new_ulid()
     index = refs["analysis/analysis.ndx"]
     system = MDSystem(
         id=system_id,
+        compound_id=compound_id,
+        form_id=form_id,
         parameterization_id=parameterization_id,
         builder=_software("CHARMM-GUI", "unknown", SoftwareKind.SERVICE),
         box=BoxSpec(
@@ -233,8 +237,6 @@ def _stage_request(source: Path, stage: Path) -> tuple[BindingEnergyRequest, dic
             }
         },
     )
-    simulation_id = new_ulid()
-    compound_id, form_id = new_ulid(), new_ulid()
     simulation = MDSimulation(
         id=simulation_id,
         accession="CMP0001_MD_001",

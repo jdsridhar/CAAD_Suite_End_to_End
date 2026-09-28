@@ -102,6 +102,14 @@ class MDExecutionStageHandler:
             raise StageExecutionFailure(
                 "MD.STAGE_SYSTEM_MISMATCH", "stage input belongs to a different MD system"
             )
+        if (stage_input.compound_id, stage_input.form_id) != (
+            build.system.compound_id,
+            build.system.form_id,
+        ):
+            raise StageExecutionFailure(
+                "MD.STAGE_CANDIDATE_MISMATCH",
+                "stage input compound/form IDs differ from the parameterized MDSystem",
+            )
         work = self.services.run_root / f"md-{new_ulid()}"
         work.mkdir(mode=0o700, parents=True)
         context = AdapterContext(
@@ -176,6 +184,8 @@ class MDExecutionStageHandler:
         result = MDStageResult(
             id=new_ulid(),
             system_id=build.system.id,
+            compound_id=build.system.compound_id,
+            form_id=build.system.form_id,
             stage_input_id=stage_input.id,
             stage_index=stage_index,
             segment_index=segment_index,

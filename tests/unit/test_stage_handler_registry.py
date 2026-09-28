@@ -170,7 +170,7 @@ def test_md_plugin_registers_two_engine_capabilities_with_common_contracts() -> 
         capability = snapshot.capabilities.resolve("molecular_dynamics", engine)
         assert capability is not None
         assert {item.name for item in capability.inputs} == {"system_build", "stage_input"}
-        assert capability.outputs == ("md_stage_result/1.0",)
+        assert capability.outputs == ("md_stage_result/1.1",)
 
 
 def test_installed_entry_point_discovers_md_providers_without_probing_engines() -> None:
