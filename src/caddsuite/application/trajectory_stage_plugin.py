@@ -19,6 +19,7 @@ from caddsuite.application.handlers import EnginePreflightResult, StageHandlerRe
 from caddsuite.application.planned_stage_runtime import execute_adapter_plan
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.analysis import (
+    TrajectoryAnalysisPlan,
     TrajectoryAnalysisRequest,
     TrajectoryAnalysisResult,
     TrajectoryProcessingResult,
@@ -56,15 +57,33 @@ class MDAnalysisStageHandler:
 
     def subject_key(self, scope: str, value: VersionedContract) -> str:
         del scope
-        if not isinstance(value, TrajectoryAnalysisRequest):
-            raise TypeError("analysis fan-out requires TrajectoryAnalysisRequest")
-        return str(value.simulation_id)
+        if isinstance(value, TrajectoryAnalysisPlan):
+            return str(value.simulation_id)
+        if isinstance(value, TrajectoryAnalysisRequest):
+            return str(value.simulation_id)
+        raise TypeError("analysis fan-out requires a trajectory analysis plan or request")
 
     def artifact_hashes(
         self, inputs: Mapping[str, tuple[VersionedContract, ...]]
     ) -> Mapping[str, str]:
-        request = _one(inputs, "request", TrajectoryAnalysisRequest)
         parent = _one(inputs, "preprocessing", TrajectoryProcessingResult)
+        plan_values = inputs.get("analysis_plan", ())
+        if plan_values:
+            import hashlib
+            import json
+
+            plan = _one(inputs, "analysis_plan", TrajectoryAnalysisPlan)
+            serialized = json.dumps(
+                plan.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+            )
+            return {
+                "plan": hashlib.sha256(serialized.encode()).hexdigest(),
+                **{
+                    f"processed.{key}": ref.sha256 or ""
+                    for key, ref in parent.output_artifacts.items()
+                },
+            }
+        request = _one(inputs, "request", TrajectoryAnalysisRequest)
         refs = {
             "trajectory": request.trajectory,
             "topology": request.topology,
@@ -83,8 +102,13 @@ class MDAnalysisStageHandler:
         return {}, frozenset()
 
     def execute(self, invocation: TaskInvocation) -> TrajectoryAnalysisResult:
-        request = _one(invocation.inputs, "request", TrajectoryAnalysisRequest)
         parent = _one(invocation.inputs, "preprocessing", TrajectoryProcessingResult)
+        plan_values = invocation.inputs.get("analysis_plan", ())
+        request = (
+            _one(invocation.inputs, "analysis_plan", TrajectoryAnalysisPlan).bind(parent)
+            if plan_values
+            else _one(invocation.inputs, "request", TrajectoryAnalysisRequest)
+        )
         blockers = [
             issue
             for issue in self.engine.validate_request(request, parent)
@@ -209,19 +233,34 @@ class TrajectoryAnalysisStagePlugin:
     version = "0.1.0"
 
     def registrations(self) -> tuple[StageHandlerRegistration, ...]:
-        capability = StageCapability(
+        preprocessing = CapabilityInput(
+            name="preprocessing",
+            contracts=(TrajectoryProcessingResult.schema_id(),),
+        )
+        bound_request = StageCapability(
             kind="trajectory.analyze",
             engine="mdanalysis",
             inputs=(
                 CapabilityInput(name="request", contracts=(TrajectoryAnalysisRequest.schema_id(),)),
-                CapabilityInput(
-                    name="preprocessing",
-                    contracts=(TrajectoryProcessingResult.schema_id(),),
-                ),
+                preprocessing,
             ),
             outputs=(TrajectoryAnalysisResult.schema_id(),),
         )
-        return (StageHandlerRegistration(capability, self._build, self._preflight),)
+        analysis_plan = StageCapability(
+            kind="trajectory.analyze_processed",
+            engine="mdanalysis",
+            inputs=(
+                CapabilityInput(
+                    name="analysis_plan", contracts=(TrajectoryAnalysisPlan.schema_id(),)
+                ),
+                preprocessing,
+            ),
+            outputs=(TrajectoryAnalysisResult.schema_id(),),
+        )
+        return tuple(
+            StageHandlerRegistration(capability, self._build, self._preflight)
+            for capability in (bound_request, analysis_plan)
+        )
 
     @staticmethod
     def _settings(stage: StageDefinition) -> MDAnalysisMetricsParameters:

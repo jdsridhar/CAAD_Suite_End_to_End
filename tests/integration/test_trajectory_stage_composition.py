@@ -20,7 +20,7 @@ from caddsuite.application.gromacs_trajectory_stage_plugin import GromacsTraject
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.application.trajectory_stage_plugin import TrajectoryAnalysisStagePlugin
 from caddsuite.contracts.analysis import (
-    TrajectoryAnalysisRequest,
+    TrajectoryAnalysisPlan,
     TrajectoryMetric,
     TrajectoryProcessingRequest,
     TrajectorySegmentInput,
@@ -163,20 +163,10 @@ def test_discovered_trajectory_handlers_compose_on_pparg_dataset(tmp_path: Path)
         assert processed.n_frames == metadata["frames"]
         assert processed.time_range_ps == (0, metadata["last_time_ps"])
 
-        analysis_request = TrajectoryAnalysisRequest(
+        analysis_plan = TrajectoryAnalysisPlan(
             id=new_ulid(),
             simulation_id=simulation_id,
             trajectory_id=new_ulid(),
-            preprocessing_result_id=processed.id,
-            trajectory=processed.output_artifacts["processed"],
-            topology=processed.reference_structure,
-            reference_structure=processed.reference_structure,
-            atom_masses=processed.atom_masses,
-            trajectory_format="XTC",
-            topology_format="GRO",
-            expected_atom_count=metadata["atoms"],
-            expected_frame_count=metadata["frames"],
-            frame_interval_ps=100,
             selections={
                 "protein": AtomSelection(
                     description="protein", n_atoms=metadata["protein"], verified=True
@@ -195,7 +185,7 @@ def test_discovered_trajectory_handlers_compose_on_pparg_dataset(tmp_path: Path)
         analysis_stage = StageDefinition.model_validate(
             {
                 "id": "analysis",
-                "kind": "trajectory.analysis",
+                "kind": "trajectory.analyze_processed",
                 "engine": "mdanalysis",
                 "params": {
                     "engine_parameters": {
@@ -214,7 +204,7 @@ def test_discovered_trajectory_handlers_compose_on_pparg_dataset(tmp_path: Path)
                 TaskInvocation,
                 SimpleNamespace(
                     inputs={
-                        "request": (analysis_request,),
+                        "analysis_plan": (analysis_plan,),
                         "preprocessing": (processed,),
                     }
                 ),

@@ -8,7 +8,7 @@
 
 The discovered `trajectory.process/gromacs` handler consumed `step5_1.tpr` and `analysis/combined_fit.xtc`, then ran the requested `make_molecules_whole` transform. The normalized result reported 66,195 atoms, 1,001 frames, 100 ps spacing, and a 0–100,000 ps time range.
 
-The discovered `trajectory.analysis/mdanalysis` handler consumed that normalized processing result and emitted protein–ligand minimum-distance and atom-pair contact series. The isolated environment used Python 3.12 and MDAnalysis 2.10.0 from `environments/mdanalysis.lock.txt`. The configured sampling stride was 100 over the 100 ns coordinate series, giving 11 evaluated frames.
+The discovered `trajectory.analyze_processed/mdanalysis` handler consumed that normalized processing result and emitted protein–ligand minimum-distance and atom-pair contact series. The isolated environment used Python 3.12 and MDAnalysis 2.10.0 from `environments/mdanalysis.lock.txt`. The configured sampling stride was 100 over the 100 ns coordinate series, giving 11 evaluated frames.
 
 - Minimum protein–ligand distance: 1.7196–2.1106 Å; mean 1.9308 Å across 11 sampled frames.
 - Protein–ligand atom pairs within the configured 6 Å cutoff: 2,295–3,511; mean 3,223.7.

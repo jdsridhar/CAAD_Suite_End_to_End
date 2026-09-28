@@ -728,3 +728,11 @@ When the user says **CONTINUE**:
 - [x] Full scripts/check.sh after trajectory-stage corrections: 706 passed, 36 skipped; Ruff, formatting (331 files), strict mypy (196 source files), import contracts (255 files), and schemas passed. Two existing Starlette/httpx deprecation warnings remain.
 
 - [x] Added opt-in tests/integration/test_trajectory_stage_composition.py for explicit PPARG/GROMACS/MDAnalysis paths. The real-data test passed in 20.58 s; it verifies discovered processing→analysis handler handoff, normalized 1,001-frame lineage, selection counts from MDAnalysis, source hash immutability, and all CAS outputs/logs/metrics. Routine no-data full gate: 706 passed, 36 optional skips.
+
+### Session log - 2026-09-28, workflow-time trajectory artifact binding
+
+- [x] Added TrajectoryAnalysisPlan/1.0 for metric/selection/window choices known before execution. A new discovered trajectory.analyze_processed capability binds that plan to the preceding TrajectoryProcessingResult at runtime, resolving exact processed XTC/GRO/mass/index artifact references and validating simulation identity, frame range, and existing analysis-request constraints.
+- [x] Preserved the existing trajectory.analyze capability and fully bound TrajectoryAnalysisRequest for compatibility.
+- [x] Added ADR-0052, architecture documentation, generated JSON Schema, unit validation, and a compiled process → analyze workflow test.
+- [x] Updated the real-data PPARG integration test to exercise plan binding; it passed with the existing GROMACS/MDAnalysis environments. Full scripts/check.sh: 708 passed, 36 skipped; Ruff, formatting, strict mypy, import contracts, and schema checks pass.
+- [-] Next: inspect and implement equivalent runtime artifact binding for BindingEnergyRequest, then execute a scheduler-level MD analysis → MM/GBSA → QM/report workflow with accurate identities and avoid treating geometric or short-sample evidence as experimental validation.

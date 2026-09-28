@@ -340,6 +340,97 @@ class TrajectoryAnalysisRequest(VersionedContract):
         return self
 
 
+class TrajectoryAnalysisPlan(VersionedContract):
+    # User-selected metrics bind to actual artifact identities after processing completes.
+    schema_version: str = "trajectory_analysis_plan/1.0"
+
+    id: ULIDStr
+    simulation_id: ULIDStr
+    trajectory_id: ULIDStr
+    selections: dict[str, AtomSelection] = Field(min_length=1)
+    pose_fit_selection: AtomSelection | None = None
+    rmsd_weighting: Literal["uniform", "mass"] = "uniform"
+    metrics: Annotated[tuple[TrajectoryMetric, ...], Field(min_length=1)]
+    reference_frame: Annotated[int, Field(ge=0)] = 0
+    start_time_ns: NonNegativeFloat = 0.0
+    end_time_ns: PositiveFloat
+    stride: Annotated[int, Field(ge=1)] = 1
+    contact_cutoff_A: PositiveFloat = 6.0
+
+    @model_validator(mode="after")
+    def _validate_plan(self) -> TrajectoryAnalysisPlan:
+        if len(set(self.metrics)) != len(self.metrics):
+            raise ValueError("trajectory plan metrics must not repeat")
+        if any(not selection.verified for selection in self.selections.values()):
+            raise ValueError("all trajectory plan selections must be independently verified")
+        required: set[str] = set()
+        if TrajectoryMetric.BACKBONE_RMSD in self.metrics:
+            required.add("backbone")
+        if {
+            TrajectoryMetric.LIGAND_POSE_RMSD,
+            TrajectoryMetric.LIGAND_INTERNAL_RMSD,
+        }.intersection(self.metrics):
+            required.add("ligand")
+        if TrajectoryMetric.LIGAND_POSE_RMSD in self.metrics and (
+            self.pose_fit_selection is None or not self.pose_fit_selection.verified
+        ):
+            raise ValueError("ligand pose RMSD requires a verified upstream fit selection")
+        if TrajectoryMetric.PROTEIN_CA_RMSF in self.metrics:
+            required.add("protein_ca")
+        if TrajectoryMetric.PROTEIN_RADIUS_OF_GYRATION in self.metrics:
+            required.add("protein")
+        if {
+            TrajectoryMetric.PROTEIN_LIGAND_MIN_DISTANCE,
+            TrajectoryMetric.PROTEIN_LIGAND_CONTACT_COUNT,
+            TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT,
+        }.intersection(self.metrics):
+            required.update({"protein", "ligand"})
+        if TrajectoryMetric.SOLVENT_ACCESSIBLE_SURFACE_AREA in self.metrics:
+            required.update({"surface", "sasa_output"})
+        missing = required.difference(self.selections)
+        if missing:
+            raise ValueError(f"trajectory plan metrics require selections: {sorted(missing)}")
+        return self
+
+    def bind(self, preprocessing: TrajectoryProcessingResult) -> TrajectoryAnalysisRequest:
+        # Resolve the generated artifact references only after processing is complete.
+        if preprocessing.simulation_id != self.simulation_id:
+            raise ValueError("analysis plan and processing result identify different simulations")
+        trajectory = preprocessing.output_artifacts.get("processed")
+        if trajectory is None or preprocessing.reference_structure is None:
+            raise ValueError("processing result lacks its normalized trajectory or GRO reference")
+        if self.reference_frame >= preprocessing.n_frames:
+            raise ValueError("analysis plan reference frame is outside the processed trajectory")
+        start_ns, end_ns = (value / 1000.0 for value in preprocessing.time_range_ps)
+        if self.start_time_ns < start_ns or self.end_time_ns > end_ns:
+            raise ValueError("analysis plan time window is outside the processed trajectory")
+        return TrajectoryAnalysisRequest(
+            id=self.id,
+            simulation_id=self.simulation_id,
+            trajectory_id=self.trajectory_id,
+            preprocessing_result_id=preprocessing.id,
+            trajectory=trajectory,
+            topology=preprocessing.reference_structure,
+            index_file=preprocessing.source_artifacts.get("index"),
+            reference_structure=preprocessing.reference_structure,
+            atom_masses=preprocessing.atom_masses,
+            trajectory_format="XTC",
+            topology_format="GRO",
+            expected_atom_count=preprocessing.n_atoms,
+            expected_frame_count=preprocessing.n_frames,
+            frame_interval_ps=preprocessing.frame_interval_ps,
+            selections=self.selections,
+            pose_fit_selection=self.pose_fit_selection,
+            rmsd_weighting=self.rmsd_weighting,
+            metrics=self.metrics,
+            reference_frame=self.reference_frame,
+            start_time_ns=self.start_time_ns,
+            end_time_ns=self.end_time_ns,
+            stride=self.stride,
+            contact_cutoff_A=self.contact_cutoff_A,
+        )
+
+
 class TrajectoryAnalysisResult(VersionedContract):
     """Normalized metric artifacts linked to their simulation and preprocessing result."""
 

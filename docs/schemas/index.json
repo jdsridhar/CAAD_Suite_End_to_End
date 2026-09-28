@@ -37,6 +37,7 @@
   "task_attempt": "task_attempt/1.0",
   "trajectory": "trajectory/1.0",
   "trajectory_analysis": "trajectory_analysis/1.1",
+  "trajectory_analysis_plan": "trajectory_analysis_plan/1.0",
   "trajectory_analysis_request": "trajectory_analysis_request/1.1",
   "trajectory_analysis_result": "trajectory_analysis_result/1.1",
   "trajectory_plot_request": "trajectory_plot_request/1.0",
