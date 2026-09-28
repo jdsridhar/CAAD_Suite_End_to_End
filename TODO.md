@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 6 — scientific validation follow-up |
-| **Current task** | [-] V5: define the follow-up checks needed to qualify the measured AmberTools-to-GROMACS energy delta |
-| **Next task** | Resolve V6: the existing 0.1 ps MD smoke run verifies execution only; define an appropriately scoped stability validation |
+| **Current phase** | Phase 7 — MD migration (scientific validation follow-up) |
+| **Current task** | [-] V6: determine whether the existing 0.1 ps smoke run supports any stability claim and scope a meaningful longer check |
+| **Next task** | Revisit the Phase 4 redocking accuracy failure after the MD validation gaps are characterized |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
@@ -492,7 +492,7 @@ When the user says **CONTINUE**:
 - [x] V2 Psi4 reference energies vs legacy batch results (10.6; four archived compounds agree within declared tolerances in G-DFT-1)
 - [x] V3 MDAnalysis vs gmx metrics on 2M2D_LIG (8.5; G-MD-14)
 - [x] V4 MM-GBSA per-frame agreement on 11 frames (9.4; G-MD-18)
-- [ ] V5 AmberTools → GROMACS topology conversion: single-point energy agreement (6.4)
+- [x] V5 AmberTools → GROMACS comparison measured a 0.59447 kcal/mol total-energy delta (0.000177 relative); acceptance tolerance is null and the profile remains disabled. Characterization complete, compatibility not qualified; see G-MD-5.
 - [ ] V6 Temperature/pressure stability checks on the tiny MD integration run (7.6)
 - [x] V7 Known-molecule ADMET descriptor sanity (5.2)
 
@@ -520,7 +520,7 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
-| 2026-09-28 | Re-audited phase status against task gates: closed implementation phases 6, 8, 10, 11, 13, and 15; V1 pilot execution and V2 QM reference comparison are complete with limitations preserved. Phase 4 accuracy remains a documented failure; V5/V6 remain open. |
+| 2026-09-28 | Re-audited phase status against task gates: closed implementation phases 6, 8, 10, 11, 13, and 15; V1 pilot execution and V2 QM reference comparison are complete with limitations preserved. Phase 4 accuracy remains a documented failure; V5 measurement is complete but unqualified; V6 is the current open stability-validation item. |
 | 2026-09-28 | Closed Phase 18 pre-release packaging verification on clean commit 483aba0: wheel and sdist built; fresh Python 3.14.4 sdist install passed CLI, DB migration 0007, and migration-resource checks. Wheel SHA-256 9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7; sdist SHA-256 7ddb4135a8c18b928841f179e238b1939eb7ee173b344e533752794658a81543. Hosted package matrix 36367704078 and Quality 36367704039 passed. No public release tag/upload was created. |
 | 2026-09-28 | Updated wheel metadata to `Requires-Python >=3.11,<3.15` and added Node/npm engine bounds. Built the constrained wheel (SHA-256 `9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7`), then installed it in clean Python 3.11–3.14 environments; CLI, Alembic 0007, and packaged migration resources passed on each. Added `.github/workflows/package-matrix.yml`, runtime support documentation, and selected pip wheel/sdist as the distribution channel. Full repo gate and npm11 web gate pass; hosted package matrix and Quality both passed after push (runs 36367704078 and 36367704039). |
 | 2026-09-28 | Release support decision: pip wheel/sdist is the distributable; Conda remains for the locked developer/engine environment and no Conda package recipe will be added without user demand. Added a Linux x86_64 Python 3.11–3.14 package smoke matrix and constrained `requires-python` to that tested range. Browser Node/npm engine requirements now match Vite/OpenAPI tooling. Fresh wheel install + CLI + migration 0007 passed locally across Python 3.11/3.12/3.13/3.14. |
