@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 13 - production runtime composition and cross-module acceptance |
-| **Current task** | [-] Audit remaining acceptance gaps and prioritize scientific validation / release follow-up after Phase 13.7. |
-| **Next task** | Audit remaining acceptance and scientific validation gaps, then continue the highest-priority incomplete task. |
+| **Current phase** | Post-phase audit - scientific validation limitations and release readiness |
+| **Current task** | [-] Audit and address redocking scientific-validation gaps without changing the frozen pilot protocol silently.7. |
+| **Next task** | Diagnose 3ERT/1M17 Meeko receptor compatibility failures and the 5NIU pose-recovery miss; any new preparation protocol must be explicit, reviewed, and separately validated. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -359,7 +359,7 @@ When the user says **CONTINUE**:
   - [x] Render HTML, JSON, CSV and PDF; assert docking available, MD not_run and interpretation disclaimer.
   - [x] Real engine-backed demo passed in 166.85 s; report scope and redocking limitation documented in docs/validation/G-REPORT-1.md.
 
-## Phase 13 — API + UI [-] (13.7 multi-form gate complete; phase closeout audit remains)
+## Phase 13 — API + UI [x]
 
 - [x] 13.7 Runtime stage composition
   - [x] Add homogeneous ContractBatch and versioned CompoundFormSet, retaining enumeration policy, selection, candidate count, and parent identity.
@@ -662,9 +662,9 @@ When the user says **CONTINUE**:
 
 - [x] Phase 13.5 closeout: authenticated dashboard aggregates project metrics and the newest task-associated, normalized ADMET/docking/MD/trajectory-analysis/binding-energy/QM results from the versioned cache. Contract summaries retain source task provenance, identities, methods, units, uncertainties/warnings and scientific limitations; no composite candidate score is invented. Dashboard API test verifies normalized ADMET value/unit/method and project isolation. Full gate: 550 passed, 33 skipped; Ruff, format, strict mypy (176 files), import-linter and schemas pass. API schema check, TypeScript check and production frontend build pass.
 - [x] Phase 13.6 browser gate: Playwright Chromium walkthrough passes in 21.0 s. This environment lacked system `libasound.so.2`; loaded the official Ubuntu package into a per-user cache and supplied it with `LD_LIBRARY_PATH`, leaving the OS package database and repository clean. Corrected the dashboard compound metric locator to match its label/value markup. The UI evidence card was exercised only with a clearly labeled network fixture, never a fabricated scientific result.
-- [-] Phase 14.1 coverage hardening: baseline was 550 passed, 33 skipped; after focused, no-engine adapter tests, latest full coverage run is 598 passed, 33 skipped. Current statement coverage: core (excluding adapters) 86.67% / 8,474 statements; adapters 68.69% / 5,325; isolated workers 32.99% / 3,598. Core meets ≥85%; adapter target is not yet met. Added a missing-artifact `ArtifactStore.verify()` regression and made missing CAS blobs return `False` for the advertised boolean check. Detailed baseline/progress and family figures are in `docs/testing/COVERAGE_BASELINE.md`; do not enforce the adapter floor or exclude entire families until genuine coverage reaches 70%.
+- [x] Historical Phase 14.1 coverage baseline (superseded by the completed 70.95% adapter / 86.68% core gate): baseline was 550 passed, 33 skipped; after focused, no-engine adapter tests, latest full coverage run is 598 passed, 33 skipped. Current statement coverage: core (excluding adapters) 86.67% / 8,474 statements; adapters 68.69% / 5,325; isolated workers 32.99% / 3,598. Core meets ≥85%; adapter target is not yet met. Added a missing-artifact `ArtifactStore.verify()` regression and made missing CAS blobs return `False` for the advertised boolean check. Detailed baseline/progress and family figures are in `docs/testing/COVERAGE_BASELINE.md`; do not enforce the adapter floor or exclude entire families until genuine coverage reaches 70%.
 
-- [-] Phase 14.1 update: added 18 deterministic AutoDock4 handler validation cases for ligand/target lineage, coordinate-frame citations, PDBQT atom types, torsion records, and ligand coordinate parsing. Full suite: 598 passed, 33 skipped; coverage is core 86.67%, adapters 68.79%, workers 32.99%. Added malformed-SDF and invalid-form normalization rejection cases. AutoDock4 handler statement coverage is 43%; the docking family is 53.40%, and adapter target is now exceeded by 0.95 percentage points. Full scripts/check.sh passes Ruff, formatting, strict mypy (176 files), import contracts (4 kept), schema freshness, and 630 passing tests (33 skipped).
+- [x] Historical Phase 14.1 update (superseded by the completed coverage gate below): added 18 deterministic AutoDock4 handler validation cases for ligand/target lineage, coordinate-frame citations, PDBQT atom types, torsion records, and ligand coordinate parsing. Full suite: 598 passed, 33 skipped; coverage is core 86.67%, adapters 68.79%, workers 32.99%. Added malformed-SDF and invalid-form normalization rejection cases. AutoDock4 handler statement coverage is 43%; the docking family is 53.40%, and adapter target is now exceeded by 0.95 percentage points. Full scripts/check.sh passes Ruff, formatting, strict mypy (176 files), import contracts (4 kept), schema freshness, and 630 passing tests (33 skipped).
 
 - [x] Phase 14.2 hosted CI gate verified on commit cc77389: Ruff, format, strict mypy (176 files), import contracts (4 kept), schema check, 590 tests, and core coverage 86.67% passed. Headless PyVista rendering runs under Xvfb with Mesa software rendering.
 - [x] Phase 14.4 added Hypothesis properties for numeric comparator and boolean logic equivalence in workflow gates plus generated AutoDock4 DLG score parsing; the full suite passes.
@@ -705,14 +705,14 @@ When the user says **CONTINUE**:
 - [x] Added discovered PDBFixer preparation and blind whole-protein site stages to the published YAML template, with explicit editable chain/pH values and placeholder executable paths. Focused compiler test: 4 passed.
 - [x] Full `scripts/check.sh` passed after refreshing stale editable entry-point metadata in the isolated `caddsuite` environment: 689 passed, 34 skipped; Ruff, formatting, strict mypy (192 source files), import contracts and schemas pass.
 - [x] Executed ADMET, protonation, configurable gate, embedding, PDBFixer preparation, blind-site construction, Vina docking, and reporting under one compiled `LocalWorkflowRuntime` run. A successful run establishes runtime composition only; the broad blind box and ethanol ligand are not scientific validation.
-- [ ] Continue with production runtime composition for MD trajectory analysis, MM/GBSA, and QM.
+- [x] Superseded by the production-composed GROMACS trajectory → MDAnalysis/MM/GBSA → PySCF → report workflow in G-WORKFLOW-2.
 
 ### Session log - 2026-09-28, full workflow composition
 
 - [x] Added explicit PDBFixer and blind-site preparation stages, plus full Vina engine parameters, to the portable example. Compiler regression now checks their contracts/dependencies and required Vina settings.
 - [x] Ran the discovered eight-stage workflow against pinned 5NIU and ethanol. All eight tasks succeeded, Vina ran, and report JSON/HTML/CSV artifacts were retained with CAS hashes under /home/sridhar/caddsuite-workflow-evidence-20260928. Detailed scope is in docs/validation/G-WORKFLOW-1.md.
 - [x] Repository gate: Ruff, format, strict mypy (192 files), import contracts, schemas, and 689 tests passed; 34 environment/data-gated tests skipped.
-- [ ] Next: production-discovered runtime composition for MD trajectory analysis/MMGBSA and QM; the workflow plumbing smoke is not scientific validation.
+- [x] Superseded by the production-composed G-WORKFLOW-2 scheduler workflow; its limits are documented and it is not presented as scientific validation.
 
 ### Session log - 2026-09-28, production capability audit
 
@@ -721,7 +721,7 @@ When the user says **CONTINUE**:
 - [x] Added production-discovered GROMACS trajectory-processing and MDAnalysis trajectory-analysis handlers. Processing consumes typed topology/segments/time metadata, hash-verifies staging inputs (including .ndx index paths), executes adapter plans via shared shell-free runtime, and normalizes/registers outputs. Analysis consumes explicit analysis request plus processing result, preserving the existing metrics adapter validation and normalized contract.
 - [x] Added shared planned-stage execution with confined working directories/output paths, shell-free argv execution, timeout/nonzero handling, CAS registration, and provenance recording; unit tests cover missing/escaping outputs and failed commands.
 - [x] Full scripts/check.sh: Ruff, format (329 files), strict mypy (195 source files), import-linter (254 files), schemas, and 699 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
-- [ ] Real handler-level trajectory processing to MDAnalysis run remains unverified: current environment lacks the configured MDAnalysis runtime and archived trajectory fixture. This is a validation requirement, not evidence that analysis succeeded.
+- [x] Superseded: real MDAnalysis/GROMACS handler runs passed on the PPARG trajectory and are recorded in G-TJ-1 and G-WORKFLOW-2.
 - [x] Added discovered binding_energy/gmx_mmpbsa stage using the existing adapter and strict reviewed-profile validation. It hash-verifies/stages all declared source artifacts, retains native reports and logs, and normalizes BindingEnergyResult. Focused stage/adapter tests: 14 passed.
 - [x] Full scripts/check.sh after both trajectory and MM/GBSA registrations: Ruff, format (331 files), strict mypy (196 source files), import-linter (255 files), schemas, and 705 passed / 35 skipped. Two existing Starlette/httpx deprecation warnings remain.
 - [x] Report stage now accepts typed MDStageResult, TrajectoryAnalysisResult, BindingEnergyResult, QMCalculation, and QMResult inputs. It preserves normalized payloads and exposes explicit method, parameter, RMSD/RMSF, MM/GBSA, HOMO/LUMO/gap, dipole, and MEP sections when evidence exists. Rendered JSON regression verifies MM/GBSA and QM values and identity linkage.
@@ -747,7 +747,7 @@ When the user says **CONTINUE**:
 - [x] Preserved the existing trajectory.analyze capability and fully bound TrajectoryAnalysisRequest for compatibility.
 - [x] Added ADR-0052, architecture documentation, generated JSON Schema, unit validation, and a compiled process → analyze workflow test.
 - [x] Updated the real-data PPARG integration test to exercise plan binding; it passed with the existing GROMACS/MDAnalysis environments. Full scripts/check.sh: 708 passed, 36 skipped; Ruff, formatting, strict mypy, import contracts, and schema checks pass.
-- [-] Next: inspect and implement equivalent runtime artifact binding for BindingEnergyRequest, then execute a scheduler-level MD analysis → MM/GBSA → QM/report workflow with accurate identities and avoid treating geometric or short-sample evidence as experimental validation.
+- [x] Superseded: BindingEnergyPlan runtime binding and scheduler composition through MD analysis, MM/GBSA, QM, and report are complete (ADR-0053/54/59; G-WORKFLOW-2).
 
 ### Session log - 2026-09-28, scheduler-composed MM/GBSA
 
@@ -757,7 +757,7 @@ When the user says **CONTINUE**:
 - [x] Kept the shared binding-energy plan engine-neutral: topology/reference/trajectory roles are mapped to private stage paths by the selected adapter, with no default engine formats. The GROMACS adapter owns its path mapping and retains explicit TPR/XTC, topology, and force-field compatibility checks.
 - [x] Real scheduler workflow integration passed on the PPARG/ergosterol dataset: GROMACS preprocessing plus gmx_MMPBSA on 11 frames; outputs and logs hash-verified in CAS, source hashes unchanged. Total opt-in test runtime 43.76 s. This verifies workflow/runtime integration, not affinity accuracy or adequate sampling.
 - [x] Quality gate after this refactor: 709 passed, 36 skipped; Ruff, format, strict mypy (196 files), import contracts, and schemas all pass.
-- [-] Next: extend the same compiled workflow with normalized trajectory evidence, a chemically identity-linked QM calculation, and report generation; verify run/task provenance and report artifacts from scheduler outputs.
+- [x] Superseded: normalized trajectory, identity-linked QM and report composition are verified in G-WORKFLOW-2.
 
 
 ### Session log - 2026-09-28, scheduler-composed trajectory evidence
@@ -766,7 +766,7 @@ When the user says **CONTINUE**:
 - [x] Bound analysis metrics to the verified simulation identity and valid MDAnalysis selection expressions; verified normalized metric names and hash-checked all analysis/MMGBSA result and log artifacts in CAS.
 - [x] Opt-in real integration passed: 66,195 atoms, 1,001 frames (0-100 ns), stride 100 trajectory metrics; MM/GBSA used 11 frames. Runtime 44.88 s. This validates scheduler/runtime composition only, not converged affinity or experimental binding.
 - [x] Added ADR-0054 and updated G-MMPBSA validation notes.
-- [-] Next: add a scheduler-composed QM to report test using a real registered compound/form/conformer identity, then design how trajectory and binding-energy normalized results carry an explicit compound identity instead of relying on accession strings.
+- [x] Superseded: real QM/report execution and stable Compound/Form identity propagation are verified by ADR-0055 through ADR-0059 and G-WORKFLOW-2.
 
 
 ### Session log - 2026-09-28, scheduler-composed QM reporting
@@ -775,7 +775,7 @@ When the user says **CONTINUE**:
 - [x] Built an RDKit-derived registered Compound from the same ethanol SMILES as the CompoundForm; form, conformer, calculation, and report candidate accession are linked explicitly. The real QM result is paired with its calculation in the report.
 - [x] Real PySCF run passed (3.29 s); JSON and HTML report outputs were emitted and verified by CAS SHA-256. This is technical workflow validation using ethanol, not drug-discovery evidence.
 - [x] Added ADR-0055 to document the identity chain and the current accession-prefix report linkage limitation.
-- [-] Next: add explicit compound identity to QM calculation/result lineage and design equivalent stable identity linkage for MD simulation, trajectory analysis, and binding-energy contracts before claiming a complete end-to-end candidate report.
+- [x] Superseded: explicit QM and MD/trajectory/MMGBSA identities are implemented; identity-linked candidate reporting is verified in G-WORKFLOW-2.
 
 
 ### Session log - 2026-09-28, explicit QM compound identity
@@ -785,7 +785,7 @@ When the user says **CONTINUE**:
 - [x] Report generation validates explicit QM calculation-to-Compound and QM result-to-calculation identities when present, preserving legacy accession-prefix checks.
 - [x] Added report mismatch coverage and updated the real PySCF ethanol integration to carry the explicit compound_id end to end. Real PySCF/report test passed; full scripts/check.sh passed with 709 passed, 36 skipped.
 - [x] Added ADR-0056. Legacy records remain readable with missing optional IDs; MD and binding-energy identity propagation remain incomplete.
-- [-] Next: add stable compound_id linkage to MDSimulation and derived trajectory-analysis/MMGBSA plans/results, preserving older records and validating identity mismatches.
+- [x] Superseded: versioned identity linkage and mismatch tests are implemented through ADR-0057/58.
 
 
 ### Session log - 2026-09-28, explicit Compound/Form identity through MD
@@ -796,7 +796,7 @@ When the user says **CONTINUE**:
 - [x] Added integration assertions for shared simulation, Compound, and Form IDs across trajectory metrics and MM/GBSA. Real PPARG scheduler composition passed with GROMACS, MDAnalysis, and gmx_MMPBSA in 53.59 s.
 - [x] Full quality gate: 709 passed, 36 skipped; Ruff, format, strict mypy, import contracts, and schemas pass.
 - [x] Added ADR-0057. The PPARG source itself lacks a registered Compound record, so this integration proves ID propagation but not identity verification against standardized chemistry.
-- [-] Next: connect MD stage results and parameterized MDSystem to registered Compound/Form records, strengthen report-level form checks, and then exercise a unified real identity-linked MD/QM/report workflow.
+- [x] Superseded: MDSystem and stage results now carry Compound/Form identity, report validation checks linked forms, and G-WORKFLOW-2 exercises one real identity-linked MD/QM/report composition.
 
 
 ### Session log - 2026-09-28, identity through MD preparation and reporting
@@ -828,7 +828,7 @@ When the user says **CONTINUE**:
 - [x] Full no-engine repository gate: Ruff, formatting (332 files), strict mypy (196 source files), import contracts (255 files), schema freshness, and 709 passed / 36 skipped. Two upstream Starlette/httpx deprecation warnings remain.
 - [x] Added ADR-0059 and refreshed the G-MMPBSA stage note to point to the end-to-end composition evidence.
 - [x] Web gate: API schema check, TypeScript, Vite production build and Playwright Chromium E2E passed (1 browser test, 21.1 s) with the cached per-user libasound path; no system packages were changed. Mol* h264 optional Node-builtin and bundle-size warnings remain documented.
-- [x] Multi-form collection fan-out, persisted ambiguity decision, per-form RDKit conformers, real two-form Vina and PySCF stage execution, pose/run lineage rejection, and no-aggregation reporting are implemented and gated. See ADR-0060 and G-FORM-FANOUT-1. Next: audit Phase 13 closeout and remaining acceptance gaps; continue without implying experimental validation.
+- [x] Multi-form collection fan-out, persisted ambiguity decision, per-form RDKit conformers, real two-form Vina and PySCF stage execution, pose/run lineage rejection, and no-aggregation reporting are implemented and gated. See ADR-0060 and G-FORM-FANOUT-1. Phase 13 is complete as an application/runtime phase; scientific validation limitations remain explicit below.
 
 
 ### Session log - 2026-09-29, real multi-form docking and QM gate
@@ -838,4 +838,14 @@ When the user says **CONTINUE**:
 - [x] Added and passed the guard rejecting a QM pose whose DockingRun differs from the supplied run; the engine is not invoked on mismatch. Fixed a malformed PySCF remediation tuple on its validation-error path.
 - [x] Full scripts/check.sh: 723 passed, 37 skipped; Ruff, format, strict mypy (196 files), import contracts (255 files), schemas pass. Two pre-existing Starlette/httpx deprecation warnings.
 - [x] Phase 13.7 runtime composition gate complete. Validation evidence: `docs/validation/G-FORM-FANOUT-1.md`; decision: ADR-0060.
-- [-] Next: audit outstanding acceptance/scientific validation and release gates against current repository state, then continue the highest-priority incomplete item.
+- [x] Phase audit reconciled stale historical TODO entries against completed later evidence. Current highest-priority open item: scientifically reviewed redocking compatibility/pose-recovery follow-up; the fixed v1 benchmark remains a failed/limited result and no accuracy claim is made.
+
+
+## Current pending work and priority (2026-09-29)
+
+- [ ] **P0 — Scientific redocking follow-up:** investigate the documented 3ERT/1M17 Meeko receptor-preparation failures and the 5NIU top-ranked pose-recovery miss. Preserve the frozen v1 protocol/results. Do not delete/repair residues, swap preparation engines, or retune docking silently; record any alternative as a separately reviewed protocol with input hashes and per-case failures retained. See `docs/validation/G-DOCK-8.md` and `docs/validation/REDOCKING_PILOT_V1.md`.
+- [ ] **P1 — Broader scientific validation:** expand beyond the three-case compatibility pilot only after a defensible dataset and endpoint are specified; include known complexes and independently validated analysis references. Current pilot supports no general accuracy claim.
+- [ ] **P1 — Engine-enabled continuous validation:** host optional real-engine tests in isolated, licensed environments where feasible. The core gate reports optional integrations as skips; multi-form Vina and PySCF were separately executed and passed as recorded in G-FORM-FANOUT-1. Avoid bundling licensed engines.
+- [ ] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%; improve with focused failure-path tests without gaming exclusions.
+- [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
+- [ ] **P3 — Product polish:** investigate documented Mol* bundle-size and optional h264 Node builtin warnings; not a blocker for scientific core/runtime acceptance.

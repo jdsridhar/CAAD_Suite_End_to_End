@@ -26,4 +26,4 @@ The three-case pilot can expose workflow and preparation failures but is too sma
 
 ## Current state
 
-Input selection and checksums are curated. The 3ERT and 1M17 mmCIF/CCD inputs are official RCSB snapshots and are CC0 archive data. Their native-ligand mapping, receptor preparation, and real Vina runs are not complete. The current overall state is therefore in progress, with no success claim for the new cases.
+The fixed v1 execution is complete and is documented in `G-DOCK-8.md`. Native-ligand mappings and receptor preparation records exist for all three cases, but 3ERT and 1M17 fail in Meeko receptor preparation before Vina; only 5NIU reached docking, and its top pose missed the prespecified <2 Å criterion. The denominator and failures are retained. This is a completed compatibility/pose-recovery pilot with a negative outcome, not a successful accuracy benchmark. Any compatibility remediation or changed preparation protocol must be versioned and validated separately; do not rewrite these results.
