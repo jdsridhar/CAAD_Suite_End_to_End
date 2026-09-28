@@ -13,8 +13,8 @@ The first wheel build failed because `tool.hatch.build.targets.wheel.force-inclu
 - Built with the project `caddsuite` Python 3.12 environment using `pip wheel --no-deps --no-build-isolation .`.
 - Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 482,937 bytes, SHA-256 `64366524029a8497e15967e402dad5a9d21c3b577ed2573d0a1ca9fdf29ce5d9`.
 - Installed the wheel with its declared Python runtime dependencies into a fresh Python 3.14 virtual environment (no editable source path).
-- Built source archive `caddsuite-0.1.0.dev0.tar.gz`, 3,674,697 bytes, SHA-256 `acab030a80d1593a60bf087610ca531a9ec9b4ae292add1364ac5a8997d533cb`.
-- Installed the source archive into a separate fresh Python 3.14 virtual environment using isolated Hatchling build dependencies; CLI and database migration smoke checks passed. The source archive includes `LICENSE`, `NOTICE`, the dependency license inventory, and migration revision 0007.
+- Built source archive `caddsuite-0.1.0.dev0.tar.gz` (about 3.6 MB) and installed it in a separate fresh Python 3.14 virtual environment. Its transient build SHA-256 was recorded outside the source tree; the release asset checksum should be published in a separate checksum manifest so the archive does not attempt to embed its own hash.
+- Installed the source archive using isolated Hatchling build dependencies; CLI and database migration smoke checks passed. The source archive includes `LICENSE`, `NOTICE`, the dependency license inventory, and migration revision 0007.
 - `caddsuite version` ran successfully and reported `0.1.0.dev0`.
 - `caddsuite db upgrade --data-root ...` ran successfully and created database revision `0007`.
 - Inspected the wheel: it contains all seven Alembic revision modules plus the migration README and the Apache-2.0 `LICENSE` and `NOTICE` metadata files.

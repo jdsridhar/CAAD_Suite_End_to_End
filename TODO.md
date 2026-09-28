@@ -457,7 +457,7 @@ When the user says **CONTINUE**:
 - [x] 17.3 Plugin/adapter SDK guide updated to distinguish engine-port plugins, workflow stage-handler plugins, and the lower-level generic adapter shape; includes a registration example, links a working QM plugin, and documents scientific validation and safety requirements.
 - [x] 17.4 Added configuration and troubleshooting references; consolidated links to the generated OpenAPI contract, domain model, reproducibility/export/replay docs, and method-specific scientific validation records. README and architecture index link the guides. Existing config remains schema/stage-driven; engine-specific settings stay with adapters.
 
-## Phase 18 — Packaging and release `[ ]`
+## Phase 18 — Packaging and release `[-]`
 
 - [x] 18.1 Engineering license inventory covers the 198-package exact Conda core lock and 283 npm lock entries with no missing license expressions (`docs/release/licenses/`). Reviewed project Apache-2.0/NOTICE and corrected web package metadata. Distribution-specific compatibility/notices and external engine/model licenses remain user/release gates; this is not a legal opinion.
 - [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
