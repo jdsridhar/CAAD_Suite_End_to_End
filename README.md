@@ -1,8 +1,8 @@
 # CADD Suite (working name)
 
-An extensible, reproducible **computational drug-discovery platform**. It unifies previously separate docking (AutoDock Vina / AutoDock4), molecular-dynamics (GROMACS, MM/GBSA) and quantum-chemistry (Psi4) tools behind engine-independent contracts, plugin adapters, validated workflows and full provenance.
+An extensible, reproducible **computational drug-discovery platform**. It unifies previously separate docking (AutoDock Vina / AutoDock4), molecular-dynamics (GROMACS, MM/GBSA) and quantum-chemistry (Psi4) tools behind engine-independent contracts, plugin adapters, validated workflows and provenance recording.
 
-> **Status: pre-alpha (Phase 3 of 18; workflow-definition schema complete).** The architecture is designed and the domain model, contracts, validation core and storage layer are implemented and tested. No engine is wired in yet. Progress is tracked in [`TODO.md`](TODO.md).
+> **Status: pre-alpha, Phase 18 release preparation.** The platform has a layered Python core, declarative workflows, plugin discovery, normalized contracts, SQLite/artifact storage, provenance, and local execution. Real-engine paths and validations exist for Vina/AutoDock4, GROMACS/OpenMM, Psi4/PySCF, plus analysis and report components. The full user-configurable end-to-end drug-discovery pipeline, broad scientific benchmarking, packaging, and release are not complete. See [`TODO.md`](TODO.md) for exact status and known validation limits.
 
 ## Why this exists
 
@@ -40,9 +40,12 @@ Keep the repository and data on the Linux filesystem (`~/…`), not under `/mnt/
 
 ## Documentation
 
+- [Installation](docs/INSTALLATION.md) · [User guide](docs/USER_GUIDE.md) · [CLI reference](docs/CLI.md) · [Configuration](docs/CONFIGURATION.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Architecture audit](docs/ARCHITECTURE_AUDIT.md): the four legacy applications, findings and risks
 - [Architecture overview](docs/architecture/README.md): target architecture, domain model, migration plan, ADRs
-- [Developer setup](docs/dev/DEVELOPER_SETUP.md) · [Learning notes](docs/dev/LEARNING_NOTES.md)
+- [Prior-art survey](docs/architecture/PRIOR_ART_SURVEY.md): related systems, reuse decisions, and research limits
+- [Scientific methods and validation index](docs/SCIENTIFIC_METHODS.md) · [API reference](docs/api/README.md)
+- [Developer setup](docs/dev/DEVELOPER_SETUP.md) · [Plugin development](docs/dev/PLUGIN_DEVELOPMENT.md) · [Learning notes](docs/dev/LEARNING_NOTES.md)
 
 ## License
 

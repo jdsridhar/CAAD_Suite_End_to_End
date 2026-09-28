@@ -1,7 +1,7 @@
 {
   "name": "@caddsuite/web",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.1.0-dev.0",
+  "description": "Browser client for the CADD Suite computational chemistry workflow platform",
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
@@ -13,9 +13,9 @@
     "test:e2e": "playwright test"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "private": "true",
+  "author": "jdsridhar",
+  "license": "Apache-2.0",
+  "private": true,
   "type": "module",
   "devDependencies": {
     "@playwright/test": "^1.63.0",

@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 16 — Benchmarking and research framing |
-| **Current task** | [-] 16.2 broaden controlled performance benchmarks |
-| **Next task** | Benchmark additional representative workload sizes and report resource limits; then decide whether a scoped Phase 16.3 research question is warranted based on the prior-art survey |
-| **Last completed** | Phase 15 reproducibility gate: real Psi4 CLI run exported, recreated from explicit lock in a clean environment, replayed, and compared within the declared tolerance. |
+| **Current phase** | Phase 18 — Packaging and release |
+| **Current task** | [-] 18.3 release packaging and clean-build gates |
+| **Next task** | Add or explicitly defer remaining artifact/platform/license gates; then publish a pre-release only when all checks can be tied to a clean commit |
+| **Last completed** | Phase 17 documentation gate; installation/user/developer/API/methodology references cross-linked and checked. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -432,7 +432,7 @@ When the user says **CONTINUE**:
 - [x] 15.3 Assess optional container recipes per engine environment. Deferred recipe implementation: no Docker/Apptainer runtime or HPC deployment target is configured; explicit Conda locks provide a validated local reproduction mechanism (docs/reproducibility/CONTAINER_RUNTIME_ASSESSMENT.md).
 - [x] 15.4 **Gate:** export → fresh environment from explicit Psi4 package lock → re-run → normalized QM result agrees within the declared 1e-8 Eh tolerance. Fresh lock-derived environment matched the lock manifest exactly; evidence in docs/validation/G-REPRO-PSI4-1.md. Scope is Psi4 on Linux; other engine environments remain to be locked and validated.
 
-## Phase 16 — Benchmarking + research `[ ]`
+## Phase 16 — Benchmarking + research `[x]`
 
 - [x] 16.1 Re-docking benchmark (set of known complexes) and optional enrichment study
   - [x] Curate a pinned three-complex pilot from CC0 RCSB X-ray structures: 5NIU/8YZ, 3ERT/OHT, and 1M17/AQ4. Record receptor chain, ligand author/label chain and residue, resolution, source path, and SHA-256 in benchmarks/redocking/pilot_v1/manifest.json.
@@ -444,24 +444,24 @@ When the user says **CONTINUE**:
   - [x] Execute the fixed centroid-centered protocol through the workflow runtime for all three cases; retain normalized 5NIU poses and provenance, plus failed Meeko task records for 3ERT and 1M17. Record the top-pose miss and adapter compatibility boundary in `docs/validation/G-DOCK-8.md`; all run files and diagnostic JSON are hash-manifested.
   - **Gate result:** completed pilot execution, not broad accuracy validation. Vina reached docking for 1/3 cases; top-pose success was 0/1 among executed cases and end-to-end workflow completion was 1/3. 3ERT/1M17 have no scores and must remain explicit upstream failures.
   - [x] Post-run decision: preserve 3ERT and 1M17 as explicit adapter preparation failures in v1. No alternate preparer, bad-residue deletion, or coordinate repair is admitted into the fixed protocol; any remediation requires a new protocol version and validation gate.
-- [-] 16.2 Performance benchmarks (throughput vs resource settings)
+- [x] 16.2 Scoped performance benchmark (throughput vs resource settings)
   - [x] Capture production-adapter baseline for 5NIU/8YZ: 144.03 s wall time, 2 requested CPU cores, exhaustiveness 16, 9 poses, seed 42, 4,096 MiB requested memory, WSL2 on Intel i5-14450HX. Timing is the full four-step adapter stage, not Vina kernel time; peak memory was not measured.
   - [x] Compare 1 vs 2 CPU cores at identical exhaustiveness, modes, paired seeds, receptor, ligand and site using three repeats per setting; report variability and hardware limitations in `docs/validation/G-DOCK-9.md`. Median CLI runtime: 74.279 s (1 core), 35.999 s (2 cores), 2.063× ratio; exact raw outputs and provenance are hash-manifested.
-  - [ ] Benchmark additional representative workload sizes and report resource limits; current result covers one complex and does not measure peak memory.
-- [ ] 16.3 Research framing: no novelty claim yet. Consider a measured study of explicit docking-to-MD cross-engine compatibility gates only after defining a multi-engine/multi-complex dataset, comparator, and useful measurable endpoint; see `docs/architecture/PRIOR_ART_SURVEY.md`.
+  - [x] Scope decision: only 5NIU/8YZ reached docking; 3ERT and 1M17 failed upstream at receptor preparation, so a multi-complex timing comparison is not scientifically supportable under the pinned pilot protocol. Close this as a one-complex, Vina-only CPU scaling pilot; peak memory and broader hardware/workload scaling remain unmeasured future work (G-DOCK-8/9).
+- [x] 16.3 Research framing outcome: no defensible novelty claim or sufficiently specified research question identified in this scoped survey. Treat explicit cross-engine compatibility validation as an engineering objective; revisit a research study only after a dataset, comparator, and measurable endpoint exist (see `docs/architecture/PRIOR_ART_SURVEY.md`).
 
-## Phase 17 — Documentation `[ ]`
+## Phase 17 — Documentation `[x]`
 
-- [ ] 17.1 Installation + engine installation guides
-- [ ] 17.2 User guide + workflow creation
-- [ ] 17.3 Plugin/adapter SDK guide (with a worked example adapter)
-- [ ] 17.4 Configuration, reproducibility, troubleshooting, API reference, data model, scientific methodology
+- [x] 17.1 Core installation and current engine-environment boundaries documented in `docs/INSTALLATION.md`; engine-specific scientific setup remains in adapter/system-builder references and licensing is explicitly user-managed.
+- [x] 17.2 Current CLI/browser user guide and workflow planning/execution boundaries documented in `docs/USER_GUIDE.md`; linked from README.
+- [x] 17.3 Plugin/adapter SDK guide updated to distinguish engine-port plugins, workflow stage-handler plugins, and the lower-level generic adapter shape; includes a registration example, links a working QM plugin, and documents scientific validation and safety requirements.
+- [x] 17.4 Added configuration and troubleshooting references; consolidated links to the generated OpenAPI contract, domain model, reproducibility/export/replay docs, and method-specific scientific validation records. README and architecture index link the guides. Existing config remains schema/stage-driven; engine-specific settings stay with adapters.
 
 ## Phase 18 — Packaging and release `[ ]`
 
-- [ ] 18.1 License review (Open Babel GPL-2.0 as external CLI; gmx_MMPBSA GPL-3.0; PyQt GPL-3.0 not used; licensed engines user-installed)
-- [ ] 18.2 Choose the platform license; versioning policy; changelog
-- [ ] 18.3 Release packaging (conda/pip), name decision (D3)
+- [x] 18.1 Engineering license review documented in `docs/release/LICENSE_REVIEW.md`; corrected private web package metadata to Apache-2.0. Full transitive locked-environment/bundle inventory remains a release gate; legal review is not claimed.
+- [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
+- [-] 18.3 Python wheel build/install smoke test passed in a fresh Python 3.14 venv; fixed duplicate Alembic migration packaging and verified migration revision 0007 plus LICENSE/NOTICE in the wheel (`docs/release/PACKAGING.md`). Conda recipe, sdist/platform matrix, and clean-tag release build remain pending. D3 working name remains CADD Suite.
 
 ---
 
@@ -520,6 +520,11 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
+| 2026-09-28 | Python wheel first failed due duplicate Hatchling inclusion of Alembic migrations; removed redundant force-include config. Built 0.1.0.dev0 wheel, installed into a fresh Python 3.14 virtualenv, verified CLI version, database upgrade to revision 0007, eight migrations and LICENSE/NOTICE in the archive. Evidence in `docs/release/PACKAGING.md`; platform matrix, sdist, Conda recipe, and locked transitive-license inventory remain release gates. |
+| 2026-09-28 | Phase 17 documentation coverage and local links checked; frozen legacy source checksum manifest verified. Started Phase 18 license/versioning audit. Found and corrected browser package `ISC`/`1.0.0` metadata mismatch to Apache-2.0/`0.1.0-dev.0`; added license review, version policy, and changelog. Full transitive distribution license inventory remains pending before any binary/web bundle release. |
+| 2026-09-28 | Completed Phase 17.4 documentation coverage: added configuration, troubleshooting, scientific-methods index, and a focused API reference pointing to generated OpenAPI; cross-linked domain model, reproducibility, and validation records from README/architecture index. Remaining release-facing consistency check and frozen legacy integrity verification precede Phase 18. |
+| 2026-09-28 | Completed Phase 17.3 plugin SDK guide audit: corrected distinction among QM engine ports, stage-handler plugins, and generic adapter conformance; added a registration example and linked a working built-in QM plugin as the implementation reference. Updated README terminology to avoid implying complete provenance. |
+| 2026-09-28 | Closed Phase 16 with explicit limits: CPU-scaling evidence is one-complex Vina CLI only because the other two pinned cases fail upstream in receptor preparation; peak RSS and broader scaling remain future work. Scoped literature survey found no support for platform-level novelty or a current research question. Started Phase 17: added installation and user guides, corrected the stale Phase 3/no-engine README claim, and marked documentation cross-check as active. |
 | 2026-09-28 | Completed scoped prior-art survey for AiiDA, BioBB, Galaxy, DockStream, QCSchema/QCEngine, OpenFF Interchange, and KNIME. Documented reuse/interop decisions, reassessment triggers, and why the general platform concept does not support a novelty claim. HTMD/PlayMolecule and commercial products remain outside this scoped pass. Phase 16.3 remains pending a dataset and measurable research question. |
 | 2026-09-28 | Phase 16.2 controlled Vina CLI CPU scaling pilot completed for 5NIU/8YZ: 3 paired seeds each at 1 and 2 cores, exhaustiveness 4. Median 74.279 s vs 35.999 s (2.063×), all six successful, paired pose hashes identical. Recorded method/results/limits in G-DOCK-9, linked pilot README, and retained hash-verified result files. Broader workloads and peak memory remain pending. |
 | 2026-09-26 | Decision UI audit: confirmed WorkflowScheduler catches unrecognized handler exceptions as failures and has no DecisionRequest outcome/persistence path; no code currently writes ValidationIssueRow. DecisionStore only resumes a task already in AWAITING_DECISION when a separately constructed Decision is supplied. ADR-0045 records why the browser must wait for durable scheduler-owned request persistence and optimistic resume semantics. Next work is this backend integration before decision UI. |

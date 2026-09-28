@@ -68,8 +68,6 @@ path = "src/caddsuite/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/caddsuite", "src/caddsuite_worker"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/caddsuite/storage/migrations" = "caddsuite/storage/migrations"
 
 # ----------------------------------------------------------------------------- pytest
 [tool.pytest.ini_options]

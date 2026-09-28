@@ -123,3 +123,10 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0047: Durable workflow decision pause and resume](ADR/0047-durable-workflow-decision-pause-and-resume.md)
 
 - [0048](ADR/0048-authenticated-molstar-artifact-previews.md) | Authenticated Mol* previews over project-scoped artifacts | Accepted
+
+
+## User and developer references
+
+- [Installation](../INSTALLATION.md) · [User guide](../USER_GUIDE.md) · [Configuration](../CONFIGURATION.md) · [Troubleshooting](../TROUBLESHOOTING.md)
+- [API reference](../api/README.md) · [Scientific methods and validation index](../SCIENTIFIC_METHODS.md)
+- [Prior-art survey](PRIOR_ART_SURVEY.md)

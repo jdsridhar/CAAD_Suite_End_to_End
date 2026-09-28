@@ -1,23 +1,80 @@
-# Stage-handler plugin development
+# Plugin and adapter development
 
-The application discovers trusted Python entry points from the caddsuite.stage_handlers group. A plugin factory takes no arguments and returns a StageHandlerPlugin with a stable plugin_id, plugin version, and registrations() method.
+CADD Suite has two related extension boundaries. Choose the narrowest one that fits the engine:
 
-Each registration pairs a StageCapability with a factory that receives a StageDefinition and LocalRuntimeServices. StageCapability declares the stage kind, optional engine, normalized input/output contracts, and fan-out scope. The workflow compiler validates the graph against those capabilities before the application constructs handlers. If a kind has multiple registered engines, the workflow must select one explicitly.
+1. **Engine port plugin** implements a scientific-family interface such as `QMEngine`; it owns engine-specific input preparation, execution and parsing.
+2. **Workflow stage-handler plugin** registers a `(stage kind, engine)` capability and builds a scheduler-facing `StageHandler`. It connects normalized contracts and the scientific engine port to workflow runtime services.
+3. **Generic StageAdapter** (`caddsuite.adapters` registry) is a lower-level validate/plan/normalize shape. It is not the same as the application stage-handler entry point, and the current application execution path discovers stage handlers.
 
-LocalRuntimeServices provides the Linux data root, runs directory, SQLAlchemy session factory, content-addressed artifact store, and shared LocalExecutor. A scientific handler owns its input validation, engine-specific preparation, command plan, result normalization, and engine-version report. The application owns common persistence, artifact storage and workflow execution.
+Installed entry points import trusted Python code into the application process. Review plugin code and dependencies before installing them into the core environment.
 
-A handler must expose adapter_id, adapter_version, engine_version, subject_key(), artifact_hashes(), gate_context(), and execute(). The registry checks this scheduler-facing shape at construction. A worker environment or resource request should be supplied through the runtime resolvers when the factory can identify it; do not report the application environment as the scientific engine environment.
+## Existing engine port: QM example
 
-## Optional engine readiness probes
+The built-in QM stage plugin is the working reference for connecting multiple engines through one family port. Read [`qm_stage_plugin.py`](../../src/caddsuite/application/qm_stage_plugin.py), [`qm_engines.py`](../../src/caddsuite/plugins/qm_engines.py), and the [QM adapter guide](../architecture/QM_APPLICATION_RUNTIME.md). Psi4 and PySCF are discovered from the `caddsuite.qm_engines` entry-point group, converted into capability registrations, and constructed using the selected engine ID. The workflow compiler consumes the declared `quantum_chemistry` contracts and does not branch on the engine implementation.
 
-A `StageHandlerRegistration` may include a `preflight(stage)` callback returning an `EnginePreflightResult`. Use it to validate configured executable paths, import the intended engine environment, and report an engine version without performing scientific calculations. Return `status="available"`, `"unavailable"`, or `"unknown"`, with a concise reason and JSON-safe details. Keep checks bounded with strict timeouts. If readiness cannot be established safely, return `unknown` or omit the callback; do not guess.
+To add another compatible molecular QM engine:
 
-A callback must use a fixed argument vector and `shell=False`; validate paths and parameters before probing. `caddsuite reproduce PACKAGE` never invokes package-configured executables by default. The explicit `--probe-engines` option opts into those adapter callbacks, so users should only probe packages from trusted sources. A probe establishes software availability/version only; it does not verify licensing, scientific correctness, or full reproducibility.
+1. Implement the existing QM engine protocol, including input validation/preparation, safe command plan or isolated worker invocation, result parsing, and an explicit `probe` result.
+2. Normalize results into the existing `QMResult` contract; preserve raw input/output and provenance through the handler path.
+3. Register the factory under `caddsuite.qm_engines` in the plugin package metadata.
+4. Add capability tests, parser fixtures, failure/convergence tests, and a small real-engine validation when the software is available.
+5. Verify discovery and workflow compilation with no core workflow changes. If the engine's model cannot be represented by the current contract (for example periodic calculations vs molecular calculation), define a distinct capability/contract rather than squeezing it into an incompatible shape.
 
-Package metadata declares the entry point under the caddsuite.stage_handlers group, with a key naming the plugin and a value pointing to its no-argument factory. Plugins are trusted Python code loaded into the application process. Do not install unreviewed plugins into a project environment. Executable calls must use LocalExecutor with argv lists and validated paths, and should not build shell command strings.
+This is the preferred route when a family port already matches the scientific method. It keeps engine-specific details out of workflow scheduling.
 
-Built-in Vina, MD (GROMACS/OpenMM), and QM (Psi4/PySCF) stage-handler entry points are registered. The CLI can execute workflows through the local worker/runtime path. Adapter readiness callbacks are optional and are exercised by explicit preflight tests; see TODO.md for the remaining replay and validation gates.
+## New workflow stage family
 
-## Human decisions during a workflow
+For a genuinely new stage kind, implement a trusted `StageHandlerPlugin` and register it in the `caddsuite.stage_handlers` entry-point group. A registration consists of a `StageCapability`, a factory accepting `StageDefinition` and `LocalRuntimeServices`, and an optional bounded, non-calculating preflight callback. The capability must enumerate exact versioned input/output contract IDs and valid fan-out scopes.
 
-A handler that reaches a genuine decision point should raise `DecisionRequired` with a `DecisionRequest` before performing work that depends on the choice. The scheduler stores the request and pauses the task and run. After the user resolves it, the same run is queued again and the handler receives the stored decision in `TaskInvocation.decisions`, keyed by request issue ID. The handler must validate and honor that option; replay does not mean the stage can guess. Keep requests task-scoped and include enough context for an informed scientific decision. See ADR-0047 for the transaction and resume contract.
+A concise registration follows the same shape as the built-in plugins:
+
+```python
+class ExamplePlugin:
+    plugin_id = "org.example.example-stage"
+    version = "0.1.0"
+
+    def registrations(self):
+        capability = StageCapability(
+            kind="example_analysis",
+            engine="example_engine",
+            inputs=(CapabilityInput(name="structure", contracts=(Structure.schema_id(),)),),
+            outputs=(ExampleResult.schema_id(),),
+        )
+        return (StageHandlerRegistration(capability, self._build),)
+
+    def _build(self, stage, services):
+        return ExampleStageHandler(stage=stage, services=services)
+
+
+def plugin_factory():
+    return ExamplePlugin()
+```
+
+Imports and the concrete handler are intentionally omitted: input types, immutable result contracts, command plans, and error semantics differ by scientific family. Use the full [QM stage plugin](../../src/caddsuite/application/qm_stage_plugin.py) as a working implementation, and [stage handler interfaces](../../src/caddsuite/application/handlers.py) for exact signatures.
+
+Declare the entry point in the plugin distribution's `pyproject.toml`:
+
+```toml
+[project.entry-points."caddsuite.stage_handlers"]
+example = "my_cadd_plugin:plugin_factory"
+```
+
+The handler implements the scheduler protocol: stable adapter ID/version, engine version, `subject_key`, `artifact_hashes`, `gate_context`, and `execute`. Use `LocalRuntimeServices` and `LocalExecutor` for process execution and artifact registration. Pass argument vectors; never build shell command strings or use `shell=True`. Never fabricate a successful result after an engine error.
+
+## Capability and scientific compatibility
+
+Capabilities are planning declarations, not proof of scientific interchangeability. `validate_input`/preflight must reject unsupported formats, missing atom/bond information, invalid parameter combinations, force-field incompatibilities, and unavailable executables with actionable structured issues. Do not silently repair or drop scientifically meaningful atoms. Ask for a `DecisionRequest` when a consequential choice cannot be derived from declared policy.
+
+Do not claim every docking pose is ready for every MD engine. Complex preparation, protonation, ligand parameterization, water/ion models, topology format, and engine requirements must be validated at the transition boundary. Persist the selected methods and source artifact hashes.
+
+## Test and validate a plugin
+
+- Unit-test parameter validation and command planning without launching the engine.
+- Test normalization against immutable captured raw-output fixtures and assert the versioned output contract.
+- Test nonzero exit, timeout, missing executable, malformed output, convergence failure, and partial artifacts.
+- Test entry-point discovery, unique plugin/capability registration, and workflow compilation.
+- Add a small engine-marked scientific integration. It should skip when the external engine is unavailable and must not substitute fake scientific results.
+- Compare key outputs against a known reference or trusted implementation where scientifically meaningful.
+- Run `bash scripts/check.sh`; run `bash scripts/check-web.sh` if API schemas or browser integrations changed.
+
+The generic registry and scheduler tests verify architecture behavior. They do not certify scientific correctness. Review the relevant family adapter documentation and validation records before describing support.
