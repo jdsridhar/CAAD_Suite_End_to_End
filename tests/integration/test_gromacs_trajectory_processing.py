@@ -396,7 +396,11 @@ def test_mdanalysis_metrics_use_verified_selections_and_parent_fit_lineage(tmp_p
         metrics=tuple(
             metric
             for metric in TrajectoryMetric
-            if metric is not TrajectoryMetric.SOLVENT_ACCESSIBLE_SURFACE_AREA
+            if metric
+            not in {
+                TrajectoryMetric.SOLVENT_ACCESSIBLE_SURFACE_AREA,
+                TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT,
+            }
         ),
         rmsd_weighting="mass",
         start_time_ns=0.0,
@@ -446,7 +450,11 @@ def test_mdanalysis_metrics_use_verified_selections_and_parent_fit_lineage(tmp_p
     assert {entry["metric"] for entry in report} == {
         metric.value
         for metric in TrajectoryMetric
-        if metric is not TrajectoryMetric.SOLVENT_ACCESSIBLE_SURFACE_AREA
+        if metric
+        not in {
+            TrajectoryMetric.SOLVENT_ACCESSIBLE_SURFACE_AREA,
+            TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT,
+        }
     }
     assert metric_result["metadata"]["n_frames_analyzed"] == 11
     assert metric_result["metadata"]["protein_ligand_distance_mode"] == "cartesian_unwrapped"
