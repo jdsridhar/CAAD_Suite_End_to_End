@@ -797,3 +797,11 @@ When the user says **CONTINUE**:
 - [x] Real PySCF -> report integration passed with Compound and CompoundForm inputs. Real PPARG GROMACS -> MDAnalysis/MMGBSA scheduler workflow passed with linked IDs in 54.25 s.
 - [x] Added ADR-0058. The PPARG test identifiers verify linkage consistency but do not certify the archived ligand against a standardized Compound structure.
 - [-] Next: construct one integrated candidate workflow with a genuinely registered ligand structure/Form feeding both MD and QM, and verify that all reports consume those exact normalized identities; then continue outstanding Phase 13-18 tasks.
+
+### Session log - 2026-09-28, PPARG ligand identity audit
+
+- [x] Investigated the apparent ergosterol ligand against the actual CHARMM-GUI topology and prepared PDB, not the directory label alone.
+- [x] Identified the ligand formula as C28H44O3 (ergosterol peroxide); topology heavy-atom connectivity is isomorphic to the PubChem CID 102004971 3D reference when bond order is ignored.
+- [x] Transferred coordinates by graph mapping and compared 10 PDB-derived stereocentres; all CIP labels match the PubChem 3D record. Recorded source URLs, hashes, method, and scientific limits in docs/validation/G-LIGAND-IDENTITY-1.md.
+- [x] Confirmed source PDB/topology were read-only. Existing CGenFF penalty 190.7 and unsupported peroxide limitation remains unresolved and must be shown in reports.
+- [-] Next: use this verified molecular identity and a hash-registered structure artifact to compose the actual scheduler MD trajectory/MMGBSA and QM stages into one report workflow; do not imply the legacy parameterization is scientifically validated.
