@@ -1,5 +1,6 @@
 {
   "binding_energy": "binding_energy/1.2",
+  "binding_energy_plan": "binding_energy_plan/1.0",
   "binding_energy_request": "binding_energy_request/1.1",
   "binding_site": "binding_site/1.0",
   "candidate": "candidate/1.0",

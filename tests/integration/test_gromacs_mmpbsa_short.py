@@ -7,9 +7,9 @@ import json
 import os
 import shutil
 import subprocess
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
 
@@ -18,9 +18,17 @@ from caddsuite.adapters.binding_energy.gmx_mmpbsa import (
     GromacsMMPBSAParameters,
 )
 from caddsuite.adapters.binding_energy.gmx_mmpbsa_results import parse_gmx_mmpbsa_results
-from caddsuite.application.binding_energy_stage_plugin import GromacsMMPBSAStagePlugin
+from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.runtime import LocalWorkflowRuntime
-from caddsuite.contracts.analysis import BindingEnergyMethod, BindingEnergyRequest, FrameSelection
+from caddsuite.contracts.analysis import (
+    BindingEnergyMethod,
+    BindingEnergyPlan,
+    BindingEnergyRequest,
+    FrameSelection,
+    TrajectoryProcessingRequest,
+    TrajectorySegmentInput,
+    TrajectoryTransform,
+)
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.md import (
     AtomSelection,
@@ -38,8 +46,9 @@ from caddsuite.contracts.md import (
 )
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
-from caddsuite.workflow.definition import StageDefinition
-from caddsuite.workflow.scheduler import TaskInvocation
+from caddsuite.storage.artifacts import register_blob
+from caddsuite.storage.models import ProjectRow, WorkflowRunRow
+from caddsuite.workflow.definition import WorkflowDefinition
 
 DATA_ROOT = os.environ.get("CADDSUITE_MDSUITE_DATA")
 STAGE_DATA_ROOT = os.environ.get("CADDSUITE_GMX_MMPBSA_STAGE_DATA")
@@ -424,43 +433,156 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
     source_paths = tuple(source / relative for relative in request.source_artifacts)
     source_hashes = {path: _sha256(path) for path in source_paths}
 
+    processing_request = TrajectoryProcessingRequest(
+        id=new_ulid(),
+        simulation_id=request.simulation.id,
+        topology=request.trajectory.topology,
+        topology_format=request.topology_format,
+        topology_has_connectivity=True,
+        trajectory_format=request.trajectory_format,
+        expected_atom_count=request.system.n_atoms,
+        segments=(
+            TrajectorySegmentInput(
+                artifact=request.trajectory_artifact,
+                output_start_time_ps=request.trajectory.time_range_ns[0] * 1000.0,
+                n_frames=request.trajectory.n_frames,
+                frame_interval_ps=request.trajectory.frame_interval_ps,
+            ),
+        ),
+        transforms=(TrajectoryTransform.MAKE_MOLECULES_WHOLE,),
+    )
+    protein_index = request.system.selections["protein"].indices
+    assert protein_index is not None
+    static_sources = {
+        path: artifact
+        for path, artifact in request.source_artifacts.items()
+        if path not in {"step5_1.tpr", "step5_1.gro", "analysis/combined_fit.xtc"}
+    }
+    energy_plan = BindingEnergyPlan(
+        id=new_ulid(),
+        trajectory_id=new_ulid(),
+        accession=request.accession,
+        system=request.system,
+        parameterization=request.parameterization,
+        simulation=request.simulation,
+        topology_artifact=request.trajectory.topology,
+        frames=request.frames,
+        method=request.method,
+        salt_concentration_M=request.salt_concentration_M,
+        entropy=request.entropy,
+        model=request.model,
+        uncertainty=request.uncertainty,
+        static_source_artifacts=static_sources,
+        selection_groups=request.selection_groups,
+        topology_format=request.topology_format,
+        trajectory_format=request.trajectory_format,
+    )
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "PPARG processed trajectory MMGBSA",
+            "inputs": {
+                "processing_request": {"contract": "trajectory_processing_request/1.0"},
+                "energy_plan": {"contract": "binding_energy_plan/1.0"},
+            },
+            "stages": [
+                {
+                    "id": "process",
+                    "kind": "trajectory.process",
+                    "engine": "gromacs",
+                    "input_contracts": {"request": "trajectory_processing_request/1.0"},
+                    "input_bindings": {"request": "$processing_request"},
+                    "output_contract": "trajectory_processing_result/1.0",
+                    "params": {
+                        "engine_parameters": {
+                            "gmx_executable": GMX,
+                            "python_executable": sys.executable,
+                            "output_group_atom_count": request.system.n_atoms,
+                            "index_artifact": protein_index.model_dump(mode="json"),
+                            "timeout_seconds": 3600,
+                        }
+                    },
+                },
+                {
+                    "id": "mmgbsa",
+                    "kind": "binding_energy.analyze_processed",
+                    "engine": "gmx_mmpbsa",
+                    "needs": ["process"],
+                    "input_contracts": {
+                        "plan": "binding_energy_plan/1.0",
+                        "preprocessing": "trajectory_processing_result/1.0",
+                    },
+                    "input_bindings": {
+                        "plan": "$energy_plan",
+                        "preprocessing": "process",
+                    },
+                    "output_contract": "binding_energy/1.2",
+                    "params": {
+                        "engine_parameters": {
+                            "gmx_mmpbsa_executable": MMPBSA,
+                            "gmx_executable": GMX,
+                            "ambertools_bin": str(Path(MMPBSA).resolve().parent),
+                            "python_executable": MMPBSA_PYTHON,
+                            "worker_script": str(
+                                Path(__file__).resolve().parents[2]
+                                / "src/caddsuite_worker/gmx_mmpbsa_worker.py"
+                            ),
+                            "timeout_seconds": 3600,
+                            "mpi_launch_retries": 0,
+                        }
+                    },
+                },
+            ],
+            "outputs": {"energy": "mmgbsa"},
+        }
+    )
+    registry = StageHandlerRegistry.discover()
+    compiled = registry.compile(workflow)
+
     with LocalWorkflowRuntime.open(
         data_root=tmp_path / "runtime",
-        handlers=lambda _services: {"validation_placeholder": object()},
+        handlers=lambda services: registry.build_handlers(workflow, services),
     ) as runtime:
         for artifact in request.source_artifacts.values():
             staged_path = staged[str(artifact.artifact_id)]
             blob = runtime.services.artifacts.put_file(staged_path)
             assert blob.sha256 == artifact.sha256
-
-        stage = StageDefinition.model_validate(
-            {
-                "id": "mmgbsa",
-                "kind": "binding_energy",
-                "engine": "gmx_mmpbsa",
-                "params": {
-                    "engine_parameters": {
-                        "gmx_mmpbsa_executable": MMPBSA,
-                        "gmx_executable": GMX,
-                        "ambertools_bin": str(Path(MMPBSA).resolve().parent),
-                        "python_executable": MMPBSA_PYTHON,
-                        "worker_script": str(
-                            Path(__file__).resolve().parents[2]
-                            / "src/caddsuite_worker/gmx_mmpbsa_worker.py"
-                        ),
-                        "timeout_seconds": 3600,
-                        "mpi_launch_retries": 0,
-                    }
-                },
-            }
-        )
-        handler = GromacsMMPBSAStagePlugin._build(stage, runtime.services)
-        result = handler.execute(
-            cast(
-                TaskInvocation,
-                SimpleNamespace(inputs={"request": (request,)}),
+            with runtime.sessions.begin() as session:
+                register_blob(
+                    session,
+                    blob,
+                    kind="workflow_input",
+                    media_type="application/octet-stream",
+                    original_name=artifact.role,
+                    artifact_id=str(artifact.artifact_id),
+                )
+        with runtime.sessions.begin() as session:
+            project = ProjectRow(slug="pparg-mmgbsa-composition", name="PPARG MMGBSA composition")
+            session.add(project)
+            session.flush()
+            run = WorkflowRunRow(
+                project_id=project.id,
+                accession="RUN-PPARG-MMGBSA-001",
+                workflow_hash="e" * 64,
+                config_hash="f" * 64,
+                status="running",
+                started_at=datetime.now(UTC),
             )
+            session.add(run)
+            session.flush()
+            run_id = run.id
+
+        outcome = runtime.run(
+            compiled,
+            run_id=run_id,
+            inputs={
+                "processing_request": processing_request,
+                "energy_plan": energy_plan,
+            },
         )
+        assert not outcome.failures
+        assert len(outcome.tasks) == 2
+        result = outcome.outputs["energy"][0].value
         assert result.method is BindingEnergyMethod.MM_GBSA
         assert result.frames.n_used == 11
         assert result.temperature_K == pytest.approx(request.temperature_K)

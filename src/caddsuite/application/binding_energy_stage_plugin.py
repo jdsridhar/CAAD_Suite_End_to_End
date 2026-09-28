@@ -18,7 +18,12 @@ from caddsuite.application.environment import capture_conda_environment
 from caddsuite.application.handlers import EnginePreflightResult, StageHandlerRegistration
 from caddsuite.application.planned_stage_runtime import confined_output, execute_adapter_plan
 from caddsuite.application.runtime import LocalRuntimeServices
-from caddsuite.contracts.analysis import BindingEnergyRequest, BindingEnergyResult
+from caddsuite.contracts.analysis import (
+    BindingEnergyPlan,
+    BindingEnergyRequest,
+    BindingEnergyResult,
+    TrajectoryProcessingResult,
+)
 from caddsuite.contracts.base import ArtifactRef, VersionedContract
 from caddsuite.contracts.execution import SoftwareEnvironment
 from caddsuite.domain.identity import new_ulid
@@ -51,13 +56,45 @@ class GromacsMMPBSAStageHandler:
 
     def subject_key(self, scope: str, value: VersionedContract) -> str:
         del scope
-        if not isinstance(value, BindingEnergyRequest):
-            raise TypeError("binding-energy fan-out requires BindingEnergyRequest")
-        return str(value.simulation.id)
+        if isinstance(value, BindingEnergyPlan):
+            return str(value.simulation.id)
+        if isinstance(value, BindingEnergyRequest):
+            return str(value.simulation.id)
+        raise TypeError("binding-energy fan-out requires a plan or fully bound request")
 
     def artifact_hashes(
         self, inputs: Mapping[str, tuple[VersionedContract, ...]]
     ) -> Mapping[str, str]:
+        plan_values = inputs.get("plan", ())
+        if plan_values:
+            import hashlib
+            import json
+
+            plan = _one(inputs, "plan", BindingEnergyPlan)
+            parent = _one(inputs, "preprocessing", TrajectoryProcessingResult)
+            payload = json.dumps(
+                plan.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+            )
+            hashes = {"plan": hashlib.sha256(payload.encode()).hexdigest()}
+            hashes.update(
+                {
+                    f"static.{path}": artifact.sha256 or ""
+                    for path, artifact in plan.static_source_artifacts.items()
+                }
+            )
+            hashes.update(
+                {
+                    f"preprocessing.output.{name}": artifact.sha256 or ""
+                    for name, artifact in parent.output_artifacts.items()
+                }
+            )
+            hashes.update(
+                {
+                    f"preprocessing.source.{name}": artifact.sha256 or ""
+                    for name, artifact in parent.source_artifacts.items()
+                }
+            )
+            return hashes
         request = _one(inputs, "request", BindingEnergyRequest)
         return {
             f"source.{path}": artifact.sha256 or ""
@@ -71,7 +108,16 @@ class GromacsMMPBSAStageHandler:
         return {}, frozenset()
 
     def execute(self, invocation: TaskInvocation) -> BindingEnergyResult:
-        request = _one(invocation.inputs, "request", BindingEnergyRequest)
+        plan_values = invocation.inputs.get("plan", ())
+        if plan_values:
+            binding_plan = _one(invocation.inputs, "plan", BindingEnergyPlan)
+            parent = _one(invocation.inputs, "preprocessing", TrajectoryProcessingResult)
+            try:
+                request = binding_plan.bind(parent, self.engine.generated_artifact_paths())
+            except ValueError as exc:
+                raise StageExecutionFailure("BINDING_ENERGY.PLAN_BINDING_FAILED", str(exc)) from exc
+        else:
+            request = _one(invocation.inputs, "request", BindingEnergyRequest)
         blockers = [
             issue
             for issue in self.engine.validate_request(request)
@@ -173,7 +219,7 @@ class GromacsMMPBSAStagePlugin:
     version = "0.1.0"
 
     def registrations(self) -> tuple[StageHandlerRegistration, ...]:
-        capability = StageCapability(
+        request_capability = StageCapability(
             kind="binding_energy",
             engine="gmx_mmpbsa",
             inputs=(
@@ -181,7 +227,22 @@ class GromacsMMPBSAStagePlugin:
             ),
             outputs=(BindingEnergyResult.schema_id(),),
         )
-        return (StageHandlerRegistration(capability, self._build, self._preflight),)
+        processed_capability = StageCapability(
+            kind="binding_energy.analyze_processed",
+            engine="gmx_mmpbsa",
+            inputs=(
+                CapabilityInput(name="plan", contracts=(BindingEnergyPlan.schema_id(),)),
+                CapabilityInput(
+                    name="preprocessing",
+                    contracts=(TrajectoryProcessingResult.schema_id(),),
+                ),
+            ),
+            outputs=(BindingEnergyResult.schema_id(),),
+        )
+        return tuple(
+            StageHandlerRegistration(capability, self._build, self._preflight)
+            for capability in (request_capability, processed_capability)
+        )
 
     @staticmethod
     def _settings(stage: StageDefinition) -> GromacsMMPBSAParameters:

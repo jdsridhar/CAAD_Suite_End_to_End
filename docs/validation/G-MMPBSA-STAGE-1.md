@@ -1,12 +1,22 @@
-# G-MMPBSA-STAGE-1: discovered MM/GBSA stage runtime
+# G-MMPBSA-STAGE-1: scheduler-composed MM/GBSA workflow
 
 Date: 2026-09-28
 
 ## Scope
 
-Executed the production-discovered binding_energy/gmx_mmpbsa handler against copied inputs from the local CHARMM-GUI PPARG/ergosterol system. The handler staged the request's hash-linked artifacts into CAS, planned the existing adapter worker, executed GROMACS/gmx_MMPBSA through LocalExecutor, registered worker outputs and logs, and returned a normalized BindingEnergyResult.
+The opt-in integration now executes a compiled two-stage workflow through StageHandlerRegistry and
+LocalWorkflowRuntime:
 
-The opt-in test is tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa. It copies from /home/sridhar/work/pparg_md/ergosterol, executes 11 frames (the 0-1 ns selection at 100 ps intervals), and checks the result against its own normalized request, verifies every output/log digest in CAS, and confirms source hashes are unchanged.
+1. GROMACS processes the explicit 66,195-atom, 1,001-frame PPARG/ergosterol TPR/XTC series.
+2. The discovered binding_energy.analyze_processed stage binds BindingEnergyPlan to that
+   TrajectoryProcessingResult and runs gmx_MMPBSA on the selected first 11 frames.
+
+The workflow scheduler persists the run/tasks and stage-attempt provenance. Input files are
+hash-linked into the artifact store; produced trajectories, energy reports, logs, and commands are
+registered in CAS. The test verifies the original source hashes are unchanged.
+
+The integration test is
+tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa.
 
 ## Observed runtime
 
@@ -14,22 +24,41 @@ The opt-in test is tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame
 - gmx_MMPBSA: 1.6.3 (AmberTools 20)
 - Requested method: MM/GBSA, igb=5, mbondi2 radii, 0.150 M salt
 - Temperature: 310 K, derived from the linked production protocol
-- Selected frames: 11
-- Result: normalized successfully; native .dat and .csv, commands, GROMACS version transcript, and stdout/stderr artifacts are registered.
-- Test result: 1 passed in 35.56 s.
+- Selected frames: 11 from the initial 1 ns of the existing trajectory
+- Workflow: two scheduler tasks, both succeeded
+- Outputs: normalized BindingEnergyResult, native .dat/.csv, commands, version transcripts, and
+  stdout/stderr are registered and hash verified
+- Test result: 1 passed in 43.60 s
 
-The index includes two LIG groups with exactly the same atom membership. The adapter and worker now accept identical duplicate definitions, retain the complete group order, and resolve the first occurrence's actual zero-based index. Repeated names with differing atom membership are still rejected as ambiguous. Tests cover both cases.
+The index contains two LIG groups with exactly the same atom membership. The adapter and worker
+accept identical duplicate definitions, retain the full group order, and resolve the first
+occurrence's zero-based index. Repeated names with differing memberships remain an error.
 
 ## Interpretation limits
 
-This is handler/runtime and input/output validation. It does not validate affinity prediction, convergence, sampling, or agreement with experiment. Eleven frames are a short execution check, not adequate evidence for a stable binding-energy estimate. The local system's own MM/GBSA input notes a CGenFF penalty of 190.7 and an unsupported peroxide group; this force-field limitation remains material. The test contract uses synthetic accession/identity values as test scaffolding and makes no candidate-prioritization claim.
+This integration validates scheduler composition, identity and artifact binding, worker execution,
+normalized output, provenance, and source immutability. It does not validate affinity accuracy,
+sampling convergence, or agreement with experiment. Eleven frames are only a short runtime check.
+The source system reports a CGenFF penalty of 190.7 and an unsupported peroxide group, a material
+ligand-parameterization limitation. Test accessions remain fixture scaffolding; no candidate
+prioritization is claimed.
 
-The pre-existing G-MD-18 comparison expects a separate 303.15 K archived fixture. Running that comparison against this PPARG dataset reaches and completes the engine calculation, then correctly fails its unrelated archived-temperature assertion because this system is 310 K. The G-MD-18 benchmark remains tied to its own data fixture.
+The archived G-MD-18 comparison uses a separate 303.15 K fixture. The PPARG data is 310 K and is
+not substituted for that comparison.
 
 ## Reproduction
 
-Set CADDSUITE_GMX_MMPBSA_STAGE_DATA to /home/sridhar/work/pparg_md/ergosterol and set the regular engine variables to installed paths, then run the stage-specific test:
+With the isolated caddsuite and gmx_MMPBSA environments installed, run:
 
-    CADDSUITE_RUN_GMD_MMPBSA_SHORT=1     CADDSUITE_MDSUITE_DATA=/home/sridhar/caddsuite-validation-data     CADDSUITE_GROMACS_EXECUTABLE=/home/sridhar/miniconda3/envs/gmx/bin/gmx     CADDSUITE_GMX_MMPBSA_EXECUTABLE=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/gmx_MMPBSA     CADDSUITE_GMX_MMPBSA_PYTHON=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/python     pytest -q tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa
+```bash
+CADDSUITE_RUN_GMD_MMPBSA_SHORT=1 \
+CADDSUITE_MDSUITE_DATA=/home/sridhar/work/pparg_md \
+CADDSUITE_GMX_MMPBSA_STAGE_DATA=/home/sridhar/work/pparg_md/ergosterol \
+CADDSUITE_GROMACS_EXECUTABLE=/home/sridhar/miniconda3/envs/gmx/bin/gmx \
+CADDSUITE_GMX_MMPBSA_EXECUTABLE=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/gmx_MMPBSA \
+CADDSUITE_GMX_MMPBSA_PYTHON=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/python \
+  pytest -q tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa
+```
 
-The integration test copies all calculation inputs into its private test directory before executing the handler. CADDSUITE_GMX_MMPBSA_STAGE_DATA deliberately names the actual data directory directly; it does not alias this ligand/system as the separate G-MD-18 reference fixture.
+The test copies every declared source file into its temporary fixture directory. The explicit
+CADDSUITE_GMX_MMPBSA_STAGE_DATA path does not alias the dataset to G-MD-18.

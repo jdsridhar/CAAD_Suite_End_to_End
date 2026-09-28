@@ -67,3 +67,65 @@ def test_gmx_mmpbsa_preflight_reports_missing_configured_tools() -> None:
     result = GromacsMMPBSAStagePlugin._preflight(stage)
     assert result.status == "unavailable"
     assert result.reason
+
+
+def test_processed_binding_energy_capability_compiles_after_trajectory_processing() -> None:
+    snapshot = StageHandlerRegistry.discover().snapshot()
+    capability = snapshot.capabilities.resolve("binding_energy.analyze_processed", "gmx_mmpbsa")
+    assert capability is not None
+    assert capability.inputs[0].contracts == ("binding_energy_plan/1.0",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.0",)
+
+    workflow = WorkflowDefinition.model_validate(
+        {
+            "schema": "caddsuite.workflow/1",
+            "name": "Processed trajectory binding energy",
+            "inputs": {
+                "processing_request": {"contract": "trajectory_processing_request/1.0"},
+                "energy_plan": {"contract": "binding_energy_plan/1.0"},
+            },
+            "stages": [
+                {
+                    "id": "process",
+                    "kind": "trajectory.process",
+                    "engine": "gromacs",
+                    "input_contracts": {"request": "trajectory_processing_request/1.0"},
+                    "input_bindings": {"request": "$processing_request"},
+                    "output_contract": "trajectory_processing_result/1.0",
+                    "params": {
+                        "engine_parameters": {
+                            "gmx_executable": "/engine/bin/gmx",
+                            "python_executable": "/suite/bin/python",
+                            "output_group_atom_count": 10,
+                        }
+                    },
+                },
+                {
+                    "id": "energy",
+                    "kind": "binding_energy.analyze_processed",
+                    "engine": "gmx_mmpbsa",
+                    "needs": ["process"],
+                    "input_contracts": {
+                        "plan": "binding_energy_plan/1.0",
+                        "preprocessing": "trajectory_processing_result/1.0",
+                    },
+                    "input_bindings": {
+                        "plan": "$energy_plan",
+                        "preprocessing": "process",
+                    },
+                    "output_contract": "binding_energy/1.2",
+                    "params": {
+                        "engine_parameters": {
+                            "gmx_mmpbsa_executable": "/engine/bin/gmx_MMPBSA",
+                            "gmx_executable": "/engine/bin/gmx",
+                            "python_executable": "/engine/bin/python",
+                            "worker_script": "/suite/src/caddsuite_worker/gmx_mmpbsa_worker.py",
+                        }
+                    },
+                },
+            ],
+            "outputs": {"energy": "energy"},
+        }
+    )
+    compiled = StageHandlerRegistry.discover().compile(workflow)
+    assert compiled.task_order == ("process", "energy")

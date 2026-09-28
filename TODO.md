@@ -736,3 +736,13 @@ When the user says **CONTINUE**:
 - [x] Added ADR-0052, architecture documentation, generated JSON Schema, unit validation, and a compiled process → analyze workflow test.
 - [x] Updated the real-data PPARG integration test to exercise plan binding; it passed with the existing GROMACS/MDAnalysis environments. Full scripts/check.sh: 708 passed, 36 skipped; Ruff, formatting, strict mypy, import contracts, and schema checks pass.
 - [-] Next: inspect and implement equivalent runtime artifact binding for BindingEnergyRequest, then execute a scheduler-level MD analysis → MM/GBSA → QM/report workflow with accurate identities and avoid treating geometric or short-sample evidence as experimental validation.
+
+### Session log - 2026-09-28, scheduler-composed MM/GBSA
+
+- [x] Added BindingEnergyPlan/1.0 and the discovered binding_energy.analyze_processed capability. It binds user-selected method/frame/model settings and hash-linked parameterization and verified selection artifacts to the processed XTC only after trajectory processing completes. The binder checks simulation identity, atom count, accession linkage, and exact topology artifact ID/hash.
+- [x] Preserved the existing fully bound binding_energy/BindingEnergyRequest stage.
+- [x] Added ADR-0053, generated schema, capability/workflow compiler test, and updated the opt-in PPARG integration to execute trajectory processing → MM/GBSA through StageHandlerRegistry, CompiledWorkflow, LocalWorkflowRuntime, and persisted workflow provenance.
+- [x] Kept the shared binding-energy plan engine-neutral: topology/reference/trajectory roles are mapped to private stage paths by the selected adapter, with no default engine formats. The GROMACS adapter owns its path mapping and retains explicit TPR/XTC, topology, and force-field compatibility checks.
+- [x] Real scheduler workflow integration passed on the PPARG/ergosterol dataset: GROMACS preprocessing plus gmx_MMPBSA on 11 frames; outputs and logs hash-verified in CAS, source hashes unchanged. Total opt-in test runtime 43.76 s. This verifies workflow/runtime integration, not affinity accuracy or adequate sampling.
+- [x] Quality gate after this refactor: 709 passed, 36 skipped; Ruff, format, strict mypy (196 files), import contracts, and schemas all pass.
+- [-] Next: extend the same compiled workflow with normalized trajectory evidence, a chemically identity-linked QM calculation, and report generation; verify run/task provenance and report artifacts from scheduler outputs.

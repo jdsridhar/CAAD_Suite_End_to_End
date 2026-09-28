@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
+from pathlib import PurePosixPath
 from typing import Annotated, Literal
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, field_validator, model_validator
 
 from caddsuite.contracts.base import (
     ArtifactRef,
@@ -634,6 +636,191 @@ class BindingEnergyRequest(VersionedContract):
         if production is None or production.temperature_K is None:
             raise ValueError("MD production temperature is unavailable")
         return production.temperature_K
+
+
+class BindingEnergyPlan(VersionedContract):
+    # Settings and static MD provenance, before the processed trajectory artifact exists.
+    schema_version: str = "binding_energy_plan/1.0"
+
+    id: ULIDStr
+    trajectory_id: ULIDStr
+    accession: BindingEnergyAccession
+    system: MDSystem
+    parameterization: Parameterization
+    simulation: MDSimulation
+    topology_artifact: ArtifactRef
+    frames: FrameSelection
+    method: BindingEnergyMethod
+    salt_concentration_M: NonNegativeFloat
+    entropy: EntropyTreatment = EntropyTreatment.NONE
+    model: dict[str, JsonValue] = Field(default_factory=dict)
+    uncertainty: EnergyUncertaintySettings = Field(default_factory=EnergyUncertaintySettings)
+    static_source_artifacts: dict[str, ArtifactRef] = Field(min_length=2)
+    selection_groups: dict[str, NonEmptyStr]
+    topology_format: NonEmptyStr
+    trajectory_format: NonEmptyStr
+
+    @field_validator("static_source_artifacts")
+    @classmethod
+    def _validate_static_paths(cls, values: dict[str, ArtifactRef]) -> dict[str, ArtifactRef]:
+        ids: dict[str, str] = {}
+        for name, artifact in values.items():
+            path = PurePosixPath(name)
+            if (
+                not name
+                or "\x00" in name
+                or "\\" in name
+                or path.is_absolute()
+                or path.as_posix() != name
+                or any(part in {"", ".", ".."} for part in path.parts)
+            ):
+                raise ValueError(f"static source path must be a safe relative path: {name!r}")
+            if artifact.sha256 is None:
+                raise ValueError(f"static source artifact {name!r} must include SHA-256")
+            previous = ids.get(str(artifact.artifact_id))
+            if previous is not None:
+                raise ValueError(
+                    f"one static artifact cannot be assigned to both {previous!r} and {name!r}"
+                )
+            ids[str(artifact.artifact_id)] = name
+        return values
+
+    @model_validator(mode="after")
+    def _validate_plan(self) -> BindingEnergyPlan:
+        if self.system.id != self.simulation.system_id:
+            raise ValueError("binding-energy plan simulation belongs to a different MDSystem")
+        if self.parameterization.id != self.system.parameterization_id:
+            raise ValueError("binding-energy plan parameterization differs from its MDSystem")
+        if self.simulation.protocol.production is None:
+            raise ValueError("binding-energy plan requires an MD production stage")
+        if self.topology_artifact.sha256 is None:
+            raise ValueError("binding-energy plan topology artifact must include SHA-256")
+        if self.simulation.accession.rsplit("_", 2)[0] != self.accession.rsplit("_", 2)[0]:
+            raise ValueError("binding-energy plan and MD simulation accessions differ")
+        if set(self.selection_groups) != {"protein", "ligand"}:
+            raise ValueError("selection_groups must explicitly name protein and ligand groups")
+        if self.selection_groups["protein"] == self.selection_groups["ligand"]:
+            raise ValueError("protein and ligand index groups must have distinct names")
+        if any(
+            not name.strip() or any(character in name for character in ("\r", "\n", "\x00"))
+            for name in self.selection_groups.values()
+        ):
+            raise ValueError("index-group names must be non-empty single-line values")
+
+        for path, artifact in self.parameterization.artifacts.items():
+            planned = self.static_source_artifacts.get(path)
+            if planned is None or (planned.artifact_id, planned.sha256) != (
+                artifact.artifact_id,
+                artifact.sha256,
+            ):
+                raise ValueError(f"missing hash-linked parameterization input {path!r}")
+        for selection_name in ("protein", "ligand"):
+            selection = self.system.selections.get(selection_name)
+            if selection is None or not selection.verified or selection.indices is None:
+                raise ValueError(
+                    f"binding-energy plan requires a verified {selection_name} selection"
+                )
+            if not any(
+                (artifact.artifact_id, artifact.sha256)
+                == (selection.indices.artifact_id, selection.indices.sha256)
+                for artifact in self.static_source_artifacts.values()
+            ):
+                raise ValueError(f"missing hash-linked {selection_name} index artifact")
+        protein, ligand = self.system.selections["protein"], self.system.selections["ligand"]
+        if protein.indices != ligand.indices:
+            raise ValueError("protein and ligand selections must use the same index artifact")
+        if self.frames.start_frame < 1:
+            raise ValueError("binding-energy frame numbering is one-based")
+        if (
+            self.uncertainty.block_size_frames is not None
+            and self.frames.n_used // self.uncertainty.block_size_frames
+            < self.uncertainty.minimum_blocks
+        ):
+            raise ValueError("selected block size leaves fewer than minimum_blocks complete blocks")
+        return self
+
+    def bind(
+        self, preprocessing: TrajectoryProcessingResult, generated_artifact_paths: Mapping[str, str]
+    ) -> BindingEnergyRequest:
+        # Resolve generated trajectory/topology artifacts only after preprocessing succeeds.
+        if preprocessing.simulation_id != self.simulation.id:
+            raise ValueError(
+                "binding-energy plan and processing result identify different simulations"
+            )
+        if preprocessing.n_atoms != self.system.n_atoms:
+            raise ValueError("processed trajectory atom count differs from planned MDSystem")
+        trajectory_artifact = preprocessing.output_artifacts.get("processed")
+        topology = preprocessing.source_artifacts.get("topology")
+        reference = preprocessing.reference_structure
+        if trajectory_artifact is None or topology is None or reference is None:
+            raise ValueError("processing result lacks processed XTC, source TPR, or reference GRO")
+        if (topology.artifact_id, topology.sha256) != (
+            self.topology_artifact.artifact_id,
+            self.topology_artifact.sha256,
+        ):
+            raise ValueError(
+                "processed trajectory used a different topology artifact than the plan"
+            )
+        required_roles = {"topology", "reference_structure", "processed_trajectory"}
+        if set(generated_artifact_paths) != required_roles:
+            raise ValueError("generated paths must map all required artifact roles")
+        generated_refs = {
+            "topology": topology,
+            "reference_structure": reference,
+            "processed_trajectory": trajectory_artifact,
+        }
+        generated: dict[str, ArtifactRef] = {}
+        for role, path_value in generated_artifact_paths.items():
+            path = PurePosixPath(path_value)
+            if (
+                not path_value
+                or "\x00" in path_value
+                or "\\" in path_value
+                or path.is_absolute()
+                or path.as_posix() != path_value
+                or any(part in {"", ".", ".."} for part in path.parts)
+            ):
+                raise ValueError(f"generated {role} path must be a safe relative path")
+            generated[path_value] = generated_refs[role]
+        if len(generated) != len(required_roles):
+            raise ValueError("generated artifact paths must be unique")
+        sources = dict(self.static_source_artifacts)
+        collisions = set(sources).intersection(generated)
+        if collisions:
+            raise ValueError(
+                f"static binding-energy sources use generated artifact paths: {sorted(collisions)}"
+            )
+        sources.update(generated)
+        time_range_ns = tuple(value / 1000.0 for value in preprocessing.time_range_ps)
+        trajectory = Trajectory(
+            id=self.trajectory_id,
+            simulation_id=self.simulation.id,
+            files=(trajectory_artifact,),
+            topology=topology,
+            n_frames=preprocessing.n_frames,
+            frame_interval_ps=preprocessing.frame_interval_ps,
+            time_range_ns=time_range_ns,
+            processing=tuple(transform.value for transform in preprocessing.transforms),
+        )
+        return BindingEnergyRequest(
+            id=self.id,
+            accession=self.accession,
+            system=self.system,
+            parameterization=self.parameterization,
+            simulation=self.simulation,
+            trajectory=trajectory,
+            trajectory_artifact=trajectory_artifact,
+            method=self.method,
+            frames=self.frames,
+            salt_concentration_M=self.salt_concentration_M,
+            entropy=self.entropy,
+            model=self.model,
+            uncertainty=self.uncertainty,
+            source_artifacts=sources,
+            selection_groups=self.selection_groups,
+            topology_format=self.topology_format,
+            trajectory_format=self.trajectory_format,
+        )
 
 
 class BindingEnergyResult(VersionedContract):

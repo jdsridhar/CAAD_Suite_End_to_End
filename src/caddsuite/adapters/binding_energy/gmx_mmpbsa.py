@@ -228,6 +228,16 @@ class GromacsMMPBSAAdapter:
 
     adapter_id = "caddsuite.binding_energy.gmx_mmpbsa"
     version = "0.1.0"
+
+    @staticmethod
+    def generated_artifact_paths() -> dict[str, str]:
+        """Private-stage paths for artifacts emitted by the GROMACS trajectory processor."""
+        return {
+            "topology": "runtime/topology.tpr",
+            "reference_structure": "runtime/reference.gro",
+            "processed_trajectory": "runtime/processed.xtc",
+        }
+
     capabilities = BindingEnergyCapabilities(
         methods=(BindingEnergyMethod.MM_GBSA,),
         entropy_treatments=(EntropyTreatment.NONE,),
