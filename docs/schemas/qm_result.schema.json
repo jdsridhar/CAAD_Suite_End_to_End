@@ -223,7 +223,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/qm_result/2.0",
+  "$id": "caddsuite://schemas/qm_result/2.1",
   "additionalProperties": false,
   "properties": {
     "calculation_id": {
@@ -240,6 +240,19 @@
       },
       "title": "Charges",
       "type": "object"
+    },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
     },
     "conceptual_dft": {
       "anyOf": [
@@ -305,6 +318,19 @@
       ],
       "default": null
     },
+    "form_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Form Id"
+    },
     "legacy_unverified_pose_strain": {
       "anyOf": [
         {
@@ -351,7 +377,7 @@
       "default": null
     },
     "schema_version": {
-      "default": "qm_result/2.0",
+      "default": "qm_result/2.1",
       "title": "Schema Version",
       "type": "string"
     },

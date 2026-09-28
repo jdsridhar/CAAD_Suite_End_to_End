@@ -36,7 +36,7 @@ def test_cli_run_executes_real_qm_workflow_and_persists_attempt(tmp_path: Path) 
         "schema": "caddsuite.workflow/1",
         "name": "CLI QM integration",
         "inputs": {
-            "calculation": {"contract": "qm_calculation/1.1"},
+            "calculation": {"contract": "qm_calculation/1.2"},
             "form": {"contract": "compound_form/1.0"},
             "conformer": {"contract": "conformer/1.1"},
         },
@@ -46,7 +46,7 @@ def test_cli_run_executes_real_qm_workflow_and_persists_attempt(tmp_path: Path) 
                 "kind": "quantum_chemistry",
                 "engine": "caddsuite.qm.pyscf",
                 "input_contracts": {
-                    "calculation": "qm_calculation/1.1",
+                    "calculation": "qm_calculation/1.2",
                     "form": "compound_form/1.0",
                     "conformer": "conformer/1.1",
                 },
@@ -55,7 +55,7 @@ def test_cli_run_executes_real_qm_workflow_and_persists_attempt(tmp_path: Path) 
                     "form": "$form",
                     "conformer": "$conformer",
                 },
-                "output_contract": "qm_result/2.0",
+                "output_contract": "qm_result/2.1",
                 "params": {"engine_parameters": params},
             }
         ],

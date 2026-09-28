@@ -225,7 +225,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/qm_calculation/1.1",
+  "$id": "caddsuite://schemas/qm_calculation/1.2",
   "additionalProperties": false,
   "properties": {
     "accession": {
@@ -239,6 +239,19 @@
     "charge": {
       "title": "Charge",
       "type": "integer"
+    },
+    "compound_id": {
+      "anyOf": [
+        {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compound Id"
     },
     "engine": {
       "$ref": "#/$defs/SoftwareRef"
@@ -294,7 +307,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "qm_calculation/1.1",
+      "default": "qm_calculation/1.2",
       "title": "Schema Version",
       "type": "string"
     },

@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 
+import pytest
+
 from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.report_stage_plugin import ReportStageHandler
 from caddsuite.application.runtime import LocalWorkflowRuntime
@@ -94,8 +96,8 @@ def test_report_capability_exposes_normalized_md_energy_and_qm_inputs() -> None:
         "md_stage_result/1.0",
         "trajectory_analysis_result/1.1",
         "binding_energy/1.2",
-        "qm_calculation/1.1",
-        "qm_result/2.0",
+        "qm_calculation/1.2",
+        "qm_result/2.1",
     }
 
 
@@ -155,6 +157,7 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         id=new_ulid(),
         accession="CMP0001_QM_001",
         form_id=new_ulid(),
+        compound_id=compound.id,
         geometry_source=EntityRef(kind="conformer", id=new_ulid()),
         engine=_software("PySCF"),
         adapter=_software("caddsuite.pyscf"),
@@ -166,6 +169,8 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
     )
     qm = QMResult(
         calculation_id=calculation.id,
+        form_id=calculation.form_id,
+        compound_id=compound.id,
         total_energy_Eh=-75.0,
         convergence=QMConvergence(scf_converged=True),
         orbitals=OrbitalEnergies(homo_eV=-6.0, lumo_eV=1.0, gap_eV=7.0),
@@ -219,6 +224,22 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         assert sections["lumo"]["data"][0]["value_eV"] == 1.0
         assert sections["homo_lumo_gap"]["data"][0]["value_eV"] == 7.0
         assert sections["dipole"]["data"][0]["value_D"] == 1.4
+        with pytest.raises(ValueError, match="compound_id"):
+            ReportStageHandler(stage, runtime.services).execute(
+                cast(
+                    TaskInvocation,
+                    SimpleNamespace(
+                        inputs={
+                            "compounds": (compound,),
+                            "qm_calculations": (
+                                calculation.model_copy(update={"compound_id": new_ulid()}),
+                            ),
+                            "qm_results": (qm,),
+                        },
+                        run_id=run_id,
+                    ),
+                )
+            )
 
 
 def test_production_registry_discovers_report_stage() -> None:

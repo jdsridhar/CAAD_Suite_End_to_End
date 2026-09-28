@@ -56,6 +56,7 @@ def _case(tmp_path: Path, python: str) -> tuple[object, ...]:
         id=new_ulid(),
         accession="CMP0001_QM_001",
         form_id=form.id,
+        compound_id=compound_id,
         geometry_source=EntityRef(kind="conformer", id=conformer.id),
         engine=SoftwareRef(
             name="PySCF",

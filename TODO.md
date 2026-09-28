@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.8 Validate MM/GBSA stage execution and connect trajectory/MD/QM runtime outputs through a composed workflow and report. |
-| **Next task** | Run MM/GBSA handler against the archived 11-frame fixture, then exercise GROMACS processing to MDAnalysis on suitable real trajectory data; connect MD/QM evidence to reports and rerun acceptance gates. |
+| **Current task** | [-] 13.9 Establish stable candidate identity across QM, MD, trajectory-analysis, and binding-energy contracts; then compose all evidence into a single report. |
+| **Next task** | Extend the optional stable compound identity to MD simulations and downstream trajectory/MMGBSA results, then validate one identity-linked multi-evidence workflow. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -764,3 +764,13 @@ When the user says **CONTINUE**:
 - [x] Real PySCF run passed (3.29 s); JSON and HTML report outputs were emitted and verified by CAS SHA-256. This is technical workflow validation using ethanol, not drug-discovery evidence.
 - [x] Added ADR-0055 to document the identity chain and the current accession-prefix report linkage limitation.
 - [-] Next: add explicit compound identity to QM calculation/result lineage and design equivalent stable identity linkage for MD simulation, trajectory analysis, and binding-energy contracts before claiming a complete end-to-end candidate report.
+
+
+### Session log - 2026-09-28, explicit QM compound identity
+
+- [x] Versioned QMCalculation to 1.2 and QMResult to 2.1 with optional stable compound_id and form_id lineage fields; updated generated schemas and workflow declarations.
+- [x] QM stage now rejects mismatched calculation/form IDs and mismatched conformer/form/available compound IDs, then binds form and compound identities onto normalized QM results.
+- [x] Report generation validates explicit QM calculation-to-Compound and QM result-to-calculation identities when present, preserving legacy accession-prefix checks.
+- [x] Added report mismatch coverage and updated the real PySCF ethanol integration to carry the explicit compound_id end to end. Real PySCF/report test passed; full scripts/check.sh passed with 709 passed, 36 skipped.
+- [x] Added ADR-0056. Legacy records remain readable with missing optional IDs; MD and binding-energy identity propagation remain incomplete.
+- [-] Next: add stable compound_id linkage to MDSimulation and derived trajectory-analysis/MMGBSA plans/results, preserving older records and validating identity mismatches.

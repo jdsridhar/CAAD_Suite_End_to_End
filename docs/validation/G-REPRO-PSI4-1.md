@@ -11,7 +11,7 @@
 The opt-in integration test builds the deterministic ethanol conformer fixture and executes the
 normal caddsuite run CLI with the installed Psi4 worker environment. It exports the completed
 project, replays the captured workflow and input attachment into a new platform data root, and
-runs caddsuite compare against the exported normalized qm_result/2.0.
+runs caddsuite compare against the exported normalized qm_result/2.1.
 
 The comparison uses an explicit versioned tolerance policy for total energy with an absolute
 tolerance of 1e-8 Eh and zero relative tolerance. The test verifies successful source and replay

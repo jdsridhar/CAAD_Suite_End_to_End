@@ -51,7 +51,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
             "schema": "caddsuite.workflow/1",
             "name": "QM application integration",
             "inputs": {
-                "calculation": {"contract": "qm_calculation/1.1"},
+                "calculation": {"contract": "qm_calculation/1.2"},
                 "form": {"contract": "compound_form/1.0"},
                 "conformer": {"contract": "conformer/1.1"},
                 "compound": {"contract": "compound/1.0"},
@@ -62,7 +62,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                     "kind": "quantum_chemistry",
                     "engine": "caddsuite.qm.pyscf",
                     "input_contracts": {
-                        "calculation": "qm_calculation/1.1",
+                        "calculation": "qm_calculation/1.2",
                         "form": "compound_form/1.0",
                         "conformer": "conformer/1.1",
                     },
@@ -71,7 +71,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                         "form": "$form",
                         "conformer": "$conformer",
                     },
-                    "output_contract": "qm_result/2.0",
+                    "output_contract": "qm_result/2.1",
                     "params": {"engine_parameters": params},
                 },
                 {
@@ -80,8 +80,8 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
                     "needs": ["qm"],
                     "input_contracts": {
                         "compounds": "compound/1.0",
-                        "qm_calculations": "qm_calculation/1.1",
-                        "qm_results": "qm_result/2.0",
+                        "qm_calculations": "qm_calculation/1.2",
+                        "qm_results": "qm_result/2.1",
                     },
                     "input_bindings": {
                         "compounds": "$compound",
@@ -174,7 +174,7 @@ def test_pyscf_application_run_records_normalized_result_and_provenance(tmp_path
         )
         assert not outcome.failures
         result = outcome.outputs["result"][0].value
-        assert result.schema_version == "qm_result/2.0"
+        assert result.schema_version == "qm_result/2.1"
         assert result.total_energy_Eh < 0.0
         report = outcome.outputs["report"][0].value
         assert report.project_id == compound.project_id
@@ -218,7 +218,7 @@ def test_psi4_application_run_records_normalized_result_and_provenance(tmp_path:
             "schema": "caddsuite.workflow/1",
             "name": "QM application integration",
             "inputs": {
-                "calculation": {"contract": "qm_calculation/1.1"},
+                "calculation": {"contract": "qm_calculation/1.2"},
                 "form": {"contract": "compound_form/1.0"},
                 "conformer": {"contract": "conformer/1.1"},
             },
@@ -228,7 +228,7 @@ def test_psi4_application_run_records_normalized_result_and_provenance(tmp_path:
                     "kind": "quantum_chemistry",
                     "engine": "caddsuite.qm.psi4",
                     "input_contracts": {
-                        "calculation": "qm_calculation/1.1",
+                        "calculation": "qm_calculation/1.2",
                         "form": "compound_form/1.0",
                         "conformer": "conformer/1.1",
                     },
@@ -237,7 +237,7 @@ def test_psi4_application_run_records_normalized_result_and_provenance(tmp_path:
                         "form": "$form",
                         "conformer": "$conformer",
                     },
-                    "output_contract": "qm_result/2.0",
+                    "output_contract": "qm_result/2.1",
                     "params": {"engine_parameters": params},
                 }
             ],
@@ -288,7 +288,7 @@ def test_psi4_application_run_records_normalized_result_and_provenance(tmp_path:
         )
         assert not outcome.failures
         result = outcome.outputs["result"][0].value
-        assert result.schema_version == "qm_result/2.0"
+        assert result.schema_version == "qm_result/2.1"
         assert result.total_energy_Eh < 0.0
         with runtime.sessions() as session:
             attempt_row = session.scalar(select(TaskAttemptRow))
@@ -326,7 +326,7 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
         "schema": "caddsuite.workflow/1",
         "name": "Psi4 reproducibility integration",
         "inputs": {
-            "calculation": {"contract": "qm_calculation/1.1"},
+            "calculation": {"contract": "qm_calculation/1.2"},
             "form": {"contract": "compound_form/1.0"},
             "conformer": {"contract": "conformer/1.1"},
         },
@@ -336,7 +336,7 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
                 "kind": "quantum_chemistry",
                 "engine": "caddsuite.qm.psi4",
                 "input_contracts": {
-                    "calculation": "qm_calculation/1.1",
+                    "calculation": "qm_calculation/1.2",
                     "form": "compound_form/1.0",
                     "conformer": "conformer/1.1",
                 },
@@ -345,7 +345,7 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
                     "form": "$form",
                     "conformer": "$conformer",
                 },
-                "output_contract": "qm_result/2.0",
+                "output_contract": "qm_result/2.1",
                 "params": {"engine_parameters": params},
             }
         ],
@@ -435,7 +435,7 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
                 "schema": "caddsuite.tolerance-policy/1",
                 "policy_id": "psi4-single-point-energy",
                 "version": "1.0.0",
-                "contract_schema": "qm_result/2.0",
+                "contract_schema": "qm_result/2.1",
                 "fields": {
                     "/total_energy_Eh": {"absolute": 1e-8, "relative": 0.0, "unit": "Eh"},
                 },
@@ -467,7 +467,7 @@ def test_psi4_cli_export_fresh_replay_and_compare(tmp_path: Path) -> None:
     assert report["status"] in {"exact_match", "within_tolerance"}
     assert report["provenance"]["replay_lineage_verified"] is True
     item = report["items"][0]
-    assert item["comparison"]["tolerance_policy"]["contract_schema"] == "qm_result/2.0"
+    assert item["comparison"]["tolerance_policy"]["contract_schema"] == "qm_result/2.1"
     energy = next(
         field
         for field in item["comparison"]["normalized"]["fields"]

@@ -110,6 +110,7 @@ class QMEngineStageHandler:
         calculation = _one(invocation.inputs, "calculation", QMCalculation)
         form = _one(invocation.inputs, "form", CompoundForm)
         contracts: dict[str, VersionedContract] = {"form": form}
+        conformer: Conformer | None = None
         if calculation.geometry_source.kind == "conformer":
             conformer = _one(invocation.inputs, "conformer", Conformer)
             contracts["conformer"] = conformer
@@ -117,6 +118,11 @@ class QMEngineStageHandler:
         elif calculation.geometry_source.kind == "pose":
             pose = _one(invocation.inputs, "pose", Pose)
             run = _one(invocation.inputs, "docking_run", DockingRun)
+            if run.form_id != form.id:
+                raise StageExecutionFailure(
+                    "QM.GEOMETRY_IDENTITY_MISMATCH",
+                    "QM docking run does not belong to the selected compound form",
+                )
             contracts.update({"pose": pose, "docking_run": run})
             geometry_ref = pose.structure
         else:
@@ -135,6 +141,23 @@ class QMEngineStageHandler:
         geometry_path = work / "geometry.sdf"
         shutil.copyfile(self.services.artifacts.path_for(digest), geometry_path)
         staged = {str(geometry_ref.artifact_id): geometry_path}
+        if calculation.compound_id is not None and calculation.compound_id != form.compound_id:
+            raise StageExecutionFailure(
+                "QM.COMPOUND_FORM_MISMATCH",
+                "QM calculation compound_id does not match its CompoundForm",
+            )
+        if conformer is not None and (
+            conformer.form_id != form.id
+            or (
+                calculation.compound_id is not None
+                and conformer.compound_id is not None
+                and conformer.compound_id != calculation.compound_id
+            )
+        ):
+            raise StageExecutionFailure(
+                "QM.GEOMETRY_IDENTITY_MISMATCH",
+                "QM conformer does not belong to the selected compound form",
+            )
         issues = self.engine.validate_calculation(
             calculation,
             parameters=self.parameters,
@@ -193,7 +216,12 @@ class QMEngineStageHandler:
             raise StageExecutionFailure(
                 "QM.RESULT_MISSING", "engine did not produce the required final geometry artifact"
             )
-        return self.engine.normalize_result(calculation, envelope, output_artifacts=output_refs)
+        normalized = self.engine.normalize_result(
+            calculation, envelope, output_artifacts=output_refs
+        )
+        return normalized.model_copy(
+            update={"form_id": form.id, "compound_id": calculation.compound_id}
+        )
 
     def _store(self, path: Path, role: str) -> ArtifactRef:
         blob = self.services.artifacts.put_file(path)

@@ -60,11 +60,12 @@ class FukuiSpinSelection(ContractModel):
 
 
 class QMCalculation(VersionedContract):
-    schema_version: str = "qm_calculation/1.1"
+    schema_version: str = "qm_calculation/1.2"
 
     id: ULIDStr
     accession: QMAccession
     form_id: ULIDStr
+    compound_id: ULIDStr | None = None
     geometry_source: EntityRef  # a conformer, a pose, or an uploaded geometry artifact
     engine: SoftwareRef
     adapter: SoftwareRef
@@ -147,9 +148,11 @@ class PoseStrain(ContractModel):
 
 
 class QMResult(VersionedContract):
-    schema_version: str = "qm_result/2.0"
+    schema_version: str = "qm_result/2.1"
 
     calculation_id: ULIDStr
+    form_id: ULIDStr | None = None
+    compound_id: ULIDStr | None = None
     total_energy_Eh: float
     convergence: QMConvergence
     orbitals: OrbitalEnergies | None = None

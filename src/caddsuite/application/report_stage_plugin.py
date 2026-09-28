@@ -142,8 +142,24 @@ class ReportStageHandler:
             if result.accession.rsplit("_", 2)[0] not in accession_prefixes:
                 raise ValueError("binding-energy result accession does not match report compounds")
         calculations_by_id = {item.id: item for item in qm_calculations}
+        compounds_by_id = {item.id: item for item in compounds if isinstance(item, Compound)}
         if any(item.calculation_id not in calculations_by_id for item in qm_results):
             raise ValueError("each QMResult must have its matching QMCalculation in the report")
+        for calculation in qm_calculations:
+            if (
+                calculation.compound_id is not None
+                and calculation.compound_id not in compounds_by_id
+            ):
+                raise ValueError("QM calculation compound_id does not match a report Compound")
+        for qm_result in qm_results:
+            calculation = calculations_by_id[qm_result.calculation_id]
+            if (
+                calculation.compound_id is not None
+                and qm_result.compound_id != calculation.compound_id
+            ):
+                raise ValueError("QMResult compound_id does not match its QMCalculation")
+            if calculation.compound_id is not None and qm_result.form_id != calculation.form_id:
+                raise ValueError("QMResult form_id does not match its QMCalculation")
         for calculation in qm_calculations:
             if calculation.accession.rsplit("_", 2)[0] not in accession_prefixes:
                 raise ValueError("QM calculation accession does not match report compounds")
