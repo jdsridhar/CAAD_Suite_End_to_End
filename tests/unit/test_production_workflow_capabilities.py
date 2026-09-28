@@ -4,17 +4,38 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import yaml
 
+from caddsuite.application.binding_site_stage_plugin import BlindProteinSiteStageHandler
 from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.chem.standardize import make_compound, standardize_smiles
+from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.registry import Conformer
 from caddsuite.contracts.reporting import ReportBundle
+from caddsuite.contracts.structure import (
+    BindingSite,
+    BindingSiteMethod,
+    PreparedReceptor,
+    Structure,
+    StructureSource,
+)
+from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
+from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
-from caddsuite.workflow.definition import WorkflowDefinition
+from caddsuite.workflow.definition import StageDefinition, WorkflowDefinition
+from caddsuite.workflow.scheduler import StageHandler, TaskInvocation
+
+
+def test_pdbfixer_stage_is_discovered_without_importing_engine_runtime() -> None:
+    registry = StageHandlerRegistry.discover()
+    capability = registry.snapshot().capabilities.resolve("structure.prepare_protein", "pdbfixer")
+    assert capability is not None
+    assert capability.outputs == ("prepared_receptor/1.0",)
 
 
 def test_admet_docking_report_template_compiles_with_discovered_plugins() -> None:
@@ -145,3 +166,70 @@ def test_discovered_runtime_executes_admet_to_report_subworkflow(tmp_path: Path)
         report_bytes = runtime.services.artifacts.path_for(json_artifact.sha256).read_bytes()
         assert b"qed" in report_bytes
         assert b"experimental validation" in report_bytes
+
+
+def test_blind_binding_site_stage_registers_method_and_receptor_lineage(tmp_path: Path) -> None:
+    data = (
+        Path(__file__).resolve().parents[1] / "data" / "golden" / "structure_g1" / "5NIU.cif"
+    ).read_bytes()
+    target_id = new_ulid()
+    structure_id = new_ulid()
+    with LocalWorkflowRuntime.open(
+        data_root=tmp_path / "binding-site",
+        handlers=lambda _services: {"unused": cast(StageHandler, object())},
+    ) as runtime:
+        blob = runtime.services.artifacts.put_bytes(data)
+        with runtime.sessions.begin() as session:
+            source_row = register_blob(
+                session,
+                blob,
+                kind="raw_structure",
+                media_type="chemical/x-mmcif",
+                original_name="5NIU.cif",
+            )
+        source_ref = ArtifactRef(
+            artifact_id=source_row.id,
+            role="raw_structure_mmcif",
+            sha256=blob.sha256,
+        )
+        structure = Structure(
+            id=structure_id,
+            target_id=target_id,
+            source=StructureSource.RCSB,
+            source_id="5NIU",
+            raw=source_ref,
+        )
+        prepared_ref = source_ref.model_copy(update={"role": "prepared_structure"})
+        receptor = PreparedReceptor(
+            id=new_ulid(),
+            structure_id=structure_id,
+            protocol=SoftwareRef(
+                name="PDBFixer",
+                version="test-fixture",
+                kind=SoftwareKind.LIBRARY,
+                license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+            ),
+            ph=7.4,
+            protonation_method="test-fixture",
+            selected_chain_ids=("A",),
+            artifacts={"prepared_structure": prepared_ref},
+        )
+        stage = StageDefinition.model_validate(
+            {
+                "id": "site",
+                "kind": "structure.binding_site",
+                "engine": "blind_protein_box",
+                "params": {"selected_chain_ids": ["A"]},
+            }
+        )
+        handler = BlindProteinSiteStageHandler(stage, runtime.services)
+        site = handler.execute(
+            cast(
+                TaskInvocation,
+                SimpleNamespace(inputs={"structure": (structure,), "receptor": (receptor,)}),
+            )
+        )
+        assert isinstance(site, BindingSite)
+        assert site.method is BindingSiteMethod.BLIND_WHOLE_PROTEIN
+        assert site.source_receptor == prepared_ref
+        assert site.volume_A3 > 0

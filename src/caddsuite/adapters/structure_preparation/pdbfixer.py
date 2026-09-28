@@ -10,6 +10,7 @@ from typing import Any, cast
 from sqlalchemy.orm import Session, sessionmaker
 
 from caddsuite.contracts.base import ArtifactRef, VersionedContract
+from caddsuite.contracts.execution import SoftwareEnvironment
 from caddsuite.contracts.structure import PreparedReceptor, Structure
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
@@ -30,6 +31,7 @@ class PDBFixerPreparationHandler:
 
     adapter_id = "structure.prepare_protein.pdbfixer"
     adapter_version = "1.1.0"
+    software_environment: SoftwareEnvironment | None = None
 
     def __init__(
         self,
