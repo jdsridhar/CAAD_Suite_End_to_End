@@ -155,6 +155,24 @@ def test_worker_checks_pose_identity_and_geometry_against_staged_artifact(tmp_pa
     assert configuration["docked_pose_path"] == "pose.sdf"
 
 
+def test_worker_reports_missing_rdkit_for_pose_identity_gate(tmp_path, monkeypatch):
+    import builtins
+
+    monkeypatch.chdir(tmp_path)
+    payload = _pose_payload(tmp_path)
+    original_import = builtins.__import__
+
+    def import_without_pose_analysis(name, *args, **kwargs):
+        if "pose_analysis" in name:
+            raise ImportError("simulated missing RDKit pose module")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_without_pose_analysis)
+    with pytest.raises(WorkerFailure, match="requires RDKit") as error:
+        _configuration(payload)
+    assert error.value.code == "PSI4.POSE.DEPENDENCY_MISSING"
+
+
 def test_worker_rejects_pose_that_does_not_match_registered_form(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(WorkerFailure, match="connectivity or stereochemistry") as error:

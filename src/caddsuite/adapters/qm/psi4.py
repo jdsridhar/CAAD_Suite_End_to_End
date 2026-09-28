@@ -574,7 +574,8 @@ class Psi4QMAdapter:
                 "import importlib.util,json,psi4; "
                 "print(json.dumps({'psi4': psi4.__version__, "
                 "'pyddx': importlib.util.find_spec('pyddx') is not None, "
-                "'resp': importlib.util.find_spec('resp') is not None}))"
+                "'resp': importlib.util.find_spec('resp') is not None, "
+                "'rdkit': importlib.util.find_spec('rdkit') is not None}))"
             )
             with tempfile.TemporaryDirectory(prefix="caddsuite-psi4-probe-") as probe_directory:
                 environment["PSI_SCRATCH"] = probe_directory
@@ -609,6 +610,8 @@ class Psi4QMAdapter:
             solvation_models = self.capabilities.solvation_models
         if probe_record.get("resp") is not True:
             properties.discard("charges.resp")
+        if probe_record.get("rdkit") is not True:
+            properties.discard("pose_strain")
         return QMEngineAvailability(
             installed=True,
             engine_version=probe_record["psi4"],
@@ -811,6 +814,31 @@ class Psi4QMAdapter:
                 "QM.PSI4_WORKER_MISSING",
                 "worker source directory must contain caddsuite_worker/psi4_worker.py",
             )
+        optional_properties = {"charges.resp", "pose_strain"}.intersection(
+            calculation.requested_properties
+        )
+        if calculation.solvation is not None or optional_properties:
+            availability = self.probe(parameters)
+            if not availability.installed:
+                raise Psi4PlanError(
+                    "QM.PSI4_UNAVAILABLE",
+                    availability.reason or "configured Psi4 environment is unavailable",
+                )
+            if (
+                calculation.solvation is not None
+                and calculation.solvation.model.casefold() not in availability.solvation_models
+            ):
+                raise Psi4PlanError(
+                    "QM.SOLVATION_CAPABILITY_UNAVAILABLE",
+                    "selected Psi4 environment lacks pyddx support for ddx_pcm solvation",
+                )
+            missing_optional = optional_properties.difference(availability.properties)
+            if missing_optional:
+                raise Psi4PlanError(
+                    "QM.PROPERTY_CAPABILITY_UNAVAILABLE",
+                    "selected Psi4 environment lacks optional support for: "
+                    + ", ".join(sorted(missing_optional)),
+                )
         return config, geometry, source
 
     @staticmethod

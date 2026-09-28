@@ -19,8 +19,24 @@ from caddsuite.contracts.qm import QMCalculation, QMModel, QMProtocol, Solvation
 from caddsuite.contracts.registry import CompoundForm, CompoundFormKind, Conformer
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
+from caddsuite.ports.qm_engine import QMEngineAvailability
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _availability(
+    adapter: Psi4QMAdapter,
+    *,
+    properties: tuple[str, ...] | None = None,
+    solvation_models: tuple[str, ...] = (),
+) -> QMEngineAvailability:
+    return QMEngineAvailability(
+        installed=True,
+        engine_version="1.11",
+        protocols=adapter.capabilities.protocols,
+        properties=(properties if properties is not None else adapter.capabilities.properties),
+        solvation_models=solvation_models,
+    )
 
 
 def _case(tmp_path: Path, *, properties: tuple[str, ...] = ()):
@@ -265,12 +281,18 @@ def test_adapter_plans_unit_explicit_volumetric_products(tmp_path):
     assert payload["cube_grid_spacing_bohr"] == pytest.approx(0.472431955)
 
 
-def test_adapter_passes_selected_ddx_solvent_to_worker(tmp_path):
+def test_adapter_passes_selected_ddx_solvent_to_worker(tmp_path, monkeypatch):
     calculation, inputs, files, parameters, _ = _case(tmp_path)
     calculation = calculation.model_copy(
         update={"solvation": SolvationSpec(model="ddx_pcm", solvent="water")}
     )
-    plan = Psi4QMAdapter().plan_calculation(
+    adapter = Psi4QMAdapter()
+    monkeypatch.setattr(
+        adapter,
+        "probe",
+        lambda _parameters: _availability(adapter, solvation_models=("ddx_pcm",)),
+    )
+    plan = adapter.plan_calculation(
         calculation,
         parameters=parameters,
         input_contracts=inputs,
@@ -278,6 +300,24 @@ def test_adapter_passes_selected_ddx_solvent_to_worker(tmp_path):
         working_directory=tmp_path,
     )
     assert plan.task_request["payload"]["solvent"] == "water"
+
+
+def test_adapter_blocks_ddx_when_pyddx_is_missing_from_worker(tmp_path, monkeypatch):
+    calculation, inputs, files, parameters, _path = _case(tmp_path)
+    calculation = calculation.model_copy(
+        update={"solvation": SolvationSpec(model="ddx_pcm", solvent="water")}
+    )
+    adapter = Psi4QMAdapter()
+    monkeypatch.setattr(adapter, "probe", lambda _parameters: _availability(adapter))
+    with pytest.raises(Psi4PlanError) as error:
+        adapter.plan_calculation(
+            calculation,
+            parameters=parameters,
+            input_contracts=inputs,
+            staged_inputs=files,
+            working_directory=tmp_path,
+        )
+    assert error.value.code == "QM.SOLVATION_CAPABILITY_UNAVAILABLE"
 
 
 def test_adapter_rejects_tampered_geometry_before_execution(tmp_path):
@@ -379,7 +419,7 @@ def test_adapter_probe_reports_optional_capabilities_from_engine_environment(tmp
         return subprocess.CompletedProcess(
             args[0],
             0,
-            stdout='{"psi4":"1.11","pyddx":false,"resp":false}\n',
+            stdout='{"psi4":"1.11","pyddx":false,"resp":false,"rdkit":false}\n',
             stderr="",
         )
 
@@ -395,6 +435,7 @@ def test_adapter_probe_reports_optional_capabilities_from_engine_environment(tmp
     assert not observed["directory"].exists()
     assert not availability.solvation_models
     assert "charges.resp" not in availability.properties
+    assert "pose_strain" not in availability.properties
     assert "charges.mulliken" in availability.properties
 
 
@@ -422,9 +463,14 @@ def test_adapter_probe_reports_unavailable_interpreter():
     assert availability.reason
 
 
-def test_adapter_plans_pose_strain_only_after_pose_run_form_and_hash_checks(tmp_path):
+def test_adapter_plans_pose_strain_only_after_pose_run_form_and_hash_checks(tmp_path, monkeypatch):
     calculation, inputs, files, parameters, pose_file = _pose_case(tmp_path)
     adapter = Psi4QMAdapter()
+    monkeypatch.setattr(
+        adapter,
+        "probe",
+        lambda _parameters: _availability(adapter),
+    )
     assert (
         adapter.validate_calculation(
             calculation,
@@ -447,6 +493,35 @@ def test_adapter_plans_pose_strain_only_after_pose_run_form_and_hash_checks(tmp_
     assert payload["expected_smiles"] == inputs["form"].smiles
     assert payload["pose_id"] == inputs["pose"].id
     assert payload["geometry_block"].splitlines()[0] == "0 1"
+
+
+def test_adapter_blocks_pose_strain_when_rdkit_is_missing_from_worker(tmp_path, monkeypatch):
+    calculation, inputs, files, parameters, _pose_file = _pose_case(tmp_path)
+    adapter = Psi4QMAdapter()
+    properties = tuple(prop for prop in adapter.capabilities.properties if prop != "pose_strain")
+    monkeypatch.setattr(
+        adapter,
+        "probe",
+        lambda _parameters: _availability(adapter, properties=properties),
+    )
+    issues = adapter.validate_calculation(
+        calculation,
+        parameters=parameters,
+        input_contracts=inputs,
+        staged_inputs=files,
+        working_directory=tmp_path,
+    )
+    assert issues[0].code == "QM.PROPERTY_CAPABILITY_UNAVAILABLE"
+    assert "pose_strain" in issues[0].message
+    with pytest.raises(Psi4PlanError) as error:
+        adapter.plan_calculation(
+            calculation,
+            parameters=parameters,
+            input_contracts=inputs,
+            staged_inputs=files,
+            working_directory=tmp_path,
+        )
+    assert error.value.code == "QM.PROPERTY_CAPABILITY_UNAVAILABLE"
 
 
 def test_adapter_blocks_pose_identity_mismatch_before_worker_planning(tmp_path):

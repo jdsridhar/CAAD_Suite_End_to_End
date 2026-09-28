@@ -401,8 +401,13 @@ def _configuration(payload: dict[str, Any]) -> dict[str, Any]:
             raise WorkerFailure(
                 "PSI4.INPUT.INVALID", "pose analysis requires its registered pose ID"
             )
-        from .pose_analysis import load_docked_pose
-
+        try:
+            from .pose_analysis import load_docked_pose
+        except ImportError as exc:
+            raise WorkerFailure(
+                "PSI4.POSE.DEPENDENCY_MISSING",
+                "pose identity validation requires RDKit in the configured Psi4 worker environment",
+            ) from exc
         try:
             pose = load_docked_pose(
                 str(source), expected_smiles, payload["charge"], payload["multiplicity"]
