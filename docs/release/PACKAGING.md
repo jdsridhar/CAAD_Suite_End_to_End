@@ -29,3 +29,14 @@ Before a public release, regenerate the artifact from a clean commit, build/test
 Runtime support is recorded separately in [`SUPPORT_MATRIX.md`](SUPPORT_MATRIX.md). The supported distributable is pip wheel/source; the Conda environment file supports development and engine isolation, not a Conda package channel.
 
 The updated wheel metadata was then installed and exercised on Python 3.11, 3.12, 3.13, and 3.14; see [`SUPPORT_MATRIX.md`](SUPPORT_MATRIX.md).
+
+## Clean commit package verification (2026-09-28)
+
+Commit `483aba087309033856e4f7e8d12cf7d9371f2412` was built from the clean checkout. The wheel and source archive were written outside the repository under the user cache:
+
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 483,055 bytes, SHA-256 `9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7`.
+- Source archive: `caddsuite-0.1.0.dev0.tar.gz`, 3,677,591 bytes, SHA-256 `7ddb4135a8c18b928841f179e238b1939eb7ee173b344e533752794658a81543`.
+- The source archive was installed in a fresh Python 3.14.4 virtual environment. `caddsuite version`, database upgrade to Alembic `0007`, and packaged migration resource lookup all succeeded.
+- Hosted [package matrix](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36367704078) passed for Python 3.11–3.14. Hosted [Quality workflow](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36367704039) also passed on this commit.
+
+This closes pre-release packaging verification for the declared Linux x86_64 Python range. No version tag, package upload, or GitHub Release was created. Windows/macOS and external scientific-engine compatibility remain outside the current support claim.

@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 18 — Packaging and release |
-| **Current task** | [-] 18.3 validate hosted package matrix and finalize clean-release gate |
-| **Next task** | Confirm hosted Python package matrix, produce final artifacts from the exact clean commit, and review release validation/licensing before any public tag/upload |
-| **Last completed** | Phase 17 documentation gate; installation/user/developer/API/methodology references cross-linked and checked. |
+| **Current phase** | Phase 6 — scientific validation follow-up |
+| **Current task** | [-] V5: define the follow-up checks needed to qualify the measured AmberTools-to-GROMACS energy delta |
+| **Next task** | Resolve V6: the existing 0.1 ps MD smoke run verifies execution only; define an appropriately scoped stability validation |
+| **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | G-DOCK-4 redocking target (<2 Å) was not met; documented for later multi-complex benchmark. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -183,7 +183,7 @@ When the user says **CONTINUE**:
 - [x] 5.3 Evaluate ADMET-AI v2: recommend an isolated optional worker adapter; do not install it into the core environment or integrate unreviewed model/data assets. Record package/model version, dataset, raw outputs, parameters and applicability/uncertainty limitations. Follow up with licensing and benchmark checks before integration.
 - [x] 5.4 **Gate:** definitions documented; tests green. Full quality gate: 267 passed, 5 engine-only skips; Ruff, format, strict mypy (92 files), import-linter and schemas pass.
 
-## Phase 6 — Complex preparation + system building `[-]`
+## Phase 6 — Complex preparation + system building [x]
 
 - [x] 6.1 `SystemBuilder` port; pose validation rules (clashes, stereo, bond orders, H completeness). Full gate passes: 275 passed, 5 optional engine-only skips; Ruff, format, strict mypy (95 files), import-linter and schemas.
 - [x] 6.2 `adapters.system_builders.charmm_gui_import`: hash-checked bundle ingest, recursive confined include closure, topology/GRO count checks, explicit ligand/protein selection checks, MDP normalization, raw artifact retention. G-MD-3/4 read-only integration passes for 2M2D_LIG/STD and 5NIU_LIG/STD; stages derive 0.125 ns equilibration and 1 ns production, and 4 fs HMR remains explicitly unverified. See `docs/validation/G-MD-3.md`.
@@ -204,7 +204,7 @@ When the user says **CONTINUE**:
 - [x] 7.8 **PoC second MD engine** (OpenMM): new adapter implements the existing MD engine port with zero edits to core workflow/port/contracts; native Amber topology/profile is explicit; a separate Python 3.11 worker ran 50 CPU steps on the 1,376-atom AmberTools regression system. Unit and real-engine evidence: `docs/architecture/OPENMM_MD_ADAPTER.md`, `docs/validation/G-MD-11.md`.
 - [x] 7.9 **Gate:** plan golden matches legacy (except logged intentional changes); real GROMACS integration, interrupted-run resume and OpenMM second-engine proof pass. Full gate with all optional engines enabled: 332 passed, 0 skipped; Ruff, format, strict mypy (107 files), import-linter and schemas pass.
 
-## Phase 8 — Trajectory analysis `[-]`
+## Phase 8 — Trajectory analysis [x]
 
 - [x] 8.1 Verify MDAnalysis against the real GROMACS 2026.3 TPR: stable MDAnalysis 2.10.0 rejects format 138; GRO+XTC fallback reads 49,682 atoms × 11 frames, 0–1,000 ps, finite coordinates/box. GRO has no bonds, so bond-dependent metrics are blocked pending a validated topology source. Dedicated locked analysis environment and staged-input probe added; see `docs/architecture/TRAJECTORY_ANALYSIS.md` and `docs/validation/G-MD-12.md`.
 - [x] 8.2 Trajectory processing (concat, PBC transforms, fit) — verify SCI-19. Added an engine-neutral request/result port and GROMACS adapter with isolated worker, hash-linked explicit segment timing, transcript-verified group selection, raw/intermediate retention and normalized frame metadata. Real 2M2D_LIG evidence found `nojump → whole` repairs split TIP3 waters at the audited 100 ps cadence; this order is dataset-specific. Protein-fit/System-output selections were verified by name and atom count. G-MD-13: 16 focused tests passed; Ruff, strict mypy (106 files), schema export/check passed. See `docs/validation/G-MD-13.md`, ADR-0019 and `docs/architecture/TRAJECTORY_ANALYSIS.md`.
@@ -235,7 +235,7 @@ When the user says **CONTINUE**:
 - [x] 9.4 11-frame G-MD-2 run vs archived per-frame values; G-MD-18 matched all columns at native 0.01 kcal/mol precision.
 - [x] 9.5 Gate: full configured suite 410 passed, 12 optional skips; G-MD-18 and G-MD-19 pass; Ruff, strict mypy (135 files), targeted format, import-linter (180 files), schema freshness, and frozen legacy manifest (143/143) verified.
 
-## Phase 10 — QM migration (Psi4) [-]
+## Phase 10 — QM migration (Psi4) [x]
 
 - [x] 10.1 Audit existing worker protocols and define a reusable stdlib-only JSON runtime with strict tests.
   - [x] Common task/result envelopes, stable error codes/retryability, sequenced JSONL events, finite JSON enforcement, atomic output and overwrite protection.
@@ -289,7 +289,7 @@ When the user says **CONTINUE**:
 
 - [x] 10.10 Register Psi4 as a built-in `caddsuite.qm_engines` plugin alongside PySCF; registry test discovers both engine IDs without importing engine runtimes into core. This proves same-port engine discovery only; Psi4 application-stage execution wiring remains in Phase 13.1. Focused registry tests: 3 passed.
 
-## Phase 11 — Provenance [-]
+## Phase 11 — Provenance [x]
 
 - [x] 11.1 Complete per-attempt provenance capture (argv, environment snapshot, host, resources, seeds, versions, Git and artifacts).
   - [x] Audit existing HostInfo, PlatformRef, environment snapshots, executor records and attempt/agent/artifact schema. Documented gaps and migration boundary in docs/architecture/PROVENANCE_AUDIT.md.
@@ -359,7 +359,7 @@ When the user says **CONTINUE**:
   - [x] Render HTML, JSON, CSV and PDF; assert docking available, MD not_run and interpretation disclaimer.
   - [x] Real engine-backed demo passed in 166.85 s; report scope and redocking limitation documented in docs/validation/G-REPORT-1.md.
 
-## Phase 13 — API + UI `[-]`
+## Phase 13 — API + UI [x]
 
 - [x] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
@@ -410,7 +410,7 @@ When the user says **CONTINUE**:
 - [x] 14.3 Adapter conformance: registry-wide discovery checks cover all installed stage-handler and QM-engine entry points; the family test map in docs/testing/ADAPTER_CONFORMANCE.md identifies behavior tests for each implemented adapter family. Distinct contracts remain family-specific; no false universal execution protocol is imposed. Full local suite and hosted CI run 36309633349 on bf1c8cc pass.
 - [x] 14.4 Hypothesis properties compare numeric and boolean workflow gate results against Python, generated AutoDock4 DLG scores against parser output, and Amber protein preflight inputs.
 
-## Phase 15 — Reproducibility [-]
+## Phase 15 — Reproducibility [x]
 
 - [x] 15.1 Export package (manifest, provenance, env locks, `--slim`)
 - [x] 15.2 `caddsuite reproduce` with tolerance report and explicit non-reproducible steps: design recorded in `docs/reproducibility/REPRODUCE_DESIGN.md`.
@@ -457,11 +457,11 @@ When the user says **CONTINUE**:
 - [x] 17.3 Plugin/adapter SDK guide updated to distinguish engine-port plugins, workflow stage-handler plugins, and the lower-level generic adapter shape; includes a registration example, links a working QM plugin, and documents scientific validation and safety requirements.
 - [x] 17.4 Added configuration and troubleshooting references; consolidated links to the generated OpenAPI contract, domain model, reproducibility/export/replay docs, and method-specific scientific validation records. README and architecture index link the guides. Existing config remains schema/stage-driven; engine-specific settings stay with adapters.
 
-## Phase 18 — Packaging and release `[-]`
+## Phase 18 — Packaging and release `[x]`
 
 - [x] 18.1 Engineering license inventory covers the 198-package exact Conda core lock and 283 npm lock entries with no missing license expressions (`docs/release/licenses/`). Reviewed project Apache-2.0/NOTICE and corrected web package metadata. Distribution-specific compatibility/notices and external engine/model licenses remain user/release gates; this is not a legal opinion.
 - [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
-- [-] 18.3 Python wheel and sdist build/install smoke tests passed in fresh Python 3.14 venvs; fixed duplicate Alembic migration packaging and verified migration revision 0007 plus LICENSE/NOTICE (`docs/release/PACKAGING.md`). Added a four-version Linux x86_64 wheel smoke workflow and explicit support matrix; Python metadata now caps at <3.15. Conda is retained as the development/engine environment format (no package recipe); cross-OS support and clean-tag release build remain pending. D3 working name remains CADD Suite.
+- [x] 18.3 Clean-commit wheel and sdist built and verified; sdist installed in fresh Python 3.14.4 and passed CLI, Alembic 0007, and migration-resource checks. Hosted package matrix passed on Python 3.11–3.14 and hosted Quality passed (see docs/release/PACKAGING.md). Conda remains a development/engine environment, cross-OS support is outside the current claim, and no public release tag/upload was made. D3 working name remains CADD Suite.
 
 ---
 
@@ -488,8 +488,8 @@ When the user says **CONTINUE**:
 
 ## Scientific validation tasks (cross-phase)
 
-- [!] V1 Redocking of 5NIU co-crystal ligand 8YZ missed the <2 Å target (top pose 12.3928 Å); single-run details in `docs/validation/G-DOCK-4.md`; extend to a multi-complex benchmark before interpreting.
-- [ ] V2 Psi4 reference energies vs legacy batch results (10.6)
+- [x] V1 Three-case fixed-protocol pilot executed: only 5NIU reached Vina and failed top-rank RMSD; 3ERT and 1M17 failed at receptor preparation. This is an inconclusive pose-accuracy pilot, not a passing benchmark; see G-DOCK-4 and G-DOCK-8.
+- [x] V2 Psi4 reference energies vs legacy batch results (10.6; four archived compounds agree within declared tolerances in G-DFT-1)
 - [x] V3 MDAnalysis vs gmx metrics on 2M2D_LIG (8.5; G-MD-14)
 - [x] V4 MM-GBSA per-frame agreement on 11 frames (9.4; G-MD-18)
 - [ ] V5 AmberTools → GROMACS topology conversion: single-point energy agreement (6.4)
@@ -520,7 +520,9 @@ When the user says **CONTINUE**:
 
 | Date | Session summary |
 |---|---|
-| 2026-09-28 | Updated wheel metadata to `Requires-Python >=3.11,<3.15` and added Node/npm engine bounds. Built the constrained wheel (SHA-256 `9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7`), then installed it in clean Python 3.11–3.14 environments; CLI, Alembic 0007, and packaged migration resources passed on each. Added `.github/workflows/package-matrix.yml`, runtime support documentation, and selected pip wheel/sdist as the distribution channel. Full repo gate and npm11 web gate pass; hosted workflow result remains to be observed after push. |
+| 2026-09-28 | Re-audited phase status against task gates: closed implementation phases 6, 8, 10, 11, 13, and 15; V1 pilot execution and V2 QM reference comparison are complete with limitations preserved. Phase 4 accuracy remains a documented failure; V5/V6 remain open. |
+| 2026-09-28 | Closed Phase 18 pre-release packaging verification on clean commit 483aba0: wheel and sdist built; fresh Python 3.14.4 sdist install passed CLI, DB migration 0007, and migration-resource checks. Wheel SHA-256 9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7; sdist SHA-256 7ddb4135a8c18b928841f179e238b1939eb7ee173b344e533752794658a81543. Hosted package matrix 36367704078 and Quality 36367704039 passed. No public release tag/upload was created. |
+| 2026-09-28 | Updated wheel metadata to `Requires-Python >=3.11,<3.15` and added Node/npm engine bounds. Built the constrained wheel (SHA-256 `9da667ac30abd1449753741be9c7d0b888036acd2ff7ecd57cd44787253b49c7`), then installed it in clean Python 3.11–3.14 environments; CLI, Alembic 0007, and packaged migration resources passed on each. Added `.github/workflows/package-matrix.yml`, runtime support documentation, and selected pip wheel/sdist as the distribution channel. Full repo gate and npm11 web gate pass; hosted package matrix and Quality both passed after push (runs 36367704078 and 36367704039). |
 | 2026-09-28 | Release support decision: pip wheel/sdist is the distributable; Conda remains for the locked developer/engine environment and no Conda package recipe will be added without user demand. Added a Linux x86_64 Python 3.11–3.14 package smoke matrix and constrained `requires-python` to that tested range. Browser Node/npm engine requirements now match Vite/OpenAPI tooling. Fresh wheel install + CLI + migration 0007 passed locally across Python 3.11/3.12/3.13/3.14. |
 | 2026-09-28 | Clean-worktree validation at commit `1926ff1`: full Python gate 674 passed/35 skipped; clean `npm ci` + API schema/type/build/Playwright gate passed (one browser E2E, 21 s). Built wheel and sdist from that clean checkout; wheel hash matched the documented artifact. Installed the clean sdist in a fresh Python 3.14 environment and verified CLI, migration revision 0007, and license/migration files. Remaining release decisions: Conda recipe and broader Python/platform matrix; no tag or package upload made. |
 | 2026-09-28 | Generated exact-lock dependency license metadata inventory: 198 Conda core packages match `caddsuite.lock.txt`; 283 npm package records from installed manifests plus registry metadata for platform-optional packages; zero unresolved expressions. CSV and scope note are in `docs/release/licenses/`. Marked engineering inventory complete while retaining distribution/engine/model legal review as a release gate. |
