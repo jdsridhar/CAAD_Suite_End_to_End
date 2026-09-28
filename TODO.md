@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 13 - production workflow stage composition (reopened after runtime acceptance audit) |
-| **Current task** | [-] 13.7 Compose and execute the full corrected ADMET/protonation/gate/embed/Vina/report template through the discovered runtime; standalone real PDBFixer/Vina integrations now pass. |
-| **Next task** | Wire/configure the PDBFixer and blind-site stages in the example with explicit chain, pH and executable decisions, qualify the engine-backed run, then extend production runtime coverage to MD analysis/MMGBSA and QM. |
+| **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
+| **Current task** | [-] 13.8 Integrate MD analysis/MM/GBSA and QM stages into production-discovered workflows, preserving compatibility checks and recorded scientific choices. |
+| **Next task** | Add one-run MD analysis and MM/GBSA runtime evidence, then a QM workflow stage; address candidate evidence/report linking and rerun acceptance gates. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -367,14 +367,16 @@ When the user says **CONTINUE**:
   - [x] Execute ethanol through the new handler and confirm a normalized property_prediction_set/1.0 is emitted; Ruff and strict mypy pass for the new module.
   - [x] Add a discovered Dimorphite-DL stage, preserve configured pH and tool version, and pause/resume ambiguous single-form selection through stored human decisions. Three runtime regressions pass. The current scheduler returns one contract per task, so run-all is deliberately not offered; multi-form fan-out remains open.
   - [x] Register seeded RDKit ETKDG embedding as a production stage using the existing chemistry function; record seed, optimizer, RDKit version and SDF CAS artifact. The real runtime regression now executes protonation -> embedding and verifies the output artifact.
-  - [x] Register the existing isolated PDBFixer protein-preparation handler behind a discovered stage plugin with explicit Python/worker paths, preflight, selected-chain/pH runtime validation, and environment provenance. The plugin is capability-discovered; an engine-enabled preparation run remains required.
+  - [x] Register the existing isolated PDBFixer protein-preparation handler behind a discovered stage plugin with explicit Python/worker paths, preflight, selected-chain/pH runtime validation, and environment provenance. The plugin is capability-discovered; configured real-engine preparation and full workflow runs are recorded below.
   - [x] Register an engine-independent blind whole-protein binding-site stage using the existing geometry implementation. It requires explicit chain selection, verifies the prepared mmCIF artifact hash and preserves receptor lineage; golden 5NIU runtime fixture passes. This is explicitly a blind search box, not a pocket-specific binding-site prediction.
   - [x] Register an engine-neutral evidence gate that exposes only explicitly configured PropertyPredictionSet endpoints; configure the example's admet.qed -> predictions.qed binding and verify pass/fail evaluation. Three gate runtime tests pass.
   - [x] Implement run-scoped report stage using the existing provenance builder/renderers, content-addressed artifacts and ReportBundle; pass run_id through TaskInvocation and include it in report cache identity. SQLite/CAS runtime test covers rendered JSON/HTML registration.
   - [x] Reconcile workflow contracts with installed Vina capability: exact form/conformer/prepared-receptor/target/site ports and docking_result/1.0 output are declared as normalized inputs/output. The published workflow compiles against the production registry.
-  - [x] Execute the production-registry ADMET -> protonation -> embedding -> report subworkflow with SQLite task/provenance persistence and CAS conformer/JSON/HTML artifacts. The complete docking workflow still awaits engine-backed Vina configuration and valid receptor/site inputs.
+  - [x] Execute the production-registry ADMET -> protonation -> embedding -> report subworkflow with SQLite task/provenance persistence and CAS conformer/JSON/HTML artifacts.
   - [x] Verify configured WSL PDBFixer and Vina/Meeko engine integrations: `CADDSUITE_PDBFIXER_PYTHON=/home/sridhar/miniconda3/envs/cadd/bin/python .venv/bin/pytest -q tests/unit/test_pdbfixer_handler.py tests/unit/test_vina_handler.py` => 2 passed in 196.65 s. This is an engine/handler integration, not a single scheduled run of the published ADMET-to-report template.
-  - [ ] Wire the registered PDBFixer/blind-site stages into the example with explicit target chain and pH configuration, configure installed Vina/Meeko paths without embedding machine-specific paths in the portable example, and execute the full scheduled Vina -> report workflow. Preserve the explicit microstate decision pause; do not choose a form silently.
+  - [x] Wire PDBFixer and blind-site stages into the example. Chain A and pH 7.4 are visible editable stage parameters; engine paths are clear placeholders. Compiler regression checks the discovered production registry, stage order, and docking dependencies.
+  - [x] Document local engine path configuration, per-target chain/pH review, explicit protonation decisions, and the scientific limits of whole-protein blind boxing in docs/WORKFLOW_EXAMPLES.md.
+  - [x] Replace local workflow paths with configured PDBFixer/Vina/Meeko executables for the pinned fixture, pass engine preflight, and execute all eight stages through the discovered runtime. The example retains placeholders for portability; see docs/validation/G-WORKFLOW-1.md for evidence and limits.
 
 - [x] 13.1 Application runtime + StageHandlerRegistry; authenticated API execution and lifecycle.
   - [x] Expose installed plugin capabilities and a static workflow compilation/plan endpoint.
@@ -688,4 +690,14 @@ When the user says **CONTINUE**:
 
 - [x] Resumed from TODO.md and inspected WSL Git state; user-owned untracked `timer.dat` remains untouched.
 - [x] Completed the configured real PDBFixer and Vina/Meeko handler integration: 2 passed in 196.65 s. Engine paths were supplied through the test environment, not persisted in workflow configuration.
-- [ ] Still in progress: execute ADMET, protonation, configurable gate, embedding, docking, and reporting under one compiled `LocalWorkflowRuntime` run. Current integration result does not establish that cross-stage acceptance criterion.
+- [x] Added discovered PDBFixer preparation and blind whole-protein site stages to the published YAML template, with explicit editable chain/pH values and placeholder executable paths. Focused compiler test: 4 passed.
+- [x] Full `scripts/check.sh` passed after refreshing stale editable entry-point metadata in the isolated `caddsuite` environment: 689 passed, 34 skipped; Ruff, formatting, strict mypy (192 source files), import contracts and schemas pass.
+- [x] Executed ADMET, protonation, configurable gate, embedding, PDBFixer preparation, blind-site construction, Vina docking, and reporting under one compiled `LocalWorkflowRuntime` run. A successful run establishes runtime composition only; the broad blind box and ethanol ligand are not scientific validation.
+- [ ] Continue with production runtime composition for MD trajectory analysis, MM/GBSA, and QM.
+
+### Session log - 2026-09-28, full workflow composition
+
+- [x] Added explicit PDBFixer and blind-site preparation stages, plus full Vina engine parameters, to the portable example. Compiler regression now checks their contracts/dependencies and required Vina settings.
+- [x] Ran the discovered eight-stage workflow against pinned 5NIU and ethanol. All eight tasks succeeded, Vina ran, and report JSON/HTML/CSV artifacts were retained with CAS hashes under /home/sridhar/caddsuite-workflow-evidence-20260928. Detailed scope is in docs/validation/G-WORKFLOW-1.md.
+- [x] Repository gate: Ruff, format, strict mypy (192 files), import contracts, schemas, and 689 tests passed; 34 environment/data-gated tests skipped.
+- [ ] Next: production-discovered runtime composition for MD trajectory analysis/MMGBSA and QM; the workflow plumbing smoke is not scientific validation.

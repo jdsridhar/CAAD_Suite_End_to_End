@@ -48,11 +48,23 @@ def test_admet_docking_report_template_compiles_with_discovered_plugins() -> Non
         "protonate",
         "configured_filter",
         "embed",
+        "prepare_protein",
+        "binding_site",
         "dock",
         "report",
     )
     tasks = {task.stage_id: task for task in compiled.tasks}
+    assert tasks["prepare_protein"].output_contract == "prepared_receptor/1.0"
+    assert tasks["binding_site"].output_contract == "binding_site/1.0"
     assert tasks["dock"].output_contract == "docking_result/1.0"
+    assert tasks["dock"].params["docking_parameters"]["energy_range_kcal_mol"] == 3.0
+    assert tasks["dock"].params["docking_parameters"]["cpu_cores"] == 2
+    assert tasks["dock"].dependencies == (
+        "binding_site",
+        "configured_filter",
+        "embed",
+        "prepare_protein",
+    )
     assert tasks["report"].output_contract == "report_bundle/1.0"
 
 

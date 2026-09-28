@@ -44,7 +44,8 @@ Keep the repository and data on the Linux filesystem (`~/…`), not under `/mnt/
 - [Architecture audit](docs/ARCHITECTURE_AUDIT.md): the four legacy applications, findings and risks
 - [Architecture overview](docs/architecture/README.md): target architecture, domain model, migration plan, ADRs
 - [Prior-art survey](docs/architecture/PRIOR_ART_SURVEY.md): related systems, reuse decisions, and research limits
-- [Scientific methods and validation index](docs/SCIENTIFIC_METHODS.md) · [API reference](docs/api/README.md)
+- [Workflow examples and engine configuration](docs/WORKFLOW_EXAMPLES.md)
+- [Scientific methods and validation index](docs/SCIENTIFIC_METHODS.md) and [API reference](docs/api/README.md)
 - [Developer setup](docs/dev/DEVELOPER_SETUP.md) · [Plugin development](docs/dev/PLUGIN_DEVELOPMENT.md) · [Learning notes](docs/dev/LEARNING_NOTES.md)
 
 ## Runtime support
