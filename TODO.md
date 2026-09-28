@@ -746,3 +746,12 @@ When the user says **CONTINUE**:
 - [x] Real scheduler workflow integration passed on the PPARG/ergosterol dataset: GROMACS preprocessing plus gmx_MMPBSA on 11 frames; outputs and logs hash-verified in CAS, source hashes unchanged. Total opt-in test runtime 43.76 s. This verifies workflow/runtime integration, not affinity accuracy or adequate sampling.
 - [x] Quality gate after this refactor: 709 passed, 36 skipped; Ruff, format, strict mypy (196 files), import contracts, and schemas all pass.
 - [-] Next: extend the same compiled workflow with normalized trajectory evidence, a chemically identity-linked QM calculation, and report generation; verify run/task provenance and report artifacts from scheduler outputs.
+
+
+### Session log - 2026-09-28, scheduler-composed trajectory evidence
+
+- [x] Extended the real PPARG workflow to compile and run GROMACS processing followed by MDAnalysis trajectory metrics and gmx_MMPBSA as independent consumers of the same processed result.
+- [x] Bound analysis metrics to the verified simulation identity and valid MDAnalysis selection expressions; verified normalized metric names and hash-checked all analysis/MMGBSA result and log artifacts in CAS.
+- [x] Opt-in real integration passed: 66,195 atoms, 1,001 frames (0-100 ns), stride 100 trajectory metrics; MM/GBSA used 11 frames. Runtime 44.88 s. This validates scheduler/runtime composition only, not converged affinity or experimental binding.
+- [x] Added ADR-0054 and updated G-MMPBSA validation notes.
+- [-] Next: add a scheduler-composed QM to report test using a real registered compound/form/conformer identity, then design how trajectory and binding-energy normalized results carry an explicit compound identity instead of relying on accession strings.

@@ -62,3 +62,18 @@ CADDSUITE_GMX_MMPBSA_PYTHON=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/python \
 
 The test copies every declared source file into its temporary fixture directory. The explicit
 CADDSUITE_GMX_MMPBSA_STAGE_DATA path does not alias the dataset to G-MD-18.
+
+
+## Scheduler-composed trajectory analysis
+
+The opt-in integration now compiles and executes GROMACS trajectory processing followed by two
+independent consumers of that normalized processed result: MDAnalysis trajectory analysis and
+gmx_MMPBSA binding-energy analysis. The trajectory analysis evaluates protein-ligand minimum
+distance and contact-count series at stride 100 over the available 0-100 ns dataset; MM/GBSA uses
+the configured 11 frames. Both normalized results are associated with the same simulation identity,
+and their emitted result/log artifacts are verified in the runtime content-addressed store.
+
+This validates scheduler wiring, runtime artifact handoff, normalization, and provenance. It does
+not validate the geometric metrics as binding evidence, establish affinity accuracy, or provide
+sufficient sampling for a converged free-energy estimate. The QM calculation and report remain a
+separate identity-linking integration task.

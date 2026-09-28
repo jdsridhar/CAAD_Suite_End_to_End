@@ -25,6 +25,8 @@ from caddsuite.contracts.analysis import (
     BindingEnergyPlan,
     BindingEnergyRequest,
     FrameSelection,
+    TrajectoryAnalysisPlan,
+    TrajectoryMetric,
     TrajectoryProcessingRequest,
     TrajectorySegmentInput,
     TrajectoryTransform,
@@ -55,14 +57,23 @@ STAGE_DATA_ROOT = os.environ.get("CADDSUITE_GMX_MMPBSA_STAGE_DATA")
 GMX = os.environ.get("CADDSUITE_GROMACS_EXECUTABLE")
 MMPBSA = os.environ.get("CADDSUITE_GMX_MMPBSA_EXECUTABLE")
 MMPBSA_PYTHON = os.environ.get("CADDSUITE_GMX_MMPBSA_PYTHON")
+MDA_PYTHON = os.environ.get("CADDSUITE_MDA_PYTHON")
 RUN_SHORT = os.environ.get("CADDSUITE_RUN_GMD_MMPBSA_SHORT") == "1"
 pytestmark = [
     pytest.mark.engine("gmx_MMPBSA"),
     pytest.mark.legacy_data,
     pytest.mark.slow,
     pytest.mark.skipif(
-        not RUN_SHORT or not DATA_ROOT or not GMX or not MMPBSA or not MMPBSA_PYTHON,
-        reason=("set CADDSUITE_RUN_GMD_MMPBSA_SHORT=1, MD data, GROMACS, and gmx_MMPBSA paths"),
+        not RUN_SHORT
+        or not DATA_ROOT
+        or not GMX
+        or not MMPBSA
+        or not MMPBSA_PYTHON
+        or not MDA_PYTHON,
+        reason=(
+            "set CADDSUITE_RUN_GMD_MMPBSA_SHORT=1, MD data, GROMACS, "
+            "gmx_MMPBSA, and MDAnalysis paths"
+        ),
     ),
 ]
 
@@ -477,13 +488,36 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
         topology_format=request.topology_format,
         trajectory_format=request.trajectory_format,
     )
+    protein_selection = request.system.selections["protein"]
+    ligand_selection = request.system.selections["ligand"]
+    analysis_plan = TrajectoryAnalysisPlan(
+        id=new_ulid(),
+        simulation_id=request.simulation.id,
+        trajectory_id=new_ulid(),
+        selections={
+            "protein": protein_selection.model_copy(
+                update={"indices": None, "description": "protein"}
+            ),
+            "ligand": ligand_selection.model_copy(
+                update={"indices": None, "description": "resname LIG"}
+            ),
+        },
+        metrics=(
+            TrajectoryMetric.PROTEIN_LIGAND_MIN_DISTANCE,
+            TrajectoryMetric.PROTEIN_LIGAND_CONTACT_COUNT,
+        ),
+        end_time_ns=request.trajectory.time_range_ns[1],
+        stride=100,
+    )
+    assert MDA_PYTHON is not None
     workflow = WorkflowDefinition.model_validate(
         {
             "schema": "caddsuite.workflow/1",
-            "name": "PPARG processed trajectory MMGBSA",
+            "name": "PPARG processed trajectory analysis and MMGBSA",
             "inputs": {
                 "processing_request": {"contract": "trajectory_processing_request/1.0"},
                 "energy_plan": {"contract": "binding_energy_plan/1.0"},
+                "analysis_plan": {"contract": "trajectory_analysis_plan/1.0"},
             },
             "stages": [
                 {
@@ -499,6 +533,31 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                             "python_executable": sys.executable,
                             "output_group_atom_count": request.system.n_atoms,
                             "index_artifact": protein_index.model_dump(mode="json"),
+                            "timeout_seconds": 3600,
+                        }
+                    },
+                },
+                {
+                    "id": "trajectory_analysis",
+                    "kind": "trajectory.analyze_processed",
+                    "engine": "mdanalysis",
+                    "needs": ["process"],
+                    "input_contracts": {
+                        "analysis_plan": "trajectory_analysis_plan/1.0",
+                        "preprocessing": "trajectory_processing_result/1.0",
+                    },
+                    "input_bindings": {
+                        "analysis_plan": "$analysis_plan",
+                        "preprocessing": "process",
+                    },
+                    "output_contract": "trajectory_analysis_result/1.1",
+                    "params": {
+                        "engine_parameters": {
+                            "python_executable": MDA_PYTHON,
+                            "worker_script": str(
+                                Path(__file__).resolve().parents[2]
+                                / "src/caddsuite_worker/mdanalysis_metrics_worker.py"
+                            ),
                             "timeout_seconds": 3600,
                         }
                     },
@@ -533,7 +592,10 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                     },
                 },
             ],
-            "outputs": {"energy": "mmgbsa"},
+            "outputs": {
+                "energy": "mmgbsa",
+                "trajectory_analysis": "trajectory_analysis",
+            },
         }
     )
     registry = StageHandlerRegistry.discover()
@@ -578,10 +640,17 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
             inputs={
                 "processing_request": processing_request,
                 "energy_plan": energy_plan,
+                "analysis_plan": analysis_plan,
             },
         )
         assert not outcome.failures
-        assert len(outcome.tasks) == 2
+        assert len(outcome.tasks) == 3
+        trajectory_result = outcome.outputs["trajectory_analysis"][0].value
+        assert trajectory_result.simulation_id == request.simulation.id
+        assert {metric.name for metric in trajectory_result.metrics} == {
+            "mindist_protein_ligand",
+            "contacts_protein_ligand",
+        }
         result = outcome.outputs["energy"][0].value
         assert result.method is BindingEnergyMethod.MM_GBSA
         assert result.frames.n_used == 11
@@ -594,6 +663,10 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
         for artifact in (
             *result.output_artifacts.values(),
             *result.log_artifacts.values(),
+            trajectory_result.raw_result,
+            *trajectory_result.engine_artifacts.values(),
+            *trajectory_result.log_artifacts.values(),
+            *(metric.series for metric in trajectory_result.metrics),
         ):
             assert artifact.sha256 is not None
             assert runtime.services.artifacts.verify(artifact.sha256)
