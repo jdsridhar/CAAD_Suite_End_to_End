@@ -16,7 +16,7 @@ hash-linked into the artifact store; produced trajectories, energy reports, logs
 registered in CAS. The test verifies the original source hashes are unchanged.
 
 The integration test is
-tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa.
+tests/integration/test_gromacs_mmpbsa_short.py::test_candidate_workflow_composes_md_qm_and_report_for_registered_form.
 
 ## Observed runtime
 
@@ -57,7 +57,7 @@ CADDSUITE_GMX_MMPBSA_STAGE_DATA=/home/sridhar/work/pparg_md/ergosterol \
 CADDSUITE_GROMACS_EXECUTABLE=/home/sridhar/miniconda3/envs/gmx/bin/gmx \
 CADDSUITE_GMX_MMPBSA_EXECUTABLE=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/gmx_MMPBSA \
 CADDSUITE_GMX_MMPBSA_PYTHON=/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/python \
-  pytest -q tests/integration/test_gromacs_mmpbsa_short.py::test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa
+  pytest -q tests/integration/test_gromacs_mmpbsa_short.py::test_candidate_workflow_composes_md_qm_and_report_for_registered_form
 ```
 
 The test copies every declared source file into its temporary fixture directory. The explicit
@@ -77,3 +77,8 @@ This validates scheduler wiring, runtime artifact handoff, normalization, and pr
 not validate the geometric metrics as binding evidence, establish affinity accuracy, or provide
 sufficient sampling for a converged free-energy estimate. The QM calculation and report remain a
 separate identity-linking integration task.
+
+
+## Expanded identity-linked workflow
+
+The opt-in stage-composition test has since been expanded to include a chemically identified ergosterol-peroxide Compound/Form, a PySCF calculation, and a report consuming the same normalized identities. See [G-WORKFLOW-2](G-WORKFLOW-2.md) for the current five-task integration, report-content assertions and scientific limits. The original 11-frame MM/GBSA interpretation above remains unchanged.

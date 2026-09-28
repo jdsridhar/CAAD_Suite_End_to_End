@@ -37,7 +37,7 @@ from caddsuite.contracts.qm import (
     QMProtocol,
     QMResult,
 )
-from caddsuite.contracts.registry import CompoundForm, CompoundFormKind
+from caddsuite.contracts.registry import CompoundForm, CompoundFormKind, Conformer
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.models import ProjectRow, WorkflowRunRow
@@ -91,6 +91,7 @@ def test_report_capability_exposes_normalized_md_energy_and_qm_inputs() -> None:
             "binding_energy_results",
             "qm_calculations",
             "qm_results",
+            "conformers",
         }
     }
     assert contracts == {
@@ -99,6 +100,7 @@ def test_report_capability_exposes_normalized_md_energy_and_qm_inputs() -> None:
         "binding_energy/1.3",
         "qm_calculation/1.2",
         "qm_result/2.1",
+        "conformer/1.1",
     }
 
 
@@ -168,6 +170,13 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
         raw_result=_artifact("analysis_raw"),
         metrics=(),
     )
+    conformer = Conformer(
+        id=new_ulid(),
+        form_id=form_id,
+        compound_id=compound.id,
+        generator="test_geometry",
+        structure=_artifact("conformer_structure"),
+    )
     calculation = QMCalculation(
         id=new_ulid(),
         accession="CMP0001_QM_001",
@@ -217,6 +226,7 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
                     inputs={
                         "compounds": (compound,),
                         "compound_forms": (compound_form,),
+                        "conformers": (conformer,),
                         "md_results": (md,),
                         "trajectory_results": (trajectory,),
                         "binding_energy_results": (energy,),
@@ -232,6 +242,9 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
             runtime.services.artifacts.path_for(json_artifact.artifact.sha256 or "").read_text()
         )
         sections = {item["name"]: item for item in report["sections"]}
+        assert sections["compound"]["data"][0]["compound"]["id"] == str(compound.id)
+        assert sections["compound"]["data"][0]["forms"][0]["id"] == str(compound_form.id)
+        assert sections["input_structures"]["data"][0]["id"] == str(conformer.id)
         assert sections["md_parameters"]["data"][0]["parameters"]["timestep_fs"] == 2.0
         assert sections["trajectory_analyses"]["data"][0]["analyzer"]["name"] == "MDAnalysis"
         assert sections["mm_pbsa_gbsa"]["data"][0]["statistics"]["mean"] == -12.5
@@ -266,6 +279,36 @@ def test_report_serializes_typed_md_mmgbsa_and_qm_evidence(tmp_path: Path) -> No
                             "compound_forms": (
                                 compound_form.model_copy(update={"compound_id": new_ulid()}),
                             ),
+                        },
+                        run_id=run_id,
+                    ),
+                )
+            )
+        with pytest.raises(ValueError, match="compound_id"):
+            ReportStageHandler(stage, runtime.services).execute(
+                cast(
+                    TaskInvocation,
+                    SimpleNamespace(
+                        inputs={
+                            "compounds": (compound,),
+                            "compound_forms": (compound_form,),
+                            "conformers": (
+                                conformer.model_copy(update={"compound_id": new_ulid()}),
+                            ),
+                        },
+                        run_id=run_id,
+                    ),
+                )
+            )
+        with pytest.raises(ValueError, match="Conformer"):
+            ReportStageHandler(stage, runtime.services).execute(
+                cast(
+                    TaskInvocation,
+                    SimpleNamespace(
+                        inputs={
+                            "compounds": (compound,),
+                            "compound_forms": (compound_form,),
+                            "conformers": (conformer.model_copy(update={"form_id": new_ulid()}),),
                         },
                         run_id=run_id,
                     ),

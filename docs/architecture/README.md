@@ -123,6 +123,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0047: Durable workflow decision pause and resume](ADR/0047-durable-workflow-decision-pause-and-resume.md)
 
 - [0048](ADR/0048-authenticated-molstar-artifact-previews.md) | Authenticated Mol* previews over project-scoped artifacts | Accepted
+- [ADR-0059](ADR/ADR-0059-registered-structures-in-scientific-reports.md) | Include registered Compound/Form and Conformer structure lineage in reports | Accepted
 
 
 ## User and developer references
@@ -131,6 +132,9 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [API reference](../api/README.md) · [Scientific methods and validation index](../SCIENTIFIC_METHODS.md)
 - [Prior-art survey](PRIOR_ART_SURVEY.md)
 
+
+- [G-WORKFLOW-2](../validation/G-WORKFLOW-2.md): real registered PPARG candidate through MD trajectory analysis, MM/GBSA, QM and report.
+- [G-LIGAND-IDENTITY-1](../validation/G-LIGAND-IDENTITY-1.md): PPARG ligand topology/stereochemistry identity audit.
 
 ## Runtime integration status
 

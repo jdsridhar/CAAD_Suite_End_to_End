@@ -19,7 +19,7 @@ from caddsuite.contracts.docking import DockingResult
 from caddsuite.contracts.md import MDStageResult
 from caddsuite.contracts.properties import PropertyPredictionSet
 from caddsuite.contracts.qm import QMCalculation, QMResult
-from caddsuite.contracts.registry import Compound, CompoundForm
+from caddsuite.contracts.registry import Compound, CompoundForm, Conformer
 from caddsuite.contracts.reporting import (
     ReportArtifact,
     ReportBundle,
@@ -114,6 +114,10 @@ class ReportStageHandler:
         compound_forms = invocation.inputs.get("compound_forms", ())
         if not all(isinstance(item, CompoundForm) for item in compound_forms):
             raise ValueError("compound_forms must contain CompoundForm contracts")
+        conformers = invocation.inputs.get("conformers", ())
+        if not all(isinstance(item, Conformer) for item in conformers):
+            raise ValueError("conformers must contain Conformer contracts")
+        conformers = cast(tuple[Conformer, ...], conformers)
         props = invocation.inputs.get("property_results", ())
         docks = invocation.inputs.get("docking_results", ())
         if not all(isinstance(item, PropertyPredictionSet) for item in props):
@@ -157,6 +161,12 @@ class ReportStageHandler:
             if form.compound_id not in compounds_by_id:
                 raise ValueError("report CompoundForm does not belong to a report Compound")
         linked_pairs: list[tuple[str, str]] = []
+        for conformer in conformers:
+            if conformer.form_id not in forms_by_id:
+                raise ValueError("report Conformer does not belong to a report CompoundForm")
+            form = forms_by_id[conformer.form_id]
+            if conformer.compound_id is not None and conformer.compound_id != form.compound_id:
+                raise ValueError("report Conformer compound_id does not match its CompoundForm")
         for md_result in md_results:
             if md_result.compound_id is not None and md_result.form_id is not None:
                 linked_pairs.append((md_result.compound_id, md_result.form_id))
@@ -166,6 +176,9 @@ class ReportStageHandler:
         for energy_result in binding_results:
             if energy_result.compound_id is not None and energy_result.form_id is not None:
                 linked_pairs.append((energy_result.compound_id, energy_result.form_id))
+        for conformer in conformers:
+            if conformer.compound_id is not None:
+                linked_pairs.append((conformer.compound_id, conformer.form_id))
         for calculation in qm_calculations:
             if calculation.compound_id is not None:
                 linked_pairs.append((calculation.compound_id, calculation.form_id))
@@ -199,7 +212,23 @@ class ReportStageHandler:
                 "project_id": str(project_id),
                 "compound_ids": [str(item.id) for item in compounds if isinstance(item, Compound)],
             },
+            ReportSectionName.COMPOUND: [
+                {
+                    "compound": item.model_dump(mode="json"),
+                    "forms": [
+                        form.model_dump(mode="json")
+                        for form in compound_forms
+                        if isinstance(form, CompoundForm) and form.compound_id == item.id
+                    ],
+                }
+                for item in compounds
+                if isinstance(item, Compound)
+            ],
         }
+        if conformers:
+            result_sections[ReportSectionName.INPUT_STRUCTURES] = [
+                item.model_dump(mode="json") for item in conformers
+            ]
         if props:
             result_sections[ReportSectionName.ADMET] = [
                 item.model_dump(mode="json")
@@ -370,6 +399,9 @@ class ReportStagePlugin:
                     name="compound_forms",
                     contracts=(CompoundForm.schema_id(),),
                     required=False,
+                ),
+                CapabilityInput(
+                    name="conformers", contracts=(Conformer.schema_id(),), required=False
                 ),
                 CapabilityInput(
                     name="property_results",

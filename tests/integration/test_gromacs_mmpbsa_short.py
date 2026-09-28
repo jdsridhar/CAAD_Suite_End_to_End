@@ -58,6 +58,7 @@ GMX = os.environ.get("CADDSUITE_GROMACS_EXECUTABLE")
 MMPBSA = os.environ.get("CADDSUITE_GMX_MMPBSA_EXECUTABLE")
 MMPBSA_PYTHON = os.environ.get("CADDSUITE_GMX_MMPBSA_PYTHON")
 MDA_PYTHON = os.environ.get("CADDSUITE_MDA_PYTHON")
+PYSCF_PYTHON = os.environ.get("CADDSUITE_PYSCF_PYTHON")
 RUN_SHORT = os.environ.get("CADDSUITE_RUN_GMD_MMPBSA_SHORT") == "1"
 pytestmark = [
     pytest.mark.engine("gmx_MMPBSA"),
@@ -72,7 +73,7 @@ pytestmark = [
         or not MDA_PYTHON,
         reason=(
             "set CADDSUITE_RUN_GMD_MMPBSA_SHORT=1, MD data, GROMACS, "
-            "gmx_MMPBSA, and MDAnalysis paths"
+            "gmx_MMPBSA and MDAnalysis paths"
         ),
     ),
 ]
@@ -125,7 +126,9 @@ def _mdp(path: Path) -> dict[str, str]:
     return values
 
 
-def _stage_request(source: Path, stage: Path) -> tuple[BindingEnergyRequest, dict[str, Path]]:
+def _stage_request(
+    source: Path, stage: Path, *, compound_id: str | None = None, form_id: str | None = None
+) -> tuple[BindingEnergyRequest, dict[str, Path]]:
     relative_files = [
         "topol.top",
         "step5_1.tpr",
@@ -198,7 +201,8 @@ def _stage_request(source: Path, stage: Path) -> tuple[BindingEnergyRequest, dic
     )
     system_id = new_ulid()
     simulation_id = new_ulid()
-    compound_id, form_id = new_ulid(), new_ulid()
+    compound_id = compound_id or new_ulid()
+    form_id = form_id or new_ulid()
     index = refs["analysis/analysis.ndx"]
     system = MDSystem(
         id=system_id,
@@ -303,6 +307,91 @@ def _stage_request(source: Path, stage: Path) -> tuple[BindingEnergyRequest, dic
         trajectory_format="XTC",
     )
     return request, staged
+
+
+def _assert_ligand_topology_matches_form(
+    topology_path: Path, structure_path: Path, smiles: str
+) -> tuple[str, int]:
+    """Guard the external MD-system identity against an explicit standardized molecular form."""
+    from rdkit import Chem
+    from rdkit.Chem import rdMolDescriptors
+
+    lines = topology_path.read_text(encoding="utf-8").splitlines()
+    section = ""
+    atom_names: list[str] = []
+    elements: list[str] = []
+    bonds: list[tuple[int, int]] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip()
+            continue
+        if not stripped or stripped.startswith(";"):
+            continue
+        fields = stripped.split()
+        if section == "atoms" and fields[0].isdigit():
+            atom_names.append(fields[4])
+            name = fields[4]
+            elements.append("H" if name.startswith("H") else "O" if name.startswith("O") else "C")
+        elif section == "bonds" and fields[0].isdigit():
+            bonds.append((int(fields[0]) - 1, int(fields[1]) - 1))
+
+    molecule = Chem.MolFromSmiles(smiles)
+    assert molecule is not None
+    reference = Chem.AddHs(molecule)
+    Chem.AssignStereochemistry(reference, cleanIt=True, force=True)
+    topology_graph = Chem.RWMol()
+    for element in elements:
+        topology_graph.AddAtom(Chem.Atom(element))
+    for first, second in bonds:
+        topology_graph.AddBond(first, second, Chem.BondType.SINGLE)
+    topology_graph = topology_graph.GetMol()
+
+    # Ignore bond order for the graph mapping; CHARMM topology atom types encode details
+    # not represented by the generic graph. Stereo is then checked from the PDB coordinates.
+    reference_graph = Chem.RWMol(reference)
+    for bond in reference_graph.GetBonds():
+        bond.SetBondType(Chem.BondType.SINGLE)
+        bond.SetIsAromatic(False)
+    reference_graph = reference_graph.GetMol()
+    mapping = topology_graph.GetSubstructMatch(reference_graph, useChirality=False)
+    assert len(mapping) == reference.GetNumAtoms(), "topology graph does not match CompoundForm"
+    reverse_mapping = reference_graph.GetSubstructMatch(topology_graph, useChirality=False)
+    assert len(reverse_mapping) == topology_graph.GetNumAtoms()
+    assert len(atom_names) == reference.GetNumAtoms()
+
+    coordinates = {}
+    for line in structure_path.read_text(encoding="utf-8").splitlines():
+        if line.startswith(("ATOM  ", "HETATM")) and line[17:20] == "LIG":
+            coordinates[line[12:16].strip()] = (
+                float(line[30:38]),
+                float(line[38:46]),
+                float(line[46:54]),
+            )
+    assert set(atom_names) == set(coordinates), "PDB ligand atoms differ from topology atom names"
+
+    coordinate_conformer = Chem.Conformer(reference.GetNumAtoms())
+    for reference_index, topology_index in enumerate(mapping):
+        atom_name = atom_names[topology_index]
+        coordinate_conformer.SetAtomPosition(reference_index, coordinates[atom_name])
+    mapped_reference = Chem.Mol(reference)
+    mapped_reference.RemoveAllConformers()
+    mapped_reference.AddConformer(coordinate_conformer)
+    expected_cip = {
+        atom.GetIdx(): atom.GetProp("_CIPCode")
+        for atom in reference.GetAtoms()
+        if atom.HasProp("_CIPCode")
+    }
+    Chem.AssignStereochemistryFrom3D(mapped_reference, confId=0, replaceExistingTags=True)
+    Chem.AssignStereochemistry(mapped_reference, cleanIt=True, force=True)
+    observed_cip = {
+        atom.GetIdx(): atom.GetProp("_CIPCode")
+        for atom in mapped_reference.GetAtoms()
+        if atom.HasProp("_CIPCode")
+    }
+    assert expected_cip
+    assert observed_cip == expected_cip, "PDB stereochemistry differs from form"
+    return rdMolDescriptors.CalcMolFormula(reference), len(expected_cip)
 
 
 def _artifact(path: Path) -> ArtifactRef:
@@ -433,7 +522,10 @@ def test_11_frame_result_matches_archived_per_frame_components(tmp_path: Path):
     )
 
 
-def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
+@pytest.mark.skipif(
+    not PYSCF_PYTHON, reason="set CADDSUITE_PYSCF_PYTHON for integrated QM composition"
+)
+def test_candidate_workflow_composes_md_qm_and_report_for_registered_form(
     tmp_path: Path,
 ) -> None:
     assert DATA_ROOT is not None
@@ -445,7 +537,87 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
         if STAGE_DATA_ROOT is not None
         else Path(DATA_ROOT) / "projects/2M2D_LIG/gromacs"
     )
-    request, staged = _stage_request(source, tmp_path / "stage-input")
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    from caddsuite.adapters.qm.pyscf import PySCFAdapterParameters
+    from caddsuite.chem.standardize import make_compound, standardize_smiles
+    from caddsuite.contracts.base import ArtifactRef, EntityRef
+    from caddsuite.contracts.qm import QMCalculation, QMModel, QMProtocol
+    from caddsuite.contracts.registry import (
+        CompoundForm,
+        CompoundFormKind,
+        Conformer,
+    )
+
+    assert PYSCF_PYTHON is not None
+    compound_id, form_id = new_ulid(), new_ulid()
+    pubchem_smiles = (
+        "CC(C)[C@@H](C)/C=C/[C@@H](C)[C@H]1CC[C@@H]2[C@]1(C)CC[C@H]1"
+        "[C@]23C=C[C@]2(C[C@@H](O)CC[C@]12C)OO3"
+    )
+    standardized = standardize_smiles(pubchem_smiles)
+    assert standardized.identity.formula == "C28H44O3"
+    identity_sources = (
+        source / "toppar/LIG.itp",
+        source / "step3_input.pdb",
+    )
+    identity_hashes = {path: _sha256(path) for path in identity_sources}
+    formula, stereocentres = _assert_ligand_topology_matches_form(
+        identity_sources[0], identity_sources[1], standardized.identity.canonical_smiles
+    )
+    assert formula == standardized.identity.formula
+    assert stereocentres == 10
+    form = CompoundForm(
+        id=form_id,
+        compound_id=compound_id,
+        kind=CompoundFormKind.PARENT_NEUTRAL,
+        smiles=standardized.identity.canonical_smiles,
+        formal_charge=standardized.identity.formal_charge,
+    )
+    molecule = Chem.AddHs(Chem.MolFromSmiles(form.smiles))
+    assert AllChem.EmbedMolecule(molecule, randomSeed=4815) == 0
+    qm_sdf = tmp_path / "ergosterol_peroxide_qm.sdf"
+    writer = Chem.SDWriter(str(qm_sdf))
+    writer.write(molecule)
+    writer.close()
+    conformer_ref = ArtifactRef(
+        artifact_id=new_ulid(),
+        role="conformer_structure",
+        sha256=_sha256(qm_sdf),
+    )
+    conformer = Conformer(
+        id=new_ulid(),
+        form_id=form.id,
+        compound_id=compound_id,
+        generator="ETKDGv3",
+        seed=4815,
+        structure=conformer_ref,
+    )
+    calculation = QMCalculation(
+        id=new_ulid(),
+        accession="CMP0001_QM_001",
+        form_id=form.id,
+        compound_id=compound_id,
+        geometry_source=EntityRef(kind="conformer", id=conformer.id),
+        engine=_software("PySCF", "unknown", SoftwareKind.ENGINE),
+        adapter=_software("caddsuite.qm.pyscf", "0.1.0", SoftwareKind.ADAPTER),
+        model=QMModel(method="hf", basis="sto-3g"),
+        protocol=QMProtocol.SINGLE_POINT,
+        charge=form.formal_charge,
+        multiplicity=1,
+        requested_properties=("total_energy_Eh", "orbitals", "dipole_D"),
+    )
+    qm_parameters = PySCFAdapterParameters(
+        python_executable=PYSCF_PYTHON,
+        worker_source_directory=str(Path(__file__).resolve().parents[2] / "src"),
+        memory_mb=3500,
+        max_cycle=120,
+        timeout_seconds=1800,
+    ).model_dump()
+    request, staged = _stage_request(
+        source, tmp_path / "stage-input", compound_id=compound_id, form_id=form_id
+    )
     source_paths = tuple(source / relative for relative in request.source_artifacts)
     source_hashes = {path: _sha256(path) for path in source_paths}
 
@@ -527,6 +699,10 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                 "processing_request": {"contract": "trajectory_processing_request/1.1"},
                 "energy_plan": {"contract": "binding_energy_plan/1.0"},
                 "analysis_plan": {"contract": "trajectory_analysis_plan/1.1"},
+                "compound": {"contract": "compound/1.0"},
+                "compound_form": {"contract": "compound_form/1.0"},
+                "calculation": {"contract": "qm_calculation/1.2"},
+                "conformer": {"contract": "conformer/1.1"},
             },
             "stages": [
                 {
@@ -600,10 +776,57 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                         }
                     },
                 },
+                {
+                    "id": "qm",
+                    "kind": "quantum_chemistry",
+                    "engine": "caddsuite.qm.pyscf",
+                    "input_contracts": {
+                        "calculation": "qm_calculation/1.2",
+                        "form": "compound_form/1.0",
+                        "conformer": "conformer/1.1",
+                    },
+                    "input_bindings": {
+                        "calculation": "$calculation",
+                        "form": "$compound_form",
+                        "conformer": "$conformer",
+                    },
+                    "output_contract": "qm_result/2.1",
+                    "params": {"engine_parameters": qm_parameters},
+                },
+                {
+                    "id": "report",
+                    "kind": "report",
+                    "needs": ["trajectory_analysis", "mmgbsa", "qm"],
+                    "input_contracts": {
+                        "compounds": "compound/1.0",
+                        "compound_forms": "compound_form/1.0",
+                        "conformers": "conformer/1.1",
+                        "trajectory_results": "trajectory_analysis_result/1.2",
+                        "binding_energy_results": "binding_energy/1.3",
+                        "qm_calculations": "qm_calculation/1.2",
+                        "qm_results": "qm_result/2.1",
+                    },
+                    "input_bindings": {
+                        "compounds": "$compound",
+                        "compound_forms": "$compound_form",
+                        "conformers": "$conformer",
+                        "trajectory_results": "trajectory_analysis",
+                        "binding_energy_results": "mmgbsa",
+                        "qm_calculations": "$calculation",
+                        "qm_results": "qm",
+                    },
+                    "output_contract": "report_bundle/1.0",
+                    "params": {
+                        "formats": ["json", "html"],
+                        "title": "PPARG ergosterol peroxide multi-evidence report",
+                    },
+                },
             ],
             "outputs": {
                 "energy": "mmgbsa",
                 "trajectory_analysis": "trajectory_analysis",
+                "qm": "qm",
+                "report": "report",
             },
         }
     )
@@ -614,6 +837,22 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
         data_root=tmp_path / "runtime",
         handlers=lambda services: registry.build_handlers(workflow, services),
     ) as runtime:
+        qm_blob = runtime.services.artifacts.put_file(qm_sdf)
+        with runtime.sessions.begin() as session:
+            qm_row = register_blob(
+                session,
+                qm_blob,
+                kind="qm_input",
+                media_type="chemical/x-mdl-sdfile",
+                original_name=qm_sdf.name,
+            )
+        conformer = conformer.model_copy(
+            update={
+                "structure": conformer.structure.model_copy(
+                    update={"artifact_id": qm_row.id, "sha256": qm_blob.sha256}
+                )
+            }
+        )
         for artifact in request.source_artifacts.values():
             staged_path = staged[str(artifact.artifact_id)]
             blob = runtime.services.artifacts.put_file(staged_path)
@@ -631,6 +870,17 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
             project = ProjectRow(slug="pparg-mmgbsa-composition", name="PPARG MMGBSA composition")
             session.add(project)
             session.flush()
+            project_id = str(project.id)
+            compound = make_compound(
+                standardized,
+                compound_id=compound_id,
+                project_id=project_id,
+                accession="CMP0001",
+                name="ergosterol peroxide",
+                original_text=pubchem_smiles,
+                source="pubchem",
+                location="PubChem CID 102004971",
+            )
             run = WorkflowRunRow(
                 project_id=project.id,
                 accession="RUN-PPARG-MMGBSA-001",
@@ -650,10 +900,14 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
                 "processing_request": processing_request,
                 "energy_plan": energy_plan,
                 "analysis_plan": analysis_plan,
+                "compound": compound,
+                "compound_form": form,
+                "calculation": calculation,
+                "conformer": conformer,
             },
         )
         assert not outcome.failures
-        assert len(outcome.tasks) == 3
+        assert len(outcome.tasks) == 5
         trajectory_result = outcome.outputs["trajectory_analysis"][0].value
         assert trajectory_result.simulation_id == request.simulation.id
         assert trajectory_result.compound_id == request.simulation.compound_id
@@ -673,6 +927,34 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
             Path(name).name for name in result.output_artifacts
         }
         assert result.log_artifacts
+        qm_result = outcome.outputs["qm"][0].value
+        assert qm_result.compound_id == compound.id == request.simulation.compound_id
+        assert qm_result.form_id == form.id == request.simulation.form_id
+        assert qm_result.orbitals is not None
+        assert qm_result.orbitals.gap_eV > 0.0
+        report = outcome.outputs["report"][0].value
+        assert {artifact.format for artifact in report.artifacts} == {"json", "html"}
+        assert all(
+            artifact.artifact.sha256 and runtime.services.artifacts.verify(artifact.artifact.sha256)
+            for artifact in report.artifacts
+        )
+        report_json_ref = next(item.artifact for item in report.artifacts if item.format == "json")
+        report_json = json.loads(
+            runtime.services.artifacts.path_for(report_json_ref.sha256 or "").read_text(
+                encoding="utf-8"
+            )
+        )
+        sections = {item["name"]: item for item in report_json["sections"]}
+        registered = sections["compound"]["data"][0]
+        assert registered["compound"]["id"] == str(compound.id)
+        assert registered["forms"][0]["id"] == str(form.id)
+        assert sections["input_structures"]["data"][0]["id"] == str(conformer.id)
+        assert sections["trajectory_analyses"]["data"][0]["compound_id"] == str(compound.id)
+        assert sections["trajectory_analyses"]["data"][0]["form_id"] == str(form.id)
+        assert sections["mm_pbsa_gbsa"]["data"][0]["compound_id"] == str(compound.id)
+        assert sections["mm_pbsa_gbsa"]["data"][0]["form_id"] == str(form.id)
+        assert sections["quantum_properties"]["data"][0]["compound_id"] == str(compound.id)
+        assert sections["quantum_properties"]["data"][0]["form_id"] == str(form.id)
         for artifact in (
             *result.output_artifacts.values(),
             *result.log_artifacts.values(),
@@ -684,3 +966,4 @@ def test_11_frame_discovered_stage_executes_and_normalizes_real_gmx_mmpbsa(
             assert artifact.sha256 is not None
             assert runtime.services.artifacts.verify(artifact.sha256)
     assert source_hashes == {path: _sha256(path) for path in source_paths}
+    assert identity_hashes == {path: _sha256(path) for path in identity_sources}

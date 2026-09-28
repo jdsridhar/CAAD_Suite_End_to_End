@@ -6,9 +6,9 @@
 
 | | |
 |---|---|
-| **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.9 Complete stable candidate identity through MD system preparation, stage results, analysis, QM, and reports. |
-| **Next task** | Validate a unified Compound/Form-linked MD, trajectory analysis, MM/GBSA, QM, and report workflow, then proceed to remaining UI/reproducibility/benchmarking release tasks. |
+| **Current phase** | Phase 13 - production runtime composition and cross-module acceptance |
+| **Current task** | [-] 13.7 Implement scientifically safe multi-form fan-out and explicit aggregation/decision semantics. |
+| **Next task** | Complete the Phase 13 runtime gate, then audit remaining planned phases and reopen any gate whose evidence is incomplete. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -359,7 +359,7 @@ When the user says **CONTINUE**:
   - [x] Render HTML, JSON, CSV and PDF; assert docking available, MD not_run and interpretation disclaimer.
   - [x] Real engine-backed demo passed in 166.85 s; report scope and redocking limitation documented in docs/validation/G-REPORT-1.md.
 
-## Phase 13 — API + UI [-] (reopened: advertised non-engine stages are not executable in production runtime)
+## Phase 13 — API + UI [-] (multi-form fan-out and final runtime acceptance remain open)
 
 - [-] 13.7 Runtime stage composition
   - [x] Add discovered RDKit rules property-prediction stage using the existing predictor/contract, recording endpoints, effective parameters, predictor version and stable compound lineage.
@@ -414,6 +414,7 @@ When the user says **CONTINUE**:
   - [x] Browser gate exercises empty and populated dashboard states; the populated browser state uses a clearly labeled UI-only network fixture, never presented as a scientific calculation.
 - [x] 13.6 **Gate:** browser end-to-end demo
   - [x] Playwright Chromium run passes the project/compound/dashboard flow, Mol* complex preview, workflow decision pause/resume, history/provenance, and dashboard evidence-card rendering. The evidence display uses an explicitly labeled UI-only network fixture; the API regression independently validates normalized ADMET result summarization.
+- [x] 13.9 Identity-linked candidate composition: stable Compound/Form identity through MD preparation/stage results, trajectory analysis, MM/GBSA, QM and reports. The PPARG ergosterol-peroxide identity is checked against topology connectivity and PDB-derived stereo; the five-task real runtime test includes content assertions on JSON reports. See ADR-0059, G-LIGAND-IDENTITY-1.md and G-WORKFLOW-2.md. Scientific parameterization and affinity validity remain unverified.
 
 ## Phase 14 — Testing hardening [x]
 
@@ -805,3 +806,15 @@ When the user says **CONTINUE**:
 - [x] Transferred coordinates by graph mapping and compared 10 PDB-derived stereocentres; all CIP labels match the PubChem 3D record. Recorded source URLs, hashes, method, and scientific limits in docs/validation/G-LIGAND-IDENTITY-1.md.
 - [x] Confirmed source PDB/topology were read-only. Existing CGenFF penalty 190.7 and unsupported peroxide limitation remains unresolved and must be shown in reports.
 - [-] Next: use this verified molecular identity and a hash-registered structure artifact to compose the actual scheduler MD trajectory/MMGBSA and QM stages into one report workflow; do not imply the legacy parameterization is scientifically validated.
+
+
+### Session log - 2026-09-28, registered MD/QM candidate report composition
+
+- [x] Standardized the verified PubChem ergosterol-peroxide form into a project Compound and CompoundForm, generated a seeded ETKDGv3 conformer, and passed the same compound_id/form_id through the real PPARG MDSimulation, trajectory processing/analysis, MM/GBSA, and QMCalculation.
+- [x] Added an opt-in runtime preflight that confirms full topology/form graph compatibility and PDB-derived stereochemistry before the workflow is executed; original topology/PDB hashes remain unchanged.
+- [x] Extended the discovered report stage to serialize the registered Compound, its Forms, and supplied Conformer artifact reference; it rejects conformers not linked to a report Form/Compound. Added JSON content assertions for the same IDs across candidate, structure, MD analysis, MM/GBSA, and QM evidence.
+- [x] Real five-task scheduler composition passed (GROMACS trajectory processing, MDAnalysis, gmx_MMPBSA, PySCF, report): 1 passed in 92.07 s. This is runtime/linkage evidence only. The test uses 11 MM/GBSA frames and a separate seeded conformer for gas-phase HF/STO-3G; it is not affinity, QM-accuracy, or experimental validation. CGenFF penalty 190.7 and unsupported peroxide remain explicit limitations. See docs/validation/G-WORKFLOW-2.md.
+- [x] Full no-engine repository gate: Ruff, formatting (332 files), strict mypy (196 source files), import contracts (255 files), schema freshness, and 709 passed / 36 skipped. Two upstream Starlette/httpx deprecation warnings remain.
+- [x] Added ADR-0059 and refreshed the G-MMPBSA stage note to point to the end-to-end composition evidence.
+- [x] Web gate: API schema check, TypeScript, Vite production build and Playwright Chromium E2E passed (1 browser test, 21.1 s) with the cached per-user libasound path; no system packages were changed. Mol* h264 optional Node-builtin and bundle-size warnings remain documented.
+- [-] Next first incomplete Phase 13 item: implement scientifically safe multi-form fan-out and decision/aggregation semantics; do not implicitly select one form or silently combine microstate results.
