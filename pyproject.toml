@@ -66,6 +66,7 @@ pdbfixer = "caddsuite.application.pdbfixer_stage_plugin:plugin_factory"
 binding_site = "caddsuite.application.binding_site_stage_plugin:plugin_factory"
 mdanalysis = "caddsuite.application.trajectory_stage_plugin:plugin_factory"
 gromacs_trajectory = "caddsuite.application.gromacs_trajectory_stage_plugin:plugin_factory"
+gmx_mmpbsa = "caddsuite.application.binding_energy_stage_plugin:plugin_factory"
 
 [project.entry-points."caddsuite.qm_engines"]
 pyscf = "caddsuite.adapters.qm.pyscf_plugin:plugin_factory"

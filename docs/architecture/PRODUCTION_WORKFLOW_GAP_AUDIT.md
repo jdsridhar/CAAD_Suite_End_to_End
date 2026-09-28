@@ -17,9 +17,10 @@ Scope: capabilities discovered from installed stage-handler entry points in the 
 | molecular_dynamics | openmm | SystemBuildResult, MDStageInput | MDStageResult |
 | quantum_chemistry | caddsuite.qm.psi4 | QMCalculation, CompoundForm, geometry contract | QMResult |
 | quantum_chemistry | caddsuite.qm.pyscf | QMCalculation, CompoundForm, geometry contract | QMResult |
+| binding_energy | gmx_mmpbsa | BindingEnergyRequest | BindingEnergyResult (reviewed MM/GBSA profile only) |
 | gate / report | platform | configured evidence / report inputs | normalized decision / ReportBundle |
 
-The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. There is still no production system-builder or MM/GBSA stage. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
+The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. There is still no production system-builder stage. The MM/GBSA stage registration now exists, while engine/data-backed handler execution remains to be verified. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
 
 ## Integration gaps and scientific constraints
 
@@ -33,7 +34,7 @@ The registry now discovers trajectory.process/gromacs and trajectory.analyze/mda
 ## Migration sequence for Phase 13.8
 
 1. [x] Add plugin-backed GROMACS trajectory-processing and MDAnalysis trajectory-analysis handlers; both stage hash-verified artifacts, execute shell-free adapter plans, preserve logs/environment/provenance, and return existing normalized result contracts. Unit/runtime wiring tests pass; engine/data-backed handler execution remains open.
-2. Add a binding-energy handler that consumes a complete BindingEnergyRequest; let the existing adapter reject incompatible force field, engine, topology, selections, method or entropy before execution.
+2. [x] Register binding_energy/gmx_mmpbsa around a complete BindingEnergyRequest; adapter validation remains authoritative for force field, engine, topology, selections, method and entropy. Typed workflow/preflight tests pass; real handler execution remains an open validation item.
 3. Add a system-builder runtime stage only after pose-to-system artifact lineage and input choices are explicit; never treat a docking pose as an MD-ready topology.
 4. Extend reporting with typed result ports and methodology/limitations sections; expose QM in a configured workflow only with explicit calculation protocol and engine capabilities.
 5. Validate each stage independently on existing golden/engine fixtures, then run a small composed MD-analysis/MMGBSA/QM workflow only where compatible source artifacts are available.

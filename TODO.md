@@ -7,8 +7,8 @@
 | | |
 |---|---|
 | **Current phase** | Phase 13 - production runtime composition and cross-module acceptance (reopened) |
-| **Current task** | [-] 13.8 Add MM/GBSA stage execution, connect trajectory stages to actual MD outputs, and expose typed MD/QM evidence in reports. |
-| **Next task** | Add a discovered MM/GBSA stage, then exercise GROMACS processing to MDAnalysis on suitable real trajectory data; connect MD/QM evidence to reports and rerun acceptance gates. |
+| **Current task** | [-] 13.8 Validate MM/GBSA stage execution and connect trajectory stages to actual MD outputs; expose typed MD/QM evidence in reports. |
+| **Next task** | Run MM/GBSA handler against the archived 11-frame fixture, then exercise GROMACS processing to MDAnalysis on suitable real trajectory data; connect MD/QM evidence to reports and rerun acceptance gates. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | Redocking accuracy remains unvalidated: one of three pilot cases reached Vina, and that top pose missed the <2 Å criterion. |
 
@@ -710,4 +710,6 @@ When the user says **CONTINUE**:
 - [x] Added shared planned-stage execution with confined working directories/output paths, shell-free argv execution, timeout/nonzero handling, CAS registration, and provenance recording; unit tests cover missing/escaping outputs and failed commands.
 - [x] Full scripts/check.sh: Ruff, format (329 files), strict mypy (195 source files), import-linter (254 files), schemas, and 699 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
 - [ ] Real handler-level trajectory processing to MDAnalysis run remains unverified: current environment lacks the configured MDAnalysis runtime and archived trajectory fixture. This is a validation requirement, not evidence that analysis succeeded.
-- [ ] Next: implement discovered MM/GBSA stage with its existing strict CHARMM-GROMACS/TPR-XTC compatibility checks; then compose analysis outputs into report and connect MD/QM result evidence.
+- [x] Added discovered binding_energy/gmx_mmpbsa stage using the existing adapter and strict reviewed-profile validation. It hash-verifies/stages all declared source artifacts, retains native reports and logs, and normalizes BindingEnergyResult. Focused stage/adapter tests: 14 passed.
+- [x] Full scripts/check.sh after both trajectory and MM/GBSA registrations: Ruff, format (331 files), strict mypy (196 source files), import-linter (255 files), schemas, and 702 passed / 34 skipped. Two existing Starlette/httpx deprecation warnings remain.
+- [ ] Engine-backed MM/GBSA stage execution remains unverified because the archived G-MD-18 fixture and gmx_MMPBSA environment are not configured in this WSL session. Typed MD/QM report wiring remains next; preserve the engine-runtime validation requirement.
