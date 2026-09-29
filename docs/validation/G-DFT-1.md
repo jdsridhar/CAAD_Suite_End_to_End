@@ -1,6 +1,6 @@
 # G-DFT-1 — legacy molecule-series regression
 
-**Status:** four real Psi4 1.11 adapter regressions passed
+**Status:** four real Psi4 1.11 adapter regressions passed through the adapter and isolated worker (reconfirmed 2026-09-29)
 
 **Date:** 2026-09-25
 **Primary check:** energy, dipole, HOMO, LUMO, and gap through the adapter and isolated worker
@@ -21,3 +21,14 @@ All calculations are neutral singlet single points on the exact archived geometr
 ## Limits
 
 The comparison is tied to Psi4 1.11, the archived B3LYP/6-31G* settings, and the archived geometries. It does not establish conformational or thermochemical accuracy, nor generalize to other methods, basis sets, engines, or experimental observables. Timing is recorded by test execution logs rather than treated as a stable performance benchmark.
+
+
+## Reconfirmation
+
+On 2026-09-29 the four frozen cases were rerun using the installed Psi4 1.11 environment and the isolated worker path:
+
+~~~text
+4 passed, 2 deselected in 50.79 s
+~~~
+
+This reconfirms the existing golden regression; it does not add molecules or broaden the scientific claims above.

@@ -1164,3 +1164,11 @@ When the user says **CONTINUE**:
 - [x] Full coverage gate: core 85.10% (9,819/11,538), adapters 80.19% (4,298/5,360), workers 33.35% (1,207/3,619); docking family 76.52% (694/907).
 - [x] Hosted Quality #139 and Python package matrix #99 passed for this increment; browser tests also passed in the Quality run.
 - [-] Real AutoDock4/Meeko execution and docking accuracy remain unvalidated; engine paths are not configured in WSL.
+
+
+### Session log — 2026-09-29, real-engine validation reconfirmation
+
+- [x] Re-ran the four frozen Psi4 1.11 golden cases through adapter + isolated worker: 4 passed, 2 deselected in 50.79 s. Updated docs/validation/G-DFT-1.md; these remain regression cases, not experimental validation.
+- [x] Real Vina/Meeko workflow integration on the existing 5NIU/RC8 fixture completed: 1 passed in 184.26 s. This exercises the fixture integration only; no new-cohort docking or cohort-accuracy claim.
+- [!] Independent blinded review of the frozen six-case packet remains the immediate blocker for the locked 90-attempt cohort benchmark. No unblinding key access or cohort docking.
+- [!] Public-release dependency/license compatibility, optional-extra/frontend notices, and counsel review remain open.
