@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Obtain independent blinded review; prepare the release-safe cohort bundle and preserve the full verified 514 MB curation set; no new-cohort docking has started. |
+| **Current task** | [-] Obtain independent blinded review using the verified packet; after reconciliation, package the cohort for release. No new-cohort docking has started. |
 | **Next task** | Reconcile the returned blind review and freeze the release bundle; then run REDOCK-001/seed 42 as attempt 1/90 and proceed with the remaining locked attempts if host resources permit. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | General redocking accuracy remains unvalidated: the v2 pilot has 1/3 top-1 successes; the 1M17 run sampled near-native poses at ranks 3 and 8, but top-1 failed. The new 30-case cohort is frozen; blinded review, release-safe artifact packaging, and resource feasibility are the immediate gates. |
@@ -848,7 +848,7 @@ When the user says **CONTINUE**:
 - [x] **P1 protocol gate:** drafted the preregistered 30-target-cluster RCSB cohort, eligibility/exclusion rules, locked Meeko/Vina protocol, three-seed design, top-1 primary endpoint, top-5/best-sampled secondary endpoints, failure denominator, and cluster-bootstrap reporting in docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md. A 30-case cohort has since been frozen; no docking has been run on it.
 - [-] **P1 — Broader scientific validation:** deterministic RCSB candidate capture is implemented and count-reconciled; 30-case structure-level curation and cohort freeze are complete (30 clusters; 762 polymer-entity candidates reviewed across 755 unique mmCIF files); blinded review, artifact package/integrity gate, resource-feasibility pilot, and preregistered 90-attempt redocking remain. Current pilot supports no general accuracy claim.
 - [-] **P1 - Engine-enabled continuous validation:** read-only opt-in integration evidence now includes 21 MD/trajectory tests, 2 real AmberTools/GROMACS/OpenMM checks, MM/GBSA regressions, and 11 PSI4/PySCF worker/application tests. Two PSI4 feature-specific tests skip correctly because this worker environment lacks pyddx and RDKit; runtime capability discovery now hides those features and blocks their use before execution. Remaining optional adapters and repeatable CI execution are open; do not bundle licensed engines.
-- [ ] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%; improve with focused failure-path tests without gaming exclusions.
+- [-] **P2 — Adapter coverage quality:** the global adapter floor is met (70.95%), but lower per-family figures remain: docking 53.40%, visualization 50.91%, structure preparation 63.64%, QM 69.10%. Added focused PyVista-renderer tests for absent staged artifacts and malformed cube inputs; these passed. Keep improving meaningful failure-path coverage without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
 - [ ] **P3 — Product polish:** investigate documented Mol* bundle-size and optional h264 Node builtin warnings; not a blocker for scientific core/runtime acceptance.
 
@@ -886,7 +886,7 @@ When the user says **CONTINUE**:
 - [x] Implemented structure-level mmCIF eligibility review and deterministic 30-cluster selection; 30 eligible representatives were frozen after 762 polymer-entity candidates reviewed across 755 unique mmCIF files. No redocking has run.
 - [x] Focused curation tests: 9 passed. Full scripts/check.sh: 739 passed, 37 skipped; Ruff, formatting, strict mypy (196 files), import contracts (255 files), and schema freshness pass. Two upstream Starlette/httpx deprecation warnings remain.
 - [x] Verify cohort integrity: manifest self-hash, 151,247 decision rows and ledger hash, 30 unique selected clusters, exact status totals, and both compressed/decompressed SHA-256 for all 755 unique mmCIFs referenced by reviewed entities. 762 entity-level candidates were reviewed (732 ineligible, 30 selected).
-- [x] Prepare a six-case blind review packet (3 selected, 3 ineligible), with randomized labels and a separate unblinding key.
+- [x] Prepare and verify a self-contained six-case blind-review ZIP (3 selected, 3 ineligible), randomized labels, standalone criteria/form, and separate key. ZIP SHA-256: 0730b019b73a9d174040a1487e4aca99c827306f1b8697d563d912b0d06b8541.
 - [x] Record resource preflight in docs/validation/REDOCKING_RESOURCE_PREFLIGHT.md: WSL2/16 CPUs/7.6 GiB/770 GiB free; Vina f458505-mod and Meeko 0.7.1 are in the existing cadd environment; Vina SHA-256 recorded. No docking run.
 - [-] Obtain independent blinded review and build the release-safe cohort bundle. Full working cohort remains 514 MB (426 MB structures, 86 MB decision ledger, 1.4 MB manifest); do not commit raw output wholesale.
 
@@ -904,3 +904,12 @@ When the user says **CONTINUE**:
 - [x] PSI4/PySCF integration modules: 11 passed, 2 skipped for absent optional pyddx (DDX) and RDKit (pose strain); gas-phase molecular PSI4 runs and QM application/CLI paths passed.
 - [x] Added adapter and worker unit coverage for missing optional dependencies; focused PSI4 unit tests: 33 passed.
 - [x] Full scripts/check.sh after the capability changes: 742 passed, 37 optional skips; Ruff, formatting (343 files), strict mypy (196 files), import contracts (255 files), and schemas pass. Two upstream Starlette/httpx deprecation warnings remain.
+
+
+### Session log — 2026-09-29, visualization adapter failure paths
+
+- [x] Added renderer tests for a missing staged cube artifact and malformed cube input, checking stable actionable error codes.
+- [x] Focused gate passed: 3 passed, 1 skipped because optional PyVista is not installed in the core environment; Ruff and formatting passed.
+- [x] Isolated renderer coverage on this core-only test selection is 28% (73/258 statements). Rendering branches remain dependent on the optional PyVista/SciPy/scikit-image stack and need an engine-enabled CI/test environment for coverage evidence.
+
+- [x] Post-test-update full repository gate: scripts/check.sh passed; Ruff, formatting (343 files), strict mypy (196 files), import contracts (255 files), schemas, and 744 passed / 37 skipped. Optional engine integrations remain opt-in; two upstream Starlette/httpx deprecation warnings remain.

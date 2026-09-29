@@ -94,6 +94,40 @@ def test_render_requests_reject_hash_mismatch_and_incompatible_grids(tmp_path: P
     assert hash_error.value.code == "VISUALIZATION.INPUT_HASH_MISMATCH"
 
 
+def test_render_rejects_missing_staged_cube(tmp_path: Path) -> None:
+    field = np.ones((2, 2, 2), dtype=np.float64)
+    path = tmp_path / "density.cube"
+    digest = _cube_file(path, field)
+    source = _inputs(path, "density", digest)
+    second = _inputs(path, "esp", digest)
+    request = MEPRenderRequest(id=new_ulid(), density=source, esp=second)
+
+    with pytest.raises(VolumetricRenderError) as missing_path:
+        PyVistaVolumetricRenderer().render(
+            request, cube_paths={}, output_directory=tmp_path / "out"
+        )
+    assert missing_path.value.code == "VISUALIZATION.INPUT_ARTIFACT_MISSING"
+
+
+def test_render_rejects_malformed_cube_with_parser_error_code(tmp_path: Path) -> None:
+    malformed = tmp_path / "malformed.cube"
+    malformed.write_text("not a cube file\n", encoding="ascii")
+    source = _inputs(malformed, "density", hashlib.sha256(malformed.read_bytes()).hexdigest())
+    second = _inputs(malformed, "esp", source.artifact.sha256 or "")
+    request = MEPRenderRequest(id=new_ulid(), density=source, esp=second)
+
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(
+            request,
+            cube_paths={
+                str(source.artifact.artifact_id): malformed,
+                str(second.artifact.artifact_id): malformed,
+            },
+            output_directory=tmp_path / "out",
+        )
+    assert error.value.code == "VOL.CUBE.HEADER_TRUNCATED"
+
+
 def test_offscreen_fmo_mep_and_fukui_renderers(tmp_path: Path) -> None:
     pytest.importorskip("pyvista")
     pytest.importorskip("scipy")
