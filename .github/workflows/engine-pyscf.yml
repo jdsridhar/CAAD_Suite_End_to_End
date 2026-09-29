@@ -1,0 +1,61 @@
+name: PySCF engine integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/engine-pyscf.yml"
+      - "src/caddsuite/**"
+      - "src/caddsuite_worker/**"
+      - "tests/integration/test_pyscf_adapter.py"
+      - "tests/integration/test_qm_application_runtime.py"
+      - "environments/caddsuite.lock.txt"
+      - "environments/caddsuite-pyscf.lock.txt"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - ".github/workflows/engine-pyscf.yml"
+      - "src/caddsuite/**"
+      - "src/caddsuite_worker/**"
+      - "tests/integration/test_pyscf_adapter.py"
+      - "tests/integration/test_qm_application_runtime.py"
+      - "environments/caddsuite.lock.txt"
+      - "environments/caddsuite-pyscf.lock.txt"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pyscf-engine-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pyscf-linux:
+    name: PySCF worker + application integration / Linux x86_64 / Python 3.12
+    runs-on: ubuntu-latest
+    env:
+      CADDSUITE_PYSCF_PYTHON: ${{ runner.temp }}/caddsuite-pyscf/bin/python
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mamba-org/setup-micromamba@v3
+        with:
+          micromamba-version: "2.0.5-0"
+          init-shell: bash
+      - name: Create environments from explicit locks
+        shell: bash -el {0}
+        run: |
+          micromamba create --yes --prefix "$RUNNER_TEMP/caddsuite-core" --file environments/caddsuite.lock.txt
+          micromamba create --yes --prefix "$RUNNER_TEMP/caddsuite-pyscf" --file environments/caddsuite-pyscf.lock.txt
+      - name: Install the repository package into the locked core
+        shell: bash -el {0}
+        run: |
+          micromamba run --prefix "$RUNNER_TEMP/caddsuite-core" python -m pip install --no-deps --no-build-isolation -e .
+      - name: Run real seeded PySCF worker and application tests
+        shell: bash -el {0}
+        run: |
+          micromamba run --prefix "$RUNNER_TEMP/caddsuite-core" python -m pytest -q tests/integration/test_pyscf_adapter.py::test_real_pyscf_worker_normalizes_to_the_shared_qm_result tests/integration/test_qm_application_runtime.py::test_pyscf_application_run_records_normalized_result_and_provenance
