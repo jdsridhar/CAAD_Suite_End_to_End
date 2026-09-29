@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 876 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 877 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
-| Core | 11,192 | 9,519 | 85.05% | ≥85% — met |
-| Adapters | 5,360 | 4,261 | 79.50% | ≥70% — met |
+| Core | 11,192 | 9,521 | 85.07% | ≥85% — met |
+| Adapters | 5,360 | 4,159 | 77.59% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
