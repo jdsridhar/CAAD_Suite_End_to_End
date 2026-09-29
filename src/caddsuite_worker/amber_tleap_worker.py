@@ -244,8 +244,28 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
         raise WorkerFailure(
             "AMBER_WORKER.HISTIDINE_MAPPING_INVALID", "histidine mapping must be an object"
         )
+    raw_disulfide_bonds = options.get("disulfide_bonds", [])
+    if not isinstance(raw_disulfide_bonds, list):
+        raise WorkerFailure(
+            "AMBER_WORKER.DISULFIDE_MAPPING_INVALID", "disulfide_bonds must be a list"
+        )
+    disulfide_pairs: set[tuple[str, str]] = set()
+    for pair in raw_disulfide_bonds:
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or not all(isinstance(key, str) and key.strip() for key in pair)
+            or pair[0] == pair[1]
+        ):
+            raise WorkerFailure(
+                "AMBER_WORKER.DISULFIDE_MAPPING_INVALID",
+                "each disulfide mapping must identify two distinct residue keys",
+            )
+        disulfide_pairs.add(tuple(sorted(pair)))
+    disulfide_endpoints = {key for pair in disulfide_pairs for key in pair}
     kept: list[str] = []
     residues: dict[str, str] = {}
+    sulfur_atoms: dict[str, tuple[float, float, float]] = {}
     removed_hydrogens = 0
     current_chain: str | None = None
     with source.open("r", encoding="ascii") as stream:
@@ -278,6 +298,14 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
                 kept.append("TER")
             current_chain = chain
             resname = line[17:20].strip().upper()
+            if resname in {"CYS", "CYX"} and key in disulfide_endpoints:
+                line = line[:17] + "CYX" + line[20:]
+                resname = "CYX"
+            elif resname == "CYX" and key not in disulfide_endpoints:
+                raise WorkerFailure(
+                    "AMBER_WORKER.DISULFIDE_MAPPING_REQUIRED",
+                    f"CYX residue {key} has no explicit disulfide partner",
+                )
             if resname == "HIS":
                 chosen = histidine_states.get(key)
                 if chosen not in {"HID", "HIE", "HIP"}:
@@ -293,20 +321,99 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
                     f"unhandled protein residue {resname!r} at {key}",
                 )
             residues[key] = resname
+            if atom_name.upper() == "SG" and resname in {"CYS", "CYX"}:
+                try:
+                    sulfur_atoms[key] = (
+                        float(line[30:38]),
+                        float(line[38:46]),
+                        float(line[46:54]),
+                    )
+                except ValueError as exc:
+                    raise WorkerFailure(
+                        "AMBER_WORKER.PROTEIN_FORMAT", f"invalid SG coordinates at line {number}"
+                    ) from exc
             kept.append(line.rstrip("\r\n"))
     if not kept:
         raise WorkerFailure(
             "AMBER_WORKER.PROTEIN_EMPTY", "protein PDB has no supported ATOM records"
         )
-    if any(name == "CYX" for name in residues.values()):
+    bonded_residues: set[str] = set()
+    bond_distances: dict[tuple[str, str], float] = {}
+    for left, right in sorted(disulfide_pairs):
+        if (
+            left not in residues
+            or right not in residues
+            or left not in sulfur_atoms
+            or right not in sulfur_atoms
+            or residues[left] != "CYX"
+            or residues[right] != "CYX"
+        ):
+            raise WorkerFailure(
+                "AMBER_WORKER.DISULFIDE_MAPPING_INVALID",
+                f"declared pair {left!r}–{right!r} does not identify two CYS SG atoms",
+            )
+        distance = math.dist(sulfur_atoms[left], sulfur_atoms[right])
+        if not 1.8 <= distance <= 2.5:
+            raise WorkerFailure(
+                "AMBER_WORKER.DISULFIDE_DISTANCE_INVALID",
+                f"declared pair {left!r}–{right!r} has SG distance {distance:.3f} A",
+            )
+        bonded_residues.update((left, right))
+        bond_distances[(left, right)] = distance
+    sulfur_items = sorted(sulfur_atoms.items())
+    undeclared_close_pairs = [
+        (left, right, round(math.dist(left_xyz, right_xyz), 3))
+        for index, (left, left_xyz) in enumerate(sulfur_items)
+        for right, right_xyz in sulfur_items[index + 1 :]
+        if math.dist(left_xyz, right_xyz) < 2.5
+        and tuple(sorted((left, right))) not in disulfide_pairs
+    ]
+    if undeclared_close_pairs:
         raise WorkerFailure(
-            "AMBER_WORKER.DISULFIDE_UNSUPPORTED",
-            "CYX/disulfide residues need explicit SG bond mapping; this builder does not "
-            "support that mapping yet",
+            "AMBER_WORKER.DISULFIDE_REVIEW_REQUIRED",
+            f"undeclared close CYS SG atoms require review: {undeclared_close_pairs}",
+        )
+    unpaired_cyx = sorted(
+        key for key, name in residues.items() if name == "CYX" and key not in bonded_residues
+    )
+    if unpaired_cyx:
+        raise WorkerFailure(
+            "AMBER_WORKER.DISULFIDE_MAPPING_REQUIRED",
+            f"CYX residues have no explicit partners: {unpaired_cyx}",
         )
     if kept[-1] != "TER":
         kept.append("TER")
     _write_text(destination, "\n".join([*kept, "END"]) + "\n")
+    residue_indices: dict[str, int] = {}
+    sequence_keys: dict[int, list[str]] = {}
+    for key in residues:
+        parts = key.split(":")
+        try:
+            sequence_number = int(parts[1])
+        except (IndexError, ValueError) as exc:
+            raise WorkerFailure(
+                "AMBER_WORKER.DISULFIDE_RESIDUE_ID_INVALID",
+                f"residue key {key!r} cannot map to a tleap PDB residue number",
+            ) from exc
+        residue_indices[key] = sequence_number
+        sequence_keys.setdefault(sequence_number, []).append(key)
+    for left, right in bond_distances:
+        if (
+            len(sequence_keys[residue_indices[left]]) != 1
+            or len(sequence_keys[residue_indices[right]]) != 1
+        ):
+            raise WorkerFailure(
+                "AMBER_WORKER.DISULFIDE_RESIDUE_ID_AMBIGUOUS",
+                f"tleap residue numbers for {left!r}–{right!r} are not unique across chains",
+            )
+    disulfide_records = [
+        {
+            "residue_keys": [left, right],
+            "tleap_residue_indices": [residue_indices[left], residue_indices[right]],
+            "sg_distance_A": bond_distances[(left, right)],
+        }
+        for left, right in sorted(bond_distances)
+    ]
     return {
         "atom_records_after_hydrogen_removal": sum(line.startswith("ATOM  ") for line in kept),
         "heavy_atom_records": sum(line.startswith("ATOM  ") for line in kept),
@@ -316,6 +423,7 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
         "histidine_states": {
             key: value for key, value in sorted(residues.items()) if value in {"HID", "HIE", "HIP"}
         },
+        "disulfide_bonds": disulfide_records,
         "hydrogen_policy": (
             "remove input protein hydrogens; tleap addH from explicit residue templates"
         ),
@@ -326,6 +434,7 @@ def _write_tleap_input(
     path: Path,
     *,
     padding_A: float,
+    disulfide_bonds: list[dict[str, Any]] | None = None,
 ) -> None:
     lines = [
         "source leaprc.protein.ff14SB",
@@ -334,15 +443,32 @@ def _write_tleap_input(
         "loadAmberParams ligand.frcmod",
         "lig = loadmol2 ligand.mol2",
         "protein = loadpdb protein_amber.pdb",
-        "complex = combine { protein lig }",
-        "addH complex",
-        "addions2 complex Na+ 0",
-        "addions2 complex Cl- 0",
-        f"solvatebox complex TIP3PBOX {padding_A:.3f}",
-        "saveamberparm complex system.prmtop system.inpcrd",
-        "savepdb complex solvated_amber.pdb",
-        "quit",
     ]
+    for bond in disulfide_bonds or []:
+        indices = bond.get("tleap_residue_indices")
+        if (
+            not isinstance(indices, list)
+            or len(indices) != 2
+            or any(type(index) is not int or index < 1 for index in indices)
+            or indices[0] == indices[1]
+        ):
+            raise WorkerFailure(
+                "AMBER_WORKER.DISULFIDE_MAPPING_INVALID",
+                "tleap disulfide records require two distinct positive residue indices",
+            )
+        lines.append(f"bond protein.{indices[0]}.SG protein.{indices[1]}.SG")
+    lines.extend(
+        [
+            "complex = combine { protein lig }",
+            "addH complex",
+            "addions2 complex Na+ 0",
+            "addions2 complex Cl- 0",
+            f"solvatebox complex TIP3PBOX {padding_A:.3f}",
+            "saveamberparm complex system.prmtop system.inpcrd",
+            "savepdb complex solvated_amber.pdb",
+            "quit",
+        ]
+    )
     _write_text(path, "\n".join(lines) + "\n")
 
 
@@ -734,7 +860,7 @@ def _write_energy_inputs(output_dir: Path) -> tuple[Path, Path]:
     return mdp, sander
 
 
-def _energy_values(xvg: Path, sander_out: Path) -> tuple[float, float, dict[str, float]]:
+def _sander_energy_values(sander_out: Path) -> tuple[float, dict[str, float]]:
     amber_text = sander_out.read_text(encoding="utf-8", errors="replace")
     final_results = amber_text.rsplit("FINAL RESULTS", 1)
     amber_matches = (
@@ -780,6 +906,13 @@ def _energy_values(xvg: Path, sander_out: Path) -> tuple[float, float, dict[str,
             "AMBER_WORKER.SANDER_ENERGY_INCONSISTENT",
             "Sander component sum does not agree with its displayed total energy",
         )
+    if not math.isfinite(amber_kcal):
+        raise WorkerFailure("AMBER_WORKER.SANDER_ENERGY_MISSING", "Sander energy is non-finite")
+    return amber_kcal, amber_components
+
+
+def _energy_values(xvg: Path, sander_out: Path) -> tuple[float, float, dict[str, float]]:
+    amber_kcal, amber_components = _sander_energy_values(sander_out)
     values: list[float] = []
     for line in xvg.read_text(encoding="utf-8", errors="replace").splitlines():
         stripped = line.strip()
@@ -926,7 +1059,11 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         records=records,
         label="parmchk2",
     )
-    _write_tleap_input(leap_input, padding_A=padding_A)
+    _write_tleap_input(
+        leap_input,
+        padding_A=padding_A,
+        disulfide_bonds=protein_metadata["disulfide_bonds"],
+    )
     tleap_result = _run(
         argv=[tleap, "-f", str(leap_input)],
         cwd=output_dir,
@@ -1024,66 +1161,6 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         )
 
     mdp_path, sander_input = _write_energy_inputs(output_dir)
-    tpr = output_dir / "energy.tpr"
-    _run(
-        argv=[
-            str(gromacs),
-            "grompp",
-            "-f",
-            str(mdp_path),
-            "-c",
-            str(gro_path),
-            "-p",
-            str(topology_path),
-            "-o",
-            str(tpr),
-        ],
-        cwd=output_dir,
-        output_dir=output_dir,
-        records=records,
-        label="grompp",
-        timeout_s=300,
-    )
-    _run(
-        argv=[
-            str(gromacs),
-            "mdrun",
-            "-s",
-            str(tpr),
-            "-rerun",
-            str(gro_path),
-            "-deffnm",
-            str(output_dir / "gromacs_energy"),
-            "-nt",
-            "1",
-            "-nb",
-            "cpu",
-        ],
-        cwd=output_dir,
-        output_dir=output_dir,
-        records=records,
-        label="gromacs_mdrun_rerun",
-        timeout_s=900,
-    )
-    xvg_path = output_dir / "gromacs_energy.xvg"
-    _run(
-        argv=[
-            str(gromacs),
-            "energy",
-            "-f",
-            str(output_dir / "gromacs_energy.edr"),
-            "-o",
-            str(xvg_path),
-            "-xvg",
-            "none",
-        ],
-        cwd=output_dir,
-        output_dir=output_dir,
-        records=records,
-        label="gromacs_energy",
-        stdin=b"Potential\n0\n",
-        timeout_s=300,
-    )
     sander_out = output_dir / "sander_single_point.out"
     sander_restart = output_dir / "sander_single_point.rst7"
     _run(
@@ -1107,16 +1184,114 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         label="sander_single_point",
         timeout_s=900,
     )
-    amber_kcal, gromacs_kj, amber_components = _energy_values(xvg_path, sander_out)
+    amber_kcal, amber_components = _sander_energy_values(sander_out)
+    output_format = options.get("output_format")
+    gromacs_kj: float | None = None
+    if output_format == "gromacs":
+        tpr = output_dir / "energy.tpr"
+        _run(
+            argv=[
+                str(gromacs),
+                "grompp",
+                "-f",
+                str(mdp_path),
+                "-c",
+                str(gro_path),
+                "-p",
+                str(topology_path),
+                "-o",
+                str(tpr),
+            ],
+            cwd=output_dir,
+            output_dir=output_dir,
+            records=records,
+            label="grompp",
+            timeout_s=300,
+        )
+        _run(
+            argv=[
+                str(gromacs),
+                "mdrun",
+                "-s",
+                str(tpr),
+                "-rerun",
+                str(gro_path),
+                "-deffnm",
+                str(output_dir / "gromacs_energy"),
+                "-nt",
+                "1",
+                "-nb",
+                "cpu",
+            ],
+            cwd=output_dir,
+            output_dir=output_dir,
+            records=records,
+            label="gromacs_mdrun_rerun",
+            timeout_s=900,
+        )
+        xvg_path = output_dir / "gromacs_energy.xvg"
+        _run(
+            argv=[
+                str(gromacs),
+                "energy",
+                "-f",
+                str(output_dir / "gromacs_energy.edr"),
+                "-o",
+                str(xvg_path),
+                "-xvg",
+                "none",
+            ],
+            cwd=output_dir,
+            output_dir=output_dir,
+            records=records,
+            label="gromacs_energy",
+            stdin=b"Potential\n0\n",
+            timeout_s=300,
+        )
+        values: list[float] = []
+        for line in xvg_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith(("#", "@")):
+                continue
+            fields = stripped.split()
+            if len(fields) >= 2:
+                values.append(float(fields[-1]))
+        if not values or not math.isfinite(values[-1]):
+            raise WorkerFailure(
+                "AMBER_WORKER.GROMACS_ENERGY_MISSING",
+                "GROMACS single-point energy output is empty or non-finite",
+            )
+        gromacs_kj = values[-1]
+    elif output_format != "amber":
+        raise WorkerFailure("AMBER_WORKER.OUTPUT_FORMAT", "unsupported topology output format")
     for relative, record in parameter_files.items():
         if _sha256(Path(record["path"])) != record["sha256"]:
             raise WorkerFailure(
                 "AMBER_WORKER.PARAMETER_HASH_MISMATCH",
                 f"force-field source changed during this calculation: {relative}",
             )
-    gromacs_kcal = gromacs_kj / 4.184
-    delta_kcal = gromacs_kcal - amber_kcal
-    relative_delta = abs(delta_kcal) / max(abs(amber_kcal), 1.0)
+    gromacs_kcal = gromacs_kj / 4.184 if gromacs_kj is not None else None
+    delta_kcal = gromacs_kcal - amber_kcal if gromacs_kcal is not None else None
+    relative_delta = abs(delta_kcal) / max(abs(amber_kcal), 1.0) if delta_kcal is not None else None
+    energy_parameters: dict[str, Any] = {
+        "amber_cutoff_A": 10.0,
+        "amber_periodic_boundary": "constant_volume_PME",
+        "amber_vdwmeth": 0,
+        "coordinates": "prepared Amber inpcrd coordinates",
+    }
+    if output_format == "gromacs":
+        energy_parameters.update(
+            {
+                "gromacs_cutoff_nm": 1.0,
+                "gromacs_electrostatics": "PME; order 4; spacing 0.12 nm",
+                "gromacs_coulomb_modifier": (
+                    "None; unmodified cutoff potential for energy comparison"
+                ),
+                "gromacs_vdw_modifier": ("None; unmodified cutoff potential for energy comparison"),
+                "dispersion_correction": False,
+                "coordinates": "same prepared system; Amber inpcrd and exported GROMACS GRO",
+            }
+        )
 
     frcmod_text = ligand_frcmod.read_text(encoding="utf-8", errors="replace")
     sections = {"MASS", "BOND", "ANGLE", "DIHE", "IMPROPER", "NONBON"}
@@ -1201,6 +1376,8 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         "single_point_energy": {
             "method": (
                 "Sander final ENERGY row vs GROMACS rerun Potential on ParmEd-exported coordinates"
+                if output_format == "gromacs"
+                else "Sander final ENERGY row; no cross-engine comparison requested"
             ),
             "amber_energy_kcal_mol": amber_kcal,
             "amber_energy_components_kcal_mol": amber_components,
@@ -1209,20 +1386,10 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
             "delta_gromacs_minus_amber_kcal_mol": delta_kcal,
             "absolute_relative_delta": relative_delta,
             "acceptance_tolerance": None,
-            "status": "measured_unqualified",
-            "parameters": {
-                "amber_cutoff_A": 10.0,
-                "amber_periodic_boundary": "constant_volume_PME",
-                "gromacs_cutoff_nm": 1.0,
-                "gromacs_electrostatics": "PME; order 4; spacing 0.12 nm",
-                "gromacs_coulomb_modifier": (
-                    "None; unmodified cutoff potential for energy comparison"
-                ),
-                "gromacs_vdw_modifier": "None; unmodified cutoff potential for energy comparison",
-                "dispersion_correction": False,
-                "amber_vdwmeth": 0,
-                "coordinates": "same prepared system; Amber inpcrd and exported GROMACS GRO",
-            },
+            "status": (
+                "measured_unqualified" if output_format == "gromacs" else "amber_single_point_only"
+            ),
+            "parameters": energy_parameters,
         },
         "ligand_parameter_fallback_records": fallback_records,
         "outputs": output_files,

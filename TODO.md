@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Validate docked-pose coordinate identity through complex assembly, parameterization, and MD system preparation. |
-| **Next task** | Exercise real AmberTools execution when available, then continue adapter-family scientific validation and the locked redocking benchmark after independent blind review. |
-| **Last completed** | G-MD-21: six-stage same-run registered-candidate MD → report runtime validation; local full gate and hosted Quality/package matrix pass for 3ae4388. |
-| **Blocking questions** | G-MD-21 validates same-run report generation, but its system is prebuilt and Complex coordinates are lineage placeholders. Docked-pose-to-system continuity, real AmberTools execution, independent blind review for the locked cohort, and public-release license/notice review remain open. |
+| **Current task** | [-] Execute and validate OpenMM from the newly validated docked-pose-derived native Amber system; add staged minimization/equilibration where scientifically supported. |
+| **Next task** | Complete pose-derived system → MD → analysis/report runtime validation; then continue adapter-family scientific validation and the locked redocking benchmark after independent blind review. |
+| **Last completed** | G-MD-22: real Vina pose → Complex → AmberTools/ParmEd system preparation, with source-declared disulfide retention; native Amber path and GROMACS small-system profile passed. Full local gate: 931 passed, 38 optional skips. |
+| **Blocking questions** | The GROMACS output profile correctly fails closed on the pose-derived `+0.001 e` PME charge warning; native Amber → OpenMM has not yet been run on that pose-derived system. Independent blind review for the locked cohort and public-release license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1244,3 +1244,11 @@ When the user says **CONTINUE**:
 - [x] Opt-in real-engine workflow passed: 1 test in 7.26 s. It checked the 66,195-atom system, six XTC frames at 0.02 ps, 0–0.1 ps time range, candidate identity through analysis/report, and CAS hashes for report JSON/HTML artifacts. Duplicate LIG index groups were removed only after their atom memberships were confirmed identical in the private test copy.
 - [x] Full scripts/check.sh passed: 928 passed, 38 skipped; Ruff, format, strict mypy, import contracts, and schemas pass. Coverage gate passed at 85.01% core and 80.19% adapters. Hosted Quality and package matrix passed on the previous committed increment; this increment's hosted runs are pending.
 - [-] This 50-step (0.1 ps) run is runtime composition evidence, not a stability or scientific-validity benchmark. The system is prebuilt and the Complex still has lineage-only placeholders; docked-pose coordinate continuity, report interpretation beyond fixture assertions, AmberTools execution, and longer-timescale validation remain open.
+
+### Session log — 2026-09-30, real pose-linked AmberTools preparation
+
+- [x] Added explicit source-declared disulfide handling to AmberTools preparation. For the 5NIU fixture, chain-A Cys40–Cys114 is validated from source structure metadata and SG geometry, mapped to LEaP residue IDs, represented as CYX, and explicitly bonded. Undeclared close SG pairs remain decision-required.
+- [x] Corrected native Amber output behavior: it records a Sander-only single-point measurement and skips the optional GROMACS cross-engine energy check. GROMACS output still runs the strict comparison and warning policy. No `-maxwarn` or charge modification was added. Native Amber energy provenance no longer lists unexecuted GROMACS comparison parameters.
+- [x] Real Vina/Meeko → Complex → AmberTools/ParmEd pose-linked test passed. Ligand pose coordinate deviation and conversion identity checks passed, including the Cys40–Cys114 disulfide mapping. Tiny real AmberTools regression passed in both GROMACS comparison and native Amber/OpenMM profiles; the separate 1,376-atom OpenMM run completed 50 CPU steps (0.1 ps).
+- [x] Focused adapter/worker tests: 55 passed. Full `scripts/check.sh`: 931 passed, 38 optional skips; Ruff, formatting, strict mypy (202 source files), import contracts (261 files), and schema freshness passed. Evidence recorded in `docs/validation/G-MD-22.md`.
+- [-] OpenMM has not yet been executed on the actual pose-derived system. The GROMACS output route for the pose-derived system fails closed at `grompp` because its converted PME topology reports `+0.001 e`; the failure remains visible and unresolved for GROMACS output. Independent blind review and release license review remain separate external gates.

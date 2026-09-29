@@ -3,6 +3,12 @@
 Date: 2026-09-29
 Scope: capabilities discovered from installed stage-handler entry points in the WSL caddsuite environment.
 
+## Validation update — 2026-09-30
+
+The dated snapshot below predates the real AmberTools run. G-MD-22 now records a passing fixture-specific Vina/Meeko → coordinate Complex → AmberTools/ParmEd system preparation. It validates ligand pose coordinate continuity, atom/residue identity through conversion, and the source-declared 5NIU Cys40–Cys114 disulfide. Native Amber output reports a Sander-only single-point energy and does not attempt GROMACS PME comparison. The separate tiny Amber regression passed its strict GROMACS comparison profile and native Amber/OpenMM 50-step CPU smoke.
+
+Remaining: OpenMM has not yet run on the actual pose-derived system, so a complete selected-pose → MD → trajectory analysis/report composition remains open. A GROMACS-format build of the pose-derived system currently fails closed because GROMACS reports `+0.001 e` net charge under PME; warning suppression and charge edits were intentionally not used. The Amber-to-GROMACS compatibility profile remains disabled. See `docs/validation/G-MD-22.md` for evidence and limits.
+
 ## Production-discovered stage capabilities
 
 | Stage kind | Engine | Normalized inputs | Output |

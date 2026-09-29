@@ -10,7 +10,7 @@ import os
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, NoReturn, cast
 
-from pydantic import Field, StrictInt
+from pydantic import Field, StrictInt, model_validator
 
 from caddsuite.contracts.base import ArtifactRef, ContractModel, SoftwareRef
 from caddsuite.contracts.complex import Complex
@@ -56,11 +56,30 @@ class AmberTLeapBuildParameters(ContractModel):
     ligand_net_charge: StrictInt
     protein_ph: float = Field(ge=0, le=14)
     histidine_states: dict[str, Literal["HID", "HIE", "HIP"]] = Field(default_factory=dict)
+    disulfide_bonds: tuple[tuple[str, str], ...] = ()
     water_model: Literal["TIP3P"]
     ion_parameters: Literal["Joung-Cheatham TIP3P"]
     ion_policy: Literal["neutralize_only"]
     box_padding_A: float = Field(ge=6, le=30)
     output_format: Literal["gromacs", "amber"]
+
+    @model_validator(mode="after")
+    def _disulfide_pairs_are_explicit_and_unique(self) -> AmberTLeapBuildParameters:
+        used: set[str] = set()
+        pairs: set[tuple[str, str]] = set()
+        for pair in self.disulfide_bonds:
+            if len(pair) != 2 or not all(value.strip() for value in pair):
+                raise ValueError("each disulfide bond must name two non-empty residue keys")
+            if pair[0] == pair[1]:
+                raise ValueError("a disulfide bond must connect two different residues")
+            normalized = (min(pair[0], pair[1]), max(pair[0], pair[1]))
+            if normalized in pairs:
+                raise ValueError("disulfide bond list contains a duplicate pair")
+            if used.intersection(pair):
+                raise ValueError("a cysteine residue cannot occur in multiple disulfide bonds")
+            pairs.add(normalized)
+            used.update(pair)
+        return self
 
 
 _STANDARD_RESIDUES = frozenset(
@@ -226,33 +245,66 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
                     "element": element,
                 }
             )
-        if resname == "CYS" and line[12:16].strip().upper() == "SG":
+        if resname in {"CYS", "CYX"} and line[12:16].strip().upper() == "SG":
             sulfur_atoms[key] = xyz
     if atom_count == 0:
         _fail("AMBER_BUILD.PROTEIN_EMPTY", "protein PDB has no ATOM records")
     if last_residue_key is not None:
         terminal_residue_keys.add(last_residue_key)
-    if any(name == "CYX" for name in residues.values()):
-        _fail(
-            "AMBER_BUILD.DISULFIDE_UNSUPPORTED",
-            "CYX/disulfide residues need explicit SG bond mapping; this builder does not "
-            "support that mapping yet",
-            Severity.DECISION_REQUIRED,
-        )
-    close_sulfur_pairs = []
+    declared_pairs = {tuple(sorted(pair)) for pair in options.disulfide_bonds}
+    bonded_residues: set[str] = set()
+    bond_distances: dict[tuple[str, str], float] = {}
+    for left, right in declared_pairs:
+        if (
+            left not in residues
+            or right not in residues
+            or residues[left] not in {"CYS", "CYX"}
+            or residues[right] not in {"CYS", "CYX"}
+        ):
+            _fail(
+                "AMBER_BUILD.DISULFIDE_MAPPING_INVALID",
+                f"declared disulfide {left!r}–{right!r} must link two protein cysteines",
+            )
+        if left not in sulfur_atoms or right not in sulfur_atoms:
+            _fail(
+                "AMBER_BUILD.DISULFIDE_SG_MISSING",
+                f"declared disulfide {left!r}–{right!r} requires both SG atoms",
+                Severity.DECISION_REQUIRED,
+            )
+        distance = math.dist(sulfur_atoms[left], sulfur_atoms[right])
+        if not 1.8 <= distance <= 2.5:
+            _fail(
+                "AMBER_BUILD.DISULFIDE_DISTANCE_INVALID",
+                f"declared disulfide {left!r}–{right!r} has SG distance {distance:.3f} A",
+                Severity.DECISION_REQUIRED,
+            )
+        bonded_residues.update((left, right))
+        bond_distances[(left, right)] = distance
+    undeclared_close_pairs = []
     sulfur_items = sorted(sulfur_atoms.items())
     for index, (left_key, left_xyz) in enumerate(sulfur_items):
         for right_key, right_xyz in sulfur_items[index + 1 :]:
             distance = math.dist(left_xyz, right_xyz)
-            if distance < 2.5:
-                close_sulfur_pairs.append((left_key, right_key, round(distance, 3)))
-    if close_sulfur_pairs:
+            if distance < 2.5 and tuple(sorted((left_key, right_key))) not in declared_pairs:
+                undeclared_close_pairs.append((left_key, right_key, round(distance, 3)))
+    if undeclared_close_pairs:
         _fail(
             "AMBER_BUILD.DISULFIDE_REVIEW_REQUIRED",
-            f"cysteine SG atoms are within 2.5 A: {close_sulfur_pairs}; inspect "
-            "disulfide connectivity",
+            f"cysteine SG atoms are within 2.5 A: {undeclared_close_pairs}; provide a "
+            "source-supported explicit disulfide mapping or resolve the close contact",
             Severity.DECISION_REQUIRED,
         )
+    unpaired_cyx = sorted(
+        key for key, name in residues.items() if name == "CYX" and key not in bonded_residues
+    )
+    if unpaired_cyx:
+        _fail(
+            "AMBER_BUILD.DISULFIDE_MAPPING_REQUIRED",
+            f"CYX residues need explicit disulfide partners: {unpaired_cyx}",
+            Severity.DECISION_REQUIRED,
+        )
+    for key in bonded_residues:
+        residues[key] = "CYX"
     histidines = {key: name for key, name in residues.items() if name in _HISTIDINE_NAMES}
     declared = options.histidine_states
     unknown = set(declared) - set(histidines)
@@ -280,6 +332,37 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
             "AMBER_BUILD.HISTIDINE_MAPPING_CONFLICT",
             f"declared histidine states disagree with PDB names: {conflicts}",
         )
+    residue_indices: dict[str, int] = {}
+    sequence_keys: dict[int, list[str]] = {}
+    for key in residues:
+        parts = key.split(":")
+        try:
+            sequence_number = int(parts[1])
+        except (IndexError, ValueError):
+            _fail(
+                "AMBER_BUILD.DISULFIDE_RESIDUE_ID_INVALID",
+                f"residue key {key!r} cannot be mapped to a tleap PDB residue number",
+            )
+        sequence_keys.setdefault(sequence_number, []).append(key)
+        residue_indices[key] = sequence_number
+    for left, right in bond_distances:
+        if (
+            len(sequence_keys[residue_indices[left]]) != 1
+            or len(sequence_keys[residue_indices[right]]) != 1
+        ):
+            _fail(
+                "AMBER_BUILD.DISULFIDE_RESIDUE_ID_AMBIGUOUS",
+                f"tleap residue numbers for {left!r}–{right!r} are not unique across chains",
+                Severity.DECISION_REQUIRED,
+            )
+    disulfide_records = [
+        {
+            "residue_keys": [left, right],
+            "tleap_residue_indices": [residue_indices[left], residue_indices[right]],
+            "sg_distance_A": bond_distances[(left, right)],
+        }
+        for left, right in sorted(bond_distances)
+    ]
     return {
         "n_atom_records": atom_count,
         "n_heavy_atom_records": heavy_atom_count,
@@ -288,13 +371,16 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
         "residues": [
             {
                 "key": key,
-                "residue_name": options.histidine_states.get(key, name),
+                "residue_name": (
+                    "CYX" if key in bonded_residues else options.histidine_states.get(key, name)
+                ),
                 "terminal": key in terminal_residue_keys,
                 "heavy_atoms": residue_atoms[key],
             }
             for key, name in residues.items()
         ],
         "histidine_states": {key: declared.get(key, name) for key, name in histidines.items()},
+        "disulfide_bonds": disulfide_records,
     }
 
 
@@ -730,10 +816,15 @@ class AmberTLeapBuilderAdapter:
             )
         if conversion.get("source_atom_count") != conversion.get("gromacs_atom_count"):
             _fail("AMBER_BUILD.CONVERSION_ATOM_COUNT", "Amber and GROMACS atom counts differ")
-        if energy.get("status") != "measured_unqualified":
+        expected_energy_status = (
+            "measured_unqualified"
+            if options.output_format == "gromacs"
+            else "amber_single_point_only"
+        )
+        if energy.get("status") != expected_energy_status:
             _fail(
                 "AMBER_BUILD.ENERGY_CHECK_STATUS",
-                "worker energy result is not an unqualified measurement",
+                "worker energy result does not match the selected output format",
             )
 
         try:

@@ -233,6 +233,66 @@ def test_disulfide_like_geometry_is_not_silently_interpreted(tmp_path: Path) -> 
     assert issues[0].severity is Severity.DECISION_REQUIRED
 
 
+def test_source_declared_disulfide_is_accepted_and_normalized_as_cyx(tmp_path: Path) -> None:
+    protein = "".join(
+        (
+            _pdb_atom(1, "N", "CYS", element="N"),
+            _pdb_atom(2, "CA", "CYS"),
+            _pdb_atom(3, "SG", "CYS", x=0.0, element="S"),
+            _pdb_atom(4, "N", "CYS", x=10.0, element="N", sequence=2),
+            _pdb_atom(5, "CA", "CYS", x=11.0, sequence=2),
+            _pdb_atom(6, "SG", "CYS", x=2.0, element="S", sequence=2),
+            "TER\nEND\n",
+        )
+    )
+    context, request, complex_model, *_ = _inputs(tmp_path, protein_text=protein)
+    request_values = request.model_dump(mode="python")
+    request_values["parameters"]["disulfide_bonds"] = [["A:1:_", "A:2:_"]]
+    request = SystemBuildRequest.model_validate(request_values)
+    context = AdapterContext(
+        inputs={"request": request, "complex": complex_model},
+        parameters={},
+        working_directory=context.working_directory,
+    )
+    adapter = _adapter(tmp_path)
+    assert adapter.validate_input(context) == ()
+    plan = adapter.plan(context)
+    worker_request = json.loads(
+        (context.working_directory / "amber_worker_request.json").read_text(encoding="utf-8")
+    )
+    protein_metadata = worker_request["input_metadata"]["protein"]
+    assert protein_metadata["disulfide_bonds"] == [
+        {
+            "residue_keys": ["A:1:_", "A:2:_"],
+            "tleap_residue_indices": [1, 2],
+            "sg_distance_A": pytest.approx(2.0),
+        }
+    ]
+    assert [item["residue_name"] for item in protein_metadata["residues"]] == ["CYX", "CYX"]
+    assert len(plan.commands) == 1
+
+
+def test_disulfide_parameter_contract_rejects_ambiguous_pairs() -> None:
+    values = {
+        "protein_artifact_path": "inputs/protein.pdb",
+        "ligand_artifact_path": "inputs/ligand.sdf",
+        "protein_ff": "ff14SB",
+        "ligand_method": "GAFF2",
+        "ligand_charge_model": "AM1-BCC",
+        "ligand_net_charge": 0,
+        "protein_ph": 7.4,
+        "histidine_states": {},
+        "disulfide_bonds": [["A:1:_", "A:2:_"], ["A:2:_", "A:3:_"]],
+        "water_model": "TIP3P",
+        "ion_parameters": "Joung-Cheatham TIP3P",
+        "ion_policy": "neutralize_only",
+        "box_padding_A": 8.0,
+        "output_format": "gromacs",
+    }
+    with pytest.raises(ValidationError, match="multiple disulfide bonds"):
+        AmberTLeapBuildParameters.model_validate(values)
+
+
 def test_input_paths_are_confined_to_stage_directory(tmp_path: Path) -> None:
     context, request, complex_model, *_ = _inputs(tmp_path)
     values = request.model_dump(mode="python")

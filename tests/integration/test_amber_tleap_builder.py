@@ -239,25 +239,29 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                 "residue_name": "GLY",
             }
         ]
-        assert report["single_point_energy"]["status"] == "measured_unqualified"
-        assert report["single_point_energy"]["acceptance_tolerance"] is None
         energy = report["single_point_energy"]
+        assert energy["status"] == (
+            "measured_unqualified" if output_format == "gromacs" else "amber_single_point_only"
+        )
+        assert report["single_point_energy"]["acceptance_tolerance"] is None
         assert energy["parameters"]["amber_vdwmeth"] == 0
-        assert energy["parameters"]["gromacs_vdw_modifier"].startswith("None;")
-        assert energy["parameters"]["gromacs_coulomb_modifier"].startswith("None;")
         assert sum(energy["amber_energy_components_kcal_mol"].values()) == pytest.approx(
             energy["amber_energy_kcal_mol"]
         )
-        assert energy["delta_gromacs_minus_amber_kcal_mol"] == pytest.approx(
-            energy["gromacs_potential_kcal_mol"] - energy["amber_energy_kcal_mol"]
-        )
         if output_format == "gromacs":
+            assert energy["parameters"]["gromacs_vdw_modifier"].startswith("None;")
+            assert energy["parameters"]["gromacs_coulomb_modifier"].startswith("None;")
+            assert energy["delta_gromacs_minus_amber_kcal_mol"] == pytest.approx(
+                energy["gromacs_potential_kcal_mol"] - energy["amber_energy_kcal_mol"]
+            )
             assert any(
                 issue.code == "FF.FAMILY_CONSISTENCY"
                 and issue.severity.value == "decision_required"
                 for issue in result.validation_issues
             )
         else:
+            assert energy["gromacs_potential_kj_mol"] is None
+            assert energy["delta_gromacs_minus_amber_kcal_mol"] is None
             assert result.validation_issues == ()
             assert OPENMM_PYTHON is not None
             native_inputs = result.system.engine_inputs["amber"]

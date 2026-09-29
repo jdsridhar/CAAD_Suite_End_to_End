@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import json
 import math
 import os
 import subprocess
@@ -18,6 +19,8 @@ from caddsuite.adapters.docking.autodock4_handler import AutoDock4DockingHandler
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
 from caddsuite.adapters.structure_preparation.complex_builder import CoordinateComplexBuilderHandler
 from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparationHandler
+from caddsuite.adapters.system_builders.amber_handler import AmberTLeapBuilderHandler
+from caddsuite.adapters.system_builders.amber_tleap import AmberTLeapBuilderAdapter
 from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.report_builder import build_provenance_report
 from caddsuite.application.runtime import LocalWorkflowRuntime
@@ -42,6 +45,7 @@ from caddsuite.contracts.structure import (
     Structure,
     StructureSource,
 )
+from caddsuite.contracts.system import SystemBuildRequest
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
@@ -53,6 +57,8 @@ from caddsuite.workflow.definition import WorkflowDefinition
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXER_PYTHON = os.environ.get("CADDSUITE_PDBFIXER_PYTHON")
+AMBER_HOME = os.environ.get("CADDSUITE_AMBER_HOME")
+GROMACS = os.environ.get("CADDSUITE_GROMACS_EXECUTABLE")
 pytestmark = pytest.mark.skipif(
     not FIXER_PYTHON,
     reason="set CADDSUITE_PDBFIXER_PYTHON to run the real Vina/Meeko stage integration",
@@ -412,9 +418,135 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
         )
         assert coordinate_complex.pose_id == result.poses[0].id
         assert coordinate_complex.ligand_heavy_atom_count == compound.parent.heavy_atom_count
+        assert coordinate_complex.coordinate_fidelity_max_dev_A <= 0.001
         assert coordinate_complex.parameters["md_ready"] is False
         assert store.verify(coordinate_complex.assembled.sha256 or "")
 
+        # Optional, real pose-linked system-builder validation, enabled explicitly.
+        if AMBER_HOME and GROMACS:
+            protein_ref = coordinate_complex.protein
+            ligand_ref = coordinate_complex.ligand
+            assert protein_ref.sha256 is not None
+            assert ligand_ref.sha256 is not None
+            protein_bytes = store.path_for(protein_ref.sha256).read_bytes()
+            histidine_atoms: dict[tuple[str, str, str, str], set[str]] = {}
+            for line in protein_bytes.decode("ascii").splitlines():
+                if not line.startswith(("ATOM  ", "HETATM")):
+                    continue
+                resname = line[17:20].strip().upper()
+                if resname not in {"HIS", "HID", "HIE", "HIP"}:
+                    continue
+                key = (
+                    line[21:22].strip() or "_",
+                    line[22:26].strip(),
+                    line[26:27].strip() or "_",
+                    resname,
+                )
+                histidine_atoms.setdefault(key, set()).add(line[12:16].strip().upper())
+            histidine_states: dict[str, str] = {}
+            for (chain, sequence, insertion, resname), atom_names in histidine_atoms.items():
+                residue_key = f"{chain}:{sequence}:{insertion}"
+                if resname in {"HID", "HIE", "HIP"}:
+                    state = resname
+                elif "HD1" in atom_names and "HE2" in atom_names:
+                    state = "HIP"
+                elif "HD1" in atom_names:
+                    state = "HID"
+                elif "HE2" in atom_names:
+                    state = "HIE"
+                else:
+                    raise AssertionError(
+                        f"prepared HIS {residue_key} has no explicit ring proton; "
+                        "AmberTools requires a recorded state"
+                    )
+                histidine_states[residue_key] = state
+            system_request = SystemBuildRequest(
+                id=new_ulid(),
+                complex_id=coordinate_complex.id,
+                compound_id=compound.id,
+                form_id=form.id,
+                target_id=target_id,
+                pose_id=result.poses[0].id,
+                source_artifacts={
+                    "inputs/protein.pdb": protein_ref,
+                    "inputs/ligand.sdf": ligand_ref,
+                },
+                selections={"protein": "Protein", "ligand": "LIG"},
+                mode="build",
+                parameters={
+                    "protein_artifact_path": "inputs/protein.pdb",
+                    "ligand_artifact_path": "inputs/ligand.sdf",
+                    "protein_ff": "ff14SB",
+                    "ligand_method": "GAFF2",
+                    "ligand_charge_model": "AM1-BCC",
+                    "ligand_net_charge": form.formal_charge,
+                    "protein_ph": prepared.ph,
+                    "histidine_states": histidine_states,
+                    "disulfide_bonds": [["A:40:_", "A:114:_"]],
+                    "water_model": "TIP3P",
+                    "ion_parameters": "Joung-Cheatham TIP3P",
+                    "ion_policy": "neutralize_only",
+                    "box_padding_A": 8.0,
+                    "output_format": "amber",
+                },
+            )
+            amber_adapter = AmberTLeapBuilderAdapter(
+                amber_prefix=Path(AMBER_HOME),
+                gromacs_executable=Path(GROMACS),
+                worker_script=ROOT / "src/caddsuite_worker/amber_tleap_worker.py",
+            )
+            amber_handler = AmberTLeapBuilderHandler(
+                adapter=amber_adapter,
+                work_root=tmp_path / "amber-pose-jobs",
+                log_root=tmp_path / "amber-pose-logs",
+                engine_version="configured AmberTools and GROMACS executables",
+                executor=runtime.services.executor,
+                artifact_store=store,
+                sessions=sessions,
+            )
+            built_system = amber_handler.execute(
+                SimpleNamespace(
+                    task=SimpleNamespace(stage_id="amber_pose_build", params={}),
+                    inputs={
+                        "system_build_request": (system_request,),
+                        "complex": (coordinate_complex,),
+                    },
+                )
+            )
+            assert built_system.complex_id == coordinate_complex.id
+            assert built_system.system.compound_id == compound.id
+            assert built_system.system.form_id == form.id
+            assert built_system.system.selections["ligand"].n_atoms == (
+                coordinate_complex.ligand_atom_count
+            )
+            assert built_system.system.selections["ligand"].verified
+            assert all(
+                artifact.sha256 and store.verify(artifact.sha256)
+                for artifact in built_system.normalized_artifacts.values()
+            )
+            build_report_ref = built_system.raw_artifacts["amber_outputs/worker_result.json"]
+            assert build_report_ref.sha256 is not None
+            build_report = json.loads(
+                store.path_for(build_report_ref.sha256).read_text(encoding="utf-8")
+            )
+            disulfide_records = build_report["protein_preparation"]["disulfide_bonds"]
+            assert len(disulfide_records) == 1
+            assert set(disulfide_records[0]["residue_keys"]) == {"A:40:_", "A:114:_"}
+            assert set(disulfide_records[0]["tleap_residue_indices"]) == {40, 114}
+            assert disulfide_records[0]["sg_distance_A"] == pytest.approx(2.007, abs=0.02)
+            assert (
+                build_report["protein_identity_validation"][
+                    "identity_match_except_documented_terminal_atoms"
+                ]
+                is True
+            )
+            assert build_report["ligand_identity_validation"]["max_coordinate_deviation_A"] <= 0.02
+            assert build_report["conversion_validation"]["max_coordinate_deviation_A"] <= 0.002
+            assert build_report["ligand_identity_validation"]["atom_order_and_graph_match"] is True
+            assert (
+                build_report["conversion_validation"]["atom_order_and_residue_identity_match"]
+                is True
+            )
         ad4_bin_dir = os.environ.get("CADDSUITE_AUTODOCK4_BIN_DIR")
         if ad4_bin_dir:
             ad4_bin = Path(ad4_bin_dir)

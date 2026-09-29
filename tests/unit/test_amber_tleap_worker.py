@@ -17,6 +17,7 @@ from caddsuite_worker.amber_tleap_worker import (
     _validate_mol2_identity,
     _validate_protein_topology_identity,
     _validated_inputs,
+    _write_tleap_input,
 )
 
 
@@ -28,10 +29,11 @@ def _pdb_atom(
     *,
     sequence: int = 1,
     chain: str = "A",
+    x: float = 0.0,
 ) -> str:
     return (
         f"ATOM  {serial:5d} {name:>4} {residue:>3} {chain}{sequence:4d}    "
-        f"{0.0:8.3f}{0.0:8.3f}{0.0:8.3f}{1.0:6.2f}{0.0:6.2f}          {element:>2}  \n"
+        f"{x:8.3f}{0.0:8.3f}{0.0:8.3f}{1.0:6.2f}{0.0:6.2f}          {element:>2}  \n"
     )
 
 
@@ -84,6 +86,51 @@ def test_protein_worker_preserves_chain_breaks_for_tleap(tmp_path: Path) -> None
     assert lines[2][21] == "B"
     assert lines[3] == "TER"
     assert result["residue_count"] == 2
+
+
+def test_worker_applies_explicit_disulfide_mapping_as_cyx_and_tleap_bond(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "protein.pdb"
+    output = tmp_path / "protein_amber.pdb"
+    source.write_text(
+        "".join(
+            (
+                _pdb_atom(1, "N", "CYS", "N", x=0.0),
+                _pdb_atom(2, "CA", "CYS", "C", x=0.5),
+                _pdb_atom(3, "SG", "CYS", "S", x=1.0),
+                _pdb_atom(4, "N", "CYS", "N", sequence=2, x=3.0),
+                _pdb_atom(5, "CA", "CYS", "C", sequence=2, x=3.5),
+                _pdb_atom(6, "SG", "CYS", "S", sequence=2, x=3.0),
+                "TER\nEND\n",
+            )
+        ),
+        encoding="ascii",
+    )
+    result = _prepare_protein(
+        source,
+        output,
+        {
+            "histidine_states": {},
+            "disulfide_bonds": [["A:1:_", "A:2:_"]],
+        },
+    )
+    prepared = output.read_text(encoding="ascii")
+    assert sum(line[17:20] == "CYX" for line in prepared.splitlines()) == 6
+    assert result["disulfide_bonds"] == [
+        {
+            "residue_keys": ["A:1:_", "A:2:_"],
+            "tleap_residue_indices": [1, 2],
+            "sg_distance_A": pytest.approx(2.0),
+        }
+    ]
+    leap_input = tmp_path / "tleap.in"
+    _write_tleap_input(
+        leap_input,
+        padding_A=8.0,
+        disulfide_bonds=result["disulfide_bonds"],
+    )
+    assert "bond protein.1.SG protein.2.SG" in leap_input.read_text(encoding="utf-8")
 
 
 def test_ligand_mol2_validation_checks_graph_atom_order_charge_and_coordinates(
