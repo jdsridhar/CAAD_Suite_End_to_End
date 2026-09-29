@@ -169,6 +169,73 @@ def test_openmm_is_an_engine_port_implementation_with_native_amber_requirements(
     assert adapter.capabilities.supports_checkpoint_restart is False
 
 
+def test_openmm_minimization_emits_coordinates_for_hash_linked_production(tmp_path: Path):
+    context = _context(tmp_path)
+    build = context.inputs["system_build"]
+    source_input = context.inputs["stage_input"]
+    assert isinstance(build, SystemBuildResult)
+    assert isinstance(source_input, MDStageInput)
+    minimization = MDStage(
+        kind=MDStageKind.MINIMIZATION,
+        integrator="minimize",
+        n_steps=250,
+        constraints="HBonds",
+        hmr=False,
+        nonbonded={
+            "method": "PME",
+            "cutoff_nm": 0.8,
+            "ewald_error_tolerance": 0.0005,
+        },
+    )
+    minimized_build = build.model_copy(update={"protocol": MDProtocol(stages=(minimization,))})
+    minimized_context = AdapterContext(
+        inputs={"system_build": minimized_build, "stage_input": source_input},
+        parameters={
+            "openmm": {
+                **context.parameters["openmm"],
+                "stage_index": 0,
+                "coordinates_path": "system.inpcrd",
+            }
+        },
+        working_directory=tmp_path,
+    )
+    adapter = OpenMMMDAdapter()
+    assert adapter.validate_stage(minimized_context) == ()
+    plan = adapter.plan_stage(minimized_context)
+    command = plan.commands[0]
+    assert command.argv[command.argv.index("--stage-kind") + 1] == "minimization"
+    assert command.argv[command.argv.index("--steps") + 1] == "250"
+    assert plan.expected_outputs == ("smoke.pdb", "smoke.result.json")
+
+    # A prior OpenMM PDB result may seed a later production stage for this same MD system.
+    minimized_coordinates = ArtifactRef(artifact_id=new_ulid(), role="md_pdb", sha256="c" * 64)
+    production = build.protocol.stages[0] if build.protocol is not None else None
+    assert production is not None
+    production_protocol = MDProtocol(stages=(production,))
+    chained_build = build.model_copy(update={"protocol": production_protocol})
+    chained_input = MDStageInput(
+        id=new_ulid(),
+        system_id=build.system.id,
+        stage_index=0,
+        artifacts={
+            "topology": source_input.artifacts["topology"],
+            "coordinates": minimized_coordinates,
+        },
+    )
+    chained_context = AdapterContext(
+        inputs={"system_build": chained_build, "stage_input": chained_input},
+        parameters={
+            "openmm": {
+                **context.parameters["openmm"],
+                "stage_index": 0,
+                "coordinates_path": "minimized.pdb",
+            }
+        },
+        working_directory=tmp_path,
+    )
+    assert adapter.validate_stage(chained_context) == ()
+
+
 def test_openmm_rejects_gromacs_profile_and_non_explicit_engine_settings(tmp_path: Path):
     adapter = OpenMMMDAdapter()
     context = _context(tmp_path)

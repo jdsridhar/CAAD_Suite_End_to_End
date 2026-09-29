@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -282,7 +283,21 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                     "ewald_error_tolerance": 0.0005,
                 },
             )
-            openmm_build = result.model_copy(update={"protocol": MDProtocol(stages=(mdp,))})
+            minimization = MDStage(
+                kind=MDStageKind.MINIMIZATION,
+                integrator="minimize",
+                n_steps=20,
+                constraints="HBonds",
+                hmr=False,
+                nonbonded={
+                    "method": "PME",
+                    "cutoff_nm": 0.8,
+                    "ewald_error_tolerance": 0.0005,
+                },
+            )
+            openmm_build = result.model_copy(
+                update={"protocol": MDProtocol(stages=(minimization, mdp))}
+            )
             stage_dir = tmp_path / "openmm_stage"
             stage_dir.mkdir()
             for relative, ref in (
@@ -293,7 +308,7 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                 destination = stage_dir / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(store.path_for(ref.sha256).read_bytes())
-            stage_input = MDStageInput(
+            minimize_input = MDStageInput(
                 id=new_ulid(),
                 system_id=result.system.id,
                 compound_id=result.system.compound_id,
@@ -301,21 +316,24 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                 stage_index=0,
                 artifacts={"topology": topology_ref, "coordinates": coordinates_ref},
             )
+            common_parameters = {
+                "python_executable": OPENMM_PYTHON,
+                "worker_script": str(ROOT / "src/caddsuite_worker/openmm_md_worker.py"),
+                "topology_path": "amber_outputs/system.prmtop",
+                "random_seed": 42,
+                "friction_per_ps": 1.0,
+                "report_interval_steps": 5,
+                "cpu_threads": 1,
+                "platform_name": "CPU",
+            }
             openmm_context = AdapterContext(
-                inputs={"system_build": openmm_build, "stage_input": stage_input},
+                inputs={"system_build": openmm_build, "stage_input": minimize_input},
                 parameters={
                     "openmm": {
                         "stage_index": 0,
-                        "python_executable": OPENMM_PYTHON,
-                        "worker_script": str(ROOT / "src/caddsuite_worker/openmm_md_worker.py"),
-                        "topology_path": "amber_outputs/system.prmtop",
                         "coordinates_path": "amber_outputs/system.inpcrd",
-                        "output_prefix": "openmm_smoke",
-                        "random_seed": 42,
-                        "friction_per_ps": 1.0,
-                        "report_interval_steps": 5,
-                        "cpu_threads": 1,
-                        "platform_name": "CPU",
+                        "output_prefix": "openmm_minimized",
+                        **common_parameters,
                     }
                 },
                 working_directory=stage_dir,
@@ -327,6 +345,52 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                 plan.commands[0].argv,
                 cwd=stage_dir,
                 env={**os.environ, **plan.commands[0].environment},
+                capture_output=True,
+                check=False,
+                shell=False,
+                timeout=120,
+            )
+            output = completed.stdout + completed.stderr
+            assert completed.returncode == 0, output.decode(errors="replace")[-4000:]
+            minimized_report = json.loads(
+                (stage_dir / "openmm_minimized.result.json").read_text(encoding="utf-8")
+            )
+            assert minimized_report["parameters"]["stage_kind"] == "minimization"
+            assert minimized_report["potential_energy_kcal_mol"] <= (
+                minimized_report["initial_potential_energy_kcal_mol"] + 1e-5
+            )
+            minimized_path = stage_dir / "openmm_minimized.pdb"
+            minimized_ref = ArtifactRef(
+                artifact_id=new_ulid(),
+                role="md_pdb",
+                sha256=hashlib.sha256(minimized_path.read_bytes()).hexdigest(),
+            )
+            production_input = MDStageInput(
+                id=new_ulid(),
+                system_id=result.system.id,
+                compound_id=result.system.compound_id,
+                form_id=result.system.form_id,
+                stage_index=1,
+                artifacts={"topology": topology_ref, "coordinates": minimized_ref},
+            )
+            production_context = AdapterContext(
+                inputs={"system_build": openmm_build, "stage_input": production_input},
+                parameters={
+                    "openmm": {
+                        "stage_index": 1,
+                        "coordinates_path": "openmm_minimized.pdb",
+                        "output_prefix": "openmm_smoke",
+                        **common_parameters,
+                    }
+                },
+                working_directory=stage_dir,
+            )
+            assert openmm.validate_stage(production_context) == ()
+            production_plan = openmm.plan_stage(production_context)
+            completed = subprocess.run(
+                production_plan.commands[0].argv,
+                cwd=stage_dir,
+                env={**os.environ, **production_plan.commands[0].environment},
                 capture_output=True,
                 check=False,
                 shell=False,

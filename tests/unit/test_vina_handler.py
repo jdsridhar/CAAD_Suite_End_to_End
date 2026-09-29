@@ -17,6 +17,7 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 
 from caddsuite.adapters.docking.autodock4_handler import AutoDock4DockingHandler
 from caddsuite.adapters.docking.vina_handler import VinaDockingHandler
+from caddsuite.adapters.md.openmm import OpenMMMDAdapter
 from caddsuite.adapters.structure_preparation.complex_builder import CoordinateComplexBuilderHandler
 from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparationHandler
 from caddsuite.adapters.system_builders.amber_handler import AmberTLeapBuilderHandler
@@ -27,6 +28,7 @@ from caddsuite.application.runtime import LocalWorkflowRuntime
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.docking import DockingResult
 from caddsuite.contracts.execution import TaskAttempt
+from caddsuite.contracts.md import MDProtocol, MDStage, MDStageInput, MDStageKind
 from caddsuite.contracts.registry import (
     ChemicalIdentity,
     Compound,
@@ -49,6 +51,7 @@ from caddsuite.contracts.system import SystemBuildRequest
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
+from caddsuite.ports.adapters import AdapterContext
 from caddsuite.reporting.renderers import render_report
 from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
@@ -59,6 +62,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXER_PYTHON = os.environ.get("CADDSUITE_PDBFIXER_PYTHON")
 AMBER_HOME = os.environ.get("CADDSUITE_AMBER_HOME")
 GROMACS = os.environ.get("CADDSUITE_GROMACS_EXECUTABLE")
+OPENMM_PYTHON = os.environ.get("CADDSUITE_OPENMM_PYTHON")
 pytestmark = pytest.mark.skipif(
     not FIXER_PYTHON,
     reason="set CADDSUITE_PDBFIXER_PYTHON to run the real Vina/Meeko stage integration",
@@ -547,6 +551,90 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                 build_report["conversion_validation"]["atom_order_and_residue_identity_match"]
                 is True
             )
+            if OPENMM_PYTHON:
+                native_inputs = built_system.system.engine_inputs["amber"]
+                topology_ref = native_inputs["amber_outputs/system.prmtop"]
+                coordinates_ref = native_inputs["amber_outputs/system.inpcrd"]
+                assert topology_ref.sha256 is not None
+                assert coordinates_ref.sha256 is not None
+                stage_dir = tmp_path / "pose_openmm_minimization"
+                stage_dir.mkdir()
+                staged_topology = "amber_outputs/system.prmtop"
+                staged_coordinates = "amber_outputs/system.inpcrd"
+                for relative, ref in (
+                    (staged_topology, topology_ref),
+                    (staged_coordinates, coordinates_ref),
+                ):
+                    destination = stage_dir / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(store.path_for(ref.sha256).read_bytes())
+                minimization = MDStage(
+                    kind=MDStageKind.MINIMIZATION,
+                    integrator="minimize",
+                    n_steps=10,
+                    constraints="HBonds",
+                    hmr=False,
+                    nonbonded={
+                        "method": "PME",
+                        "cutoff_nm": 0.8,
+                        "ewald_error_tolerance": 0.0005,
+                    },
+                )
+                minimized_build = built_system.model_copy(
+                    update={"protocol": MDProtocol(stages=(minimization,))}
+                )
+                stage_input = MDStageInput(
+                    id=new_ulid(),
+                    system_id=built_system.system.id,
+                    compound_id=built_system.system.compound_id,
+                    form_id=built_system.system.form_id,
+                    stage_index=0,
+                    artifacts={"topology": topology_ref, "coordinates": coordinates_ref},
+                )
+                context = AdapterContext(
+                    inputs={"system_build": minimized_build, "stage_input": stage_input},
+                    parameters={
+                        "openmm": {
+                            "stage_index": 0,
+                            "python_executable": OPENMM_PYTHON,
+                            "worker_script": str(ROOT / "src/caddsuite_worker/openmm_md_worker.py"),
+                            "topology_path": staged_topology,
+                            "coordinates_path": staged_coordinates,
+                            "output_prefix": "pose_minimized",
+                            "random_seed": 42,
+                            "friction_per_ps": 1.0,
+                            "report_interval_steps": 5,
+                            "cpu_threads": 1,
+                            "platform_name": "CPU",
+                        }
+                    },
+                    working_directory=stage_dir,
+                )
+                openmm_adapter = OpenMMMDAdapter()
+                assert openmm_adapter.validate_stage(context) == ()
+                plan = openmm_adapter.plan_stage(context)
+                completed = subprocess.run(
+                    plan.commands[0].argv,
+                    cwd=stage_dir,
+                    env={**os.environ, **plan.commands[0].environment},
+                    capture_output=True,
+                    check=False,
+                    shell=False,
+                    timeout=300,
+                )
+                output = completed.stdout + completed.stderr
+                assert completed.returncode == 0, output.decode(errors="replace")[-4000:]
+                minimization_report = json.loads(
+                    (stage_dir / "pose_minimized.result.json").read_text(encoding="utf-8")
+                )
+                assert minimization_report["software"]["name"] == "OpenMM"
+                assert minimization_report["parameters"]["stage_kind"] == "minimization"
+                assert minimization_report["maximum_iterations"] == 10
+                assert minimization_report["atom_count"] == built_system.system.n_atoms
+                assert minimization_report["potential_energy_kcal_mol"] <= (
+                    minimization_report["initial_potential_energy_kcal_mol"] + 1e-5
+                )
+                assert (stage_dir / "pose_minimized.pdb").is_file()
         ad4_bin_dir = os.environ.get("CADDSUITE_AUTODOCK4_BIN_DIR")
         if ad4_bin_dir:
             ad4_bin = Path(ad4_bin_dir)

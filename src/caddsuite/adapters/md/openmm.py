@@ -30,7 +30,7 @@ class OpenMMPlanError(ValueError):
 
 
 class OpenMMStagePlanParameters(ContractModel):
-    """Explicit isolated-worker inputs for a CPU OpenMM production stage."""
+    """Explicit isolated-worker inputs for OpenMM minimization or production."""
 
     stage_index: Annotated[int, Field(ge=0)]
     python_executable: NonEmptyStr
@@ -77,15 +77,16 @@ class OpenMMStagePlanParameters(ContractModel):
 class OpenMMMDAdapter:
     """Translate the shared MD stage contract to a shell-free OpenMM worker invocation.
 
-    This proof adapter intentionally covers a narrow, explicit combination: the native Amber
-    prmtop/inpcrd profile, NVT-like Langevin production, CPU/Reference platforms, PME, and
-    constrained hydrogen bonds. Other force fields, ensembles, and restart semantics fail closed.
+    This adapter intentionally covers a narrow, explicit combination: the native Amber
+    prmtop/inpcrd profile, energy minimization, NVT-like Langevin production, CPU/Reference
+    platforms, PME, and constrained hydrogen bonds. Other force fields, ensembles, and restart
+    semantics fail closed.
     """
 
     adapter_id = "caddsuite.md.openmm"
     version = "0.1.0"
     capabilities = MDExecutionCapabilities(
-        stage_kinds=(MDStageKind.PRODUCTION,),
+        stage_kinds=(MDStageKind.MINIMIZATION, MDStageKind.PRODUCTION),
         topology_formats=("Amber prmtop/inpcrd",),
         trajectory_formats=("DCD",),
         supports_cpu=True,
@@ -124,11 +125,9 @@ class OpenMMMDAdapter:
         nonbonded = stage.nonbonded
         cutoff_nm = nonbonded["cutoff_nm"]
         ewald_error_tolerance = nonbonded["ewald_error_tolerance"]
-        if stage.n_steps is None or stage.timestep_fs is None or stage.temperature_K is None:
-            _fail(
-                "MD.OPENMM_STAGE_SETTINGS_MISSING", "validated production settings are incomplete"
-            )
-        argv = (
+        if stage.n_steps is None:
+            _fail("MD.OPENMM_STAGE_SETTINGS_MISSING", "stage step/iteration limit is required")
+        argv = [
             parameters.python_executable,
             parameters.worker_script,
             "--topology",
@@ -143,12 +142,8 @@ class OpenMMMDAdapter:
             parameters.output_prefix,
             "--steps",
             str(stage.n_steps),
-            "--timestep-fs",
-            str(stage.timestep_fs),
-            "--temperature-k",
-            str(stage.temperature_K),
-            "--friction-per-ps",
-            str(parameters.friction_per_ps),
+            "--stage-kind",
+            stage.kind.value,
             "--cutoff-nm",
             str(cutoff_nm),
             "--ewald-error-tolerance",
@@ -161,18 +156,41 @@ class OpenMMMDAdapter:
             str(parameters.cpu_threads),
             "--platform",
             parameters.platform_name,
-        )
+        ]
+        if stage.kind is MDStageKind.PRODUCTION:
+            if stage.timestep_fs is None or stage.temperature_K is None:
+                _fail(
+                    "MD.OPENMM_STAGE_SETTINGS_MISSING",
+                    "validated production timestep and temperature are required",
+                )
+            argv.extend(
+                [
+                    "--timestep-fs",
+                    str(stage.timestep_fs),
+                    "--temperature-k",
+                    str(stage.temperature_K),
+                    "--friction-per-ps",
+                    str(parameters.friction_per_ps),
+                ]
+            )
         return ExecutionPlan(
             commands=(
                 CommandStep(
-                    argv=argv,
+                    argv=tuple(argv),
                     working_directory=context.working_directory,
                     environment={"PYTHONNOUSERSITE": "1"},
                 ),
             ),
-            expected_outputs=tuple(
-                f"{parameters.output_prefix}.{extension}"
-                for extension in ("dcd", "pdb", "csv", "result.json")
+            expected_outputs=(
+                tuple(
+                    f"{parameters.output_prefix}.{extension}"
+                    for extension in ("pdb", "result.json")
+                )
+                if stage.kind is MDStageKind.MINIMIZATION
+                else tuple(
+                    f"{parameters.output_prefix}.{extension}"
+                    for extension in ("dcd", "pdb", "csv", "result.json")
+                )
             ),
         )
 
@@ -276,12 +294,27 @@ class OpenMMMDAdapter:
         if parameters.stage_index >= len(build.protocol.stages):
             _fail("MD.OPENMM_STAGE_INDEX_INVALID", "stage index is outside the selected MDProtocol")
         stage = build.protocol.stages[parameters.stage_index]
-        if stage.kind is not MDStageKind.PRODUCTION:
+        if stage.kind not in {MDStageKind.MINIMIZATION, MDStageKind.PRODUCTION}:
             _fail(
                 "MD.OPENMM_STAGE_UNSUPPORTED",
-                "OpenMM proof adapter supports production stages only",
+                "OpenMM supports only explicit minimization and production stages",
             )
-        if (
+        if stage.kind is MDStageKind.MINIMIZATION:
+            if (
+                stage.integrator.casefold() not in {"minimize", "steep"}
+                or stage.n_steps is None
+                or stage.n_steps < 1
+                or stage.constraints != "HBonds"
+                or stage.hmr is not False
+                or stage.pressure_bar is not None
+                or stage.barostat is not None
+            ):
+                _fail(
+                    "MD.OPENMM_STAGE_SETTINGS_UNSUPPORTED",
+                    "OpenMM minimization requires integrator='minimize' and a positive "
+                    "maximum iteration count in n_steps; pressure/barostat are unsupported",
+                )
+        elif (
             stage.integrator.casefold() != "langevin"
             or (stage.thermostat or "").casefold() != "langevin"
         ):
@@ -289,7 +322,7 @@ class OpenMMMDAdapter:
                 "MD.OPENMM_INTEGRATOR_UNSUPPORTED",
                 "select the supported Langevin production integrator",
             )
-        if (
+        if stage.kind is MDStageKind.PRODUCTION and (
             stage.n_steps is None
             or stage.n_steps < 1
             or stage.timestep_fs is None
@@ -318,10 +351,7 @@ class OpenMMMDAdapter:
         topology_ref = stage_input.artifacts.get("topology")
         coordinates_ref = stage_input.artifacts.get("coordinates")
         source_refs = {**build.raw_artifacts, **build.normalized_artifacts, **native_inputs}
-        for role, path, ref in (
-            ("topology", parameters.topology_path, topology_ref),
-            ("coordinates", parameters.coordinates_path, coordinates_ref),
-        ):
+        for role, path, ref in (("topology", parameters.topology_path, topology_ref),):
             if path not in native_inputs:
                 _fail("MD.OPENMM_INPUT_UNREGISTERED", f"Amber input {path!r} is not registered")
             registered = source_refs.get(path)
@@ -334,6 +364,23 @@ class OpenMMMDAdapter:
                     "MD.OPENMM_STAGE_ARTIFACT_HASH_MISMATCH",
                     f"{role} differs from its registered Amber input",
                 )
+        if coordinates_ref is None or coordinates_ref.sha256 is None:
+            _fail("MD.OPENMM_STAGE_ARTIFACT_MISSING", "stage input lacks hashed coordinates")
+        native_coordinate = source_refs.get(parameters.coordinates_path)
+        if native_coordinate is not None:
+            if native_coordinate.sha256 != coordinates_ref.sha256:
+                _fail(
+                    "MD.OPENMM_STAGE_ARTIFACT_HASH_MISMATCH",
+                    "coordinates differ from the registered Amber input",
+                )
+        elif not (
+            parameters.coordinates_path.casefold().endswith(".pdb")
+            and coordinates_ref.role == "md_pdb"
+        ):
+            _fail(
+                "MD.OPENMM_INPUT_UNREGISTERED",
+                "non-native coordinates must be a hash-linked OpenMM PDB output",
+            )
         return build, parameters, stage, stage_input
 
 
