@@ -1,0 +1,184 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "AtomSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "indices": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "n_atoms": {
+          "minimum": 1,
+          "title": "N Atoms",
+          "type": "integer"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "description",
+        "n_atoms",
+        "verified"
+      ],
+      "title": "AtomSelection",
+      "type": "object"
+    },
+    "TrajectoryTransform": {
+      "description": "Engine-independent meanings of periodic-boundary transformations.",
+      "enum": [
+        "remove_periodic_jumps",
+        "make_molecules_whole",
+        "align_rot_trans"
+      ],
+      "title": "TrajectoryTransform",
+      "type": "string"
+    }
+  },
+  "$id": "caddsuite://schemas/md_output_trajectory_plan/1.0",
+  "additionalProperties": false,
+  "description": "Explicitly bind normalized MD outputs and sampling metadata to a processing request.",
+  "properties": {
+    "fit_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "frame_interval_ps": {
+      "exclusiveMinimum": 0,
+      "title": "Frame Interval Ps",
+      "type": "number"
+    },
+    "n_frames": {
+      "minimum": 1,
+      "title": "N Frames",
+      "type": "integer"
+    },
+    "output_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AtomSelection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "output_start_time_ps": {
+      "minimum": 0,
+      "title": "Output Start Time Ps",
+      "type": "number"
+    },
+    "schema_version": {
+      "default": "md_output_trajectory_plan/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simulation_id": {
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "title": "Simulation Id",
+      "type": "string"
+    },
+    "topology_format": {
+      "minLength": 1,
+      "title": "Topology Format",
+      "type": "string"
+    },
+    "topology_has_connectivity": {
+      "title": "Topology Has Connectivity",
+      "type": "boolean"
+    },
+    "topology_output_key": {
+      "minLength": 1,
+      "title": "Topology Output Key",
+      "type": "string"
+    },
+    "trajectory_format": {
+      "minLength": 1,
+      "title": "Trajectory Format",
+      "type": "string"
+    },
+    "trajectory_output_key": {
+      "minLength": 1,
+      "title": "Trajectory Output Key",
+      "type": "string"
+    },
+    "transforms": {
+      "items": {
+        "$ref": "#/$defs/TrajectoryTransform"
+      },
+      "minItems": 1,
+      "title": "Transforms",
+      "type": "array"
+    }
+  },
+  "required": [
+    "simulation_id",
+    "topology_output_key",
+    "trajectory_output_key",
+    "topology_format",
+    "trajectory_format",
+    "topology_has_connectivity",
+    "output_start_time_ps",
+    "n_frames",
+    "frame_interval_ps",
+    "transforms"
+  ],
+  "title": "MDOutputTrajectoryPlan",
+  "type": "object"
+}

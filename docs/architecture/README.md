@@ -141,4 +141,5 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 
 ## Runtime integration status
 
-- [Production workflow stage gap audit](PRODUCTION_WORKFLOW_GAP_AUDIT.md): discovered capabilities, missing MD-analysis/energy stage registrations, compatibility limits, and migration sequence.
+- [Production workflow stage gap audit](PRODUCTION_WORKFLOW_GAP_AUDIT.md): discovered capabilities, remaining same-run validation gaps, compatibility limits, and migration sequence.
+- [MD output to trajectory-processing binding](MD_OUTPUT_TRAJECTORY_BINDING.md): runtime binding of actual MD artifact IDs into the normalized trajectory-processing request.

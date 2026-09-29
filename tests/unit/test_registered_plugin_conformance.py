@@ -21,7 +21,7 @@ def test_every_installed_stage_handler_plugin_has_valid_capability_registrations
 
     for (kind, engine), registration in snapshot.registrations.items():
         assert kind
-        assert engine is not None or kind in {"gate", "report"}
+        assert engine is not None or kind in {"gate", "report", "trajectory.bind_md_output"}
         assert registration.plugin_id
         assert registration.plugin_version
         assert callable(registration.factory)

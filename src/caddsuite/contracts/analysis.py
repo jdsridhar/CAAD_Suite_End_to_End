@@ -23,11 +23,13 @@ from caddsuite.contracts.base import (
 from caddsuite.contracts.md import (
     AtomSelection,
     MDSimulation,
+    MDStageResult,
     MDSystem,
     Parameterization,
     Trajectory,
 )
-from caddsuite.domain.identity import ULIDStr
+from caddsuite.contracts.system import SystemBuildResult
+from caddsuite.domain.identity import ULIDStr, new_ulid
 
 
 class MetricDefinition(ContractModel):
@@ -184,6 +186,90 @@ class TrajectoryProcessingRequest(VersionedContract):
                 "connectivity-bearing topology"
             )
         return self
+
+
+class MDOutputTrajectoryPlan(VersionedContract):
+    """Explicitly bind normalized MD outputs and sampling metadata to a processing request."""
+
+    schema_version: str = "md_output_trajectory_plan/1.0"
+
+    simulation_id: ULIDStr
+    topology_output_key: NonEmptyStr
+    trajectory_output_key: NonEmptyStr
+    topology_format: NonEmptyStr
+    trajectory_format: NonEmptyStr
+    topology_has_connectivity: bool
+    output_start_time_ps: NonNegativeFloat
+    n_frames: Annotated[int, Field(ge=1)]
+    frame_interval_ps: PositiveFloat
+    transforms: Annotated[tuple[TrajectoryTransform, ...], Field(min_length=1)]
+    fit_selection: AtomSelection | None = None
+    output_selection: AtomSelection | None = None
+
+    @model_validator(mode="after")
+    def _distinct_artifacts(self) -> MDOutputTrajectoryPlan:
+        if self.topology_output_key == self.trajectory_output_key:
+            raise ValueError("topology and trajectory output keys must be different")
+        return self
+
+    def bind(
+        self, system_build: SystemBuildResult, md_result: MDStageResult
+    ) -> TrajectoryProcessingRequest:
+        """Resolve result artifact IDs only after the producing MD stage has succeeded."""
+        if md_result.system_id != system_build.system.id:
+            raise ValueError("MD stage result and system build identify different systems")
+        if (md_result.compound_id, md_result.form_id) != (
+            system_build.system.compound_id,
+            system_build.system.form_id,
+        ):
+            raise ValueError("MD stage result and parameterized system candidate identities differ")
+        protocol = system_build.protocol
+        if protocol is None:
+            raise ValueError("system build has no MD protocol for timing validation")
+        if not 0 <= md_result.stage_index < len(protocol.stages):
+            raise ValueError("MD stage result references a stage outside the system protocol")
+        stage = protocol.stages[md_result.stage_index]
+        if stage.length_ns is None:
+            raise ValueError(
+                "MD protocol stage duration is unknown; trajectory timing cannot be checked"
+            )
+        span_ps = (self.n_frames - 1) * self.frame_interval_ps
+        if span_ps > stage.length_ns * 1000.0 + 1e-9:
+            raise ValueError(
+                "declared trajectory frame span exceeds the producing MD stage duration"
+            )
+        topology = md_result.artifacts.get(self.topology_output_key)
+        trajectory = md_result.artifacts.get(self.trajectory_output_key)
+        if topology is None or topology.sha256 is None:
+            raise ValueError(f"MD result lacks hashed topology output {self.topology_output_key!r}")
+        if trajectory is None or trajectory.sha256 is None:
+            raise ValueError(
+                f"MD result lacks hashed trajectory output {self.trajectory_output_key!r}"
+            )
+        if topology.artifact_id == trajectory.artifact_id:
+            raise ValueError("topology and trajectory outputs resolve to the same artifact")
+        return TrajectoryProcessingRequest(
+            id=new_ulid(),
+            simulation_id=self.simulation_id,
+            compound_id=md_result.compound_id,
+            form_id=md_result.form_id,
+            topology=topology,
+            topology_format=self.topology_format,
+            topology_has_connectivity=self.topology_has_connectivity,
+            trajectory_format=self.trajectory_format,
+            expected_atom_count=system_build.system.n_atoms,
+            segments=(
+                TrajectorySegmentInput(
+                    artifact=trajectory,
+                    output_start_time_ps=self.output_start_time_ps,
+                    n_frames=self.n_frames,
+                    frame_interval_ps=self.frame_interval_ps,
+                ),
+            ),
+            transforms=self.transforms,
+            fit_selection=self.fit_selection,
+            output_selection=self.output_selection,
+        )
 
 
 class TrajectoryProcessingResult(VersionedContract):

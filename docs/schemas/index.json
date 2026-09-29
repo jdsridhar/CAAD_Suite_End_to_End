@@ -17,6 +17,7 @@
   "interaction_analysis_request": "interaction_analysis_request/1.0",
   "interaction_profile": "interaction_profile/1.1",
   "legacy_import_report": "legacy_import_report/1.0",
+  "md_output_trajectory_plan": "md_output_trajectory_plan/1.0",
   "md_simulation": "md_simulation/1.1",
   "md_stage_input": "md_stage_input/1.1",
   "md_stage_plan": "md_stage_plan/1.0",

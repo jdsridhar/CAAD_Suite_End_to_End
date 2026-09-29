@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Obtain independent blinded review using the verified packet; after reconciliation, package the cohort for release. No new-cohort docking has started. |
-| **Next task** | Reconcile the returned blind review and freeze the release bundle; then run REDOCK-001/seed 42 as attempt 1/90 and proceed with the remaining locked attempts if host resources permit. |
+| **Current task** | [-] Complete MD same-run output handoff: finish and push the runtime binder, then validate fresh MD artifacts through trajectory processing, analysis, and reporting. |
+| **Next task** | Close pose-linked system preparation and engine-backed trajectory validation; separately resume the locked redocking cohort only after independent blinded review is returned and reconciled. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
-| **Blocking questions** | General redocking accuracy remains unvalidated: the v2 pilot has 1/3 top-1 successes; the 1M17 run sampled near-native poses at ranks 3 and 8, but top-1 failed. The new 30-case cohort is frozen; blinded review, release-safe artifact packaging, and resource feasibility are the immediate gates. |
+| **Blocking questions** | The same-run MD-to-analysis/report path still needs an engine-backed run; pose-to-system continuity and real AmberTools execution remain unverified. Independent blind review gates new-cohort docking; public release also needs human license/notice review. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1229,3 +1229,10 @@ When the user says **CONTINUE**:
 - [-] Kept the distinct same-run handoff open: outputs from a newly executed MD stage are not yet dynamically bound into trajectory processing and the downstream report chain.
 
 - [x] Hosted Python package matrix run 36602062569 and Quality run 36602062596 passed for commit e32684b.
+
+### Session log — 2026-09-29, runtime MD-output trajectory binding
+
+- [-] Added the engine-neutral `trajectory.bind_md_output` stage, `MDOutputTrajectoryPlan`, and schema. The stage binds actual post-MD CAS artifact references into `TrajectoryProcessingRequest` while checking system/candidate identity, stage duration, selected artifact roles, and hashes.
+- [x] Added binder contract/runtime-CAS and workflow compilation tests; full configured gate passed: 922 passed, 38 skipped. Focused binder and registered-plugin conformance tests passed: 8 passed. Ruff, strict mypy, import contracts, and schema freshness passed.
+- [x] Linked the binding design from the architecture index and updated the production gap audit and current TODO status. The engine-backed same-run chain remains unverified: plan metadata still needs to agree with actual GROMACS trajectory contents, then processing, analysis, and reporting must execute in one workflow. This change does not establish pose-linked complex continuity or a 100 ns MD run.
+- [x] Re-ran the opt-in real CHARMM-GUI importer-to-GROMACS smoke with the audited read-only fixture: 1 passed in 3.78 s. This still does not exercise the new binder or trajectory processing.
