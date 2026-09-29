@@ -1142,3 +1142,10 @@ When the user says **CONTINUE**:
 - [x] The MD executor in this test is explicitly synthetic and emits only a test log; no MD engine, AmberTools, force-field calculation, or scientific result was produced.
 - [x] Full scripts/check.sh: Ruff, formatting (356 files), strict mypy (201 files), import contracts (260 files), schemas, and 903 passed / 37 skipped; two upstream Starlette/httpx deprecation warnings remain.
 - [-] Hosted CI for this increment is pending. Real AmberTools-to-GROMACS system-build/MD execution remains unverified in this environment; retain the Amber-to-GROMACS profile gate and require engine-backed validation.
+
+### Session log - 2026-09-29, hosted coverage gate correction
+
+- [x] Hosted Quality #134 exposed core coverage at 84.89%, below the configured 85% threshold; Python package matrix passed and web build/browser checks passed. The failure was reproduced locally.
+- [x] Added tests for Amber stage cache identity, source artifact hashes, gate context, resource requests, unsafe path rejection, missing paths, mode mismatch, and lineage loss. No scientific engine was run.
+- [x] Full local scripts/check.sh passes: 911 passed / 37 skipped; Ruff, format (356 files), strict mypy (201 files), import-linter (260 files), and schemas pass. Coverage gate passes at core 85.08%, adapters 79.44%, workers 33.35%.
+- [-] Push the coverage correction and verify new hosted Quality and package matrix runs; do not count the earlier failed hosted Quality run as green.

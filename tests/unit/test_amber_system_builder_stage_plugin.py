@@ -148,3 +148,166 @@ def test_amber_preflight_reports_missing_tools_without_execution(tmp_path) -> No
     report = AmberTLeapStagePlugin._preflight(stage)
     assert report.status == "unavailable"
     assert "preflight failed" in (report.reason or "")
+
+
+@pytest.mark.parametrize(
+    ("protein_path", "ligand_path", "error_code"),
+    [
+        ("../protein.pdb", "inputs/ligand.sdf", "AMBER_BUILD.UNSAFE_PATH"),
+        ("/tmp/protein.pdb", "inputs/ligand.sdf", "AMBER_BUILD.UNSAFE_PATH"),
+        ("inputs\\protein.pdb", "inputs/ligand.sdf", "AMBER_BUILD.UNSAFE_PATH"),
+        ("inputs/protein.pdb", "inputs/protein.pdb", "AMBER_BUILD.INPUT_PATH_COLLISION"),
+    ],
+)
+def test_amber_stage_rejects_unsafe_or_colliding_linked_input_paths(
+    protein_path: str, ligand_path: str, error_code: str
+) -> None:
+    from caddsuite.workflow.scheduler import StageExecutionFailure
+
+    complex_model = _complex()
+    plan = SystemBuildPlan(
+        mode="build",
+        parameters={
+            "protein_artifact_path": protein_path,
+            "ligand_artifact_path": ligand_path,
+        },
+    )
+    delegate = _Delegate()
+    handler = AmberTLeapSystemBuildStageHandler(delegate, memory_MiB=2048, cpu_cores=2)
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(stage_id="amber_build"),
+        subject_id=str(complex_model.id),
+        inputs={"complex": (complex_model,), "plan": (plan,)},
+        decisions=(),
+        run_id="run-test",
+    )
+
+    with pytest.raises(StageExecutionFailure) as exc:
+        handler.execute(invocation)
+
+    assert exc.value.code == error_code
+    assert delegate.invocation is None
+
+
+def test_amber_stage_requires_explicit_input_paths_before_delegating() -> None:
+    from caddsuite.workflow.scheduler import StageExecutionFailure
+
+    complex_model = _complex()
+    handler = AmberTLeapSystemBuildStageHandler(_Delegate(), memory_MiB=2048, cpu_cores=2)
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(stage_id="amber_build"),
+        subject_id=str(complex_model.id),
+        inputs={"complex": (complex_model,), "plan": (SystemBuildPlan(mode="build"),)},
+        decisions=(),
+        run_id="run-test",
+    )
+
+    with pytest.raises(StageExecutionFailure, match="explicitly name protein and ligand"):
+        handler.execute(invocation)
+
+
+def test_amber_stage_rejects_non_build_plan_without_delegating() -> None:
+    from caddsuite.workflow.scheduler import StageExecutionFailure
+
+    complex_model = _complex()
+    delegate = _Delegate()
+    handler = AmberTLeapSystemBuildStageHandler(delegate, memory_MiB=2048, cpu_cores=2)
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(stage_id="amber_build"),
+        subject_id=str(complex_model.id),
+        inputs={
+            "complex": (complex_model,),
+            "plan": (
+                SystemBuildPlan(
+                    mode="import",
+                    source_artifacts={"bundle/index.ndx": complex_model.protein},
+                ),
+            ),
+        },
+        decisions=(),
+        run_id="run-test",
+    )
+
+    with pytest.raises(StageExecutionFailure) as exc:
+        handler.execute(invocation)
+
+    assert exc.value.code == "AMBER_BUILD.MODE_MISMATCH"
+    assert delegate.invocation is None
+
+
+def test_amber_stage_rejects_delegate_lineage_loss() -> None:
+    from caddsuite.workflow.scheduler import StageExecutionFailure
+
+    class BrokenDelegate(_Delegate):
+        def execute(self, invocation):
+            result = super().execute(invocation)
+            return result.model_copy(update={"complex_id": new_ulid()})
+
+    complex_model = _complex()
+    delegate = BrokenDelegate()
+    handler = AmberTLeapSystemBuildStageHandler(delegate, memory_MiB=2048, cpu_cores=2)
+    plan = SystemBuildPlan(
+        mode="build",
+        parameters={
+            "protein_artifact_path": "inputs/protein.pdb",
+            "ligand_artifact_path": "inputs/ligand.sdf",
+        },
+    )
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(stage_id="amber_build"),
+        subject_id=str(complex_model.id),
+        inputs={"complex": (complex_model,), "plan": (plan,)},
+        decisions=(),
+        run_id="run-test",
+    )
+
+    with pytest.raises(StageExecutionFailure) as exc:
+        handler.execute(invocation)
+
+    assert exc.value.code == "AMBER_BUILD.LINEAGE_MISMATCH"
+
+
+def test_amber_stage_exposes_stable_cache_gate_and_resource_contracts() -> None:
+    import hashlib
+    from typing import cast
+
+    from caddsuite.contracts.base import VersionedContract
+
+    complex_model = _complex()
+    plan = SystemBuildPlan(
+        mode="build",
+        source_artifacts={
+            "inputs/protein.pdb": complex_model.protein,
+            "inputs/ligand.sdf": complex_model.ligand,
+        },
+        parameters={
+            "protein_artifact_path": "inputs/protein.pdb",
+            "ligand_artifact_path": "inputs/ligand.sdf",
+        },
+    )
+    handler = AmberTLeapSystemBuildStageHandler(_Delegate(), memory_MiB=2048, cpu_cores=2)
+
+    assert handler.subject_key("pose", complex_model) == str(complex_model.id)
+    assert (
+        handler.subject_key("plan", plan)
+        == hashlib.sha256(plan.model_dump_json().encode()).hexdigest()
+    )
+    with pytest.raises(TypeError, match="cannot identify"):
+        handler.subject_key("pose", cast(VersionedContract, object()))
+
+    hashes = handler.artifact_hashes({"complex": (complex_model,), "plan": (plan,)})
+    assert hashes["plan"] == hashlib.sha256(plan.model_dump_json().encode()).hexdigest()
+    assert hashes["complex"] == hashlib.sha256(complex_model.model_dump_json().encode()).hexdigest()
+    assert hashes == {
+        "source:inputs/protein.pdb": "a" * 64,
+        "source:inputs/ligand.sdf": "b" * 64,
+        "plan": hashes["plan"],
+        "complex": hashes["complex"],
+    }
+    context, declared = handler.gate_context({})
+    assert context["system_build.mode"] == "build"
+    assert context["system_build.adapter"] == handler.adapter_id
+    assert declared == frozenset(context)
+    request = handler.resource_request(SimpleNamespace())
+    assert request.cpu_cores == 2
+    assert request.memory_MiB == 2048
