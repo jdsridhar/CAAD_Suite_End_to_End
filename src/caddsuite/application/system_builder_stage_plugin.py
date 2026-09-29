@@ -144,6 +144,9 @@ class CharmmGuiSystemBuilderStagePlugin:
                 CapabilityInput(name="plan", contracts=(SystemBuildPlan.schema_id(),)),
             ),
             outputs=(SystemBuildResult.schema_id(),),
+            for_each=("pose",),
+            iteration_contracts={"pose": (Complex.schema_id(),)},
+            fanout_anchor={"pose": "complex"},
         )
         return (StageHandlerRegistration(capability, self._build),)
 
