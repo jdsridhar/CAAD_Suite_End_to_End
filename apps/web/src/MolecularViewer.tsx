@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Viewer } from "molstar/lib/apps/viewer/app";
+import { createMolstarViewer } from "./MolstarViewer.js";
+import { loadStructureFromData } from "molstar/lib/extensions/plugin/loaders";
+import type { PluginUIContext } from "molstar/lib/mol-plugin-ui/context";
 import "molstar/build/viewer/molstar.css";
 
 export type StructureFormat = "pdb" | "mmcif" | "sdf" | "mol2" | "gro";
@@ -31,7 +33,7 @@ export default function MolecularViewer({
 
   useEffect(() => {
     let cancelled = false;
-    let viewer: Viewer | undefined;
+    let viewer: PluginUIContext | undefined;
 
     async function load() {
       try {
@@ -49,12 +51,12 @@ export default function MolecularViewer({
           throw new Error(`Artifact request failed (${response.status})`);
         const text = await response.text();
         if (cancelled || !host.current) return;
-        viewer = await Viewer.create(host.current, { layoutIsExpanded: false });
+        viewer = await createMolstarViewer(host.current, { layoutIsExpanded: false });
         if (cancelled) {
           viewer.dispose();
           return;
         }
-        await viewer.loadStructureFromData(text, format, { dataLabel: label });
+        await loadStructureFromData(viewer, text, format, { dataLabel: label });
         if (!cancelled) setLoading(false);
       } catch (cause) {
         if (!cancelled) {
