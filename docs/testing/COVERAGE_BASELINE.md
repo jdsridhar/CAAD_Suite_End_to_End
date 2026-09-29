@@ -61,3 +61,31 @@ Core and aggregate adapter floors are met and enforced in CI. Latest local run: 
 73.31%, workers 32.99%; the 652-test no-engine suite passes (34 skipped). Per-family coverage remains visible
 above and is not used to exclude modules from the aggregate. These metrics do not replace
 adapter-specific scientific validation.
+
+## Latest quality/coverage gate (2026-09-29)
+
+The full engine-free repository gate now reports 840 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+
+| Source group | Statements | Covered | Coverage | Phase 14 target |
+|---|---:|---:|---:|---:|
+| Core | 11,192 | 9,521 | 85.07% | ≥85% — met |
+| Adapters | 5,357 | 3,983 | 74.35% | ≥70% — met |
+| Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
+
+### Current adapter family snapshot
+
+| Adapter family | Statements | Covered | Coverage |
+|---|---:|---:|---:|
+| ADMET | 148 | 139 | 93.92% |
+| Analysis | 711 | 545 | 76.65% |
+| Binding energy | 592 | 482 | 81.42% |
+| Docking | 907 | 562 | 61.96% |
+| Interactions | 245 | 202 | 82.45% |
+| MD | 466 | 394 | 84.55% |
+| QM | 656 | 536 | 81.71% |
+| Structure preparation | 167 | 107 | 64.07% |
+| Structure sources | 65 | 42 | 64.62% |
+| System builders | 960 | 731 | 76.15% |
+| Visualization | 440 | 243 | 55.23% |
+
+New engine-free PySCF contract tests exercise planning, normalized results, runtime probing, and failure handling: 30 passed and the PySCF adapter file reached 92% (172/187 statements). The focused QM test selection across PSI4/PySCF-related adapter modules passed 71 tests at 82% aggregate. These coverage metrics describe exercised code paths; they do not establish scientific validity. See the separately documented real-engine PySCF CI and validation evidence.
