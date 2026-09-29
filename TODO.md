@@ -1198,3 +1198,6 @@ When the user says **CONTINUE**:
 - [!] Candidate notices still require human compatibility/attribution review, with CSS and embedded asset provenance reviewed separately. The blinded-review gate still prohibits starting the frozen 90-attempt cohort benchmark.
 
 - [x] Final full scripts/check.sh after notice-generator hardening: Ruff (including scripts/release), formatting (359 files), strict mypy (201 source files), import contracts (260 files), schemas, and 916 passed / 37 optional skips. Two upstream Starlette/httpx deprecation warnings remain.
+
+- [x] Hosted Python package matrix run 36596074946 and Quality run 36596075119 both passed for commit bc9f59d.
+- [!] AutoDock4/AutoGrid and AmberTools executables are not installed in the available WSL environments; their real-engine validation remains open. No engine environments were modified.
