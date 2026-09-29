@@ -1,0 +1,28 @@
+name,version,license_metadata,metadata_field,resolution_context
+alembic,1.20.0,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+annotated-doc,0.0.5,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+annotated-types,0.8.0,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+anyio,4.15.1,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+caddsuite,0.1.0.dev0,Apache-2.0,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+click,8.5.0,BSD-3-Clause,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+defusedxml,0.7.1,PSFL,License,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+fastapi,0.141.1,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+greenlet,3.5.6,MIT AND PSF-2.0,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+h11,0.16.0,MIT,License,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+idna,3.20,BSD-3-Clause,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+Mako,1.4.3,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+markdown-it-py,4.2.0,MIT License,Classifier,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+MarkupSafe,3.0.3,BSD-3-Clause,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+mdurl,0.1.2,MIT License,Classifier,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+pydantic,2.13.5,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+pydantic_core,2.46.5,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+Pygments,2.21.0,BSD-2-Clause,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+PyYAML,6.0.3,MIT,License,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+rich,15.0.0,MIT,License,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+shellingham,1.5.4,ISC License,License,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+SQLAlchemy,2.0.54,MIT,License,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+starlette,1.7.0,BSD-3-Clause,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+typer,0.27.2,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+typing-inspection,0.4.4,MIT,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+typing_extensions,4.16.0,PSF-2.0,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29
+uvicorn,0.54.0,BSD-3-Clause,License-Expression,Linux x86_64; Python 3.12; clean wheel install; metadata snapshot 2026-09-29

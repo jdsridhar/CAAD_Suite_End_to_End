@@ -971,3 +971,6 @@ When the user says **CONTINUE**:
 
 
 - [x] Public-release license inventory follow-up: classified GPL/LGPL expressions found in the exact 198-record Conda development lock as installed environment components, not bundled binaries or a published Conda distribution. Documented that this does not establish legal compatibility and that the wheel's fully resolved dependency closure still needs artifact-specific review. Updated docs/release/LICENSE_REVIEW.md; no environment package binaries were redistributed.
+
+- [x] Resolved the current Linux/Python 3.12 wheel runtime closure in a temporary virtual environment without modifying Conda engines: 27 installed distributions. Captured package versions and published license metadata in docs/release/licenses/PYPI_RUNTIME_SNAPSHOT.csv with SHA-256 documented in the inventory README.
+- [ ] Public release licensing still needs source/license-text and exact artifact notice/compatibility review; this snapshot is not a lockfile and does not cover other Python/platform resolutions or optional extras.

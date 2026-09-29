@@ -11,3 +11,10 @@ See [`DEPENDENCY_LICENSE_INVENTORY.csv`](DEPENDENCY_LICENSE_INVENTORY.csv), and 
 - Conda lock SHA-256: `e4ec360c46b153357c884a4c8fce3f6e6897e289c71ccdc76579b3828c4e8adb`
 - npm lock SHA-256: `7869b346ef3572098d47cc50003ff5956cec7989e8ab14308829fbe794005e8f`
 - Inventory CSV SHA-256: `b063fa6e1c89a48881a4777e35d82423539a248f9cce441849ed753f387ec3d3`
+
+
+## PyPI wheel install metadata snapshot (2026-09-29)
+
+A clean wheel from commit b6ed502 was installed into a new Linux x86_64 / Python 3.12 virtual environment using current index resolution. The resulting 27-distribution runtime installation (including CADD Suite) is recorded in PYPI_RUNTIME_SNAPSHOT.csv. The CSV SHA-256 is f5a52250a2354313ec157d508ee7a9b3eb8959591ad84dd7bd044c882c78b7ca.
+
+This is a time- and platform-specific package metadata snapshot, not a lockfile, complete notice bundle, source-license inspection, or legal compatibility determination. Several projects expose only legacy License or classifier metadata. Regenerate after dependency or release changes; inspect upstream license texts and binary wheel contents before a real distribution. The project still does not publish dependency wheels or a container.
