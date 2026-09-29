@@ -921,7 +921,9 @@ When the user says **CONTINUE**:
 - [x] Full scripts/check.sh passed: 775 passed, 37 skipped; Ruff, formatting, strict mypy (196 files), import contracts (255 files), and schema freshness pass.
 - [x] Coverage gate cleared with behavior-focused Conda environment lock tests: core 85.03% (target 85%), adapters 71.22% (target 70%).
 - [!] Public release gate remains independent blinded review of the frozen six-case packet. No new-cohort docking has started; preserve the blind and do not use the unblind key.
-- [-] Coverage gate passed; review exact source/test/TODO diff and push only these tracked changes, then confirm hosted checks.
+- [x] Reviewed and pushed the tested source, tests, and TODO changes in commit dce642d; frozen cohort files and timer.dat remain untracked and untouched.
 
 - [x] Added tests verifying environment-lock capture behavior, including content-addressed artifact persistence and the non-Conda no-op path; focused strict typing/tests pass.
 - [x] Post-addition coverage run passed thresholds: core 85.03%, adapters 71.22%; 777 passed, 37 skipped.
+
+- [-] GitHub Quality workflow for dce642d passed static checks and is currently running the full coverage step; do not claim hosted completion until its result is terminal.
