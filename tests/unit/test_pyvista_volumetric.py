@@ -397,3 +397,14 @@ def test_surface_extraction_returns_none_when_requested_level_is_absent() -> Non
             raise ValueError(f"no surface at {level}")
 
     assert renderer_module._surface(np.ones((2, 2, 2)), 2.0, MissingSurface) is None
+
+
+def test_molecular_frame_rejects_atomic_number_outside_periodic_table() -> None:
+    from types import SimpleNamespace
+
+    grid = SimpleNamespace(
+        atoms=(SimpleNamespace(atomic_number=119, position_bohr=(0.0, 0.0, 0.0)),)
+    )
+    with pytest.raises(VolumetricRenderError) as error:
+        renderer_module._molecular_frame(grid, np)
+    assert error.value.code == "VISUALIZATION.ELEMENT_UNSUPPORTED"
