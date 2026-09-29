@@ -48,3 +48,13 @@ A fresh source archive built from the current release configuration originally c
 A clean Git archive of commit `b6ed502` was built with Hatchling. The source archive contains 642 entries (1,476,822 bytes compressed), includes `LICENSE`, `NOTICE`, the dependency license inventory/review, and migration revision 0007, and contains no benchmark paths. The wheel contains 213 files and includes `LICENSE` and `NOTICE`; it is 518,203 bytes. Source archive SHA-256: `c452d8bb8fce80674b39bd047f50f873633e1f9c6727b7f318cfad4990a1a960`. Wheel SHA-256: `c448c4618f1a4c091bc86761a47176ca17f90f2541d33d8ac0824595af389586`. Rebuild from the final clean commit before publishing because any source change changes the source archive hash.
 
 This only controls Python sdist contents. It does not resolve the separate transitive-license and frontend-distribution review gates in `LICENSE_REVIEW.md`.
+
+## Fresh clean-commit package inventory (2026-09-29)
+
+Rebuilt the Python wheel and source archive from `git archive` of clean commit `8ff959dfac4d246ef3652df83c610ef992ea5b4e` in a temporary checkout. The wheel has 213 entries and the sdist 647; each contains the project `LICENSE` and `NOTICE`, and neither includes a `benchmarks/` path. This verifies the current package selection and source exclusion rules, not dependency-license compatibility.
+
+- Wheel SHA-256: `cf68b0e8c41a5bdb3a6d20c4308704f1a2d4bc4d743428b36c4548fa4ede8927`
+- Sdist SHA-256: `d02c1ab68876a37943d167cc351aae8c7639688788c85ead98617797bbaf5a44`
+- Build command: `python -m hatchling build -t wheel -t sdist`
+
+These hashes apply only to commit `8ff959d`; rebuild from the exact eventual release commit. Optional Python extras, frontend distribution, exact third-party license texts/notices, and legal compatibility review remain open.

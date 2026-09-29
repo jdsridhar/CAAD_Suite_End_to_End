@@ -1122,3 +1122,9 @@ When the user says **CONTINUE**:
 - [x] Added handler regressions for absent structured worker reports, stderr-tail bounding, and unreadable JSON report fallback. Focused handler suite: 6 passed. Full scripts/check.sh: 884 passed, 37 skipped; Ruff, format, strict mypy (196 files), import-layer checks, and schema freshness passed.
 - [x] Full coverage remains core 85.07% (9,521/11,192), adapters 78.15% (4,189/5,360), workers 33.35% (1,207/3,619); system-builder family remains 731/960 (76.15%). These new assertions strengthen diagnostic contracts but did not increase measured statement coverage.
 - [-] Await hosted checks for the test increment.
+
+### Session log — 2026-09-29, clean-commit distribution archive audit
+
+- [x] Rebuilt wheel/sdist from a clean Git archive of 8ff959dfac4d246ef3652df83c610ef992ea5b4e; verified project LICENSE/NOTICE are present and no benchmark paths are packaged. Hashes and limits are documented in docs/release/PACKAGING.md and docs/release/LICENSE_REVIEW.md.
+- [x] Hosted Quality run 36573261417 and Python package matrix 36573261518 passed for 8ff959d.
+- [!] Exact dependency-license compatibility, optional-extra/frontend distribution notices, and counsel review remain public-release gates; no public tag/upload was made.
