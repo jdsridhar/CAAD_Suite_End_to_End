@@ -1172,4 +1172,17 @@ When the user says **CONTINUE**:
 - [x] Real Vina/Meeko workflow integration on the existing 5NIU/RC8 fixture completed: 1 passed in 184.26 s. This exercises the fixture integration only; no new-cohort docking or cohort-accuracy claim.
 - [!] Independent blinded review of the frozen six-case packet remains the immediate blocker for the locked 90-attempt cohort benchmark. No unblinding key access or cohort docking.
 - [!] Public-release dependency/license compatibility, optional-extra/frontend notices, and counsel review remain open.
-\n- [x] Hosted Python package matrix run 36591839118 and Quality run 36591838784 passed for commit 3cb419e.\n
+
+- [x] Hosted Python package matrix run 36591839118 and Quality run 36591838784 passed for commit 3cb419e.
+
+
+### Session log - 2026-09-29, production web bundle license inventory
+
+- [x] Corrected the prior session's accidental literal newline escape in TODO.md.
+- [x] Production web client build passed TypeScript and Vite (1,609 modules transformed); documented the emitted 3.5 MB Molstar chunk and Vite chunk-size warning.
+- [x] Added scripts/release/audit_web_bundle_licenses.py. Its source-map-to-lock reconciliation records 81 mapped packages, installed/locked versions, declared package license metadata, direct license/notice file hashes, JS chunk membership, and hashes/sizes for all 7 emitted JS/CSS assets. Generated WEB_BUNDLE_LICENSE_INVENTORY.csv and WEB_BUNDLE_ASSETS.csv.
+- [x] Scanner rerun: 81 package records / 7 assets; all mapped packages had declared package.json license metadata and at least one direct license/notice file. Ruff check, Ruff format check, and git diff --check pass.
+- [!] This inventory is not legal review. CSS/embedded asset provenance and exact license-text compatibility still require review; independent blinded cohort review still blocks the 90-attempt benchmark.
+
+- [x] Full local scripts/check.sh after the bundle inventory addition: Ruff (including scripts/release), formatting (358 files), strict mypy (201 source files), import contracts (260 files), schemas, and 914 passed / 37 optional skips. Two upstream Starlette/httpx deprecation warnings remain.
+- [x] npm run build -- --sourcemap passed TypeScript and Vite; the inventory scanner and its focused unit tests passed (2 passed). The production asset inventory was regenerated from that build.

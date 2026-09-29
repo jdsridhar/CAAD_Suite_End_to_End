@@ -5,8 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "== ruff (lint)";          ruff check src tests benchmarks/redocking
-echo "== ruff (format check)";  ruff format --check src tests benchmarks/redocking
+echo "== ruff (lint)";          ruff check src tests benchmarks/redocking scripts/release
+echo "== ruff (format check)";  ruff format --check src tests benchmarks/redocking scripts/release
 if [[ "${1:-}" != "--fast" ]]; then
   echo "== mypy (strict)";      mypy
 fi

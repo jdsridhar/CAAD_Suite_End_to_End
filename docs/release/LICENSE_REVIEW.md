@@ -40,3 +40,9 @@ A fresh wheel and sdist were built from a clean Git archive of commit `8ff959dfa
 - Sdist: `d02c1ab68876a37943d167cc351aae8c7639688788c85ead98617797bbaf5a44`
 
 This inspection confirms only the project archive contents. It does not review compatibility for the resolved dependency closure, optional extras, frontend assets, platform-specific bundles, or all third-party license texts. The open-source distribution review gate remains open; rebuild and assess the exact release commit and artifacts before any tag or upload.
+
+## Production web bundle source-map inventory (2026-09-29)
+
+A production Vite build with JavaScript source maps completed (TypeScript check passed; Vite transformed 1,609 modules). The repeatable scanner in scripts/release/audit_web_bundle_licenses.py mapped 81 package roots from emitted JavaScript source maps to exact package-lock entries. For each it recorded installed and locked versions, the package.json declared license metadata, hashes of direct LICENSE/LICENCE/COPYING/NOTICE files, and the JavaScript chunks referencing it. docs/release/licenses/WEB_BUNDLE_ASSETS.csv records the SHA-256 and byte length of seven emitted JS/CSS files. The emitted MolecularViewer, VolumeViewer, TrajectoryViewer, app and Molstar assets are included in that list.
+
+This narrows the frontend scope beyond the 283-entry npm lock inventory, but does not establish that metadata is correct or compatible, does not inspect license text contents, and does not attribute CSS modules or embedded image data through source maps. The build emitted a 3.5 MB minified Molstar JavaScript chunk (about 981 kB gzip) and Vite's large-chunk warning remains. Before shipping a compiled frontend, review the exact bundle, all applicable license texts/notices, CSS and embedded assets, and obtain counsel review for unresolved compatibility questions. The current audit is evidence for review, not legal clearance.

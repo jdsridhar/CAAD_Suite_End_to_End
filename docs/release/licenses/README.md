@@ -18,3 +18,10 @@ See [`DEPENDENCY_LICENSE_INVENTORY.csv`](DEPENDENCY_LICENSE_INVENTORY.csv), and 
 A clean wheel from commit b6ed502 was installed into a new Linux x86_64 / Python 3.12 virtual environment using current index resolution. The resulting 27-distribution runtime installation (including CADD Suite) is recorded in PYPI_RUNTIME_SNAPSHOT.csv. The CSV SHA-256 is f5a52250a2354313ec157d508ee7a9b3eb8959591ad84dd7bd044c882c78b7ca.
 
 This is a time- and platform-specific package metadata snapshot, not a lockfile, complete notice bundle, source-license inspection, or legal compatibility determination. Several projects expose only legacy License or classifier metadata. Regenerate after dependency or release changes; inspect upstream license texts and binary wheel contents before a real distribution. The project still does not publish dependency wheels or a container.
+
+
+## Built web JavaScript bundle inventory (2026-09-29)
+
+To create a production build with source maps, run from apps/web: npm run build -- --sourcemap. Then run scripts/release/audit_web_bundle_licenses.py from the repository root. The script resolves source-map package paths against package-lock.json, checks installed versions against the lock, records each package manifest license field and hashes of its declared license/notice files, and hashes every emitted non-map asset into WEB_BUNDLE_ASSETS.csv.
+
+The current build maps 81 npm package roots into JavaScript chunks and emits 7 JavaScript/CSS assets. This is a bundle-specific metadata inventory, not license compatibility review: package declarations and filenames do not verify license text correctness, satisfy attribution obligations, or replace counsel. The source maps identify JavaScript modules; CSS provenance is not mapped here (Molstar CSS is imported directly by the viewer components), although emitted CSS files are fingerprinted. Review embedded assets and the final distribution contents separately before release. Source maps and generated dist files are build outputs and are not committed.
