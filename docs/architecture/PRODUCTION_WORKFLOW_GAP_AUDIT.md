@@ -39,7 +39,7 @@ The registry now discovers trajectory.process/gromacs and trajectory.analyze/mda
 2. [x] Register binding_energy/gmx_mmpbsa around a complete BindingEnergyRequest; adapter validation remains authoritative for force field, engine, topology, selections, method and entropy. Typed workflow/preflight tests pass; real handler execution remains an open validation item.
 3. [-] CHARMM-GUI import and AmberTools system-builder stages are registered; they bind SystemBuildPlan to Complex, verify staged artifact hashes, delegate scientific validation and normalization, and check result lineage. MDStagePlan binds named engine-input artifacts. Synthetic composition and a short real CHARMM-GUI-import-to-GROMACS run pass (G-MD-21). That run uses lineage-only Complex artifacts and a prebuilt system bundle, so actual docked-pose-to-system continuity is still unverified. Real AmberTools execution and complete pose-linked system-build-to-MD validation remain open; G-WORKFLOW-2 covers the separate downstream trajectory-to-report workflow, but not the output of the same run’s MD stage.
 4. [x] Extend reporting with typed MD/trajectory/MMGBSA/QM ports and explicit methodology/property sections; QM calculation protocols and capability validation remain engine-owned.
-5. Validate each stage independently on existing golden/engine fixtures, then run a small composed MD-analysis/MMGBSA/QM workflow only where compatible source artifacts are available.
+5. [x] Stage-specific golden/engine checks and the five-task existing-trajectory → processing/analysis → MM/GBSA → QM → report workflow pass (G-WORKFLOW-2). This consumes an existing trajectory and does not rerun MD; the same-run MD-stage-output handoff remains separately open.
 
 ## Learning note
 

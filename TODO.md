@@ -1221,3 +1221,11 @@ When the user says **CONTINUE**:
 - [x] Added an opt-in integration test that executes the registered CHARMM-GUI importer and then the real GROMACS MD handler through `LocalWorkflowRuntime`, using the audited read-only 2M2D_LIG bundle. A private MDP copy runs 50 CPU steps at 2 fs; a separate final-newline-normalized index artifact is passed to GROMACS. Source data remain unchanged.
 - [x] Focused engine-backed test: 1 passed in 4.42 s. It verifies ordered stage success, shared subject identity, MD output registration, and GROMACS engine attempt provenance. Full `scripts/check.sh`: Ruff, formatting (360 files), strict mypy (201 files), import contracts (260 files), schemas, and 916 passed / 38 optional skips.
 - [-] This is a runtime-composition smoke, not a docked-pose-to-MD scientific validation: the test Complex carries lineage-only placeholder artifacts while the imported CHARMM-GUI bundle is a prebuilt system. A pose-linked complex build, real AmberTools execution, and propagation from newly generated MD outputs into analysis/report remain open; G-WORKFLOW-2 validates the existing-trajectory downstream chain. The 0.1 ps segment establishes execution only.
+
+
+### Session log — 2026-09-29, Phase 13.8 audit reconciliation
+
+- [x] Marked the existing-trajectory downstream integration gate complete based on G-WORKFLOW-2: five real scheduler tasks span trajectory processing/analysis, MM/GBSA, QM, and identity-linked JSON/HTML reporting. This analysis used an existing 100 ns trajectory and did not run a new 100 ns MD simulation.
+- [-] Kept the distinct same-run handoff open: outputs from a newly executed MD stage are not yet dynamically bound into trajectory processing and the downstream report chain.
+
+- [x] Hosted Python package matrix run 36602062569 and Quality run 36602062596 passed for commit e32684b.
