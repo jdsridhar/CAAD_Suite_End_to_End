@@ -445,3 +445,109 @@ def test_ad4_execute_rejects_invalid_typed_port_before_external_side_effects() -
     with pytest.raises(StageExecutionFailure) as error:
         handler.execute(invocation)
     assert error.value.code == "DOCKING.AD4_INPUT_CONTRACT_INVALID"
+
+
+def test_ad4_execute_stops_when_meeko_success_has_no_preparation_outputs(tmp_path: Path) -> None:
+    import sys
+
+    from tests.unit.test_vina_handler_contracts import _lineage
+
+    compound, form, conformer, receptor, structure, site = _lineage()
+    receptor_pdb = ArtifactRef(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAX",
+        role="prepared_structure_pdb",
+        sha256="f" * 64,
+    )
+    receptor = receptor.model_copy(
+        update={"artifacts": {**receptor.artifacts, "prepared_structure_pdb": receptor_pdb}}
+    )
+    source_files = {
+        conformer.structure.sha256: tmp_path / "ligand.sdf",
+        receptor_pdb.sha256: tmp_path / "receptor.pdb",
+    }
+    source_files[conformer.structure.sha256].write_text("SDF input fixture", encoding="utf-8")
+    source_files[receptor_pdb.sha256].write_text("PDB input fixture", encoding="utf-8")
+
+    class Store:
+        def verify(self, digest: str) -> bool:
+            return digest in source_files
+
+        def path_for(self, digest: str) -> Path:
+            return source_files[digest]
+
+    stdout = ArtifactRef(artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAV", role="stdout", sha256="1" * 64)
+    stderr = ArtifactRef(artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAW", role="stderr", sha256="2" * 64)
+    commands = []
+
+    class Executor:
+        def start(self, command, *, log_dir):
+            commands.append(command)
+            assert log_dir == tmp_path / "logs"
+            return SimpleNamespace(
+                wait=lambda: SimpleNamespace(exit_code=0, stdout=stdout, stderr=stderr)
+            )
+
+    engine_files = {}
+    for name in ("autodock4", "autogrid4", "prepare_receptor.py", "prepare_ligand.py", "export.py"):
+        path = tmp_path / name
+        path.write_text("placeholder executable or script", encoding="utf-8")
+        engine_files[name] = path
+
+    handler = AutoDock4DockingHandler(
+        autodock_executable=engine_files["autodock4"],
+        autogrid_executable=engine_files["autogrid4"],
+        meeko_python=Path(sys.executable),
+        mk_prepare_receptor=engine_files["prepare_receptor.py"],
+        mk_prepare_ligand=engine_files["prepare_ligand.py"],
+        mk_export=engine_files["export.py"],
+        autodock_version="fixture",
+        autogrid_version="fixture",
+        meeko_version="fixture",
+        work_root=tmp_path / "work",
+        log_root=tmp_path / "logs",
+        executor=Executor(),
+        artifact_store=Store(),
+        sessions=object(),
+    )
+    invocation = SimpleNamespace(
+        inputs={
+            "compound": (compound,),
+            "form": (form,),
+            "conformer": (conformer,),
+            "receptor": (receptor,),
+            "target_structure": (structure,),
+            "site": (site,),
+        },
+        task=SimpleNamespace(
+            params={
+                "grid": {"npts": (24, 24, 24), "spacing_A": 0.5},
+                "docking": {
+                    "seed": (11, 17),
+                    "ga_runs": 2,
+                    "ga_pop_size": 50,
+                    "ga_num_evals": 10000,
+                    "ga_num_generations": 100,
+                    "ga_elitism": 1,
+                    "ga_mutation_rate": 0.02,
+                    "ga_crossover_rate": 0.8,
+                    "ga_window_size": 10,
+                    "rmsd_threshold_A": 2.0,
+                },
+            }
+        ),
+    )
+
+    with pytest.raises(StageExecutionFailure) as error:
+        handler.execute(invocation)
+
+    assert error.value.code == "DOCKING.AD4_PREPARATION_OUTPUT_MISSING"
+    assert "all required PDBQT and JSON outputs" in str(error.value)
+    assert len(commands) == 2
+    assert commands[0].argv[1] == str(engine_files["prepare_receptor.py"].resolve())
+    assert commands[1].argv[1] == str(engine_files["prepare_ligand.py"].resolve())
+    assert all(command.cwd.is_relative_to(tmp_path / "work") for command in commands)
+    assert all(
+        not (command.cwd / name).exists()
+        for command in commands
+        for name in ("receptor.pdbqt", "ligand.pdbqt")
+    )
