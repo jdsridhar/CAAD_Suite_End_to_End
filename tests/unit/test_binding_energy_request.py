@@ -9,9 +9,12 @@ from pydantic import ValidationError
 
 from caddsuite.contracts.analysis import (
     BindingEnergyMethod,
+    BindingEnergyPlan,
     BindingEnergyRequest,
     EntropyTreatment,
     FrameSelection,
+    TrajectoryProcessingResult,
+    TrajectoryTransform,
 )
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.md import (
@@ -220,3 +223,168 @@ def test_uncertainty_block_size_is_explicit_and_must_retain_minimum_blocks():
     data["uncertainty"] = {"block_size_frames": 3, "minimum_blocks": 4}
     with pytest.raises(ValidationError, match="fewer than minimum_blocks"):
         BindingEnergyRequest.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    [
+        ("parameterization", "parameterization differs"),
+        ("trajectory_simulation", "different MDSimulation"),
+        ("missing_tpr", "linked trajectory topology"),
+        ("missing_selection_index", "include the protein selection index"),
+        ("no_production", "requires an MD production stage"),
+        ("zero_based_frame", "frame numbering is one-based"),
+        ("past_trajectory", "exceeds the trajectory"),
+        ("inconsistent_window", "time window disagrees"),
+    ],
+)
+def test_request_rejects_missing_scientific_lineage_and_invalid_frame_windows(
+    case: str, message: str
+) -> None:
+    data = deepcopy(_request_data())
+    if case == "parameterization":
+        data["parameterization"] = data["parameterization"].model_copy(update={"id": new_ulid()})
+    elif case == "trajectory_simulation":
+        data["trajectory"] = data["trajectory"].model_copy(update={"simulation_id": new_ulid()})
+    elif case == "missing_tpr":
+        data["source_artifacts"].pop("run.tpr")
+    elif case == "missing_selection_index":
+        data["source_artifacts"].pop("index.ndx")
+    elif case == "no_production":
+        simulation = data["simulation"]
+        data["simulation"] = simulation.model_copy(
+            update={
+                "protocol": MDProtocol(
+                    stages=(MDStage(kind=MDStageKind.MINIMIZATION, integrator="steep"),)
+                )
+            }
+        )
+    elif case == "zero_based_frame":
+        data["frames"] = data["frames"].model_copy(update={"start_frame": 0})
+    elif case == "past_trajectory":
+        data["frames"] = data["frames"].model_copy(
+            update={"end_frame": 12, "n_used": 12, "window_ns": (0.0, 1.1)}
+        )
+    elif case == "inconsistent_window":
+        data["frames"] = data["frames"].model_copy(update={"window_ns": (0.1, 1.1)})
+
+    with pytest.raises(ValidationError, match=message):
+        BindingEnergyRequest.model_validate(data)
+
+
+def _plan() -> BindingEnergyPlan:
+    data = _request_data()
+    trajectory = data["trajectory"]
+    return BindingEnergyPlan(
+        id=data["id"],
+        trajectory_id=trajectory.id,
+        accession=data["accession"],
+        system=data["system"],
+        parameterization=data["parameterization"],
+        simulation=data["simulation"],
+        topology_artifact=trajectory.topology,
+        frames=data["frames"],
+        method=data["method"],
+        salt_concentration_M=data["salt_concentration_M"],
+        entropy=data["entropy"],
+        model=data["model"],
+        uncertainty=data.get("uncertainty", {}),
+        static_source_artifacts={
+            key: value for key, value in data["source_artifacts"].items() if key != "trajectory.xtc"
+        },
+        selection_groups=data["selection_groups"],
+        topology_format=data["topology_format"],
+        trajectory_format=data["trajectory_format"],
+    )
+
+
+def _processed_result(plan: BindingEnergyPlan) -> TrajectoryProcessingResult:
+    reference = _artifact("processed reference GRO", "f")
+    processed = _artifact("processed trajectory", "0")
+    topology = plan.topology_artifact
+    return TrajectoryProcessingResult(
+        id=new_ulid(),
+        request_id=new_ulid(),
+        simulation_id=plan.simulation.id,
+        processor=_software("GROMACS", SoftwareKind.ENGINE),
+        adapter_id="caddsuite.trajectory.gromacs",
+        adapter_version="1.0",
+        parameters={},
+        transforms=(TrajectoryTransform.MAKE_MOLECULES_WHOLE,),
+        reference_structure=reference,
+        source_artifacts={
+            "topology": topology,
+            "source_xtc": _artifact("source trajectory", "1"),
+        },
+        output_artifacts={"processed": processed, "reference_structure": reference},
+        n_atoms=plan.system.n_atoms,
+        n_frames=11,
+        frame_interval_ps=100.0,
+        time_range_ps=(0.0, 1000.0),
+    )
+
+
+def test_binding_energy_plan_binds_only_matching_processed_trajectory() -> None:
+    plan = _plan()
+    processed = _processed_result(plan)
+    request = plan.bind(
+        processed,
+        {
+            "topology": "inputs/system.tpr",
+            "reference_structure": "inputs/reference.gro",
+            "processed_trajectory": "outputs/processed.xtc",
+        },
+    )
+    assert request.trajectory.simulation_id == plan.simulation.id
+    assert request.trajectory.files == (processed.output_artifacts["processed"],)
+    assert request.trajectory.topology == plan.topology_artifact
+    assert request.trajectory.time_range_ns == (0.0, 1.0)
+    assert (
+        request.source_artifacts["outputs/processed.xtc"] == processed.output_artifacts["processed"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("paths", "message"),
+    [
+        (
+            {
+                "topology": "../system.tpr",
+                "reference_structure": "ref.gro",
+                "processed_trajectory": "run.xtc",
+            },
+            "safe relative path",
+        ),
+        (
+            {"topology": "same", "reference_structure": "same", "processed_trajectory": "run.xtc"},
+            "must be unique",
+        ),
+        (
+            {"topology": "system.tpr", "reference_structure": "ref.gro"},
+            "all required artifact roles",
+        ),
+    ],
+)
+def test_binding_energy_plan_rejects_unsafe_or_incomplete_generated_paths(
+    paths: dict[str, str], message: str
+) -> None:
+    plan = _plan()
+    with pytest.raises(ValueError, match=message):
+        plan.bind(_processed_result(plan), paths)
+
+
+def test_binding_energy_plan_rejects_topology_mismatch() -> None:
+    plan = _plan()
+    processed = _processed_result(plan)
+    source_artifacts = dict(processed.source_artifacts)
+    source_artifacts["topology"] = _artifact("different topology", "9")
+    processed = processed.model_copy(update={"source_artifacts": source_artifacts})
+    with pytest.raises(ValueError, match="different topology artifact"):
+        plan.bind(
+            processed,
+            {
+                "topology": "inputs/system.tpr",
+                "reference_structure": "inputs/reference.gro",
+                "processed_trajectory": "outputs/processed.xtc",
+            },
+        )

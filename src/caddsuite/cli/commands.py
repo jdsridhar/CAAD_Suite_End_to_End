@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Annotated, Literal, NoReturn
 
 import typer
+import yaml
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -315,7 +316,7 @@ def register_commands(app: typer.Typer) -> None:
         """Structurally validate workflow YAML without requiring engines."""
         try:
             workflow = WorkflowDefinition.from_yaml(path)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             _fail(str(exc))
         typer.echo(
             json.dumps(
@@ -349,7 +350,7 @@ def register_commands(app: typer.Typer) -> None:
         try:
             workflow_bytes = workflow_file.read_bytes()
             workflow = WorkflowDefinition.from_yaml_bytes(workflow_bytes, source=workflow_file)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             _fail(str(exc))
         if plan_only:
             typer.echo(
@@ -534,7 +535,7 @@ def register_commands(app: typer.Typer) -> None:
                 scope=scope,
                 rationale=rationale,
             )
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             _fail(str(exc))
         engine, sessions = _sessions(resolve_data_root(data_root))
         try:
@@ -622,7 +623,7 @@ def register_commands(app: typer.Typer) -> None:
         """Read-only inventory plan for importing an existing Docking Suite or MDSuite project."""
         try:
             plan = plan_legacy_import(source_root, kind=kind)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             _fail(str(exc))
         typer.echo(json.dumps(plan.to_dict(), indent=2))
 

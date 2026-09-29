@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,6 +10,7 @@ from caddsuite.adapters.analysis.mdanalysis_metrics import (
     MDAnalysisMetricsParameters,
     MDAnalysisPlanError,
 )
+from caddsuite.application.trajectory_stage_plugin import MDAnalysisStageHandler
 from caddsuite.contracts.analysis import (
     TrajectoryAnalysisRequest,
     TrajectoryMetric,
@@ -18,6 +20,7 @@ from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.md import AtomSelection
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
+from caddsuite.workflow.scheduler import StageExecutionFailure, TaskInvocation
 
 
 def _artifact(role: str, digest: str) -> ArtifactRef:
@@ -197,3 +200,45 @@ def test_worker_output_paths_reject_traversal(unsafe: str) -> None:
         MDAnalysisMetricsParameters(
             python_executable="python", worker_script="worker.py", request_path=unsafe
         )
+
+
+def _stage_handler(tmp_path: Path, artifacts: object) -> MDAnalysisStageHandler:
+    settings = MDAnalysisMetricsParameters(python_executable="python", worker_script="worker.py")
+    return MDAnalysisStageHandler(
+        settings,
+        engine_version="2.10.0",
+        software_environment=None,
+        services=SimpleNamespace(run_root=tmp_path / "runs", artifacts=artifacts),
+    )
+
+
+def test_analysis_stage_blocks_incompatible_input_before_creating_workdir(tmp_path: Path) -> None:
+    request, preprocessing = _linked_request()
+    incompatible = request.model_copy(update={"trajectory_format": "TRR"})
+    handler = _stage_handler(tmp_path, SimpleNamespace())
+    invocation = TaskInvocation(
+        task=SimpleNamespace(params={}),
+        subject_id=str(request.simulation_id),
+        inputs={"request": (incompatible,), "preprocessing": (preprocessing,)},
+    )
+
+    with pytest.raises(StageExecutionFailure) as error:
+        handler.execute(invocation)
+    assert error.value.code == "MD.MDANALYSIS_METRICS_INPUT"
+    assert not (tmp_path / "runs").exists()
+
+
+def test_analysis_stage_rejects_unavailable_input_artifact_hash(tmp_path: Path) -> None:
+    request, preprocessing = _linked_request()
+    artifacts = SimpleNamespace(verify=lambda _digest: False)
+    handler = _stage_handler(tmp_path, artifacts)
+    invocation = TaskInvocation(
+        task=SimpleNamespace(params={}),
+        subject_id=str(request.simulation_id),
+        inputs={"request": (request,), "preprocessing": (preprocessing,)},
+    )
+
+    with pytest.raises(StageExecutionFailure) as error:
+        handler.execute(invocation)
+    assert error.value.code == "MD.ANALYSIS_ARTIFACT_INVALID"
+    assert "artifact 'processed'" in str(error.value)

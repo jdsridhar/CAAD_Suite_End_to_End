@@ -16,6 +16,7 @@ from caddsuite.adapters.interactions.plip import PlipAdapter, PlipParameters, Pl
 from caddsuite.contracts.analysis import (
     InteractionAnalysisMethod,
     InteractionAnalysisRequest,
+    InteractionProfile,
     InteractionType,
     ResidueRef,
 )
@@ -265,3 +266,69 @@ def test_geometric_plan_uses_confined_worker_and_explicit_method(tmp_path: Path)
         "src/caddsuite_worker/geometric_polar_worker.py",
     )
     assert plan.expected_outputs == ("geometric-polar-output/profile.json",)
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        (
+            {"complex_structure": ArtifactRef(artifact_id=new_ulid(), role="complex")},
+            "must include a SHA-256",
+        ),
+        (
+            {"ligand_residue": ResidueRef(resname="LIG", chain=None, resnum=1)},
+            "chain must be explicit",
+        ),
+        (
+            {"polar_elements": ("N", "N")},
+            "must not repeat",
+        ),
+        (
+            {
+                "method": InteractionAnalysisMethod.GEOMETRIC_POLAR_CONTACT,
+                "polar_elements": (),
+            },
+            "needs at least one polar element",
+        ),
+    ],
+)
+def test_interaction_request_rejects_untraceable_or_ambiguous_inputs(
+    changes: dict[str, object], message: str
+) -> None:
+    values = _request().model_dump(mode="python")
+    values.update(changes)
+    with pytest.raises(ValueError, match=message):
+        InteractionAnalysisRequest.model_validate(values)
+
+
+def test_adapter_interaction_profile_requires_complete_hashed_provenance() -> None:
+    from caddsuite.contracts.base import SoftwareRef
+    from caddsuite.domain.enums import LicenseClass, SoftwareKind
+
+    request = _request()
+    method = SoftwareRef(
+        name="PLIP adapter",
+        version="1.0",
+        kind=SoftwareKind.ADAPTER,
+        license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+    )
+    with pytest.raises(ValueError, match="complete lineage"):
+        InteractionProfile(
+            id=new_ulid(),
+            subject=request.pose,
+            method=method,
+            adapter_id="caddsuite.interactions.plip",
+        )
+
+    with pytest.raises(ValueError, match="must be hash-linked"):
+        InteractionProfile(
+            id=new_ulid(),
+            subject=request.pose,
+            target=request.target,
+            request_id=request.id,
+            method=method,
+            adapter_id="caddsuite.interactions.plip",
+            adapter_version="1.0",
+            source_artifacts={"complex": request.complex_structure},
+            raw_result=ArtifactRef(artifact_id=new_ulid(), role="raw"),
+        )

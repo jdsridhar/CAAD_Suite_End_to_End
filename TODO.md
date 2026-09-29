@@ -913,3 +913,15 @@ When the user says **CONTINUE**:
 - [x] Isolated renderer coverage on this core-only test selection is 28% (73/258 statements). Rendering branches remain dependent on the optional PyVista/SciPy/scikit-image stack and need an engine-enabled CI/test environment for coverage evidence.
 
 - [x] Post-test-update full repository gate: scripts/check.sh passed; Ruff, formatting (343 files), strict mypy (196 files), import contracts (255 files), schemas, and 744 passed / 37 skipped. Optional engine integrations remain opt-in; two upstream Starlette/httpx deprecation warnings remain.
+
+### Session log - 2026-09-29, coverage and CLI robustness
+
+- [x] Fixed malformed YAML handling in workflow validate/run and related YAML-backed CLI actions; parser errors now become controlled user-facing CLI failures.
+- [x] Expanded tests for CLI workflow execution, binding-energy request validation, stage artifact lineage, interaction adapter validation, and MDAnalysis artifact validation.
+- [x] Full scripts/check.sh passed: 775 passed, 37 skipped; Ruff, formatting, strict mypy (196 files), import contracts (255 files), and schema freshness pass.
+- [x] Coverage gate cleared with behavior-focused Conda environment lock tests: core 85.03% (target 85%), adapters 71.22% (target 70%).
+- [!] Public release gate remains independent blinded review of the frozen six-case packet. No new-cohort docking has started; preserve the blind and do not use the unblind key.
+- [-] Coverage gate passed; review exact source/test/TODO diff and push only these tracked changes, then confirm hosted checks.
+
+- [x] Added tests verifying environment-lock capture behavior, including content-addressed artifact persistence and the non-Conda no-op path; focused strict typing/tests pass.
+- [x] Post-addition coverage run passed thresholds: core 85.03%, adapters 71.22%; 777 passed, 37 skipped.
