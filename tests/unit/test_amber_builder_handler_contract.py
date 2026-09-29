@@ -188,3 +188,99 @@ def test_worker_failure_unreadable_report_falls_back_to_stderr(tmp_path: Path, m
 
     assert code == "AMBER_BUILD.WORKER_FAILED"
     assert "worker diagnostic" in message
+
+
+def test_handler_success_stages_worker_outputs_and_normalizes_registered_artifacts(
+    tmp_path: Path,
+) -> None:
+    from types import SimpleNamespace
+
+    from caddsuite.storage.db import create_db_engine, make_session_factory
+    from caddsuite.storage.migrate import upgrade
+
+    db_path = tmp_path / "platform.sqlite"
+    upgrade(db_path)
+    engine = create_db_engine(db_path)
+    sessions = make_session_factory(engine)
+    store = ArtifactStore(tmp_path / "store")
+    complex_model = _complex()
+    source_blob = store.put_bytes(b"source protein")
+    source = ArtifactRef(artifact_id=new_ulid(), role="protein", sha256=source_blob.sha256)
+    request = _request(**{"inputs/protein.pdb": source}).model_copy(
+        update={"complex_id": complex_model.id}
+    )
+    stdout_blob = store.put_bytes(b"fake worker stdout")
+    stderr_blob = store.put_bytes(b"")
+    normalized = object()
+
+    class FakeAdapter:
+        def __init__(self):
+            self.normalized_inputs = None
+
+        def validate_input(self, context):
+            assert context.working_directory.is_dir()
+            return ()
+
+        def plan(self, context):
+            command = SimpleNamespace(
+                argv=("fake-amber-worker",),
+                working_directory=context.working_directory,
+                environment={},
+            )
+            return SimpleNamespace(commands=(command,))
+
+        def normalize_result(self, artifacts, context):
+            self.normalized_inputs = (artifacts, context)
+            return normalized
+
+    class FakeExecutor:
+        def start(self, command, *, log_dir):
+            assert command.argv == ("fake-amber-worker",)
+            assert log_dir.is_dir()
+            stage_dir = command.cwd
+            (stage_dir / "amber_worker_request.json").write_text("{}", encoding="utf-8")
+            output_dir = stage_dir / "amber_outputs"
+            output_dir.mkdir()
+            (output_dir / "worker_result.json").write_text('{"status":"fixture"}', encoding="utf-8")
+            (output_dir / "system.prmtop").write_bytes(b"fixture topology")
+            return SimpleNamespace(
+                wait=lambda: SimpleNamespace(
+                    exit_code=0,
+                    stdout=ArtifactRef(
+                        artifact_id=new_ulid(), role="stdout", sha256=stdout_blob.sha256
+                    ),
+                    stderr=ArtifactRef(
+                        artifact_id=new_ulid(), role="stderr", sha256=stderr_blob.sha256
+                    ),
+                )
+            )
+
+    adapter = FakeAdapter()
+    handler = AmberTLeapBuilderHandler(
+        adapter=adapter,
+        work_root=tmp_path / "jobs",
+        log_root=tmp_path / "logs",
+        engine_version="fixture worker only",
+        executor=FakeExecutor(),
+        artifact_store=store,
+        sessions=sessions,
+    )
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(stage_id="amber_build", params={}),
+        inputs={"request": (request,), "complex": (complex_model,)},
+    )
+    try:
+        assert handler.execute(invocation) is normalized
+        assert adapter.normalized_inputs is not None
+        raw_outputs, context = adapter.normalized_inputs
+        assert context.inputs["request"] == request
+        assert {"amber_worker_request.json", "execution/stdout.log", "execution/stderr.log"} <= set(
+            raw_outputs
+        )
+        assert "amber_outputs/worker_result.json" in raw_outputs
+        assert "amber_outputs/system.prmtop" in raw_outputs
+        for ref in raw_outputs.values():
+            if ref.sha256 is not None and ref.role != "stdout" and ref.role != "stderr":
+                assert store.verify(ref.sha256)
+    finally:
+        engine.dispose()
