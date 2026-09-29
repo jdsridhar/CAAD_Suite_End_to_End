@@ -1083,3 +1083,11 @@ When the user says **CONTINUE**:
 - [x] Focused AutoDock4 handler validation: 31 passed, 1 opt-in engine test skipped; handler statement coverage reached 65% (191/294).
 - [x] Full scripts/check.sh: 873 passed / 38 skipped. Full coverage: core 85.05%, adapters 79.20%, workers 33.35%; docking family 70.34% (638/907).
 - [-] Docking remains unvalidated here for real-engine accuracy; enable isolated engine integration only with the explicit engine/data profile.
+
+
+### Session log — 2026-09-29, AutoGrid subprocess failure in AD4 stage
+
+- [x] Added a third handler-flow case that reaches AutoGrid with valid fixture atom-type input and a rendered GPF, then injects a nonzero AutoGrid exit plus stderr artifact. The AD4 handler returns DOCKING.AUTOGRID4_FAILED with the process detail; no maps, poses, or scores are emitted.
+- [x] Focused AutoDock4 handler suite: 32 passed. Full scripts/check.sh: 874 passed / 38 skipped.
+- [x] Repeated the full coverage gate: core 85.05%, adapters 79.20%, workers 33.35%; family totals unchanged at docking 70.34% (638/907).
+- [x] Hosted Quality run 36570269864 passed for the prior pushed commit af6fcea. The AutoGrid exit-path tests in this session are locally validated and are pending their own hosted run after push.

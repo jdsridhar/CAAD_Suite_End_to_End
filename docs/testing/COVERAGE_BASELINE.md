@@ -64,7 +64,7 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 873 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 874 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
@@ -119,9 +119,14 @@ Tests now call the AD4 handler entry point with real contract instances and veri
 
 ### AutoDock4 preparation orchestration failure test (2026-09-29)
 
-A handler-level test supplies real typed lineage contracts and hash-verified fixture inputs, then lets the adapter construct both Meeko commands while a fake executor reports process success without producing preparation files. The adapter returns its actionable DOCKING.AD4_PREPARATION_OUTPUT_MISSING failure. It does not run Meeko or fabricate docking poses. The focused handler validation suite is 30 passed / 1 opt-in engine test skipped; handler coverage is 59% (173/294). Full suite is 873 passed / 38 skipped; adapters are 79.20% covered and the docking family is 70.34% (638/907).
+A handler-level test supplies real typed lineage contracts and hash-verified fixture inputs, then lets the adapter construct both Meeko commands while a fake executor reports process success without producing preparation files. The adapter returns its actionable DOCKING.AD4_PREPARATION_OUTPUT_MISSING failure. It does not run Meeko or fabricate docking poses. The focused handler validation suite is 30 passed / 1 opt-in engine test skipped; handler coverage is 59% (173/294). Full suite is 874 passed / 38 skipped; adapters are 79.20% covered and the docking family is 70.34% (638/907).
 
 
 ### AutoDock4 AutoGrid missing-map boundary (2026-09-29)
 
 The AD4 handler test continues past Meeko preparation using minimal PDBQT atom-type sentinel inputs (not scientific outputs), exercising actual atom-type parsing and AutoGrid GPF rendering. A fake AutoGrid process exits successfully while producing no maps or field file; the adapter reports DOCKING.AD4_MAPS_MISSING. No Meeko/AutoGrid4/AutoDock4 binary ran, and no score, map, pose, or scientific result was generated. Focused handler validation: 31 passed / 1 opt-in engine test skipped, coverage 65% (191/294). Full suite: 873 passed / 38 skipped; adapters 79.20%, docking family 70.34% (638/907).
+
+
+### AutoDock4 AutoGrid process-failure path (2026-09-29)
+
+The AD4 handler-flow fixture now also tests a nonzero AutoGrid exit after GPF generation. A fake executor supplies a stderr artifact and exit code; the adapter surfaces DOCKING.AUTOGRID4_FAILED with the detail. It generates no map, energy, pose, or score data and invokes no engine binary. The focused handler suite is 32 passed; full suite is 874 passed / 38 skipped. The repeated aggregate coverage is core 85.05%, adapters 79.20%, workers 33.35%; docking coverage is 70.34% (638/907).

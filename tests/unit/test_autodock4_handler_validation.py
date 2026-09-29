@@ -452,6 +452,7 @@ def test_ad4_execute_rejects_invalid_typed_port_before_external_side_effects() -
     [
         (False, "DOCKING.AD4_PREPARATION_OUTPUT_MISSING", 2),
         (True, "DOCKING.AD4_MAPS_MISSING", 3),
+        (True, "DOCKING.AUTOGRID4_FAILED", 3),
     ],
 )
 def test_ad4_execute_stops_at_first_missing_engine_outputs(
@@ -479,6 +480,9 @@ def test_ad4_execute_stops_at_first_missing_engine_outputs(
     }
     source_files[conformer.structure.sha256].write_text("SDF input fixture", encoding="utf-8")
     source_files[receptor_pdb.sha256].write_text("PDB input fixture", encoding="utf-8")
+    stderr_file = tmp_path / "autogrid-stderr.log"
+    stderr_file.write_text("synthetic grid process failure", encoding="utf-8")
+    source_files["2" * 64] = stderr_file
 
     class Store:
         def verify(self, digest: str) -> bool:
@@ -509,8 +513,14 @@ def test_ad4_execute_stops_at_first_missing_engine_outputs(
                     Path(command.argv[command.argv.index(output_flag) + 1]).write_text(
                         "ATOM 1 C" + chr(10), encoding="utf-8"
                     )
+            exit_code = (
+                9
+                if expected_code == "DOCKING.AUTOGRID4_FAILED"
+                and Path(command.argv[0]).name == "autogrid4"
+                else 0
+            )
             return SimpleNamespace(
-                wait=lambda: SimpleNamespace(exit_code=0, stdout=stdout, stderr=stderr)
+                wait=lambda: SimpleNamespace(exit_code=exit_code, stdout=stdout, stderr=stderr)
             )
 
     engine_files = {}
@@ -584,6 +594,10 @@ def test_ad4_execute_stops_at_first_missing_engine_outputs(
         assert "ligand_types C" in grid_text
         assert "map receptor.C.map" in grid_text
         assert not (commands[2].cwd / "receptor.maps.fld").exists()
+        if expected_code == "DOCKING.AUTOGRID4_FAILED":
+            assert "synthetic grid process failure" in str(error.value)
+        else:
+            assert expected_code == "DOCKING.AD4_MAPS_MISSING"
         assert registered_files
     else:
         assert "all required PDBQT and JSON outputs" in str(error.value)
