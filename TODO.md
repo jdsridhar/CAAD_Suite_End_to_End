@@ -953,3 +953,10 @@ When the user says **CONTINUE**:
 - [x] Trajectory plotting unit suite: 19 passed; Matplotlib trajectory adapter reached 93% focused statement coverage.
 - [x] Full scripts/check.sh passed: 810 passed, 37 skipped; Ruff, formatting, strict source mypy, import contracts, and schema freshness pass.
 - [x] Full coverage gate passed: core 85.07%, adapters 72.86%. Current no-engine family metrics: docking 61.96%, visualization 55.23%, structure preparation 64.07%, QM 69.51%.
+
+### Session log - 2026-09-29, isolated structure-preparation and QM regressions
+
+- [x] PDBFixer isolated handler and worker integrations: 4 passed against the existing 5NIU golden structure, including internal-gap modeling and protected-output behavior. Focused handler coverage: 78%. Existing engine environment was read-only.
+- [x] PySCF adapter integration suite: 2 passed, including worker execution for seeded ethanol B3LYP/6-31G* single-point normalization and capability validation. Focused adapter coverage: 68%.
+- [x] Hosted Quality and Python package matrix for aef9f06 both passed.
+- [!] The independent blinded cohort review remains pending. The locked 90-attempt redocking benchmark has not been started.
