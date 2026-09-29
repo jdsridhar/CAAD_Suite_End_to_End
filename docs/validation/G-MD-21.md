@@ -20,4 +20,4 @@ The test uses the existing read-only `2M2D_LIG` CHARMM-GUI bundle. It makes priv
 
 This test establishes adapter, artifact-binding, scheduler/runtime, and real-engine execution composition for an already parameterized CHARMM-GUI bundle. The `Complex` fixture contains lineage-only placeholder protein/ligand/assembly artifacts; it does not contain the actual docked-pose coordinates represented by the imported prebuilt bundle. Therefore this is **not** validation that a selected docking pose was assembled, parameterized, and carried into MD with coordinate identity preserved. It also does not establish useful-timescale stability, force-field accuracy, binding stability, or biological activity. The 0.1 ps run is a smoke test only.
 
-Real AmberTools execution, pose-linked complex preparation, and composed trajectory-analysis/report validation remain open.
+Real AmberTools execution and pose-linked complex preparation remain open. G-WORKFLOW-2 already validates trajectory processing/analysis through reporting from an existing MD trajectory; linking a newly executed MD stage output into that downstream chain remains unverified.
