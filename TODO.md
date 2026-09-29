@@ -1135,3 +1135,10 @@ When the user says **CONTINUE**:
 - [x] Focused Amber handler tests: 7 passed; handler coverage rose from 60% to 90% (132/147). Full scripts/check.sh: 885 passed, 37 skipped; Ruff, formatting, strict mypy (196 files), import-layer contracts and schemas passed.
 - [x] Full coverage: core 85.07% (9,521/11,192), adapters 78.97% (4,233/5,360), workers 33.35% (1,207/3,619); system builders 80.73% (775/960).
 - [x] Hosted package matrix 36574174247 and Quality 36574174367 passed for 0d7c3cf; Quality includes the optional PyVista volumetric renderer under Xvfb.
+
+### Session log - 2026-09-29, system-build to MD runtime composition
+
+- [x] Added a scheduler/runtime composition test joining the real CHARMM-GUI bundle importer stage to the existing normalized MD stage handler. It checks durable task execution, artifact lineage registration, pose subject identity, and MD result propagation.
+- [x] The MD executor in this test is explicitly synthetic and emits only a test log; no MD engine, AmberTools, force-field calculation, or scientific result was produced.
+- [x] Full scripts/check.sh: Ruff, formatting (356 files), strict mypy (201 files), import contracts (260 files), schemas, and 903 passed / 37 skipped; two upstream Starlette/httpx deprecation warnings remain.
+- [-] Hosted CI for this increment is pending. Real AmberTools-to-GROMACS system-build/MD execution remains unverified in this environment; retain the Amber-to-GROMACS profile gate and require engine-backed validation.
