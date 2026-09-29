@@ -48,15 +48,17 @@ jobs:
       - name: Create environments from explicit locks
         shell: bash -el {0}
         run: |
-          micromamba create --yes --prefix "$RUNNER_TEMP/caddsuite-core" --file environments/caddsuite.lock.txt
-          micromamba create --yes --prefix "$RUNNER_TEMP/caddsuite-pyscf" --file environments/caddsuite-pyscf.lock.txt
+          micromamba create --yes --name caddsuite-core --file environments/caddsuite.lock.txt
+          micromamba create --yes --name caddsuite-pyscf --file environments/caddsuite-pyscf.lock.txt
       - name: Install the repository package into the locked core
         shell: bash -el {0}
         run: |
-          micromamba run --prefix "$RUNNER_TEMP/caddsuite-core" python -m pip install --no-deps --no-build-isolation -e .
-      - name: Run real seeded PySCF worker and application tests
-        env:
-          CADDSUITE_PYSCF_PYTHON: ${{ runner.temp }}/caddsuite-pyscf/bin/python
+          micromamba run --name caddsuite-core python -m pip install --no-deps --no-build-isolation -e .
+      - name: Export named PySCF interpreter path
         shell: bash -el {0}
         run: |
-          micromamba run --prefix "$RUNNER_TEMP/caddsuite-core" python -m pytest -q tests/integration/test_pyscf_adapter.py::test_real_pyscf_worker_normalizes_to_the_shared_qm_result tests/integration/test_qm_application_runtime.py::test_pyscf_application_run_records_normalized_result_and_provenance
+          echo "CADDSUITE_PYSCF_PYTHON=$(micromamba run --name caddsuite-pyscf python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
+      - name: Run real seeded PySCF worker and application tests
+        shell: bash -el {0}
+        run: |
+          micromamba run --name caddsuite-core python -m pytest -q tests/integration/test_pyscf_adapter.py::test_real_pyscf_worker_normalizes_to_the_shared_qm_result tests/integration/test_qm_application_runtime.py::test_pyscf_application_run_records_normalized_result_and_provenance

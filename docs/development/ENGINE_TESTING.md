@@ -8,6 +8,6 @@ The regular Quality workflow tests the engine-independent core. The separate PyS
 - It runs on relevant source/test/lock changes and can also be started manually from GitHub Actions.
 - It does not use proprietary software, modify a developer's environment, or represent validation of other quantum engines.
 
-To reproduce locally, create the two environments from environments/caddsuite.lock.txt and environments/caddsuite-pyscf.lock.txt, install the repository into the core environment with python -m pip install --no-deps --no-build-isolation -e ., set CADDSUITE_PYSCF_PYTHON to the worker environment's Python executable, then run the two pytest node IDs listed in .github/workflows/engine-pyscf.yml.
+To reproduce locally, create the named environments caddsuite-core and caddsuite-pyscf from environments/caddsuite.lock.txt and environments/caddsuite-pyscf.lock.txt, install the repository into the core environment with python -m pip install --no-deps --no-build-isolation -e ., set CADDSUITE_PYSCF_PYTHON to the worker environment's Python executable, then run the two pytest node IDs listed in .github/workflows/engine-pyscf.yml.
 
 The remaining engine integrations (GROMACS, AmberTools, PSI4, OpenMM, gmx_MMPBSA, and optional visualization stacks) still use opt-in local evidence and are not covered by this hosted job.
