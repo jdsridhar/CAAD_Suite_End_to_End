@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 877 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 880 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
 | Core | 11,192 | 9,521 | 85.07% | ≥85% — met |
-| Adapters | 5,360 | 4,159 | 77.59% | ≥70% — met |
+| Adapters | 5,360 | 4,188 | 78.13% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
@@ -86,7 +86,7 @@ The full engine-free repository gate now reports 877 passed and 37 skipped (the 
 | Structure preparation | 167 | 130 | 77.84% |
 | Structure sources | 65 | 65 | 100.00% |
 | System builders | 960 | 731 | 76.15% |
-| Visualization | 440 | 278 | 63.18% |
+| Visualization | 440 | 307 | 69.77% |
 
 New engine-free PySCF contract tests exercise planning, normalized results, runtime probing, and failure handling: 30 passed and the PySCF adapter file reached 92% (172/187 statements). The focused QM test selection across PSI4/PySCF-related adapter modules passed 71 tests at 82% aggregate. The PyVista renderer's engine-free error-path selection passed 10 tests with one optional render test skipped; its focused statement coverage reached 42% (108/258), while the full visualization family is 63.18%. These coverage metrics describe exercised code paths; they do not establish scientific validity. See the separately documented real-engine PySCF CI and validation evidence.
 

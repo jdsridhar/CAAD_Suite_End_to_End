@@ -326,3 +326,74 @@ def test_renderer_cleans_temporary_figure_when_backend_fails(tmp_path: Path, mon
         PyVistaVolumetricRenderer().render(request, cube_paths=paths, output_directory=output)
     assert error.value.code == "VISUALIZATION.RENDER_FAILED"
     assert list(output.iterdir()) == []
+
+
+def test_molecular_frame_handles_single_atom_and_degenerate_axis_geometry() -> None:
+    from caddsuite.analysis.cube import CubeAtom, VolumetricGrid
+
+    def make_grid(atoms):
+        return VolumetricGrid(
+            comments=("test", "test"),
+            shape=(1, 1, 1),
+            n_values_per_voxel=1,
+            origin_bohr=(0.0, 0.0, 0.0),
+            axes_bohr=((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
+            atoms=tuple(atoms),
+            dataset_ids=None,
+            source_coordinate_unit="bohr",
+            values=None,
+        )
+
+    atom = CubeAtom(atomic_number=6, nuclear_charge=6.0, position_bohr=(1.0, 2.0, 3.0))
+    rotation, center, warnings = renderer_module._molecular_frame(make_grid([atom]), np)
+    assert np.array_equal(rotation, np.eye(3))
+    assert np.allclose(center, np.asarray(atom.position_bohr) * renderer_module.BOHR_TO_ANGSTROM)
+    assert warnings == ()
+
+    linear = make_grid([CubeAtom(6, 6.0, (0.0, 0.0, 0.0)), CubeAtom(6, 6.0, (2.0, 0.0, 0.0))])
+    rotation, _center, warnings = renderer_module._molecular_frame(linear, np)
+    assert np.allclose(rotation @ rotation.T, np.eye(3))
+    assert np.linalg.det(rotation) == pytest.approx(1.0)
+    assert warnings == ("Principal-axis orientation is degenerate and not unique.",)
+
+
+def test_surface_mesh_maps_cube_lattice_to_angstrom_and_vtk_faces() -> None:
+    from caddsuite.analysis.cube import VolumetricGrid
+
+    grid = VolumetricGrid(
+        comments=("test", "test"),
+        shape=(2, 2, 2),
+        n_values_per_voxel=1,
+        origin_bohr=(1.0, 2.0, 3.0),
+        axes_bohr=((0.5, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 2.0)),
+        atoms=(),
+        dataset_ids=None,
+        source_coordinate_unit="bohr",
+        values=None,
+    )
+
+    class PolyData:
+        def __init__(self, points, faces):
+            self.points = points
+            self.faces = faces
+
+    FakePyVista = type("FakePyVista", (), {"PolyData": PolyData})
+
+    vertices = np.asarray([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    faces = np.asarray([[0, 1, 2]], dtype=np.int32)
+    mesh = renderer_module._surface_mesh(
+        grid, vertices, faces, np.eye(3), np.zeros(3), np, FakePyVista
+    )
+
+    expected_bohr = np.asarray(grid.origin_bohr) + vertices @ np.asarray(grid.axes_bohr)
+    assert np.allclose(mesh.points, expected_bohr * renderer_module.BOHR_TO_ANGSTROM)
+    assert np.array_equal(mesh.faces, np.asarray([[3, 0, 1, 2]]))
+
+
+def test_surface_extraction_returns_none_when_requested_level_is_absent() -> None:
+    class MissingSurface:
+        @staticmethod
+        def marching_cubes(field, *, level):
+            raise ValueError(f"no surface at {level}")
+
+    assert renderer_module._surface(np.ones((2, 2, 2)), 2.0, MissingSurface) is None
