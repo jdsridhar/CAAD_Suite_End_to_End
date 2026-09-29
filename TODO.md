@@ -926,6 +926,12 @@ When the user says **CONTINUE**:
 - [x] Added tests verifying environment-lock capture behavior, including content-addressed artifact persistence and the non-Conda no-op path; focused strict typing/tests pass.
 - [x] Post-addition coverage run passed thresholds: core 85.03%, adapters 71.22%; 777 passed, 37 skipped.
 
-- [!] GitHub Quality workflow for dce642d passed static checks but failed the core coverage target; the separate Python package matrix passed. CI and local coverage differed by 7 covered statements in run_queue. Added targeted queue tests and confirmed the local threshold now passes; the follow-up hosted run is pending.
+- [x] GitHub Quality workflow and Python package matrix passed for 0f04308. The Quality run includes the optional dependency coverage gate; the prior dce642d core-coverage failure was resolved by adding run-queue branch tests (local core 85.06%, adapters 71.22%).
 
 - [x] Added run-queue ownership, heartbeat, invalid-state/lease, and missing-run cancellation tests based on the CI coverage gap; full repository checks pass (779 passed, 37 skipped), local core coverage is 85.06%, and adapter coverage is 71.22%.
+
+### Session log - 2026-09-29, hosted quality and blind packet verification
+
+- [x] GitHub Quality workflow and Python package matrix for 0f04308 both completed successfully.
+- [x] Verified curation-review-packet-20260929.zip against its SHA-256 manifest; ZIP integrity passed and contents are exactly review criteria, instructions, CSV form, and six blinded CIF structures. The separate unblinding key was not accessed.
+- [!] Independent blinded review remains pending; protocol explicitly prohibits docking until review discrepancies are reconciled.
