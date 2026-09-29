@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from caddsuite.adapters.visualization import pyvista_volumetric as renderer_module
 from caddsuite.adapters.visualization.pyvista_volumetric import (
     PyVistaVolumetricRenderer,
     VolumetricRenderError,
@@ -198,3 +199,130 @@ def test_offscreen_fmo_mep_and_fukui_renderers(tmp_path: Path) -> None:
         with pytest.raises(VolumetricRenderError) as error:
             renderer.render(request, cube_paths=paths, output_directory=tmp_path / "figures")
         assert error.value.code == "VISUALIZATION.OUTPUT_ALREADY_EXISTS"
+
+
+def _valid_mep_inputs(tmp_path: Path, *, dataset_index: int = 0):
+    field = np.ones((2, 2, 2), dtype=np.float64)
+    density_path = tmp_path / "density.cube"
+    esp_path = tmp_path / "esp.cube"
+    density_hash = _cube_file(density_path, field)
+    esp_hash = _cube_file(esp_path, field * 2.0)
+    density = CubeRenderInput(
+        artifact=ArtifactRef(artifact_id=new_ulid(), role="density", sha256=density_hash),
+        dataset_index=dataset_index,
+    )
+    esp = _inputs(esp_path, "esp", esp_hash)
+    request = MEPRenderRequest(id=new_ulid(), density=density, esp=esp)
+    paths = {
+        str(density.artifact.artifact_id): density_path,
+        str(esp.artifact.artifact_id): esp_path,
+    }
+    return request, paths
+
+
+def _fake_optional_modules(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    modules = {
+        "numpy": object(),
+        "pyvista": SimpleNamespace(__version__="test"),
+        "scipy.ndimage": SimpleNamespace(map_coordinates=object()),
+        "skimage.measure": object(),
+    }
+    monkeypatch.setattr(renderer_module, "import_module", modules.__getitem__)
+
+
+def test_renderer_preserves_cube_dataset_error_code(tmp_path: Path) -> None:
+    request, paths = _valid_mep_inputs(tmp_path, dataset_index=1)
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(
+            request, cube_paths=paths, output_directory=tmp_path / "figures"
+        )
+    assert error.value.code == "VOL.CUBE.DATASET_INDEX_INVALID"
+
+
+def test_renderer_reports_missing_expected_input_hash(tmp_path: Path) -> None:
+    request, paths = _valid_mep_inputs(tmp_path)
+    source = ArtifactRef.model_construct(
+        artifact_id=request.density.artifact.artifact_id,
+        role="density",
+        sha256=None,
+    )
+    request = MEPRenderRequest.model_construct(
+        id=request.id,
+        density=CubeRenderInput.model_construct(artifact=source, dataset_index=0),
+        esp=request.esp,
+    )
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(
+            request, cube_paths=paths, output_directory=tmp_path / "figures"
+        )
+    assert error.value.code == "VISUALIZATION.INPUT_HASH_MISSING"
+
+
+def test_renderer_translates_optional_dependency_import_error(tmp_path: Path, monkeypatch) -> None:
+    request, paths = _valid_mep_inputs(tmp_path)
+    original = renderer_module.import_module
+
+    def missing_pyvista(name: str):
+        if name == "pyvista":
+            raise ImportError("simulated absent renderer")
+        return original(name)
+
+    monkeypatch.setattr(renderer_module, "import_module", missing_pyvista)
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(
+            request, cube_paths=paths, output_directory=tmp_path / "figures"
+        )
+    assert error.value.code == "VISUALIZATION.DEPENDENCY_MISSING"
+    assert not (tmp_path / "figures").exists()
+
+
+def test_renderer_translates_missing_staged_file_read_error(tmp_path: Path) -> None:
+    request, paths = _valid_mep_inputs(tmp_path)
+    missing = tmp_path / "removed.cube"
+    paths[str(request.density.artifact.artifact_id)] = missing
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(
+            request, cube_paths=paths, output_directory=tmp_path / "figures"
+        )
+    assert error.value.code == "VISUALIZATION.INPUT_READ_FAILED"
+
+
+def test_renderer_reports_output_path_that_is_a_file(tmp_path: Path, monkeypatch) -> None:
+    request, paths = _valid_mep_inputs(tmp_path)
+    _fake_optional_modules(monkeypatch)
+    output = tmp_path / "not-a-directory"
+    output.write_text("protected", encoding="utf-8")
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(request, cube_paths=paths, output_directory=output)
+    assert error.value.code == "VISUALIZATION.OUTPUT_WRITE_FAILED"
+    assert error.value.retryable
+
+
+def test_renderer_refuses_existing_output_before_rendering(tmp_path: Path, monkeypatch) -> None:
+    request, paths = _valid_mep_inputs(tmp_path)
+    _fake_optional_modules(monkeypatch)
+    output = tmp_path / "figures"
+    output.mkdir()
+    destination = output / f"vol-{request.id}-mep.png"
+    destination.write_bytes(b"preserve")
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(request, cube_paths=paths, output_directory=output)
+    assert error.value.code == "VISUALIZATION.OUTPUT_ALREADY_EXISTS"
+    assert destination.read_bytes() == b"preserve"
+
+
+def test_renderer_cleans_temporary_figure_when_backend_fails(tmp_path: Path, monkeypatch) -> None:
+    request, paths = _valid_mep_inputs(tmp_path)
+    _fake_optional_modules(monkeypatch)
+
+    def backend_failure(*args, **kwargs):
+        raise RuntimeError("simulated off-screen backend error")
+
+    monkeypatch.setattr(renderer_module, "_render_to_path", backend_failure)
+    output = tmp_path / "figures"
+    with pytest.raises(VolumetricRenderError) as error:
+        PyVistaVolumetricRenderer().render(request, cube_paths=paths, output_directory=output)
+    assert error.value.code == "VISUALIZATION.RENDER_FAILED"
+    assert list(output.iterdir()) == []

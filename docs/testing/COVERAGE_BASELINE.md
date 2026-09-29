@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 840 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 847 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
 | Core | 11,192 | 9,521 | 85.07% | ≥85% — met |
-| Adapters | 5,357 | 3,983 | 74.35% | ≥70% — met |
+| Adapters | 5,357 | 4,018 | 75.00% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
@@ -86,6 +86,6 @@ The full engine-free repository gate now reports 840 passed and 37 skipped (the 
 | Structure preparation | 167 | 107 | 64.07% |
 | Structure sources | 65 | 42 | 64.62% |
 | System builders | 960 | 731 | 76.15% |
-| Visualization | 440 | 243 | 55.23% |
+| Visualization | 440 | 278 | 63.18% |
 
-New engine-free PySCF contract tests exercise planning, normalized results, runtime probing, and failure handling: 30 passed and the PySCF adapter file reached 92% (172/187 statements). The focused QM test selection across PSI4/PySCF-related adapter modules passed 71 tests at 82% aggregate. These coverage metrics describe exercised code paths; they do not establish scientific validity. See the separately documented real-engine PySCF CI and validation evidence.
+New engine-free PySCF contract tests exercise planning, normalized results, runtime probing, and failure handling: 30 passed and the PySCF adapter file reached 92% (172/187 statements). The focused QM test selection across PSI4/PySCF-related adapter modules passed 71 tests at 82% aggregate. The PyVista renderer's engine-free error-path selection passed 10 tests with one optional render test skipped; its focused statement coverage reached 42% (108/258), while the full visualization family is 63.18%. These coverage metrics describe exercised code paths; they do not establish scientific validity. See the separately documented real-engine PySCF CI and validation evidence.
