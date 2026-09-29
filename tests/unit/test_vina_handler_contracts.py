@@ -425,3 +425,76 @@ def test_vina_step_failure_includes_stored_stdout_and_stderr(tmp_path: Path) -> 
     )
     with pytest.raises(StageExecutionFailure, match="unsupported receptor atom"):
         handler._run("meeko_receptor", object(), {})
+
+
+def test_vina_execute_reports_actionable_meeko_failure_before_engine_launch(
+    tmp_path: Path,
+) -> None:
+    compound, form, conformer, receptor, structure, site = _lineage()
+    receptor = receptor.model_copy(
+        update={
+            "artifacts": {
+                **receptor.artifacts,
+                "prepared_structure_pdb": ArtifactRef(
+                    artifact_id=new_ulid(), role="prepared_structure_pdb", sha256="e" * 64
+                ),
+            }
+        }
+    )
+    ligand_path = tmp_path / "ligand.sdf"
+    receptor_path = tmp_path / "receptor.pdb"
+    stdout_path = tmp_path / "stdout.log"
+    stderr_path = tmp_path / "stderr.log"
+    ligand_path.write_text("fixture ligand\n", encoding="utf-8")
+    receptor_path.write_text("fixture receptor\n", encoding="utf-8")
+    stdout_path.write_text("Meeko receptor preparation started", encoding="utf-8")
+    stderr_path.write_text("unsupported receptor atom", encoding="utf-8")
+    stdout = ArtifactRef(artifact_id=new_ulid(), role="stdout", sha256="f" * 64)
+    stderr = ArtifactRef(artifact_id=new_ulid(), role="stderr", sha256="0" * 64)
+
+    class Runner:
+        def start(self, _command: object, *, log_dir: Path) -> object:
+            assert log_dir == tmp_path / "logs"
+            return SimpleNamespace(
+                wait=lambda: SimpleNamespace(exit_code=2, stdout=stdout, stderr=stderr)
+            )
+
+    class Store:
+        def verify(self, _digest: str) -> bool:
+            return True
+
+        def path_for(self, digest: str) -> Path:
+            return {
+                conformer.structure.sha256: ligand_path,
+                receptor.artifacts["prepared_structure_pdb"].sha256: receptor_path,
+                stdout.sha256: stdout_path,
+                stderr.sha256: stderr_path,
+            }[digest]
+
+    executables = (
+        "vina",
+        "python",
+        "mk_prepare_receptor.py",
+        "mk_prepare_ligand.py",
+        "mk_export.py",
+    )
+    for executable in executables:
+        (tmp_path / executable).write_text("# fixture\n", encoding="utf-8")
+    handler = object.__new__(VinaDockingHandler)
+    handler.vina_executable = tmp_path / "vina"
+    handler.meeko_python = tmp_path / "python"
+    handler.mk_prepare_receptor = tmp_path / "mk_prepare_receptor.py"
+    handler.mk_prepare_ligand = tmp_path / "mk_prepare_ligand.py"
+    handler.mk_export = tmp_path / "mk_export.py"
+    handler.vina_version = "fixture"
+    handler.meeko_version = "fixture"
+    handler.work_root = tmp_path / "work"
+    handler.log_root = tmp_path / "logs"
+    handler.work_root.mkdir()
+    handler.artifact_store = Store()
+    handler.executor = Runner()
+
+    with pytest.raises(StageExecutionFailure, match="unsupported receptor atom") as error:
+        handler.execute(_invocation(compound, form, conformer, receptor, structure, site))
+
+    assert error.value.code == "DOCKING.MEEKO_RECEPTOR_FAILED"
