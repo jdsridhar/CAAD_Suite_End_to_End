@@ -20,6 +20,7 @@ from caddsuite.application.md_stage import MDExecutionStageHandler
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ContractModel
 from caddsuite.contracts.md import MDStageInput, MDStageResult
+from caddsuite.contracts.md_plan import MDStagePlan
 from caddsuite.contracts.system import SystemBuildResult
 from caddsuite.ports.md_engine import MDExecutionEngine
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
@@ -43,7 +44,10 @@ class MDStagePlugin:
     def registrations(self) -> tuple[StageHandlerRegistration, ...]:
         inputs = (
             CapabilityInput(name="system_build", contracts=(SystemBuildResult.schema_id(),)),
-            CapabilityInput(name="stage_input", contracts=(MDStageInput.schema_id(),)),
+            CapabilityInput(
+                name="stage_input",
+                contracts=(MDStageInput.schema_id(), MDStagePlan.schema_id()),
+            ),
         )
         registrations = []
         for engine in ("gromacs", "openmm"):
@@ -52,6 +56,9 @@ class MDStagePlugin:
                 engine=engine,
                 inputs=inputs,
                 outputs=(MDStageResult.schema_id(),),
+                for_each=("pose",),
+                iteration_contracts={"pose": (SystemBuildResult.schema_id(),)},
+                fanout_anchor={"pose": "system_build"},
             )
 
             def factory(

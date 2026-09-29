@@ -124,6 +124,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 
 - [0048](ADR/0048-authenticated-molstar-artifact-previews.md) | Authenticated Mol* previews over project-scoped artifacts | Accepted
 - [ADR-0059](ADR/ADR-0059-registered-structures-in-scientific-reports.md) | Include registered Compound/Form and Conformer structure lineage in reports | Accepted
+- [ADR-0061](ADR/ADR-0061-runtime-bound-stage-plans.md) | Bind runtime-generated IDs through explicit stage plans | Accepted
 
 
 ## User and developer references

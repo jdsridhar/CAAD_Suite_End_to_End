@@ -1,6 +1,6 @@
 # Production workflow stage gap audit
 
-Date: 2026-09-28
+Date: 2026-09-29
 Scope: capabilities discovered from installed stage-handler entry points in the WSL caddsuite environment.
 
 ## Production-discovered stage capabilities
@@ -13,15 +13,15 @@ Scope: capabilities discovered from installed stage-handler entry points in the 
 | structure.prepare_protein | pdbfixer | Structure | PreparedReceptor |
 | structure.binding_site | blind_protein_box | Structure, PreparedReceptor | BindingSite |
 | docking | vina | Compound, CompoundForm, Conformer, PreparedReceptor, Structure, BindingSite | DockingResult |
-| molecular_dynamics | gromacs | SystemBuildResult, MDStageInput | MDStageResult |
-| molecular_dynamics | openmm | SystemBuildResult, MDStageInput | MDStageResult |
+| molecular_dynamics | gromacs | SystemBuildResult, MDStageInput or MDStagePlan | MDStageResult |
+| molecular_dynamics | openmm | SystemBuildResult, MDStageInput or MDStagePlan | MDStageResult |
 | quantum_chemistry | caddsuite.qm.psi4 | QMCalculation, CompoundForm, geometry contract | QMResult |
 | quantum_chemistry | caddsuite.qm.pyscf | QMCalculation, CompoundForm, geometry contract | QMResult |
 | system_build | charmm_gui_gromacs_import | Complex, SystemBuildPlan | SystemBuildResult |
 | binding_energy | gmx_mmpbsa | BindingEnergyRequest | BindingEnergyResult (reviewed MM/GBSA profile only) |
 | gate / report | platform | configured evidence / report inputs | normalized decision / ReportBundle |
 
-The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. A CHARMM-GUI GROMACS import system-builder stage is now registered and exercised on a synthetic bundle through its runtime handler. A versioned SystemBuildPlan now binds to a runtime Complex and preserves identity in SystemBuildRequest; its contract tests cover lineage and readiness checks. The plan alone does not execute a builder. Coordinate complex assembly is now registered as structure.assemble_complex with pose fan-out and full identity inputs; its output remains coordinate-only and is explicitly not MD-ready. The runtime binding contract is implemented and tested; the CHARMM-GUI importer stage is implemented; the AmberTools runtime stage and dynamic MDStageInput composition remain open. The MM/GBSA stage is registered and has a copied-input real-engine handler smoke on the available 11-frame data; G-MD-18's separate archived benchmark remains data-specific. Neither smoke nor benchmark establishes experimental binding affinity. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
+The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. A CHARMM-GUI GROMACS import system-builder stage is registered and exercised on a synthetic bundle through its runtime handler; complex assembly, system building, and MD expose pose-scoped fan-out anchors. A versioned SystemBuildPlan now binds to a runtime Complex and preserves identity in SystemBuildRequest; its contract tests cover lineage and readiness checks. The plan alone does not execute a builder. Coordinate complex assembly is now registered as structure.assemble_complex with pose fan-out and full identity inputs; its output remains coordinate-only and is explicitly not MD-ready. The runtime binding contract is implemented and tested; the CHARMM-GUI importer stage is implemented; the AmberTools runtime stage and a composed real importer-to-MD engine run remain open; MDStagePlan supports explicit runtime MDStageInput binding. The MM/GBSA stage is registered and has a copied-input real-engine handler smoke on the available 11-frame data; G-MD-18's separate archived benchmark remains data-specific. Neither smoke nor benchmark establishes experimental binding affinity. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
 
 ## Integration gaps and scientific constraints
 
@@ -36,7 +36,7 @@ The registry now discovers trajectory.process/gromacs and trajectory.analyze/mda
 
 1. [x] Add plugin-backed GROMACS trajectory-processing and MDAnalysis trajectory-analysis handlers; both stage hash-verified artifacts, execute shell-free adapter plans, preserve logs/environment/provenance, and return existing normalized result contracts. Unit/runtime wiring tests pass; engine/data-backed handler execution remains open.
 2. [x] Register binding_energy/gmx_mmpbsa around a complete BindingEnergyRequest; adapter validation remains authoritative for force field, engine, topology, selections, method and entropy. Typed workflow/preflight tests pass; real handler execution remains an open validation item.
-3. [-] CHARMM-GUI import system-builder stage is registered; it binds SystemBuildPlan to Complex, verifies staged artifact hashes, delegates scientific validation and normalization to the importer, and checks result lineage. AmberTools handler integration and direct SystemBuildResult to MDStageInput composition remain open.
+3. [-] CHARMM-GUI import system-builder stage is registered; it binds SystemBuildPlan to Complex, verifies staged artifact hashes, delegates scientific validation and normalization to the importer, and checks result lineage. MDStagePlan binds user-selected, named engine-input artifacts to MDStageInput and the MD handler accepts either the explicit bound input or the plan. Synthetic handler composition passes; AmberTools stage registration and a composed real importer-to-MD engine run remain open.
 4. [x] Extend reporting with typed MD/trajectory/MMGBSA/QM ports and explicit methodology/property sections; QM calculation protocols and capability validation remain engine-owned.
 5. Validate each stage independently on existing golden/engine fixtures, then run a small composed MD-analysis/MMGBSA/QM workflow only where compatible source artifacts are available.
 

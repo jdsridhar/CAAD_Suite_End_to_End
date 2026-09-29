@@ -12,6 +12,7 @@ from caddsuite.contracts import (  # noqa: F401  (imported for registration side
     execution,
     legacy,
     md,
+    md_plan,
     properties,
     qm,
     registry,

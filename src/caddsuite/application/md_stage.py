@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import mimetypes
 import shutil
 import subprocess
@@ -13,6 +14,7 @@ from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef, VersionedContract
 from caddsuite.contracts.execution import ResourceRequest, SoftwareEnvironment
 from caddsuite.contracts.md import MDStageInput, MDStageResult
+from caddsuite.contracts.md_plan import MDStagePlan
 from caddsuite.contracts.system import SystemBuildResult
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.attempt_context import record_generated_artifact
@@ -70,6 +72,10 @@ class MDExecutionStageHandler:
                 refs: dict[str, ArtifactRef] = {}
                 if isinstance(contract, MDStageInput):
                     refs = contract.artifacts
+                elif isinstance(contract, MDStagePlan):
+                    hashes[f"{name}[{index}].plan"] = hashlib.sha256(
+                        contract.model_dump_json().encode()
+                    ).hexdigest()
                 elif isinstance(contract, SystemBuildResult):
                     refs = {
                         **contract.raw_artifacts,
@@ -97,7 +103,23 @@ class MDExecutionStageHandler:
 
     def execute(self, invocation: TaskInvocation) -> MDStageResult:
         build = _one(invocation.inputs, "system_build", SystemBuildResult)
-        stage_input = _one(invocation.inputs, "stage_input", MDStageInput)
+        supplied = invocation.inputs.get("stage_input", ())
+        if len(supplied) != 1:
+            raise StageExecutionFailure(
+                "MD.INPUT_CONTRACT_INVALID", "stage_input requires exactly one plan or input"
+            )
+        candidate = supplied[0]
+        if isinstance(candidate, MDStagePlan):
+            try:
+                stage_input = candidate.bind(build, engine=self.engine_key)
+            except ValueError as exc:
+                raise StageExecutionFailure("MD.STAGE_PLAN_BINDING_FAILED", str(exc)) from exc
+        elif isinstance(candidate, MDStageInput):
+            stage_input = candidate
+        else:
+            raise StageExecutionFailure(
+                "MD.INPUT_CONTRACT_INVALID", "stage_input must be MDStagePlan or MDStageInput"
+            )
         if stage_input.system_id != build.system.id:
             raise StageExecutionFailure(
                 "MD.STAGE_SYSTEM_MISMATCH", "stage input belongs to a different MD system"

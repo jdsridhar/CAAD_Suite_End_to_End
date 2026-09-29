@@ -1,0 +1,43 @@
+{
+  "$id": "caddsuite://schemas/md_stage_plan/1.0",
+  "additionalProperties": false,
+  "description": "Map semantic input roles to named, registered engine-input artifact keys.",
+  "properties": {
+    "artifacts": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "minProperties": 2,
+      "title": "Artifacts",
+      "type": "object"
+    },
+    "engine": {
+      "minLength": 1,
+      "title": "Engine",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "md_stage_plan/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "segment_index": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Segment Index",
+      "type": "integer"
+    },
+    "stage_index": {
+      "minimum": 0,
+      "title": "Stage Index",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "engine",
+    "stage_index",
+    "artifacts"
+  ],
+  "title": "MDStagePlan",
+  "type": "object"
+}

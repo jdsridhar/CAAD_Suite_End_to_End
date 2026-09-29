@@ -9,6 +9,7 @@ from caddsuite.application.md_stage import MDExecutionStageHandler
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ArtifactRef
 from caddsuite.contracts.md import MDStageInput
+from caddsuite.contracts.md_plan import MDStagePlan
 from caddsuite.contracts.system import SystemBuildResult
 from caddsuite.domain.identity import new_ulid
 from caddsuite.execution.local import LocalExecutor
@@ -128,5 +129,60 @@ def test_md_stage_handler_materializes_executes_and_registers_normalized_outputs
         assert result.artifacts["md_log_1"].sha256 is not None
         assert artifacts.verify(result.artifacts["md_log_1"].sha256 or "")
         assert fake.step_checks == [0]
+    finally:
+        engine.dispose()
+
+
+def test_md_stage_handler_binds_plan_against_selected_system_engine_inputs(tmp_path: Path) -> None:
+    database = tmp_path / "platform.sqlite"
+    upgrade(database)
+    engine = create_db_engine(database)
+    sessions = make_session_factory(engine)
+    artifacts = ArtifactStore(tmp_path / "artifacts")
+    executor = LocalExecutor(artifacts, sessions)
+    run_root = tmp_path / "runs"
+    run_root.mkdir()
+    services = LocalRuntimeServices(
+        data_root=tmp_path,
+        run_root=run_root,
+        sessions=sessions,
+        artifacts=artifacts,
+        executor=executor,
+    )
+    build = _result()
+    for key in build.system.engine_inputs["gromacs"]:
+        artifacts.put_bytes(key.encode())
+    plan = MDStagePlan(
+        engine="gromacs",
+        stage_index=2,
+        artifacts={
+            "topology": "topol.top",
+            "coordinates": "step3_input.gro",
+            "md_parameters": "step5_production.mdp",
+        },
+    )
+    fake = FakeMDEngine()
+    handler = MDExecutionStageHandler(
+        fake,
+        engine_version="test-engine 1.0",
+        engine_key="gromacs",
+        engine_name="Test Engine",
+        parameters={"stage_index": 2, "segment_index": 1},
+        engine_parameters={"stage_index": 2, "n_steps": 250000},
+        memory_MiB=256,
+        software_environment=None,
+        services=services,
+    )
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(params={}),
+        subject_id=str(build.system.id),
+        inputs={"system_build": (build,), "stage_input": (plan,)},
+    )
+    try:
+        result = handler.execute(invocation)
+        assert result.stage_index == plan.stage_index
+        assert result.system_id == build.system.id
+        assert result.stage_input_id
+        assert result.artifacts["md_log_1"].sha256 is not None
     finally:
         engine.dispose()
