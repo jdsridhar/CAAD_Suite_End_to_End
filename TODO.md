@@ -851,7 +851,7 @@ When the user says **CONTINUE**:
 - [-] **P1 - Engine-enabled continuous validation:** read-only opt-in integration evidence now includes 21 MD/trajectory tests, 2 real AmberTools/GROMACS/OpenMM checks, MM/GBSA regressions, and 11 PSI4/PySCF worker/application tests. Two PSI4 feature-specific tests skip correctly because this worker environment lacks pyddx and RDKit; runtime capability discovery now hides those features and blocks their use before execution. A locked PySCF real-engine CI job passed hosted run 36558751976 on commit ea73098. Hosted Quality 36574174367 also passed the optional off-screen PyVista render test with the volumetric extra installed. Remaining optional adapters / engine profiles are open; do not bundle licensed engines.
 - [-] P2 - Adapter coverage quality: latest full no-engine coverage is 80.19% adapters (4,298/5,360), core 85.10% (9,819/11,538), workers 33.35% (1,207/3,619); docking family 76.52% (694/907). Continue validation-focused coverage work without gaming exclusions; keep engine-free checks distinct from real-engine evidence.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
-- [-] **P3 — Product polish:** excluded Mol*'s unused MP4 extension through the default plugin UI, removing h264 Node builtin warnings and reducing the lazy viewer chunk 27.25% raw / 28.29% gzip (3,515.06 kB / 980.78 kB gzip). Local and hosted Playwright E2E render structure, cube, and trajectory data; hosted Quality run 36567081064 passed the expanded web job. Review the remaining first-viewer-load bundle size.
+- [-] **P3 — Product polish:** excluded Mol*'s unused MP4 extension through the default plugin UI, removing h264 Node builtin warnings and reducing the lazy viewer chunk 27.25% raw / 28.29% gzip (3,515.06 kB / 980.78 kB gzip). Local and hosted Playwright E2E render structure, cube, and trajectory data; hosted Quality run 36567081064 passed the expanded web job. A DefaultPluginSpec substitution was measured and reverted: the Mol* chunk changed from 3,515.11 kB / 980.82 kB gzip to 3,515.26 kB / 980.39 kB gzip, with no useful size improvement. Keep the full UI spec; further size work needs a different design and viewer regression plan.
 
 
 - [x] P0 diagnostic update: source mmCIF and prepared coordinates were inspected read-only; the possible terminal-cap mechanism and ligand-to-residue distances are recorded in docs/validation/G-DOCK-8.md. No source receptor or frozen v1 benchmark result was modified.
@@ -1201,3 +1201,11 @@ When the user says **CONTINUE**:
 
 - [x] Hosted Python package matrix run 36596074946 and Quality run 36596075119 both passed for commit bc9f59d.
 - [!] AutoDock4/AutoGrid and AmberTools executables are not installed in the available WSL environments; their real-engine validation remains open. No engine environments were modified.
+
+
+### Session log - 2026-09-29, Mol* bundle-size experiment
+
+- [x] Built the production web app with source maps using the current DefaultPluginUISpec: 3,515.11 kB Mol* JS / 980.82 kB gzip.
+- [x] Tested replacing it with DefaultPluginSpec while retaining the default actions, behaviors, and animations. TypeScript/Vite passed, but Mol* measured 3,515.26 kB / 980.39 kB gzip; reverted the change because it did not reduce the artifact meaningfully.
+- [x] Rebuilt the retained implementation and regenerated license/asset inventories; all emitted asset identities and the 81-package notice digest are back in sync.
+- [!] Independent blinded-review response is still pending; the cohort benchmark remains gated. AutoDock4/AutoGrid and AmberTools remain unavailable in the current WSL environments.
