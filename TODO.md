@@ -1162,4 +1162,5 @@ When the user says **CONTINUE**:
 - [x] Added a fixture-only success-path test through the production AutoDock4 normalizer. It verifies selected-form identity, graph-derived heavy-atom mapping, raw-to-normalized coordinate fidelity, accession and run/pose identity, score metadata, seed/software provenance, and CAS registration of both normalized SDF and raw PDBQT. Fixture score/coordinates are synthetic test inputs; no docking executable ran and no scientific docking result is claimed.
 - [x] Focused AutoDock4 handler validation: 35 passed. Full scripts/check.sh: 912 passed / 37 skipped; Ruff, formatting (356 files), strict mypy (201 source files), import contracts (260 files), and schemas pass.
 - [x] Full coverage gate: core 85.10% (9,819/11,538), adapters 80.19% (4,298/5,360), workers 33.35% (1,207/3,619); docking family 76.52% (694/907).
+- [x] Hosted Quality #137 and Python package matrix #68 passed for this increment; browser tests also passed in the Quality run.
 - [-] Real AutoDock4/Meeko execution and docking accuracy remain unvalidated; engine paths are not configured in WSL.
