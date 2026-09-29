@@ -842,6 +842,7 @@ When the user says **CONTINUE**:
 
 
 ## Current pending work and priority (2026-09-29)
+- [-] **P1 — Runtime workflow integration:** added SystemBuildPlan/1.0 with hashed source inputs and a runtime bind(Complex) operation producing the existing SystemBuildRequest while carrying compound/form/target/pose lineage. Tests cover binding and invalid hashed/readiness states; full repository gate is being rerun. Production system-builder handlers and MDStageInput composition remain open.
 - [-] **P1 — Runtime workflow integration:** registered coordinate complex assembly as a pose-fan-out stage with typed Compound/Form/Structure/PreparedReceptor/DockingResult/Pose inputs and normalized Complex output. Full repository gate: 886 passed, 37 skipped; focused tests: 9 passed, 1 optional engine integration skipped. This stage assembles coordinates only; production SystemBuildRequest creation, supported builder stages, and binding into MDStageInput remain open. See docs/architecture/PRODUCTION_WORKFLOW_GAP_AUDIT.md.
 
 - [x] **P0 diagnostic subtask — Site-local receptor experiment:** separate v2 retained whole residues within the ligand-defined docking box expanded by 8 Å; it resolves Meeko preparation for 3ERT and 1M17, retains all failures, and repeats 5NIU with identical pose-file hash and RMSDs. Results: 3ERT top pose 1.2351 Å (pass); 5NIU 12.9228 Å and 1M17 5.9434 Å (fail). Frozen v1 is unchanged. See docs/validation/G-DOCK-10.md and benchmarks/redocking/pilot_v2/site-crop-box8-20260929/.

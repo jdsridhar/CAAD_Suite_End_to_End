@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "ArtifactRef": {
+      "additionalProperties": false,
+      "description": "Reference to a content-addressed artifact plus the role it plays for this result.",
+      "properties": {
+        "artifact_id": {
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "role"
+      ],
+      "title": "ArtifactRef",
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "caddsuite://schemas/system_build_plan/1.0",
+  "additionalProperties": false,
+  "description": "User-selected builder inputs/settings, not yet bound to a runtime Complex.",
+  "properties": {
+    "mode": {
+      "enum": [
+        "import",
+        "build"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Parameters",
+      "type": "object"
+    },
+    "schema_version": {
+      "default": "system_build_plan/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selections": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Selections",
+      "type": "object"
+    },
+    "source_artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "minProperties": 1,
+      "title": "Source Artifacts",
+      "type": "object"
+    }
+  },
+  "required": [
+    "mode",
+    "source_artifacts"
+  ],
+  "title": "SystemBuildPlan",
+  "type": "object"
+}

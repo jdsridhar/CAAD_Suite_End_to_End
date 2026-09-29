@@ -18,6 +18,7 @@ from caddsuite.contracts import (  # noqa: F401  (imported for registration side
     reporting,
     structure,
     system,
+    system_plan,
     visualization,
 )
 from caddsuite.contracts.base import (
