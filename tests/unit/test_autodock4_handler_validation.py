@@ -6,6 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 from caddsuite.adapters.docking.autodock4_handler import AutoDock4DockingHandler
+from caddsuite.contracts.base import ArtifactRef
+from caddsuite.execution.local import CommandSpec
 from caddsuite.workflow.scheduler import StageExecutionFailure
 
 
@@ -278,3 +280,126 @@ def test_ad4_constructor_requires_engine_paths_and_creates_work_directories(
             artifact_store=object(),
             sessions=object(),
         )
+
+
+def test_ad4_run_records_both_stream_artifacts_on_success() -> None:
+    stdout = ArtifactRef(artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAV", role="stdout", sha256="a" * 64)
+    stderr = ArtifactRef(artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAW", role="stderr", sha256="b" * 64)
+
+    class Runner:
+        def start(self, command, *, log_dir):
+            assert command.argv == ("/engine/autogrid4", "-p", "grid.gpf", "-l", "grid.glg")
+            assert log_dir == Path("/task/logs")
+            return SimpleNamespace(
+                wait=lambda: SimpleNamespace(exit_code=0, stdout=stdout, stderr=stderr)
+            )
+
+    handler = object.__new__(AutoDock4DockingHandler)
+    handler.executor = Runner()
+    handler.log_root = Path("/task/logs")
+    artifacts = {}
+    handler._run(
+        "autogrid4",
+        CommandSpec(
+            argv=("/engine/autogrid4", "-p", "grid.gpf", "-l", "grid.glg"),
+            cwd=Path("/task"),
+        ),
+        artifacts,
+    )
+    assert artifacts == {"autogrid4_stdout": stdout, "autogrid4_stderr": stderr}
+
+
+def test_ad4_run_surfaces_stderr_for_retryable_process_failure(tmp_path: Path) -> None:
+    stderr_file = tmp_path / "stderr.log"
+    stderr_file.write_text(
+        "AutoGrid map generation failed: unsupported atom type", encoding="utf-8"
+    )
+    stdout = ArtifactRef(artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAV", role="stdout", sha256=None)
+    stderr = ArtifactRef(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        role="stderr",
+        sha256="c" * 64,
+    )
+
+    class Store:
+        def path_for(self, digest: str) -> Path:
+            assert digest == "c" * 64
+            return stderr_file
+
+    class Runner:
+        def start(self, *_args, **_kwargs):
+            return SimpleNamespace(
+                wait=lambda: SimpleNamespace(exit_code=2, stdout=stdout, stderr=stderr)
+            )
+
+    handler = object.__new__(AutoDock4DockingHandler)
+    handler.executor = Runner()
+    handler.log_root = tmp_path
+    handler.artifact_store = Store()
+    artifacts = {}
+    with pytest.raises(StageExecutionFailure) as error:
+        handler._run(
+            "autogrid4",
+            CommandSpec(argv=("/engine/autogrid4",), cwd=tmp_path),
+            artifacts,
+        )
+    assert error.value.code == "DOCKING.AUTOGRID4_FAILED"
+    assert "unsupported atom type" in str(error.value)
+    assert artifacts == {"autogrid4_stdout": stdout, "autogrid4_stderr": stderr}
+
+
+def test_ad4_run_falls_back_to_stdout_when_stderr_is_unavailable(tmp_path: Path) -> None:
+    stdout_file = tmp_path / "stdout.log"
+    stdout_file.write_text("diagnostic on stdout", encoding="utf-8")
+    stdout = ArtifactRef(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        role="stdout",
+        sha256="d" * 64,
+    )
+    stderr = ArtifactRef(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        role="stderr",
+        sha256=None,
+    )
+
+    class Store:
+        def path_for(self, digest: str) -> Path:
+            assert digest == "d" * 64
+            return stdout_file
+
+    class Runner:
+        def start(self, *_args, **_kwargs):
+            return SimpleNamespace(
+                wait=lambda: SimpleNamespace(exit_code=1, stdout=stdout, stderr=stderr)
+            )
+
+    handler = object.__new__(AutoDock4DockingHandler)
+    handler.executor = Runner()
+    handler.log_root = tmp_path
+    handler.artifact_store = Store()
+    with pytest.raises(StageExecutionFailure, match="diagnostic on stdout") as error:
+        handler._run(
+            "autodock4",
+            CommandSpec(argv=("/engine/autodock4",), cwd=tmp_path),
+            {},
+        )
+    assert error.value.code == "DOCKING.AUTODOCK4_FAILED"
+
+
+def test_ad4_artifact_text_handles_absent_hash_and_unreadable_log(tmp_path: Path) -> None:
+    class Store:
+        def path_for(self, _digest: str) -> Path:
+            return tmp_path / "not-created.log"
+
+    handler = object.__new__(AutoDock4DockingHandler)
+    handler.artifact_store = Store()
+    no_hash = ArtifactRef.model_construct(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAV", role="stderr", sha256=None
+    )
+    unreadable = ArtifactRef(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        role="stderr",
+        sha256="e" * 64,
+    )
+    assert handler._artifact_text(no_hash, 100) == ""
+    assert handler._artifact_text(unreadable, 100) == ""
