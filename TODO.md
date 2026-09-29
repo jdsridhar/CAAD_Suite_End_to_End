@@ -1209,3 +1209,8 @@ When the user says **CONTINUE**:
 - [x] Tested replacing it with DefaultPluginSpec while retaining the default actions, behaviors, and animations. TypeScript/Vite passed, but Mol* measured 3,515.26 kB / 980.39 kB gzip; reverted the change because it did not reduce the artifact meaningfully.
 - [x] Rebuilt the retained implementation and regenerated license/asset inventories; all emitted asset identities and the 81-package notice digest are back in sync.
 - [!] Independent blinded-review response is still pending; the cohort benchmark remains gated. AutoDock4/AutoGrid and AmberTools remain unavailable in the current WSL environments.
+
+### Session log — 2026-09-29, real GROMACS workflow runtime reconfirmation
+
+- [x] Re-ran `test_gromacs_stage_runs_through_registry_runtime_and_records_provenance` against the read-only 2M2D_LIG bundle: 1 passed in 4.35 s. The test executed the real GROMACS adapter through registry discovery, input loading, durable workflow runtime, provenance capture, and a 50-step CPU production segment in a temporary directory.
+- [-] This reconfirms the engine-backed MD runtime stage only. It does not compose the CHARMM-GUI importer stage with the real GROMACS execution in one run; that integration remains open, as do the end-to-end trajectory/report checks.
