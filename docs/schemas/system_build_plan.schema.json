@@ -72,14 +72,12 @@
       "additionalProperties": {
         "$ref": "#/$defs/ArtifactRef"
       },
-      "minProperties": 1,
       "title": "Source Artifacts",
       "type": "object"
     }
   },
   "required": [
-    "mode",
-    "source_artifacts"
+    "mode"
   ],
   "title": "SystemBuildPlan",
   "type": "object"

@@ -17,22 +17,29 @@ class SystemBuildPlan(VersionedContract):
 
     schema_version: str = "system_build_plan/1.0"
     mode: Literal["import", "build"]
-    source_artifacts: dict[str, ArtifactRef] = Field(min_length=1)
+    source_artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
     selections: dict[str, str] = Field(default_factory=dict)
     parameters: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_plan(self) -> SystemBuildPlan:
+        if self.mode == "import" and not self.source_artifacts:
+            raise ValueError("import plans must provide bundle source artifacts")
         if any(not value.strip() for value in self.selections.values()):
             raise ValueError("atom-selection expressions cannot be empty")
         if any(ref.sha256 is None for ref in self.source_artifacts.values()):
             raise ValueError("system-build plan source artifacts must be SHA-256 hashed")
         return self
 
-    def bind(self, complex_model: Complex) -> SystemBuildRequest:
+    def bind(
+        self, complex_model: Complex, *, source_artifacts: dict[str, ArtifactRef] | None = None
+    ) -> SystemBuildRequest:
         """Bind settings to generated Complex identity and preserve candidate lineage."""
         if complex_model.parameters.get("md_ready") is not False:
             raise ValueError("system building requires a coordinate-only Complex")
+        selected_sources = self.source_artifacts if source_artifacts is None else source_artifacts
+        if not selected_sources:
+            raise ValueError("system-build binding requires explicit source artifacts")
         return SystemBuildRequest(
             id=new_ulid(),
             complex_id=complex_model.id,
@@ -40,7 +47,7 @@ class SystemBuildPlan(VersionedContract):
             form_id=complex_model.form_id,
             target_id=complex_model.target_id,
             pose_id=complex_model.pose_id,
-            source_artifacts=self.source_artifacts,
+            source_artifacts=selected_sources,
             selections=self.selections,
             mode=self.mode,
             parameters=self.parameters,
