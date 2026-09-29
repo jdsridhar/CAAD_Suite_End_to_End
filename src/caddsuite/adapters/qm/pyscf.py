@@ -134,7 +134,8 @@ class PySCFQMAdapter:
         task_path = root / config.task_filename
         if task_path.exists() or task_path.is_symlink():
             raise PySCFPlanError("QM.PYSCF_TASK_EXISTS", "worker task file already exists")
-        python = Path(config.python_executable).resolve(strict=True)
+        configured_python = Path(config.python_executable).absolute()
+        python = configured_python.resolve(strict=True)
         worker_root = Path(config.worker_source_directory).resolve(strict=True)
         if not python.is_file() or not os.access(python, os.X_OK):
             raise PySCFPlanError(
@@ -163,8 +164,9 @@ class PySCFQMAdapter:
             "PYTHONNOUSERSITE": "1",
             "PYTHONPATH": str(worker_root),
             "PATH": str(python.parent) + os.pathsep + os.environ.get("PATH", ""),
-            "CONDA_PREFIX": str(python.parent.parent),
-            "CONDA_DEFAULT_ENV": python.parent.parent.name,
+            # Resolving a venv Python symlink can point outside that venv.
+            "CONDA_PREFIX": str(configured_python.parent.parent),
+            "CONDA_DEFAULT_ENV": configured_python.parent.parent.name,
             "CONDA_SHLVL": "1",
         }
         command = CommandStep(
@@ -266,7 +268,8 @@ class PySCFQMAdapter:
     def probe(self, parameters: dict[str, object]) -> QMEngineAvailability:
         try:
             config = PySCFAdapterParameters.model_validate(parameters)
-            python = Path(config.python_executable).resolve(strict=True)
+            configured_python = Path(config.python_executable).absolute()
+            python = configured_python.resolve(strict=True)
             if not python.is_file() or not os.access(python, os.X_OK):
                 return QMEngineAvailability(
                     installed=False, reason="PySCF Python is not executable"
@@ -396,7 +399,8 @@ class PySCFQMAdapter:
             )
         geometry = sdf_geometry(source, form.smiles, calculation.charge, calculation.multiplicity)
         try:
-            python = Path(config.python_executable).resolve(strict=True)
+            configured_python = Path(config.python_executable).absolute()
+            python = configured_python.resolve(strict=True)
             worker_root = Path(config.worker_source_directory).resolve(strict=True)
         except OSError as exc:
             raise PySCFPlanError(

@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 848 passed and 37 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 850 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
-| Core | 11,192 | 9,518 | 85.04% | ≥85% — met |
-| Adapters | 5,357 | 4,030 | 75.23% | ≥70% — met |
+| Core | 11,192 | 9,519 | 85.05% | ≥85% — met |
+| Adapters | 5,360 | 4,158 | 77.57% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
@@ -93,5 +93,10 @@ New engine-free PySCF contract tests exercise planning, normalized results, runt
 
 ### Vina handler failure-path addition (2026-09-29)
 
-An engine-free test executes the Vina handler through scientific-input lineage checks, artifact lookup, and Meeko receptor command planning, then injects a failed subprocess result and verifies that the normalized stage error includes the useful stderr detail. No executable or docking calculation is invoked. The focused Vina handler selection rose from 48% to 53%; docking-family coverage rose by 12 statements to 574/907 (63.29%). The full no-engine gate reports 848 passed / 37 skipped, core 85.04%, adapters 75.23%, and workers 33.35%. Coverage indicates exercised code, not scientific validation.
+An engine-free test executes the Vina handler through scientific-input lineage checks, artifact lookup, and Meeko receptor command planning, then injects a failed subprocess result and verifies that the normalized stage error includes the useful stderr detail. No executable or docking calculation is invoked. The focused Vina handler selection rose from 48% to 53%; docking-family coverage rose by 12 statements to 574/907 (63.29%). The full no-engine gate reports 848 passed / 37 skipped, core 85.05%, adapters 77.57%, and workers 33.35%. Coverage indicates exercised code, not scientific validation.
 Hosted CI also passed for commit fc74b20: [Quality](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601940) and [Python package matrix](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601894).
+
+
+### PDBFixer handler failure-path addition (2026-09-29)
+
+Engine-free tests cover source-artifact validation, preparation request generation, shell-free worker command planning, and nonzero exit, malformed JSON, and missing-output failures. Focused handler coverage is 87%, up from 63%; structure-preparation family coverage is 78% (130/167). No PDBFixer calculation or scientific preparation was run. Latest full gate: 850 passed / 38 skipped; core 85.05%, adapters 77.57%, workers 33.35%.

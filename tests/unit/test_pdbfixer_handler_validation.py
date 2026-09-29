@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -114,3 +115,80 @@ def test_execute_rejects_source_hash_that_is_not_in_the_store(handler) -> None:
         instance.execute(invocation)
 
     assert exc.value.code == "STRUCTURE.SOURCE_ARTIFACT_INVALID"
+
+
+@pytest.mark.parametrize(
+    ("exit_code", "stdout_text", "stderr_text", "error_code", "message"),
+    [
+        (
+            17,
+            "",
+            "selected polymer chain is absent",
+            "STRUCTURE.PREPARATION_FAILED",
+            "selected polymer chain is absent",
+        ),
+        (
+            0,
+            "not-json",
+            "",
+            "STRUCTURE.INVALID_WORKER_RESPONSE",
+            "not a JSON worker response",
+        ),
+        (
+            0,
+            '{"ok": true, "result": {}}',
+            "",
+            "STRUCTURE.OUTPUT_MISSING",
+            "did not produce both prepared",
+        ),
+    ],
+)
+def test_execute_classifies_worker_process_and_output_failures(
+    handler,
+    exit_code: int,
+    stdout_text: str,
+    stderr_text: str,
+    error_code: str,
+    message: str,
+) -> None:
+    instance, artifacts = handler
+    structure = _structure(artifacts)
+    stdout_blob = artifacts.put_bytes(stdout_text.encode())
+    stderr_blob = artifacts.put_bytes(stderr_text.encode())
+    stdout = ArtifactRef(artifact_id=new_ulid(), role="stdout", sha256=stdout_blob.sha256)
+    stderr = ArtifactRef(artifact_id=new_ulid(), role="stderr", sha256=stderr_blob.sha256)
+
+    class Runner:
+        def start(self, command, *, log_dir):
+            assert command.argv[0] == str(instance.python_executable)
+            assert command.argv[1] == str(instance.worker_script)
+            assert command.argv[2] == "--request"
+            assert command.cwd.is_relative_to(instance.work_root)
+            request_path = Path(command.argv[3])
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            assert request["selected_chain_ids"] == ["A"]
+            assert request["ph"] == 7.4
+            assert request["fill_internal_gaps"] is False
+            assert request["keep_water"] is True
+            assert log_dir == instance.log_root
+            execution = SimpleNamespace(exit_code=exit_code, stdout=stdout, stderr=stderr)
+            return SimpleNamespace(wait=lambda: execution)
+
+    instance.executor = Runner()
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(
+            stage_id="prepare",
+            params={
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+                "fill_internal_gaps": False,
+                "keep_water": True,
+            },
+        ),
+        inputs={"structure": (structure,)},
+    )
+
+    with pytest.raises(StageExecutionFailure, match=message) as error:
+        instance.execute(invocation)
+
+    assert error.value.code == error_code
