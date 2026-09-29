@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 850 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 865 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
 | Core | 11,192 | 9,519 | 85.05% | ≥85% — met |
-| Adapters | 5,360 | 4,158 | 77.57% | ≥70% — met |
+| Adapters | 5,360 | 4,181 | 78.00% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
@@ -99,4 +99,9 @@ Hosted CI also passed for commit fc74b20: [Quality](https://github.com/jdsridhar
 
 ### PDBFixer handler failure-path addition (2026-09-29)
 
-Engine-free tests cover source-artifact validation, preparation request generation, shell-free worker command planning, and nonzero exit, malformed JSON, and missing-output failures. Focused handler coverage is 87%, up from 63%; structure-preparation family coverage is 78% (130/167). No PDBFixer calculation or scientific preparation was run. Latest full gate: 850 passed / 38 skipped; core 85.05%, adapters 77.57%, workers 33.35%.
+Engine-free tests cover source-artifact validation, preparation request generation, shell-free worker command planning, and nonzero exit, malformed JSON, and missing-output failures. Focused handler coverage is 87%, up from 63%; structure-preparation family coverage is 78% (130/167). No PDBFixer calculation or scientific preparation was run. Latest full gate: 865 passed / 38 skipped; core 85.05%, adapters 78.00%, workers 33.35%.
+
+
+### RCSB structure-source failure-path addition (2026-09-29)
+
+Engine-free tests cover strict entry-ID validation, fixed HTTPS retrieval behavior, timeouts, retryability for HTTP and transport errors, response-size enforcement, mmCIF validity and identity, registered-artifact hash verification, and successful bounded download. The RCSB source module reaches 100% focused statement coverage (65/65); 25 focused tests pass. This validates retrieval contracts and failure reporting, not experimental structure correctness. Latest full gate: 865 passed / 38 skipped; core 85.05%, adapters 78.00%, workers 33.35%. Hosted Quality run [36567081064](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36567081064) passed its web build and browser tests, including the expanded cube and trajectory viewer assertions.

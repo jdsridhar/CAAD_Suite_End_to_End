@@ -848,9 +848,9 @@ When the user says **CONTINUE**:
 - [x] **P1 protocol gate:** drafted the preregistered 30-target-cluster RCSB cohort, eligibility/exclusion rules, locked Meeko/Vina protocol, three-seed design, top-1 primary endpoint, top-5/best-sampled secondary endpoints, failure denominator, and cluster-bootstrap reporting in docs/validation/REDOCKING_BENCHMARK_PROTOCOL.md. A 30-case cohort has since been frozen; no docking has been run on it.
 - [-] **P1 — Broader scientific validation:** deterministic RCSB candidate capture is implemented and count-reconciled; 30-case structure-level curation and cohort freeze are complete (30 clusters; 762 polymer-entity candidates reviewed across 755 unique mmCIF files); blinded review, artifact package/integrity gate, resource-feasibility pilot, and preregistered 90-attempt redocking remain. Current pilot supports no general accuracy claim.
 - [-] **P1 - Engine-enabled continuous validation:** read-only opt-in integration evidence now includes 21 MD/trajectory tests, 2 real AmberTools/GROMACS/OpenMM checks, MM/GBSA regressions, and 11 PSI4/PySCF worker/application tests. Two PSI4 feature-specific tests skip correctly because this worker environment lacks pyddx and RDKit; runtime capability discovery now hides those features and blocks their use before execution. A locked PySCF real-engine CI job passed hosted run 36558751976 on commit ea73098. Remaining optional adapters / engine profiles are open; do not bundle licensed engines.
-- [-] **P2 — Adapter coverage quality:** latest full no-engine coverage is 77.57% adapters (4,158/5,360), core 85.05% (9,519/11,192), and workers 33.35% (1,207/3,619). Adapter family coverage: ADMET 93.92%, analysis 76.65%, binding energy 81.42%, docking 63.29%, interactions 82.45%, MD 84.55%, QM 81.71%, structure preparation 78% (130/167), structure sources 64.62%, system builders 76.15%, visualization 63.18%. Focused QM selection: 71 passed, 82%; isolated PySCF adapter: 92%. Keep engine-free failure-path tests and real-engine evidence distinct; continue improving the lowest families without gaming exclusions.
+- [-] **P2 — Adapter coverage quality:** latest full no-engine coverage is 78.00% adapters (4,181/5,360), core 85.05% (9,519/11,192), and workers 33.35% (1,207/3,619). Adapter family coverage: ADMET 93.92%, analysis 76.65%, binding energy 81.42%, docking 63.29%, interactions 82.45%, MD 84.55%, QM 81.71%, structure preparation 78% (130/167), structure sources 100% focused RCSB module, system builders 76.15%, visualization 63.18%. Focused QM selection: 71 passed, 82%; isolated PySCF adapter: 92%. Keep engine-free failure-path tests and real-engine evidence distinct; continue improving the lowest families without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
-- [-] **P3 — Product polish:** excluded Mol*'s unused MP4 extension through the default plugin UI, removing h264 Node builtin warnings and reducing the lazy viewer chunk 27.25% raw / 28.29% gzip (3,515.06 kB / 980.78 kB gzip). Local Playwright E2E now renders structure, cube, and trajectory data; current hosted regression is pending. Review the remaining first-viewer-load bundle size.
+- [-] **P3 — Product polish:** excluded Mol*'s unused MP4 extension through the default plugin UI, removing h264 Node builtin warnings and reducing the lazy viewer chunk 27.25% raw / 28.29% gzip (3,515.06 kB / 980.78 kB gzip). Local and hosted Playwright E2E render structure, cube, and trajectory data; hosted Quality run 36567081064 passed the expanded web job. Review the remaining first-viewer-load bundle size.
 
 
 - [x] P0 diagnostic update: source mmCIF and prepared coordinates were inspected read-only; the possible terminal-cap mechanism and ligand-to-residue distances are recorded in docs/validation/G-DOCK-8.md. No source receptor or frozen v1 benchmark result was modified.
@@ -1032,8 +1032,7 @@ When the user says **CONTINUE**:
 - [x] Extended the existing browser E2E to load a synthetic Gaussian cube through the artifact upload and volume viewer UI, then require a rendered Mol* canvas.
 - [x] Added a synthetic PDB topology + two-frame LAMMPS trajectory upload and browser-viewer canvas assertion, preserving the explicit topology/coordinates pairing UX.
 - [x] Local TypeScript/production build passes at 3,515.06 kB Mol* / 980.79 kB gzip with no h264 Node builtin warnings; Playwright discovers the expanded E2E test. Full browser execution awaits hosted CI because local WSL Chromium lacks libasound.so.2.
-- [-] Reconcile any Mol* cube/trajectory parser or rendering issues from the hosted run before claiming those viewer paths are validated.
-- [-] Hosted CI must validate the expanded cube/trajectory E2E on a clean runner; assess the remaining 3.52 MB first-viewer-load chunk only after that runtime gate.
+- [x] Hosted run 36567081064 passed the expanded cube/trajectory E2E on a clean runner; no parser or canvas-rendering failures were reported. Assess the remaining 3.52 MB first-viewer-load chunk under P3.
 
 
 ### Session log — 2026-09-29, adapter handler coverage and WSL validation
@@ -1042,3 +1041,12 @@ When the user says **CONTINUE**:
 - [x] Fixed PySCF worker environment metadata to retain the configured venv path when the executable is a symlink into the uv interpreter cache.
 - [x] Focused regression selection: 55 passed. Full scripts/check.sh: Ruff, format, strict mypy, import contracts, schemas, and 850 passed / 38 skipped. Full coverage: core 85.05% (9,519/11,192), adapters 77.57% (4,158/5,360), workers 33.35% (1,207/3,619).
 - [ ] Hosted regression for expanded cube/trajectory E2E remains pending.
+
+
+### Session log — 2026-09-29, RCSB retrieval failure coverage and hosted viewer gate
+
+- [x] Added engine-free tests for RCSB response identity, empty/invalid/oversized mmCIF, artifact digest mismatch, fixed HTTPS URL and user agent, timeout validation, HTTP and transport retryability, and bounded response reads.
+- [x] RCSB structure-source module focused coverage is 100% (65/65 statements); focused test module passes 25 tests. These tests validate retrieval/error contracts, not biological structure quality.
+- [x] Full scripts/check.sh passes: Ruff, formatting (346 files), strict mypy (196 source files), import contracts (255 files), schemas, and 865 passed / 38 skipped.
+- [x] Full coverage: core 85.05% (9,519/11,192), adapters 78.00% (4,181/5,360), workers 33.35% (1,207/3,619).
+- [x] Hosted Quality run 36567081064 passed, including Web build and browser tests with the expanded cube/trajectory assertions.

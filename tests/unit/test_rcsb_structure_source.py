@@ -6,6 +6,7 @@ import hashlib
 
 import pytest
 
+from caddsuite.adapters.structure_sources import rcsb as rcsb_module
 from caddsuite.adapters.structure_sources.rcsb import (
     StructureSourceError,
     fetch_rcsb_structure,
@@ -227,3 +228,198 @@ def test_split_fails_with_actionable_issue_when_no_protein_chains_exist() -> Non
     )
     analysis = analyze_structure_split(fetched.structure, cif)
     assert any(issue.code == "STRUCTURE.NO_POLYMER_CHAIN" for issue in analysis.issues)
+
+
+@pytest.mark.parametrize(
+    ("entry_id", "response_id", "expected_fragment"),
+    [
+        ("5NIU", "1ABC", "does not match requested"),
+        ("5NIU", "", "has no _entry.id"),
+    ],
+)
+def test_fetch_rejects_response_identity_mismatch(
+    entry_id: str, response_id: str, expected_fragment: str
+) -> None:
+    response = MMCIF.replace(
+        b"_entry.id 5NIU",
+        f"_entry.id {response_id}".encode() if response_id else b"",
+    )
+    with pytest.raises(StructureSourceError, match=expected_fragment):
+        fetch_rcsb_structure(
+            entry_id,
+            target_id=new_ulid(),
+            register_artifact=_register,
+            downloader=lambda _entry_id, _timeout: response,
+        )
+
+
+@pytest.mark.parametrize("payload", [b"", b"not an mmCIF"])
+def test_fetch_rejects_empty_or_invalid_mmcif(payload: bytes) -> None:
+    with pytest.raises(StructureSourceError, match=r"empty|not valid mmCIF"):
+        fetch_rcsb_structure(
+            "5NIU",
+            target_id=new_ulid(),
+            register_artifact=_register,
+            downloader=lambda _entry_id, _timeout: payload,
+        )
+
+
+def test_fetch_rejects_oversized_response_and_bad_registered_digest(monkeypatch) -> None:
+    monkeypatch.setattr(rcsb_module, "_MAX_CIF_BYTES", len(MMCIF) - 1)
+    with pytest.raises(StructureSourceError, match="empty or oversized"):
+        fetch_rcsb_structure(
+            "5NIU",
+            target_id=new_ulid(),
+            register_artifact=_register,
+            downloader=lambda _entry_id, _timeout: MMCIF,
+        )
+
+    monkeypatch.setattr(rcsb_module, "_MAX_CIF_BYTES", len(MMCIF) + 1)
+
+    def bad_artifact(_blob: bytes, role: str) -> ArtifactRef:
+        return ArtifactRef(artifact_id=new_ulid(), role=role, sha256="0" * 64)
+
+    with pytest.raises(StructureSourceError, match="digest that does not match"):
+        fetch_rcsb_structure(
+            "5NIU",
+            target_id=new_ulid(),
+            register_artifact=bad_artifact,
+            downloader=lambda _entry_id, _timeout: MMCIF,
+        )
+
+
+def test_download_uses_fixed_https_host_and_preserves_http_retryability(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    class Response:
+        status = 503
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self, limit: int) -> bytes:
+            observed["limit"] = limit
+            return b""
+
+    def open_url(request, *, timeout):
+        observed["url"] = request.full_url
+        observed["agent"] = request.get_header("User-agent")
+        observed["timeout"] = timeout
+        return Response()
+
+    monkeypatch.setattr(rcsb_module.urllib.request, "urlopen", open_url)
+    with pytest.raises(StructureSourceError, match="HTTP 503") as error:
+        rcsb_module._download("5NIU", 4.0)
+    assert error.value.retryable is True
+    assert observed == {
+        "url": "https://files.rcsb.org/download/5niu.cif",
+        "agent": "CADD-Suite/0.1 (scientific structure retrieval)",
+        "timeout": 4.0,
+    }
+
+
+@pytest.mark.parametrize(("status", "retryable"), [(404, False), (429, True), (503, True)])
+def test_download_http_errors_have_status_specific_retryability(
+    monkeypatch, status: int, retryable: bool
+) -> None:
+    import urllib.error
+
+    def fail(_request, *, timeout):
+        raise urllib.error.HTTPError("url", status, "failure", {}, None)
+
+    monkeypatch.setattr(rcsb_module.urllib.request, "urlopen", fail)
+    with pytest.raises(StructureSourceError) as error:
+        rcsb_module._download("5NIU", 2.0)
+    assert error.value.retryable is retryable
+
+
+def test_download_marks_transport_errors_retryable(monkeypatch) -> None:
+    import urllib.error
+
+    def fail(_request, *, timeout):
+        raise urllib.error.URLError("temporarily unavailable")
+
+    monkeypatch.setattr(rcsb_module.urllib.request, "urlopen", fail)
+    with pytest.raises(StructureSourceError) as error:
+        rcsb_module._download("5NIU", 2.0)
+    assert error.value.retryable is True
+
+
+def test_download_enforces_response_size_limit(monkeypatch) -> None:
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self, limit: int) -> bytes:
+            assert limit == 5
+            return b"12345"
+
+    monkeypatch.setattr(rcsb_module, "_MAX_CIF_BYTES", 4)
+    monkeypatch.setattr(rcsb_module.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+    with pytest.raises(StructureSourceError, match="safety limit"):
+        rcsb_module._download("5NIU", 1.0)
+
+
+@pytest.mark.parametrize("timeout", [0.0, -1.0])
+def test_fetch_rejects_nonpositive_timeout_before_download(timeout: float) -> None:
+    called = False
+
+    def downloader(_entry_id: str, _timeout: float) -> bytes:
+        nonlocal called
+        called = True
+        return MMCIF
+
+    with pytest.raises(ValueError, match="timeout_s must be positive"):
+        fetch_rcsb_structure(
+            "5NIU",
+            target_id=new_ulid(),
+            register_artifact=_register,
+            timeout_s=timeout,
+            downloader=downloader,
+        )
+    assert called is False
+
+
+def test_fetch_wraps_unexpected_downloader_errors() -> None:
+    def downloader(_entry_id: str, _timeout: float) -> bytes:
+        raise OSError("unexpected local transport failure")
+
+    with pytest.raises(StructureSourceError, match="RCSB download failed") as error:
+        fetch_rcsb_structure(
+            "5NIU",
+            target_id=new_ulid(),
+            register_artifact=_register,
+            downloader=downloader,
+        )
+    assert error.value.retryable is False
+
+
+def test_download_returns_bytes_at_or_below_configured_limit(monkeypatch) -> None:
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self, limit: int) -> bytes:
+            assert limit == 5
+            return b"1234"
+
+    monkeypatch.setattr(rcsb_module, "_MAX_CIF_BYTES", 4)
+    monkeypatch.setattr(
+        rcsb_module.urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: Response(),
+    )
+    assert rcsb_module._download("5NIU", 1.0) == b"1234"
