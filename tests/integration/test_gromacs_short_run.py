@@ -54,7 +54,13 @@ def _software(name: str, version: str, kind: SoftwareKind) -> SoftwareRef:
 
 
 def _import_real_system(
-    source: Path, stage_dir: Path
+    source: Path,
+    stage_dir: Path,
+    *,
+    analysis_index_bytes: bytes | None = None,
+    protein_atom_count: int = 1,
+    ligand_atom_count: int = 48,
+    ligand_heavy_atom_count: int = 1,
 ) -> tuple[SystemBuildResult, dict[str, bytes]]:
     paths = [
         "topol.top",
@@ -71,6 +77,8 @@ def _import_real_system(
         if path.is_file() and ":Zone.Identifier" not in path.name
     )
     files = {relative: (source / relative).read_bytes() for relative in paths}
+    if analysis_index_bytes is not None:
+        files["analysis/analysis.ndx"] = analysis_index_bytes
     refs = {path: _artifact(f"bundle_file:{path}", payload) for path, payload in files.items()}
     complex_model = Complex(
         id=new_ulid(),
@@ -84,9 +92,9 @@ def _import_real_system(
         protein=ArtifactRef(artifact_id=new_ulid(), role="protein"),
         ligand=ArtifactRef(artifact_id=new_ulid(), role="ligand"),
         assembled=ArtifactRef(artifact_id=new_ulid(), role="complex"),
-        protein_atom_count=1,
-        ligand_atom_count=48,
-        ligand_heavy_atom_count=1,
+        protein_atom_count=protein_atom_count,
+        ligand_atom_count=ligand_atom_count,
+        ligand_heavy_atom_count=ligand_heavy_atom_count,
         coordinate_fidelity_max_dev_A=0.0,
     )
     request = SystemBuildRequest(
@@ -125,11 +133,13 @@ def _import_real_system(
     return result, files
 
 
-def _short_mdp(original: bytes, *, n_steps: int) -> bytes:
+def _short_mdp(original: bytes, *, n_steps: int, nstxout_compressed: int | None = None) -> bytes:
     lines = original.decode("utf-8").splitlines()
     seen: set[str] = set()
     updated: list[str] = []
     replacements = {"dt": "0.002", "nsteps": str(n_steps)}
+    if nstxout_compressed is not None:
+        replacements["nstxout-compressed"] = str(nstxout_compressed)
     for line in lines:
         assignment, separator, comment = line.partition(";")
         if "=" in assignment:

@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Extend the validated same-run MD-to-processing-to-analysis workflow through report assembly. |
-| **Next task** | Close pose-linked system preparation and engine-backed trajectory validation; separately resume the locked redocking cohort only after independent blinded review is returned and reconciled. |
-| **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
-| **Blocking questions** | Fresh MD-to-trajectory processing-to-analysis is engine-validated; fresh-output report assembly, pose-to-system continuity, and real AmberTools execution remain unverified. Independent blind review gates new-cohort docking; public release also needs human license/notice review. |
+| **Current task** | [-] Validate docked-pose coordinate identity through complex assembly, parameterization, and MD system preparation. |
+| **Next task** | Exercise real AmberTools execution when available, then continue adapter-family scientific validation and the locked redocking benchmark after independent blind review. |
+| **Last completed** | G-MD-21: six-stage same-run registered-candidate MD → report runtime validation; hosted Quality and package matrix pass for d8161f8. |
+| **Blocking questions** | G-MD-21 validates same-run report generation, but its system is prebuilt and Complex coordinates are lineage placeholders. Docked-pose-to-system continuity, real AmberTools execution, independent blind review for the locked cohort, and public-release license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1234,12 +1234,13 @@ When the user says **CONTINUE**:
 
 - [-] Added the engine-neutral `trajectory.bind_md_output` stage, `MDOutputTrajectoryPlan`, and schema. The stage binds actual post-MD CAS artifact references into `TrajectoryProcessingRequest` while checking system/candidate identity, stage duration, selected artifact roles, and hashes.
 - [x] Added binder contract/runtime-CAS and workflow compilation tests; full configured gate passed: 922 passed, 38 skipped. Focused binder and registered-plugin conformance tests passed: 8 passed. Ruff, strict mypy, import contracts, and schema freshness passed.
-- [x] Linked the binding design from the architecture index and updated the production gap audit and current TODO status. The real same-run GROMACS artifact-binding and trajectory-processing check is now extended through MDAnalysis; report assembly from those fresh outputs remains to validate. This change does not establish pose-linked complex continuity or a 100 ns MD run.
+- [x] Linked the binding design from the architecture index and updated the production gap audit and current TODO status. G-MD-21 now covers the registered-candidate same-run GROMACS artifact binding, trajectory processing, MDAnalysis analysis, and JSON/HTML report. This change does not establish docked-pose coordinate continuity or a 100 ns MD run.
 - [x] Re-ran the opt-in real CHARMM-GUI importer-to-GROMACS smoke with the audited read-only fixture: 1 passed in 3.78 s. This still does not exercise the new binder or trajectory processing.
 - [x] Hosted Quality run 36605278061 initially missed core coverage (84.96%). Added binding rejection-path tests; local coverage then passed at 85.01% core and 80.19% adapters. Follow-up commit a335221 passed hosted Quality (36607802888) and package matrix (36607802900).
 
-### Session log — 2026-09-29, same-run MD trajectory and analysis
+### Session log — 2026-09-30, same-run registered-candidate MD report
 
-- [-] Extended G-MD-21 to create real XTC output at 10-step cadence and run five registered workflow stages: CHARMM-GUI import, GROMACS MD, trajectory.bind_md_output, GROMACS trajectory processing, and MDAnalysis protein–ligand minimum-distance analysis.
-- [x] Opt-in engine-backed workflow passed: 1 test in 9.96 s on the final fixture-driven selection counts. Processing validated 49,682 atoms, 6 frames, 0.02 ps interval, and 0–0.1 ps range against actual outputs. Analysis emitted an identity-linked metric and CAS-verifiable raw/series/log artifacts.
-- [-] This is a 50-step (0.1 ps) runtime composition check, not a stability or scientific-validity benchmark. Its Complex still uses lineage-only placeholders and the MD system comes from a prebuilt CHARMM-GUI bundle; pose-linked preparation, report generation from these fresh outputs, and longer-timescale validation remain open.
+- [x] G-MD-21 now runs six registered stages in one workflow: CHARMM-GUI import, GROMACS MD, runtime TPR/XTC binding, trajectory processing, MDAnalysis, and report generation. The registered ergosterol-peroxide Compound/Form was standardized and graph/stereochemistry checked against the bundle’s LIG topology and PDB before execution.
+- [x] Opt-in real-engine workflow passed: 1 test in 7.26 s. It checked the 66,195-atom system, six XTC frames at 0.02 ps, 0–0.1 ps time range, candidate identity through analysis/report, and CAS hashes for report JSON/HTML artifacts. Duplicate LIG index groups were removed only after their atom memberships were confirmed identical in the private test copy.
+- [x] Full scripts/check.sh passed: 928 passed, 38 skipped; Ruff, format, strict mypy, import contracts, and schemas pass. Coverage gate passed at 85.01% core and 80.19% adapters. Hosted Quality and package matrix passed on the previous committed increment; this increment's hosted runs are pending.
+- [-] This 50-step (0.1 ps) run is runtime composition evidence, not a stability or scientific-validity benchmark. The system is prebuilt and the Complex still has lineage-only placeholders; docked-pose coordinate continuity, report interpretation beyond fixture assertions, AmberTools execution, and longer-timescale validation remain open.

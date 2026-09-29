@@ -48,10 +48,65 @@ pytestmark = [
     pytest.mark.engine("gromacs"),
     pytest.mark.slow,
     pytest.mark.skipif(
-        not GROMACS or not DATA_ROOT or not MDA_PYTHON,
-        reason="GROMACS, MD data, and CADDSUITE_MDA_PYTHON are required",
+        not GROMACS
+        or not (DATA_ROOT or os.environ.get("CADDSUITE_MD_COMPOSITION_DATA"))
+        or not MDA_PYTHON,
+        reason="GROMACS, a CHARMM-GUI system, and CADDSUITE_MDA_PYTHON are required",
     ),
 ]
+
+
+def _ndx_group_size(data: bytes, expected_name: str) -> int:
+    name: str | None = None
+    count = 0
+    sizes: list[int] = []
+    for line in data.decode("utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if name == expected_name:
+                sizes.append(count)
+            name = stripped[1:-1].strip()
+            count = 0
+        elif name is not None and stripped and not stripped.startswith(";"):
+            count += len(stripped.split())
+    if name == expected_name:
+        sizes.append(count)
+    if len(sizes) != 1:
+        raise ValueError(f"expected exactly one {expected_name!r} index group, got {len(sizes)}")
+    return sizes[0]
+
+
+def _remove_identical_duplicate_ndx_groups(data: bytes) -> bytes:
+    text = data.decode("utf-8")
+    blocks: list[tuple[str, tuple[str, ...]]] = []
+    name: str | None = None
+    values: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            if name is not None:
+                blocks.append((name, tuple(values)))
+            name = stripped[1:-1].strip()
+            values = []
+        elif name is not None and stripped and not stripped.startswith(";"):
+            values.extend(stripped.split())
+    if name is not None:
+        blocks.append((name, tuple(values)))
+
+    unique: dict[str, tuple[str, ...]] = {}
+    output: list[str] = []
+    for group_name, group_values in blocks:
+        previous = unique.get(group_name)
+        if previous is not None:
+            if previous != group_values:
+                raise ValueError(f"duplicate index group {group_name!r} has conflicting members")
+            continue
+        unique[group_name] = group_values
+        output.append(f"[ {group_name} ]")
+        for start in range(0, len(group_values), 15):
+            output.append(" ".join(group_values[start : start + 15]))
+        output.append("")
+    return ("\n".join(output)).encode("utf-8")
 
 
 def _attachments(paths: dict[str, Path], *values: object) -> dict[str, str]:
@@ -80,25 +135,96 @@ def _attachments(paths: dict[str, Path], *values: object) -> dict[str, str]:
 def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
     assert DATA_ROOT is not None
     assert GROMACS is not None
-    source = Path(DATA_ROOT) / "projects/2M2D_LIG/gromacs"
-    fixture_system, files = _import_real_system(source, tmp_path / "bundle")
-    files["step4.1_equilibration.gro"] = (source / "step4.1_equilibration.gro").read_bytes()
-    files["step5_production.mdp"] = _short_mdp(files["step5_production.mdp"], n_steps=50)
-    files["step5_production.mdp"] = files["step5_production.mdp"].replace(
-        b"nstxout-compressed      = 25000", b"nstxout-compressed      = 10"
+    from caddsuite.chem.standardize import make_compound, standardize_smiles
+    from caddsuite.contracts.registry import CompoundForm, CompoundFormKind
+    from tests.integration.test_gromacs_mmpbsa_short import (
+        _assert_ligand_topology_matches_form,
     )
-    assert b"nstxout-compressed      = 10" in files["step5_production.mdp"]
+
+    source_override = os.environ.get("CADDSUITE_MD_COMPOSITION_DATA")
+    source = (
+        Path(source_override).resolve(strict=True)
+        if source_override
+        else Path(DATA_ROOT) / "projects/2M2D_LIG/gromacs"
+    )
+    source_paths = {
+        source / relative
+        for relative in (
+            "topol.top",
+            "step3_input.gro",
+            "step3_input.pdb",
+            "index.ndx",
+            "analysis/analysis.ndx",
+            "step4.0_minimization.mdp",
+            "step4.1_equilibration.mdp",
+            "step4.1_equilibration.gro",
+            "step5_production.mdp",
+        )
+    }
+    source_paths.update(
+        path
+        for path in (source / "toppar").rglob("*")
+        if path.is_file() and ":Zone.Identifier" not in path.name
+    )
+    source_hashes = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in source_paths}
+    submitted_smiles = (
+        "CC(C)[C@@H](C)/C=C/[C@@H](C)[C@H]1CC[C@@H]2[C@]1(C)CC[C@H]1"
+        "[C@]23C=C[C@]2(C[C@@H](O)CC[C@]12C)OO3"
+    )
+    standardized = standardize_smiles(submitted_smiles)
+    assert standardized.identity.formula == "C28H44O3"
+    raw_analysis_index = (source / "analysis/analysis.ndx").read_bytes()
+    analysis_index_bytes = _remove_identical_duplicate_ndx_groups(raw_analysis_index)
+    protein_atom_count = _ndx_group_size(analysis_index_bytes, "Protein")
+    ligand_atom_count = _ndx_group_size(analysis_index_bytes, "LIG")
+    fixture_system, files = _import_real_system(
+        source,
+        tmp_path / "bundle",
+        analysis_index_bytes=analysis_index_bytes,
+        protein_atom_count=protein_atom_count,
+        ligand_atom_count=ligand_atom_count,
+        ligand_heavy_atom_count=standardized.identity.heavy_atom_count,
+    )
+    formula, stereocentres = _assert_ligand_topology_matches_form(
+        source / "toppar/LIG.itp",
+        source / "step3_input.pdb",
+        standardized.identity.canonical_smiles,
+    )
+    assert (formula, stereocentres) == ("C28H44O3", 10)
+    compound_id, form_id = new_ulid(), new_ulid()
+    compound_form = CompoundForm(
+        id=form_id,
+        compound_id=compound_id,
+        kind=CompoundFormKind.PARENT_NEUTRAL,
+        smiles=standardized.identity.canonical_smiles,
+        formal_charge=standardized.identity.formal_charge,
+    )
+    files["step4.1_equilibration.gro"] = (source / "step4.1_equilibration.gro").read_bytes()
+    files["step5_production.mdp"] = _short_mdp(
+        files["step5_production.mdp"],
+        n_steps=50,
+        nstxout_compressed=10,
+    )
+    assert b"nstxout-compressed = 10" in files["step5_production.mdp"]
     normalized_index, changed = normalize_index_final_newline(files["index.ndx"])
-    assert changed
+    assert changed or files["index.ndx"].endswith(b"\n")
     files["index.normalized.ndx"] = normalized_index
-    refs = {name: _artifact(f"bundle_file:{name}", data) for name, data in files.items()}
+    refs_by_hash: dict[str, ArtifactRef] = {}
+    refs = {}
+    for name, data in files.items():
+        digest = hashlib.sha256(data).hexdigest()
+        ref = refs_by_hash.get(digest)
+        if ref is None:
+            ref = _artifact(f"bundle_file:{name}", data)
+            refs_by_hash[digest] = ref
+        refs[name] = ref
     sentinels = {
         role: f"lineage-only fixture {role}".encode() for role in ("protein", "ligand", "complex")
     }
     complex_input = Complex(
         id=new_ulid(),
-        compound_id=new_ulid(),
-        form_id=new_ulid(),
+        compound_id=compound_id,
+        form_id=form_id,
         target_id=new_ulid(),
         structure_id=new_ulid(),
         prepared_receptor_id=new_ulid(),
@@ -107,9 +233,9 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
         protein=_artifact("protein", sentinels["protein"]),
         ligand=_artifact("ligand", sentinels["ligand"]),
         assembled=_artifact("complex", sentinels["complex"]),
-        protein_atom_count=1,
-        ligand_atom_count=48,
-        ligand_heavy_atom_count=1,
+        protein_atom_count=fixture_system.system.selections["protein"].n_atoms,
+        ligand_atom_count=fixture_system.system.selections["ligand"].n_atoms,
+        ligand_heavy_atom_count=standardized.identity.heavy_atom_count,
         coordinate_fidelity_max_dev_A=0.0,
         parameters={"md_ready": False},
     )
@@ -185,6 +311,8 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
                 "md_plan": {"contract": MDStagePlan.schema_id()},
                 "trajectory_plan": {"contract": MDOutputTrajectoryPlan.schema_id()},
                 "analysis_plan": {"contract": TrajectoryAnalysisPlan.schema_id()},
+                "compound": {"contract": "compound/1.0"},
+                "compound_form": {"contract": "compound_form/1.0"},
             },
             "stages": [
                 {
@@ -261,7 +389,7 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
                         "engine_parameters": {
                             "gmx_executable": GROMACS,
                             "python_executable": sys.executable,
-                            "output_group_atom_count": 49682,
+                            "output_group_atom_count": fixture_system.system.n_atoms,
                             "timeout_seconds": 180,
                         }
                     },
@@ -291,12 +419,35 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
                         }
                     },
                 },
+                {
+                    "id": "report",
+                    "kind": "report",
+                    "needs": ["simulate", "analyze_trajectory"],
+                    "input_contracts": {
+                        "compounds": "compound/1.0",
+                        "compound_forms": "compound_form/1.0",
+                        "md_results": "md_stage_result/1.1",
+                        "trajectory_results": "trajectory_analysis_result/1.2",
+                    },
+                    "input_bindings": {
+                        "compounds": "$compound",
+                        "compound_forms": "$compound_form",
+                        "md_results": "simulate",
+                        "trajectory_results": "analyze_trajectory",
+                    },
+                    "output_contract": "report_bundle/1.0",
+                    "params": {
+                        "formats": ["json", "html"],
+                        "title": "Registered ergosterol peroxide MD smoke report",
+                    },
+                },
             ],
             "outputs": {
                 "result": "simulate",
                 "system": "build",
                 "processed": "process_trajectory",
                 "analysis": "analyze_trajectory",
+                "report": "report",
             },
         }
     )
@@ -361,7 +512,25 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
             session.add(run)
             session.flush()
             run_id = run.id
-        outcome = runtime.run(compiled, run_id=run_id, inputs=loaded)
+            compound = make_compound(
+                standardized,
+                compound_id=compound_id,
+                project_id=str(project.id),
+                accession="CMP0001",
+                name="ergosterol peroxide",
+                original_text=submitted_smiles,
+                source="pubchem",
+                location="PubChem CID 102004971",
+            )
+        outcome = runtime.run(
+            compiled,
+            run_id=run_id,
+            inputs={
+                **loaded,
+                "compound": (compound,),
+                "compound_form": (compound_form,),
+            },
+        )
         assert not outcome.failures
         assert [task.stage_id for task in outcome.tasks] == [
             "build",
@@ -369,6 +538,7 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
             "bind_trajectory",
             "process_trajectory",
             "analyze_trajectory",
+            "report",
         ]
         assert outcome.tasks[0].subject_id == str(complex_input.id)
         assert outcome.tasks[1].subject_id == str(complex_input.id)
@@ -391,7 +561,7 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
         assert processed.simulation_id == trajectory_plan.simulation_id
         assert processed.compound_id == complex_input.compound_id
         assert processed.form_id == complex_input.form_id
-        assert processed.n_atoms == 49682
+        assert processed.n_atoms == fixture_system.system.n_atoms
         assert processed.n_frames == trajectory_plan.n_frames
         assert processed.frame_interval_ps == trajectory_plan.frame_interval_ps
         assert processed.time_range_ps == (0.0, 0.1)
@@ -409,6 +579,25 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
                 *analysis.log_artifacts.values(),
             )
         )
+        report = outcome.outputs["report"][0].value
+        assert {artifact.format for artifact in report.artifacts} == {"json", "html"}
+        assert all(
+            artifact.artifact.sha256 and runtime.services.artifacts.verify(artifact.artifact.sha256)
+            for artifact in report.artifacts
+        )
+        report_json_ref = next(item.artifact for item in report.artifacts if item.format == "json")
+        report_json = json.loads(
+            runtime.services.artifacts.path_for(report_json_ref.sha256 or "").read_text(
+                encoding="utf-8"
+            )
+        )
+        sections = {item["name"]: item for item in report_json["sections"]}
+        registered = sections["compound"]["data"][0]
+        assert registered["compound"]["id"] == str(compound.id)
+        assert registered["forms"][0]["id"] == str(compound_form.id)
+        trajectory_entry = sections["trajectory_analyses"]["data"][0]
+        assert trajectory_entry["compound_id"] == str(compound.id)
+        assert trajectory_entry["form_id"] == str(compound_form.id)
         with runtime.sessions() as session:
             tasks = {row.id: row.stage_id for row in session.scalars(select(TaskRow)).all()}
             attempts = session.scalars(select(TaskAttemptRow)).all()
@@ -423,3 +612,6 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
             and "GROMACS" in item.software.version
             for item in attempt.software
         )
+    assert source_hashes == {
+        path: hashlib.sha256(path.read_bytes()).hexdigest() for path in source_hashes
+    }
