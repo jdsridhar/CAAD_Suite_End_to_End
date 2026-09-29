@@ -9,7 +9,7 @@
 | **Current phase** | Post-phase audit — broader scientific validation planning |
 | **Current task** | [-] Validate docked-pose coordinate identity through complex assembly, parameterization, and MD system preparation. |
 | **Next task** | Exercise real AmberTools execution when available, then continue adapter-family scientific validation and the locked redocking benchmark after independent blind review. |
-| **Last completed** | G-MD-21: six-stage same-run registered-candidate MD → report runtime validation; hosted Quality and package matrix pass for d8161f8. |
+| **Last completed** | G-MD-21: six-stage same-run registered-candidate MD → report runtime validation; local full gate and hosted Quality/package matrix pass for 3ae4388. |
 | **Blocking questions** | G-MD-21 validates same-run report generation, but its system is prebuilt and Complex coordinates are lineage placeholders. Docked-pose-to-system continuity, real AmberTools execution, independent blind review for the locked cohort, and public-release license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
