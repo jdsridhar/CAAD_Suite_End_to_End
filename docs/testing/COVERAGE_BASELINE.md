@@ -94,3 +94,4 @@ New engine-free PySCF contract tests exercise planning, normalized results, runt
 ### Vina handler failure-path addition (2026-09-29)
 
 An engine-free test executes the Vina handler through scientific-input lineage checks, artifact lookup, and Meeko receptor command planning, then injects a failed subprocess result and verifies that the normalized stage error includes the useful stderr detail. No executable or docking calculation is invoked. The focused Vina handler selection rose from 48% to 53%; docking-family coverage rose by 12 statements to 574/907 (63.29%). The full no-engine gate reports 848 passed / 37 skipped, core 85.04%, adapters 75.23%, and workers 33.35%. Coverage indicates exercised code, not scientific validation.
+Hosted CI also passed for commit fc74b20: [Quality](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601940) and [Python package matrix](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601894).

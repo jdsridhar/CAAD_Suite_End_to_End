@@ -1006,3 +1006,4 @@ When the user says **CONTINUE**:
 - [x] Vina handler focused coverage rose from 48% to 53%; docking family coverage rose from 61.96% (562/907) to 63.29% (574/907).
 - [x] Full `scripts/check.sh` passed: Ruff, formatting (346 files), strict mypy (196 files), import contracts (255 files), schemas, and 848 passed / 37 skipped; two upstream deprecation warnings remain.
 - [x] Full no-engine coverage gate passed: core 85.04% (9,518/11,192), adapters 75.23% (4,030/5,357), workers 33.35% (1,207/3,619). Frozen benchmark files were not staged or modified.
+- [x] Hosted CI passed for commit fc74b20: [Quality](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601940) and [Python package matrix](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601894).
