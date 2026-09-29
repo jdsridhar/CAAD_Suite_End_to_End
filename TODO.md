@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Complete MD same-run output handoff: finish and push the runtime binder, then validate fresh MD artifacts through trajectory processing, analysis, and reporting. |
+| **Current task** | [-] Validate fresh MD artifacts through trajectory processing, analysis, and reporting in one engine-backed workflow. |
 | **Next task** | Close pose-linked system preparation and engine-backed trajectory validation; separately resume the locked redocking cohort only after independent blinded review is returned and reconciled. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
 | **Blocking questions** | The same-run MD-to-analysis/report path still needs an engine-backed run; pose-to-system continuity and real AmberTools execution remain unverified. Independent blind review gates new-cohort docking; public release also needs human license/notice review. |
@@ -1236,3 +1236,4 @@ When the user says **CONTINUE**:
 - [x] Added binder contract/runtime-CAS and workflow compilation tests; full configured gate passed: 922 passed, 38 skipped. Focused binder and registered-plugin conformance tests passed: 8 passed. Ruff, strict mypy, import contracts, and schema freshness passed.
 - [x] Linked the binding design from the architecture index and updated the production gap audit and current TODO status. The engine-backed same-run chain remains unverified: plan metadata still needs to agree with actual GROMACS trajectory contents, then processing, analysis, and reporting must execute in one workflow. This change does not establish pose-linked complex continuity or a 100 ns MD run.
 - [x] Re-ran the opt-in real CHARMM-GUI importer-to-GROMACS smoke with the audited read-only fixture: 1 passed in 3.78 s. This still does not exercise the new binder or trajectory processing.
+- [!] Hosted Quality run 36605278061 failed its 85% core coverage threshold (84.96%); package matrix 36605278051 and PySCF integration 36605277983 passed. Added focused binding rejection-path tests; local coverage now passes at 85.01% core, 80.19% adapters, and 928 passed/38 skipped. Push the coverage fix and verify hosted reruns.

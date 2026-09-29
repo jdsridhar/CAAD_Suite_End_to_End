@@ -195,3 +195,67 @@ def test_stage_capability_is_discovered_by_registry() -> None:
     assert capability is not None
     assert capability.outputs == ("trajectory_processing_request/1.1",)
     assert capability.fanout_anchor == {"pose": "md_result"}
+
+
+def test_plan_rejects_reused_artifact_output_key() -> None:
+    with pytest.raises(ValueError, match="must be different"):
+        _plan(trajectory_output_key="md_tpr_1")
+
+
+@pytest.mark.parametrize(
+    ("updates", "message"),
+    [
+        ({"protocol": None}, "no MD protocol"),
+    ],
+)
+def test_plan_rejects_missing_protocol(updates, message: str) -> None:
+    build = _build().model_copy(update=updates)
+    with pytest.raises(ValueError, match=message):
+        _plan().bind(build, _md_result(build))
+
+
+def test_plan_rejects_candidate_identity_mismatch() -> None:
+    build = _build()
+    result = _md_result(build).model_copy(update={"compound_id": new_ulid()})
+    with pytest.raises(ValueError, match="candidate identities differ"):
+        _plan().bind(build, result)
+
+
+def test_plan_rejects_missing_topology_artifact() -> None:
+    build = _build()
+    result = _md_result(build).model_copy(
+        update={
+            "artifacts": {
+                "md_xtc_1": ArtifactRef(artifact_id=new_ulid(), role="md_xtc", sha256="b" * 64)
+            }
+        }
+    )
+    with pytest.raises(ValueError, match="lacks hashed topology"):
+        _plan().bind(build, result)
+
+
+def test_plan_rejects_missing_trajectory_hash() -> None:
+    build = _build()
+    result = _md_result(build)
+    result = result.model_copy(
+        update={
+            "artifacts": {
+                "md_tpr_1": result.artifacts["md_tpr_1"],
+                "md_xtc_1": result.artifacts["md_xtc_1"].model_copy(update={"sha256": None}),
+            }
+        }
+    )
+    with pytest.raises(ValueError, match="lacks hashed trajectory"):
+        _plan().bind(build, result)
+
+
+def test_plan_rejects_same_artifact_for_topology_and_trajectory() -> None:
+    build = _build()
+    result = _md_result(build)
+    topology = result.artifacts["md_tpr_1"]
+    trajectory = result.artifacts["md_xtc_1"].model_copy(
+        update={"artifact_id": topology.artifact_id}
+    )
+    result = result.model_copy(update={"artifacts": {"md_tpr_1": topology, "md_xtc_1": trajectory}})
+    with pytest.raises(ValueError, match="same artifact"):
+        _plan().bind(build, result)
