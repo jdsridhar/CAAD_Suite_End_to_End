@@ -1116,3 +1116,9 @@ When the user says **CONTINUE**:
 - [x] Added explicit atomic-number >118 rejection coverage for molecular-frame construction. Focused volumetric renderer module: 14 passed, one optional PyVista render skipped.
 - [x] Refreshed full coverage: 881 passed, 37 skipped; core 85.07% (9,521/11,192), adapters 78.15% (4,189/5,360), workers 33.35% (1,207/3,619); visualization 70.00% (308/440). This adds input validation coverage only; no PyVista render was executed.
 - [-] Await the hosted workflow for the pushed coverage-test increment; continue broader adapter/scientific validation afterward.
+
+### Session log — 2026-09-29, AmberTools worker-error fallback coverage
+
+- [x] Added handler regressions for absent structured worker reports, stderr-tail bounding, and unreadable JSON report fallback. Focused handler suite: 6 passed. Full scripts/check.sh: 884 passed, 37 skipped; Ruff, format, strict mypy (196 files), import-layer checks, and schema freshness passed.
+- [x] Full coverage remains core 85.07% (9,521/11,192), adapters 78.15% (4,189/5,360), workers 33.35% (1,207/3,619); system-builder family remains 731/960 (76.15%). These new assertions strengthen diagnostic contracts but did not increase measured statement coverage.
+- [-] Await hosted checks for the test increment.

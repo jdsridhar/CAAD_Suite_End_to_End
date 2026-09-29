@@ -141,3 +141,50 @@ def test_worker_failure_prefers_structured_error_then_stderr(tmp_path: Path) -> 
         AmberTLeapBuilderHandler._media_type(Path("system.prmtop")) == "chemical/x-amber-topology"
     )
     assert AmberTLeapBuilderHandler._media_type(Path("opaque.bin")) == "application/octet-stream"
+
+
+@pytest.mark.parametrize("stderr_text", ["", "x" * 5000])
+def test_worker_failure_without_report_uses_bounded_stderr_detail(
+    tmp_path: Path, stderr_text: str
+) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    handler = _bare_handler(store)
+    stage = tmp_path / "missing-report"
+    stage.mkdir()
+    stderr = store.put_bytes(stderr_text.encode())
+
+    code, message = handler._failure_message(
+        stage, ArtifactRef(artifact_id=new_ulid(), role="stderr", sha256=stderr.sha256)
+    )
+
+    assert code == "AMBER_BUILD.WORKER_FAILED"
+    if stderr_text:
+        assert message.endswith("x" * 4000)
+        assert "x" * 4001 not in message
+    else:
+        assert message.endswith("outputs. ")
+
+
+def test_worker_failure_unreadable_report_falls_back_to_stderr(tmp_path: Path, monkeypatch) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    handler = _bare_handler(store)
+    stage = tmp_path / "unreadable-report"
+    output_dir = stage / "amber_outputs"
+    output_dir.mkdir(parents=True)
+    report_path = output_dir / "worker_result.json"
+    report_path.write_text("{}", encoding="utf-8")
+    stderr = store.put_bytes(b"worker diagnostic")
+    original_read_text = Path.read_text
+
+    def fail_report_read(path: Path, *args, **kwargs):
+        if path == report_path:
+            raise OSError("simulated unreadable report")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", fail_report_read)
+    code, message = handler._failure_message(
+        stage, ArtifactRef(artifact_id=new_ulid(), role="stderr", sha256=stderr.sha256)
+    )
+
+    assert code == "AMBER_BUILD.WORKER_FAILED"
+    assert "worker diagnostic" in message
