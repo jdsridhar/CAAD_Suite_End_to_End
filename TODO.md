@@ -1188,3 +1188,13 @@ When the user says **CONTINUE**:
 - [x] npm run build -- --sourcemap passed TypeScript and Vite; the inventory scanner and its focused unit tests passed (2 passed). The production asset inventory was regenerated from that build.
 
 - [x] Hosted Python package matrix run 36594300314 and Quality run 36594300332 passed for commit 532d412.
+
+
+### Session log - 2026-09-29, candidate web notices and legacy baseline verification
+
+- [x] Added scripts/release/build_web_notices.py to assemble verbatim package license/notice files only after their SHA-256 values match the source-map inventory. It rejects paths escaping the package root and rejects changed files.
+- [x] Generated WEB_BUNDLE_THIRD_PARTY_NOTICES.txt: 81 hash-verified files, 122,655 bytes; recorded its digest and review limits. Focused notice/inventory tests: 4 passed.
+- [x] Reverified legacy/MANIFEST.sha256 against the read-only Suites source tree: all 143 files matched. Legacy sources were not modified.
+- [!] Candidate notices still require human compatibility/attribution review, with CSS and embedded asset provenance reviewed separately. The blinded-review gate still prohibits starting the frozen 90-attempt cohort benchmark.
+
+- [x] Final full scripts/check.sh after notice-generator hardening: Ruff (including scripts/release), formatting (359 files), strict mypy (201 source files), import contracts (260 files), schemas, and 916 passed / 37 optional skips. Two upstream Starlette/httpx deprecation warnings remain.

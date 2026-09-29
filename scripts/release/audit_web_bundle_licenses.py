@@ -58,7 +58,9 @@ def write_inventory(web_root: Path, package_output: Path, asset_output: Path) ->
     missing: list[str] = []
     for key in sorted(package_chunks, key=str.casefold):
         locked = lock_packages[key]
-        package_root = web_root / key
+        package_root = (web_root / key).resolve()
+        if not package_root.is_relative_to(web_root.resolve()):
+            raise ValueError(f"Package path escapes web root: {key}")
         manifest_path = package_root / "package.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         version = str(manifest.get("version", ""))
@@ -70,6 +72,11 @@ def write_inventory(web_root: Path, package_output: Path, asset_output: Path) ->
         if declared_license is None:
             missing.append(key)
             declared_license = ""
+        license_metadata_text = (
+            declared_license
+            if isinstance(declared_license, str)
+            else json.dumps(declared_license, sort_keys=True, separators=(",", ":"))
+        )
         files = license_files(package_root)
         if not files:
             missing.append(key + " (license text file missing)")
@@ -78,9 +85,7 @@ def write_inventory(web_root: Path, package_output: Path, asset_output: Path) ->
                 "package_lock_path": key,
                 "name": str(manifest.get("name", "")),
                 "version": version,
-                "declared_license_metadata": json.dumps(
-                    declared_license, sort_keys=True, separators=(",", ":")
-                ),
+                "declared_license_metadata": license_metadata_text,
                 "package_json_sha256": sha256(manifest_path),
                 "license_files": ";".join(f"{path.name}:{sha256(path)}" for path in files),
                 "js_chunks": ";".join(sorted(package_chunks[key])),
@@ -88,6 +93,8 @@ def write_inventory(web_root: Path, package_output: Path, asset_output: Path) ->
         )
     if missing:
         raise ValueError("Missing license metadata or license text: " + ", ".join(missing))
+    if not package_rows:
+        raise ValueError("No third-party packages were referenced by JavaScript source maps.")
 
     package_output.parent.mkdir(parents=True, exist_ok=True)
     with package_output.open("w", encoding="utf-8", newline="") as stream:

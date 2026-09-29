@@ -13,3 +13,5 @@ benchmarks/redocking/pilot_v1/structures/*.cif -text -whitespace
 *.log -text -whitespace
 *.pdb -text -whitespace
 *.sdf -text -whitespace
+# Preserve generated upstream license/notice text byte content, including intentional trailing spaces.
+docs/release/licenses/WEB_BUNDLE_THIRD_PARTY_NOTICES.txt -whitespace

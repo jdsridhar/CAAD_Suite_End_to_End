@@ -22,6 +22,9 @@ This is a time- and platform-specific package metadata snapshot, not a lockfile,
 
 ## Built web JavaScript bundle inventory (2026-09-29)
 
-To create a production build with source maps, run from apps/web: npm run build -- --sourcemap. Then run scripts/release/audit_web_bundle_licenses.py from the repository root. The script resolves source-map package paths against package-lock.json, checks installed versions against the lock, records each package manifest license field and hashes of its declared license/notice files, and hashes every emitted non-map asset into WEB_BUNDLE_ASSETS.csv.
+To create a production build with source maps, run from apps/web: npm run build -- --sourcemap. Then run scripts/release/audit_web_bundle_licenses.py and scripts/release/build_web_notices.py from the repository root. The scanner resolves source-map package paths against package-lock.json, checks installed versions against the lock, records package license metadata and file hashes, and fingerprints emitted assets. The notice builder copies the hash-verified license and notice file text into WEB_BUNDLE_THIRD_PARTY_NOTICES.txt for review.
 
 The current build maps 81 npm package roots into JavaScript chunks and emits 7 JavaScript/CSS assets. This is a bundle-specific metadata inventory, not license compatibility review: package declarations and filenames do not verify license text correctness, satisfy attribution obligations, or replace counsel. The source maps identify JavaScript modules; CSS provenance is not mapped here (Molstar CSS is imported directly by the viewer components), although emitted CSS files are fingerprinted. Review embedded assets and the final distribution contents separately before release. Source maps and generated dist files are build outputs and are not committed.
+
+
+The candidate notice file is 122,655 bytes and contains 81 source package license/notice file blocks; SHA-256 60e0c4f16818cdceb714e5127306e0554ae55c0c7457a79ae04d26b6d4b79df4. The generated wrapper labels it for review, not as a legally approved distribution notice. Regenerate both inventories and the notice file after rebuilding the bundle.

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from scripts.release.audit_web_bundle_licenses import write_inventory
+from scripts.release.build_web_notices import build_notices
 
 
 def _web_fixture(root: Path) -> tuple[Path, Path, Path]:
@@ -52,7 +53,7 @@ def test_write_inventory_maps_locked_package_and_hashes_license_and_assets(tmp_p
         rows = list(csv.DictReader(stream))
     assert rows[0]["package_lock_path"] == "node_modules/fixture-package"
     assert rows[0]["version"] == "1.2.3"
-    assert rows[0]["declared_license_metadata"] == '"MIT"'
+    assert rows[0]["declared_license_metadata"] == "MIT"
     assert rows[0]["license_files"] == (
         "LICENSE:" + hashlib.sha256((package_root / "LICENSE").read_bytes()).hexdigest()
     )
@@ -65,6 +66,9 @@ def test_write_inventory_maps_locked_package_and_hashes_license_and_assets(tmp_p
         "apps/web/dist/assets/style.css",
     }
     assert all(len(row["sha256"]) == 64 for row in asset_rows)
+    notices = tmp_path / "out" / "notices.txt"
+    assert build_notices(package_output, web, notices) == 1
+    assert "fixture license text" in notices.read_text(encoding="utf-8")
 
 
 def test_write_inventory_rejects_installed_lock_version_mismatch(tmp_path: Path) -> None:
@@ -80,3 +84,26 @@ def test_write_inventory_rejects_installed_lock_version_mismatch(tmp_path: Path)
             tmp_path / "packages.csv",
             tmp_path / "assets.csv",
         )
+
+
+def test_build_notices_rejects_license_file_changed_since_inventory(tmp_path: Path) -> None:
+    web, _, package_root = _web_fixture(tmp_path)
+    package_output = tmp_path / "out" / "packages.csv"
+    write_inventory(web, package_output, tmp_path / "out" / "assets.csv")
+    (package_root / "LICENSE").write_text("changed license text\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="License file hash changed"):
+        build_notices(package_output, web, tmp_path / "out" / "notices.txt")
+
+
+def test_build_notices_rejects_manifest_changed_since_inventory(tmp_path: Path) -> None:
+    web, _, package_root = _web_fixture(tmp_path)
+    package_output = tmp_path / "out" / "packages.csv"
+    write_inventory(web, package_output, tmp_path / "out" / "assets.csv")
+    (package_root / "package.json").write_text(
+        json.dumps({"name": "fixture-package", "version": "9.9.9", "license": "MIT"}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Package manifest hash changed"):
+        build_notices(package_output, web, tmp_path / "out" / "notices.txt")
