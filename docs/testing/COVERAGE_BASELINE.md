@@ -88,7 +88,7 @@ The full engine-free repository gate now reports 885 passed and 37 skipped (the 
 | System builders | 960 | 775 | 80.73% |
 | Visualization | 440 | 308 | 70.00% |
 
-New engine-free PySCF contract tests exercise planning, normalized results, runtime probing, and failure handling: 30 passed and the PySCF adapter file reached 92% (172/187 statements). The focused QM test selection across PSI4/PySCF-related adapter modules passed 71 tests at 82% aggregate. The PyVista renderer's engine-free error-path selection passed 10 tests with one optional render test skipped; its focused statement coverage reached 42% (108/258), while the full visualization family is 63.18%. These coverage metrics describe exercised code paths; they do not establish scientific validity. See the separately documented real-engine PySCF CI and validation evidence.
+New engine-free PySCF contract tests exercise planning, normalized results, runtime probing, and failure handling: 30 passed and the PySCF adapter file reached 92% (172/187 statements). The focused QM test selection across PSI4/PySCF-related adapter modules passed 71 tests at 82% aggregate. The earlier PyVista engine-free error-path selection passed 10 tests with one optional render skipped and measured 42% focused statement coverage (108/258). Subsequent geometry and atomic-number tests raised the full visualization family to 70.00% (308/440), as shown in the current table; the latest hosted Quality run executes the real off-screen PyVista test with the volumetric extra installed. These coverage metrics describe exercised paths and do not establish scientific validity. See the separately documented real-engine PySCF CI and validation evidence.
 
 
 ### Vina handler failure-path addition (2026-09-29)
