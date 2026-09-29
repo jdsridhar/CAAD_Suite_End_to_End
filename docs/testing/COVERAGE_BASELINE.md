@@ -135,3 +135,8 @@ The AD4 handler-flow fixture now also tests a nonzero AutoGrid exit after GPF ge
 ### AD4 ligand and pose identity rejection (2026-09-29)
 
 Failure-only RDKit fixtures verify normalization rejects (a) an SDF ligand graph inconsistent with the selected compound form and (b) an exported pose whose graph differs from that form. Both terminate with DOCKING.AD4_NORMALIZATION_FAILED before normalized poses or scores are emitted. These tests validate identity guards, not Meeko conversion fidelity or docking science. Focused handler set: 34 passed; full suite: 876 passed / 38 skipped. Full architecture coverage: core 85.05%, adapters 79.50%, workers 33.35%; docking family 72.11% (654/907).
+
+
+### AutoDock4 successful normalization regression (2026-09-29)
+
+A fixture-only test now drives the production AutoDock4 result normalizer using a deterministic RDKit ethanol conformer and synthetic DLG/Meeko-equivalent pose inputs. It checks selected-form identity, graph-derived heavy-atom mapping, coordinate fidelity, normalized/raw pose artifact hashes, accession lineage, recorded seed and engine metadata, and result links. The fixture score and coordinates are synthetic test values; no docking executable ran and these are not scientific docking results. Focused handler selection: 35 passed. Full suite: 912 passed / 37 skipped. Coverage: core 85.10% (9,819/11,538), adapters 80.19% (4,298/5,360), workers 33.35% (1,207/3,619); docking family 76.52% (694/907). Real AutoDock4/Meeko execution and docking accuracy remain separate validation requirements.

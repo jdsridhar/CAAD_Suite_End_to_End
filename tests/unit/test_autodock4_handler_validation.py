@@ -653,3 +653,136 @@ def test_ad4_normalizer_rejects_ligand_or_pose_identity_changes(
 
     assert error.value.code == "DOCKING.AD4_NORMALIZATION_FAILED"
     assert expected_detail in str(error.value)
+
+
+def test_ad4_normalizer_builds_lineage_complete_pose_result_from_fixture(
+    tmp_path: Path,
+) -> None:
+    """A synthetic fixture covers normalization only; no docking score is scientifically claimed."""
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    from caddsuite.adapters.docking.autodock4 import AutoDock4Parameters, AutoGrid4Parameters
+    from caddsuite.adapters.docking.autodock4_handler import AutoDock4TaskParameters
+    from caddsuite.storage import migrate
+    from caddsuite.storage.artifacts import ArtifactStore
+    from caddsuite.storage.db import create_db_engine, make_session_factory
+    from caddsuite.storage.models import ProjectRow
+    from tests.unit.test_vina_handler_contracts import _lineage as contract_lineage
+
+    compound, form, conformer, receptor, structure, site = contract_lineage()
+    receptor_ref = ArtifactRef(
+        artifact_id="01ARZ3NDEKTSV4RRFFQ69G5FAZ",
+        role="prepared_structure_pdb",
+        sha256="c" * 64,
+    )
+    receptor = receptor.model_copy(
+        update={"artifacts": {**receptor.artifacts, "prepared_structure_pdb": receptor_ref}}
+    )
+
+    ligand = Chem.AddHs(Chem.MolFromSmiles(form.smiles))
+    assert AllChem.EmbedMolecule(ligand, randomSeed=17) == 0
+    source_sdf = tmp_path / "ligand_input.sdf"
+    exported_sdf = tmp_path / "exported_poses.sdf"
+    with Chem.SDWriter(str(source_sdf)) as writer:
+        writer.write(ligand)
+    with Chem.SDWriter(str(exported_sdf)) as writer:
+        writer.write(ligand)
+        writer.write(ligand)
+
+    conf = ligand.GetConformer()
+    atom_lines = ["REMARK INDEX MAP 1 1 2 2 3 3"]
+    for serial, atom_index in enumerate((0, 1, 2), start=1):
+        point = conf.GetAtomPosition(atom_index)
+        symbol = ligand.GetAtomWithIdx(atom_index).GetSymbol()
+        line = [" "] * 80
+        line[0:6] = "ATOM  "
+        line[6:11] = f"{serial:5d}"
+        line[12:16] = f"{symbol:>4}"
+        line[17:20] = "LIG"
+        line[21] = "A"
+        line[22:26] = f"{1:4d}"
+        line[30:38] = f"{point.x:8.3f}"
+        line[38:46] = f"{point.y:8.3f}"
+        line[46:54] = f"{point.z:8.3f}"
+        line[76:78] = f"{symbol:>2}"
+        atom_lines.append("".join(line))
+    raw_pose = "\n".join(atom_lines) + "\n"
+
+    db_path = tmp_path / "platform.sqlite"
+    migrate.upgrade(db_path)
+    engine = create_db_engine(db_path)
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        session.add(
+            ProjectRow(
+                id=compound.project_id,
+                slug="ad4-normalization",
+                name="AutoDock4 normalization fixture",
+            )
+        )
+    store = ArtifactStore(tmp_path / "artifacts")
+    handler = object.__new__(AutoDock4DockingHandler)
+    handler.artifact_store = store
+    handler.sessions = sessions
+    handler.autodock_version = "fixture-only"
+    handler.autogrid_version = "fixture-only"
+    handler.meeko_version = "fixture-only"
+
+    try:
+        result = handler._normalize(
+            compound=compound,
+            form=form,
+            conformer=conformer,
+            receptor=receptor,
+            site=site,
+            parameters=AutoDock4TaskParameters(
+                grid=AutoGrid4Parameters(npts=(48, 48, 48), spacing_A=0.5),
+                docking=AutoDock4Parameters(
+                    seed=(11, 17),
+                    ga_runs=1,
+                    ga_pop_size=50,
+                    ga_num_evals=10000,
+                    ga_num_generations=100,
+                    ga_elitism=1,
+                    ga_mutation_rate=0.02,
+                    ga_crossover_rate=0.8,
+                    ga_window_size=10,
+                    rmsd_threshold_A=2.0,
+                ),
+            ),
+            outputs=(
+                SimpleNamespace(run_index=29, score_kcal_mol=-2.5, pdbqt_text=raw_pose),
+                SimpleNamespace(run_index=17, score_kcal_mol=-3.2, pdbqt_text=raw_pose),
+            ),
+            structure=structure,
+            exported_sdf=exported_sdf,
+            ligand_input=source_sdf,
+            logs={},
+        )
+    finally:
+        engine.dispose()
+
+    assert result.run.accession == "CMP0001_DOCK_001"
+    assert result.run.engine.name == "AutoDock4"
+    assert result.run.engine.version == "fixture-only"
+    assert result.run.seed == 11
+    assert result.run.pose_ids == tuple(pose.id for pose in result.poses)
+    assert len(result.poses) == 2
+    first = result.poses[0]
+    assert [pose.accession for pose in result.poses] == [
+        "CMP0001_POSE_001",
+        "CMP0001_POSE_002",
+    ]
+    assert [pose.rank for pose in result.poses] == [1, 2]
+    assert [pose.score.value for pose in result.poses] == [-3.2, -2.5]
+    assert first.score.scoring_function == "autodock4"
+    assert first.score.ligand_efficiency == pytest.approx(3.2 / 3)
+    assert first.fidelity_max_dev_A <= 0.001
+    for pose in result.poses:
+        assert pose.structure.sha256 is not None
+        assert store.verify(pose.structure.sha256)
+        assert pose.raw.sha256 is not None
+        assert store.verify(pose.raw.sha256)
+        assert pose.structure.sha256 != pose.raw.sha256
+    assert result.artifacts["prepared_receptor_pdb"] == receptor_ref
