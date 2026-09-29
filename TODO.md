@@ -965,6 +965,6 @@ When the user says **CONTINUE**:
 ### Session log — 2026-09-29, source distribution contents audit
 
 - [x] Consulted official Hatch build configuration guidance; target-specific sdist `exclude` patterns use Git-style globs and take precedence over ordinary file selection.
-- [x] Excluded `/benchmarks/**` from the Python source archive while retaining all validation data in the repository. A fresh sdist build contains 642 entries / 1,476,279 compressed bytes (previous audit: ~13 MB compressed, 54,849,721 bytes uncompressed, including benchmark outputs); no benchmark paths remain.
+- [x] Excluded `/benchmarks/**` from the Python source archive while retaining all validation data in the repository. A fresh sdist build contains 642 entries / 1,476,822 compressed bytes (previous audit: ~13 MB compressed, 54,849,721 bytes uncompressed, including benchmark outputs); no benchmark paths remain.
 - [x] Rebuilt wheel and sdist with Hatchling. Verified the archive retains LICENSE, NOTICE, license review/inventory, and migration 0007; the wheel retains LICENSE/NOTICE. Detailed sizes and hashes are in docs/release/PACKAGING.md.
-- [ ] Rebuild and inspect these artifacts from a clean committed tree before distribution. Transitive compatibility review for optional dependencies/frontend bundle and counsel review for ambiguous combinations remain public release gates.
+- [x] Rebuilt from clean commit `b6ed502` outside the worktree; verified there are zero benchmark paths, all required license/migration files remain, and the wheel hash matches the prior build. Rebuild again from the eventual release commit. Transitive compatibility review for optional dependencies/frontend bundle and counsel review for ambiguous combinations remain public release gates.
