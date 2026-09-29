@@ -1148,4 +1148,4 @@ When the user says **CONTINUE**:
 - [x] Hosted Quality #134 exposed core coverage at 84.89%, below the configured 85% threshold; Python package matrix passed and web build/browser checks passed. The failure was reproduced locally.
 - [x] Added tests for Amber stage cache identity, source artifact hashes, gate context, resource requests, unsafe path rejection, missing paths, mode mismatch, and lineage loss. No scientific engine was run.
 - [x] Full local scripts/check.sh passes: 911 passed / 37 skipped; Ruff, format (356 files), strict mypy (201 files), import-linter (260 files), and schemas pass. Coverage gate passes at core 85.08%, adapters 79.44%, workers 33.35%.
-- [-] Push the coverage correction and verify new hosted Quality and package matrix runs; do not count the earlier failed hosted Quality run as green.
+- [x] Pushed coverage correction as 9385418. Hosted Quality #135 and Python package matrix #66 passed; the web build/browser job passed. The earlier failed Quality #134 remains recorded as the trigger for the fix.
