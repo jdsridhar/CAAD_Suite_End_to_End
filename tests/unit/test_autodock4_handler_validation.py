@@ -447,7 +447,19 @@ def test_ad4_execute_rejects_invalid_typed_port_before_external_side_effects() -
     assert error.value.code == "DOCKING.AD4_INPUT_CONTRACT_INVALID"
 
 
-def test_ad4_execute_stops_when_meeko_success_has_no_preparation_outputs(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("materialize_prep_sentinels", "expected_code", "expected_commands"),
+    [
+        (False, "DOCKING.AD4_PREPARATION_OUTPUT_MISSING", 2),
+        (True, "DOCKING.AD4_MAPS_MISSING", 3),
+    ],
+)
+def test_ad4_execute_stops_at_first_missing_engine_outputs(
+    tmp_path: Path,
+    materialize_prep_sentinels: bool,
+    expected_code: str,
+    expected_commands: int,
+) -> None:
     import sys
 
     from tests.unit.test_vina_handler_contracts import _lineage
@@ -483,6 +495,20 @@ def test_ad4_execute_stops_when_meeko_success_has_no_preparation_outputs(tmp_pat
         def start(self, command, *, log_dir):
             commands.append(command)
             assert log_dir == tmp_path / "logs"
+            if materialize_prep_sentinels:
+                script_name = Path(command.argv[1]).name
+                if script_name == "prepare_receptor.py":
+                    Path(command.argv[command.argv.index("--write_pdbqt") + 1]).write_text(
+                        "ATOM 1 C" + chr(10), encoding="utf-8"
+                    )
+                    Path(command.argv[command.argv.index("--write_json") + 1]).write_text(
+                        "{}", encoding="utf-8"
+                    )
+                elif script_name == "prepare_ligand.py":
+                    output_flag = "--write_pdbqt" if "--write_pdbqt" in command.argv else "--out"
+                    Path(command.argv[command.argv.index(output_flag) + 1]).write_text(
+                        "ATOM 1 C" + chr(10), encoding="utf-8"
+                    )
             return SimpleNamespace(
                 wait=lambda: SimpleNamespace(exit_code=0, stdout=stdout, stderr=stderr)
             )
@@ -509,6 +535,10 @@ def test_ad4_execute_stops_when_meeko_success_has_no_preparation_outputs(tmp_pat
         artifact_store=Store(),
         sessions=object(),
     )
+    # Keep the test focused on the adapter's stage transition/error contract rather
+    # than mocking the separate content-addressed artifact repository.
+    registered_files = []
+    handler._register_file = lambda *_args: registered_files.append(_args[1:])  # type: ignore[method-assign]
     invocation = SimpleNamespace(
         inputs={
             "compound": (compound,),
@@ -520,7 +550,7 @@ def test_ad4_execute_stops_when_meeko_success_has_no_preparation_outputs(tmp_pat
         },
         task=SimpleNamespace(
             params={
-                "grid": {"npts": (24, 24, 24), "spacing_A": 0.5},
+                "grid": {"npts": (48, 48, 48), "spacing_A": 0.5},
                 "docking": {
                     "seed": (11, 17),
                     "ga_runs": 2,
@@ -540,14 +570,25 @@ def test_ad4_execute_stops_when_meeko_success_has_no_preparation_outputs(tmp_pat
     with pytest.raises(StageExecutionFailure) as error:
         handler.execute(invocation)
 
-    assert error.value.code == "DOCKING.AD4_PREPARATION_OUTPUT_MISSING"
-    assert "all required PDBQT and JSON outputs" in str(error.value)
-    assert len(commands) == 2
+    assert error.value.code == expected_code
+    assert len(commands) == expected_commands
     assert commands[0].argv[1] == str(engine_files["prepare_receptor.py"].resolve())
     assert commands[1].argv[1] == str(engine_files["prepare_ligand.py"].resolve())
     assert all(command.cwd.is_relative_to(tmp_path / "work") for command in commands)
-    assert all(
-        not (command.cwd / name).exists()
-        for command in commands
-        for name in ("receptor.pdbqt", "ligand.pdbqt")
-    )
+    if materialize_prep_sentinels:
+        assert commands[2].argv[0] == str(engine_files["autogrid4"].resolve())
+        grid_file = commands[2].cwd / "receptor.gpf"
+        assert grid_file.is_file()
+        grid_text = grid_file.read_text(encoding="utf-8")
+        assert "gridcenter 0.000000 0.000000 0.000000" in grid_text
+        assert "ligand_types C" in grid_text
+        assert "map receptor.C.map" in grid_text
+        assert not (commands[2].cwd / "receptor.maps.fld").exists()
+        assert registered_files
+    else:
+        assert "all required PDBQT and JSON outputs" in str(error.value)
+        assert all(
+            not (command.cwd / name).exists()
+            for command in commands
+            for name in ("receptor.pdbqt", "ligand.pdbqt")
+        )
