@@ -14,11 +14,11 @@ The browser E2E test already exercises project creation, compound registration, 
 
 The Quality workflow has a separate web job that installs Python 3.12 with the chemistry extra for the API fixture, Node 22, locked npm dependencies, and Playwright Chromium with its system dependencies, then runs scripts/check-web.sh. Its first hosted run passed, as detailed below.
 
-Keep the three viewers lazy-loaded. Do not suppress the remaining chunk warning by merely raising Vite's threshold. Structure, trajectory, and cube viewer paths still need the hosted E2E to pass against this custom plugin UI. The large chunk remains a first-visualization-load cost. No scientific data or calculations are involved in this UI packaging issue.
+Keep the three viewers lazy-loaded. Do not suppress the remaining chunk warning by merely raising Vite's threshold. The hosted browser test currently exercises molecular structure rendering only; trajectory and cube loading use their direct Mol* loaders but still need dedicated browser coverage. The large chunk remains a first-visualization-load cost. No scientific data or calculations are involved in this UI packaging issue.
 
 
 ## Hosted validation result
 
-Hosted [Quality run 36562698143](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36562698143) passed API checks, TypeScript, the production build, and Playwright E2E. The browser test created a project, registered a compound, uploaded a structure, and observed a real Mol* canvas. The Python quality and coverage job passed in the same run. The [Python package matrix 36562698148](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36562698148) passed Python 3.11–3.14.
+Hosted [Quality run 36563659612](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36563659612) passed API checks, TypeScript, the production build, and Playwright E2E with the custom plugin UI. The browser test created a project, registered a compound, uploaded a structure, and observed a real Mol* structure canvas. The Python quality and coverage job passed in the same run. The [Python package matrix 36563659570](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36563659570) passed Python 3.11–3.14.
 
-The hosted run above used the previous Viewer convenience app. The current custom plugin UI removes the MP4 extension and the local production build no longer emits h264 builtin warnings. The browser regression must pass again on the new code before considering this change validated.
+The earlier hosted validation used the previous Viewer convenience app. The current custom plugin UI regression now passes hosted browser E2E, and the local production build no longer emits h264 builtin warnings. Only structure rendering is currently covered by the browser test; add trajectory and cube cases before claiming those paths are runtime-validated.
