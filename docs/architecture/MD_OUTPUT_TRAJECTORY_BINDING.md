@@ -32,4 +32,4 @@ The binder is a platform stage with no scientific-engine dependency. GROMACS, Op
 
 ## Validation status
 
-Unit coverage checks identity mismatch, stage-duration/frame-span consistency, content-addressed artifact verification, capability discovery, and compilation from the binder into `trajectory.process`. A real same-run MD-output-to-trajectory-processing engine integration remains a separate validation gate; successful plan binding alone does not prove trajectory-file metadata or analysis validity.
+Unit coverage checks identity mismatch, stage-duration/frame-span consistency, content-addressed artifact verification, capability discovery, and compilation from the binder into `trajectory.process`. G-MD-21 now validates a real same-run GROMACS MD-output → binding → processing → MDAnalysis path. The processor verifies generated trajectory metadata against the declared atom/frame/time contract. This short smoke does not establish useful-timescale science, and fresh-output report assembly remains a separate validation gate.

@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Validate fresh MD artifacts through trajectory processing, analysis, and reporting in one engine-backed workflow. |
+| **Current task** | [-] Extend the validated same-run MD-to-processing-to-analysis workflow through report assembly. |
 | **Next task** | Close pose-linked system preparation and engine-backed trajectory validation; separately resume the locked redocking cohort only after independent blinded review is returned and reconciled. |
 | **Last completed** | Phase 18 pre-release packaging verification; clean-commit wheel/sdist evidence and both hosted workflows pass. |
-| **Blocking questions** | The same-run MD-to-analysis/report path still needs an engine-backed run; pose-to-system continuity and real AmberTools execution remain unverified. Independent blind review gates new-cohort docking; public release also needs human license/notice review. |
+| **Blocking questions** | Fresh MD-to-trajectory processing-to-analysis is engine-validated; fresh-output report assembly, pose-to-system continuity, and real AmberTools execution remain unverified. Independent blind review gates new-cohort docking; public release also needs human license/notice review. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1234,6 +1234,12 @@ When the user says **CONTINUE**:
 
 - [-] Added the engine-neutral `trajectory.bind_md_output` stage, `MDOutputTrajectoryPlan`, and schema. The stage binds actual post-MD CAS artifact references into `TrajectoryProcessingRequest` while checking system/candidate identity, stage duration, selected artifact roles, and hashes.
 - [x] Added binder contract/runtime-CAS and workflow compilation tests; full configured gate passed: 922 passed, 38 skipped. Focused binder and registered-plugin conformance tests passed: 8 passed. Ruff, strict mypy, import contracts, and schema freshness passed.
-- [x] Linked the binding design from the architecture index and updated the production gap audit and current TODO status. The engine-backed same-run chain remains unverified: plan metadata still needs to agree with actual GROMACS trajectory contents, then processing, analysis, and reporting must execute in one workflow. This change does not establish pose-linked complex continuity or a 100 ns MD run.
+- [x] Linked the binding design from the architecture index and updated the production gap audit and current TODO status. The real same-run GROMACS artifact-binding and trajectory-processing check is now extended through MDAnalysis; report assembly from those fresh outputs remains to validate. This change does not establish pose-linked complex continuity or a 100 ns MD run.
 - [x] Re-ran the opt-in real CHARMM-GUI importer-to-GROMACS smoke with the audited read-only fixture: 1 passed in 3.78 s. This still does not exercise the new binder or trajectory processing.
-- [!] Hosted Quality run 36605278061 failed its 85% core coverage threshold (84.96%); package matrix 36605278051 and PySCF integration 36605277983 passed. Added focused binding rejection-path tests; local coverage now passes at 85.01% core, 80.19% adapters, and 928 passed/38 skipped. Push the coverage fix and verify hosted reruns.
+- [x] Hosted Quality run 36605278061 initially missed core coverage (84.96%). Added binding rejection-path tests; local coverage then passed at 85.01% core and 80.19% adapters. Follow-up commit a335221 passed hosted Quality (36607802888) and package matrix (36607802900).
+
+### Session log — 2026-09-29, same-run MD trajectory and analysis
+
+- [-] Extended G-MD-21 to create real XTC output at 10-step cadence and run five registered workflow stages: CHARMM-GUI import, GROMACS MD, trajectory.bind_md_output, GROMACS trajectory processing, and MDAnalysis protein–ligand minimum-distance analysis.
+- [x] Opt-in engine-backed workflow passed: 1 test in 9.96 s on the final fixture-driven selection counts. Processing validated 49,682 atoms, 6 frames, 0.02 ps interval, and 0–0.1 ps range against actual outputs. Analysis emitted an identity-linked metric and CAS-verifiable raw/series/log artifacts.
+- [-] This is a 50-step (0.1 ps) runtime composition check, not a stability or scientific-validity benchmark. Its Complex still uses lineage-only placeholders and the MD system comes from a prebuilt CHARMM-GUI bundle; pose-linked preparation, report generation from these fresh outputs, and longer-timescale validation remain open.

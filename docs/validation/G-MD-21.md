@@ -1,23 +1,32 @@
-# G-MD-21 — CHARMM-GUI importer to real GROMACS runtime composition
+# G-MD-21 — Same-run MD artifact binding through trajectory analysis
 
 **Date:** 2026-09-29
-**Status:** Passed; runtime integration smoke only.
+**Status:** Passed; runtime composition smoke only.
 
 ## Scope
 
-`tests/integration/test_system_build_gromacs_composition.py::test_importer_stage_composes_with_real_gromacs` executes the registered CHARMM-GUI GROMACS bundle importer and the real GROMACS MD stage in one `LocalWorkflowRuntime` run. The workflow loads typed inputs, performs the system-build stage, binds a named `MDStagePlan` to the resulting `SystemBuildResult`, invokes GROMACS, and records normalized outputs and attempt provenance.
+The opt-in test tests/integration/test_system_build_gromacs_composition.py::test_importer_stage_composes_with_real_gromacs runs five registered stages in one LocalWorkflowRuntime:
 
-The test uses the existing read-only `2M2D_LIG` CHARMM-GUI bundle. It makes private test copies, changes only the production MDP to 50 steps at 2 fs (0.1 ps total), and creates a distinct index copy with the required final newline. The original data are not modified. GROMACS runs on CPU with one thread.
+1. CHARMM-GUI GROMACS bundle import.
+2. A short real GROMACS production segment.
+3. Runtime binding of the resulting hashed TPR/XTC artifact references through trajectory.bind_md_output.
+4. GROMACS trajectory processing using that normalized request.
+5. MDAnalysis protein–ligand minimum-distance analysis on the processed trajectory.
+
+The workflow uses the read-only 2M2D_LIG CHARMM-GUI bundle. Test-only copies set 50 steps at 2 fs (0.1 ps total) and compressed-coordinate output every 10 steps. The original input files are not modified. GROMACS runs on CPU with one thread; processing verifies the produced trajectory metadata against the explicit plan.
 
 ## Result
 
-- Focused integration: **1 passed in 4.42 s** with GROMACS `2026.3-conda_forge`.
-- Both `build` and `simulate` tasks succeeded in order and retained the same workflow subject ID.
-- The normalized MD result registered GRO, LOG, EDR, and checkpoint artifacts. The MD task attempt recorded two GROMACS execution steps and engine version provenance.
-- The full repository gate passed: Ruff, formatting (360 files), strict mypy (201 source files), import contracts (260 files), schemas, and **916 passed / 38 skipped**.
+- Focused integration: **1 passed in 9.96 s** with GROMACS 2026.3 and the isolated MDAnalysis environment.
+- All five stage tasks succeeded in dependency order.
+- The normalized MD result registered TPR and XTC artifacts; the binder verified their CAS hashes and created the processing request from their actual artifact IDs.
+- Processing confirmed **49,682 atoms, 6 frames, 0.02 ps frame interval, and 0–0.1 ps** output time range.
+- MDAnalysis emitted the configured protein–ligand minimum-distance metric. Compound/Form/simulation identities were asserted across processing and analysis; metric, raw result, and logs were verified in CAS.
 
 ## Limits
 
-This test establishes adapter, artifact-binding, scheduler/runtime, and real-engine execution composition for an already parameterized CHARMM-GUI bundle. The `Complex` fixture contains lineage-only placeholder protein/ligand/assembly artifacts; it does not contain the actual docked-pose coordinates represented by the imported prebuilt bundle. Therefore this is **not** validation that a selected docking pose was assembled, parameterized, and carried into MD with coordinate identity preserved. It also does not establish useful-timescale stability, force-field accuracy, binding stability, or biological activity. The 0.1 ps run is a smoke test only.
+This establishes runtime and data-contract composition for a prebuilt, parameterized CHARMM-GUI system. The Complex fixture still contains lineage-only placeholder protein/ligand/assembly artifacts; it does not contain the docked-pose coordinates represented by the imported bundle. Pose-linked complex assembly, parameterization continuity, and AmberTools execution remain unvalidated.
 
-Real AmberTools execution and pose-linked complex preparation remain open. G-WORKFLOW-2 already validates trajectory processing/analysis through reporting from an existing MD trajectory; linking a newly executed MD stage output into that downstream chain remains unverified.
+The 50-step (0.1 ps) simulation is a smoke test. It cannot establish equilibration, stability, force-field accuracy, binding persistence, or biological activity. The analysis checks execution and artifact lineage, not scientific reliability of a sampled interaction metric.
+
+G-WORKFLOW-2 separately validates reporting from an existing 100 ns trajectory. A report consuming this new same-run MD and analysis output, longer-timescale MD validation, and pose-linked system preparation remain open.
