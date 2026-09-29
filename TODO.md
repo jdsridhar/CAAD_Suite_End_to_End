@@ -1025,3 +1025,11 @@ When the user says **CONTINUE**:
 - [x] Preserved the structure, trajectory, and cube loader calls; TypeScript and Vite production build pass locally, all three h264 builtin warnings are gone, and the lazy Mol* chunk fell from 4,832.17 kB / 1,367.77 kB gzip to 3,515.06 kB / 980.79 kB gzip.
 - [x] Hosted Quality run [36563659612](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36563659612) passed, including web API/type/build checks and browser E2E with a real Mol* molecular canvas; the Python quality/coverage job also passed. Python package matrix [36563659570](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36563659570) passed Python 3.11–3.14.
 - [-] Add runtime browser coverage for trajectory and cube loading, and assess whether further code splitting can reduce the remaining 3.52 MB first-viewer-load bundle without removing supported visualization.
+
+
+### Session log — 2026-09-29, browser coverage for Mol* data paths
+
+- [x] Extended the existing browser E2E to load a synthetic Gaussian cube through the artifact upload and volume viewer UI, then require a rendered Mol* canvas.
+- [x] Added a synthetic PDB topology + two-frame LAMMPS trajectory upload and browser-viewer canvas assertion, preserving the explicit topology/coordinates pairing UX.
+- [x] Local TypeScript/production build passes at 3,515.06 kB Mol* / 980.79 kB gzip with no h264 Node builtin warnings; Playwright discovers the expanded E2E test. Full browser execution awaits hosted CI because local WSL Chromium lacks libasound.so.2.
+- [-] Reconcile any Mol* cube/trajectory parser or rendering issues from the hosted run before claiming those viewer paths are validated.

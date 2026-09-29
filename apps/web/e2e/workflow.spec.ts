@@ -72,6 +72,90 @@ test("project compound workflow pauses for a decision and resumes successfully",
   await expect(page.locator(".molstar-host canvas").first()).toBeVisible({
     timeout: 30_000,
   });
+  await page.getByRole("button", { name: "Close viewer" }).click();
+
+  const cube = [
+    "CADD Suite browser fixture",
+    "Synthetic 2 x 2 x 2 scalar field",
+    "2 0.000000 0.000000 0.000000",
+    "2 1.000000 0.000000 0.000000",
+    "2 0.000000 1.000000 0.000000",
+    "2 0.000000 0.000000 1.000000",
+    "1 0.000000 0.000000 0.000000 0.000000",
+    "1 0.000000 1.000000 0.000000 0.000000",
+    "0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7",
+  ].join("\n");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "browser-fixture.cube",
+    mimeType: "chemical/x-gaussian-cube",
+    buffer: new TextEncoder().encode(cube),
+  });
+  await page.getByRole("button", { name: "Upload artifact to project" }).click();
+  await expect(page.getByText(/Uploaded to project CAS/)).toBeVisible();
+  await page.getByRole("button", { name: "View cube" }).click();
+  await expect(page.getByLabel("Volumetric cube viewer")).toBeVisible();
+  await expect(page.locator(".molstar-host canvas").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: "Close viewer" }).click();
+
+  const topology = [
+    "ATOM      1  C1  LIG A   1       1.000   1.000   1.000  1.00  0.00           C",
+    "ATOM      2  O1  LIG A   1       2.000   1.000   1.000  1.00  0.00           O",
+    "END",
+  ].join("\n");
+  const trajectory = [
+    "ITEM: TIMESTEP",
+    "0",
+    "ITEM: NUMBER OF ATOMS",
+    "2",
+    "ITEM: BOX BOUNDS pp pp pp",
+    "0 10",
+    "0 10",
+    "0 10",
+    "ITEM: ATOMS id type x y z",
+    "1 1 1 1 1",
+    "2 2 2 1 1",
+    "ITEM: TIMESTEP",
+    "1",
+    "ITEM: NUMBER OF ATOMS",
+    "2",
+    "ITEM: BOX BOUNDS pp pp pp",
+    "0 10",
+    "0 10",
+    "0 10",
+    "ITEM: ATOMS id type x y z",
+    "1 1 1.1 1 1",
+    "2 2 2.1 1 1",
+  ].join("\n");
+  for (const [name, mimeType, contents] of [
+    ["browser-topology.pdb", "chemical/x-pdb", topology],
+    ["browser-trajectory.lammpstrj", "text/plain", trajectory],
+  ]) {
+    await page.locator('input[type="file"]').setInputFiles({
+      name,
+      mimeType,
+      buffer: new TextEncoder().encode(contents),
+    });
+    await page.getByRole("button", { name: "Upload artifact to project" }).click();
+    await expect(page.getByText(/Uploaded to project CAS/)).toBeVisible();
+  }
+  const topologySelect = page.getByLabel("Topology");
+  const trajectorySelect = page.getByLabel("Coordinates");
+  const topologyOption = topologySelect.locator("option").filter({
+    hasText: "browser-topology.pdb",
+  });
+  const trajectoryOption = trajectorySelect.locator("option").filter({
+    hasText: "browser-trajectory.lammpstrj",
+  });
+  await topologySelect.selectOption((await topologyOption.getAttribute("value"))!);
+  await trajectorySelect.selectOption((await trajectoryOption.getAttribute("value"))!);
+  await expect(page.getByLabel("Molecular trajectory viewer")).toBeVisible();
+  await expect(page.locator(".molstar-host canvas").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: "Close viewer" }).click();
+
   const workflow = {
     schema: "caddsuite.workflow/1",
     name: "Browser decision-resume workflow",
