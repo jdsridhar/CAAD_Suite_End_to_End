@@ -40,3 +40,11 @@ Commit `483aba087309033856e4f7e8d12cf7d9371f2412` was built from the clean check
 - Hosted [package matrix](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36367704078) passed for Python 3.11–3.14. Hosted [Quality workflow](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36367704039) also passed on this commit.
 
 This closes pre-release packaging verification for the declared Linux x86_64 Python range. No version tag, package upload, or GitHub Release was created. Windows/macOS and external scientific-engine compatibility remain outside the current support claim.
+
+## Source archive contents audit (2026-09-29)
+
+A fresh source archive built from the current release configuration originally collected the tracked `benchmarks/redocking/pilot_v1/` structures, pose files, and execution outputs. Those validation records remain in the Git repository, but are not required to build/install CADD Suite and made the uncompressed source archive about 54.8 MB. The sdist target now excludes `/benchmarks/**`; the wheel selection remains limited to the two Python package trees.
+
+After this configuration change, Hatchling built both artifacts successfully. The source archive contains 642 entries (1,476,279 bytes compressed), includes `LICENSE`, `NOTICE`, the dependency license inventory/review, and migration revision 0007, and contains no benchmark paths. The wheel contains 213 files and includes `LICENSE` and `NOTICE`; it is 518,203 bytes. Source archive SHA-256: `9792561ce432829dc60e31bbf4b46de860fbc90f65dc48438a0370a99b92b60e`. Wheel SHA-256: `c448c4618f1a4c091bc86761a47176ca17f90f2541d33d8ac0824595af389586`. Rebuild from the final clean commit before publishing because any source change changes the source archive hash.
+
+This only controls Python sdist contents. It does not resolve the separate transitive-license and frontend-distribution review gates in `LICENSE_REVIEW.md`.

@@ -79,6 +79,11 @@ path = "src/caddsuite/__init__.py"
 packages = ["src/caddsuite", "src/caddsuite_worker"]
 
 
+[tool.hatch.build.targets.sdist]
+# Benchmark fixtures and results stay in the repository but are not needed to
+# build or install the Python package and can make source archives very large.
+exclude = ["/benchmarks/**"]
+
 # ----------------------------------------------------------------------------- pytest
 [tool.pytest.ini_options]
 testpaths = ["tests"]

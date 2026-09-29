@@ -960,3 +960,11 @@ When the user says **CONTINUE**:
 - [x] PySCF adapter integration suite: 2 passed, including worker execution for seeded ethanol B3LYP/6-31G* single-point normalization and capability validation. Focused adapter coverage: 68%.
 - [x] Hosted Quality and Python package matrix for aef9f06 both passed.
 - [!] The independent blinded cohort review remains pending. The locked 90-attempt redocking benchmark has not been started.
+
+
+### Session log — 2026-09-29, source distribution contents audit
+
+- [x] Consulted official Hatch build configuration guidance; target-specific sdist `exclude` patterns use Git-style globs and take precedence over ordinary file selection.
+- [x] Excluded `/benchmarks/**` from the Python source archive while retaining all validation data in the repository. A fresh sdist build contains 642 entries / 1,476,279 compressed bytes (previous audit: ~13 MB compressed, 54,849,721 bytes uncompressed, including benchmark outputs); no benchmark paths remain.
+- [x] Rebuilt wheel and sdist with Hatchling. Verified the archive retains LICENSE, NOTICE, license review/inventory, and migration 0007; the wheel retains LICENSE/NOTICE. Detailed sizes and hashes are in docs/release/PACKAGING.md.
+- [ ] Rebuild and inspect these artifacts from a clean committed tree before distribution. Transitive compatibility review for optional dependencies/frontend bundle and counsel review for ambiguous combinations remain public release gates.
