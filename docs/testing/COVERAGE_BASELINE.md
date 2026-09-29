@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 874 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 876 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
 | Core | 11,192 | 9,519 | 85.05% | ≥85% — met |
-| Adapters | 5,360 | 4,245 | 79.20% | ≥70% — met |
+| Adapters | 5,360 | 4,261 | 79.50% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
@@ -79,7 +79,7 @@ The full engine-free repository gate now reports 874 passed and 38 skipped (the 
 | ADMET | 148 | 139 | 93.92% |
 | Analysis | 711 | 545 | 76.65% |
 | Binding energy | 592 | 482 | 81.42% |
-| Docking | 907 | 638 | 70.34% |
+| Docking | 907 | 654 | 72.11% |
 | Interactions | 245 | 202 | 82.45% |
 | MD | 466 | 394 | 84.55% |
 | QM | 659 | 539 | 81.79% |
@@ -119,7 +119,7 @@ Tests now call the AD4 handler entry point with real contract instances and veri
 
 ### AutoDock4 preparation orchestration failure test (2026-09-29)
 
-A handler-level test supplies real typed lineage contracts and hash-verified fixture inputs, then lets the adapter construct both Meeko commands while a fake executor reports process success without producing preparation files. The adapter returns its actionable DOCKING.AD4_PREPARATION_OUTPUT_MISSING failure. It does not run Meeko or fabricate docking poses. The focused handler validation suite is 30 passed / 1 opt-in engine test skipped; handler coverage is 59% (173/294). Full suite is 874 passed / 38 skipped; adapters are 79.20% covered and the docking family is 70.34% (638/907).
+A handler-level test supplies real typed lineage contracts and hash-verified fixture inputs, then lets the adapter construct both Meeko commands while a fake executor reports process success without producing preparation files. The adapter returns its actionable DOCKING.AD4_PREPARATION_OUTPUT_MISSING failure. It does not run Meeko or fabricate docking poses. The focused handler validation suite is 30 passed / 1 opt-in engine test skipped; handler coverage is 59% (173/294). Full suite is 876 passed / 38 skipped; adapters are 79.50% covered and the docking family is 72.11% (654/907).
 
 
 ### AutoDock4 AutoGrid missing-map boundary (2026-09-29)
@@ -129,4 +129,9 @@ The AD4 handler test continues past Meeko preparation using minimal PDBQT atom-t
 
 ### AutoDock4 AutoGrid process-failure path (2026-09-29)
 
-The AD4 handler-flow fixture now also tests a nonzero AutoGrid exit after GPF generation. A fake executor supplies a stderr artifact and exit code; the adapter surfaces DOCKING.AUTOGRID4_FAILED with the detail. It generates no map, energy, pose, or score data and invokes no engine binary. The focused handler suite is 32 passed; full suite is 874 passed / 38 skipped. The repeated aggregate coverage is core 85.05%, adapters 79.20%, workers 33.35%; docking coverage is 70.34% (638/907).
+The AD4 handler-flow fixture now also tests a nonzero AutoGrid exit after GPF generation. A fake executor supplies a stderr artifact and exit code; the adapter surfaces DOCKING.AUTOGRID4_FAILED with the detail. It generates no map, energy, pose, or score data and invokes no engine binary. At that checkpoint, the focused handler suite was 32 passed; full suite was 874 passed / 38 skipped. Coverage was core 85.05%, adapters 79.20%, workers 33.35%; docking coverage was 70.34% (638/907). The subsequent ligand/pose identity cases and refreshed coverage are recorded below and in the latest gate table.
+
+
+### AD4 ligand and pose identity rejection (2026-09-29)
+
+Failure-only RDKit fixtures verify normalization rejects (a) an SDF ligand graph inconsistent with the selected compound form and (b) an exported pose whose graph differs from that form. Both terminate with DOCKING.AD4_NORMALIZATION_FAILED before normalized poses or scores are emitted. These tests validate identity guards, not Meeko conversion fidelity or docking science. Focused handler set: 34 passed; full suite: 876 passed / 38 skipped. Full architecture coverage: core 85.05%, adapters 79.50%, workers 33.35%; docking family 72.11% (654/907).

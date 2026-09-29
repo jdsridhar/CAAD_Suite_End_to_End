@@ -606,3 +606,50 @@ def test_ad4_execute_stops_at_first_missing_engine_outputs(
             for command in commands
             for name in ("receptor.pdbqt", "ligand.pdbqt")
         )
+
+
+@pytest.mark.parametrize(
+    ("source_smiles", "form_smiles", "pose_smiles", "expected_detail"),
+    [
+        ("C", "CC", "C", "ligand input chemistry differs from the selected form"),
+        ("C", "C", "CC", "Meeko pose for AD4 run 1 changed ligand identity"),
+    ],
+)
+def test_ad4_normalizer_rejects_ligand_or_pose_identity_changes(
+    tmp_path: Path,
+    source_smiles: str,
+    form_smiles: str,
+    pose_smiles: str,
+    expected_detail: str,
+) -> None:
+    from rdkit import Chem
+
+    def write_molecule(path: Path, smiles: str) -> None:
+        molecule = Chem.MolFromSmiles(smiles)
+        assert molecule is not None
+        with Chem.SDWriter(str(path)) as writer:
+            writer.write(molecule)
+
+    source = tmp_path / "source.sdf"
+    exported = tmp_path / "poses.sdf"
+    write_molecule(source, source_smiles)
+    write_molecule(exported, pose_smiles)
+    handler = object.__new__(AutoDock4DockingHandler)
+
+    with pytest.raises(StageExecutionFailure) as error:
+        handler._normalize(
+            compound=SimpleNamespace(parent=SimpleNamespace(heavy_atom_count=1)),
+            form=SimpleNamespace(smiles=form_smiles),
+            conformer=SimpleNamespace(),
+            receptor=SimpleNamespace(),
+            site=SimpleNamespace(),
+            parameters=SimpleNamespace(),
+            outputs=(SimpleNamespace(run_index=1, pdbqt_text=""),),
+            structure=SimpleNamespace(),
+            exported_sdf=exported,
+            ligand_input=source,
+            logs={},
+        )
+
+    assert error.value.code == "DOCKING.AD4_NORMALIZATION_FAILED"
+    assert expected_detail in str(error.value)
