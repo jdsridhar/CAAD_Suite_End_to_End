@@ -20,7 +20,7 @@ Scope: capabilities discovered from installed stage-handler entry points in the 
 | binding_energy | gmx_mmpbsa | BindingEnergyRequest | BindingEnergyResult (reviewed MM/GBSA profile only) |
 | gate / report | platform | configured evidence / report inputs | normalized decision / ReportBundle |
 
-The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. There is still no production system-builder stage. The MM/GBSA stage is registered and has a copied-input real-engine handler smoke on the available 11-frame data; G-MD-18's separate archived benchmark remains data-specific. Neither smoke nor benchmark establishes experimental binding affinity. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
+The registry now discovers trajectory.process/gromacs and trajectory.analyze/mdanalysis stage handlers, in addition to the existing MD and QM handlers. There is still no production system-builder stage. Coordinate complex assembly is now registered as structure.assemble_complex with pose fan-out and full identity inputs; its output remains coordinate-only and is explicitly not MD-ready. Registration and contract tests pass, but the runtime SystemBuildRequest binding and engine-specific builder stage remain open. The MM/GBSA stage is registered and has a copied-input real-engine handler smoke on the available 11-frame data; G-MD-18's separate archived benchmark remains data-specific. Neither smoke nor benchmark establishes experimental binding affinity. Handler discovery and typed contracts establish an executable integration boundary; they do not establish a completed MD-to-analysis runtime chain or scientific validity.
 
 ## Integration gaps and scientific constraints
 
@@ -35,7 +35,7 @@ The registry now discovers trajectory.process/gromacs and trajectory.analyze/mda
 
 1. [x] Add plugin-backed GROMACS trajectory-processing and MDAnalysis trajectory-analysis handlers; both stage hash-verified artifacts, execute shell-free adapter plans, preserve logs/environment/provenance, and return existing normalized result contracts. Unit/runtime wiring tests pass; engine/data-backed handler execution remains open.
 2. [x] Register binding_energy/gmx_mmpbsa around a complete BindingEnergyRequest; adapter validation remains authoritative for force field, engine, topology, selections, method and entropy. Typed workflow/preflight tests pass; real handler execution remains an open validation item.
-3. Add a system-builder runtime stage only after pose-to-system artifact lineage and input choices are explicit; never treat a docking pose as an MD-ready topology.
+3. [-] Add a system-builder runtime stage only after pose-to-system artifact lineage and input choices are explicit; never treat a docking pose as an MD-ready topology.
 4. [x] Extend reporting with typed MD/trajectory/MMGBSA/QM ports and explicit methodology/property sections; QM calculation protocols and capability validation remain engine-owned.
 5. Validate each stage independently on existing golden/engine fixtures, then run a small composed MD-analysis/MMGBSA/QM workflow only where compatible source artifacts are available.
 
