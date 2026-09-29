@@ -76,6 +76,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [G-MD-17 MM/GBSA parser validation](../validation/G-MD-17.md)
 - [G-MD-18 short MM/GBSA execution and per-frame regression](../validation/G-MD-18.md)
 - [G-MD-19 block SEM and effective sample size diagnostics](../validation/G-MD-19.md)
+- [G-MD-21 CHARMM-GUI importer to real GROMACS runtime composition](../validation/G-MD-21.md)
 - [Isolated worker runtime and Python stdlib JSON protocol](WORKER_RUNTIME.md)
 - [Psi4 worker migration and validation scope](PSI4_WORKER.md)
 - [Psi4 engine capabilities, adapter plan, and QMResult normalization](PSI4_ADAPTER.md)
