@@ -58,3 +58,14 @@ Rebuilt the Python wheel and source archive from `git archive` of clean commit `
 - Build command: `python -m hatchling build -t wheel -t sdist`
 
 These hashes apply only to commit `8ff959d`; rebuild from the exact eventual release commit. Optional Python extras, frontend distribution, exact third-party license texts/notices, and legal compatibility review remain open.
+
+## Clean-commit package verification (2026-09-29, commit 2045808ce98048d7c677e77a01e829cca4764a2b)
+
+Built the wheel and sdist from a clean `git archive` checkout using Hatchling. This commit includes the registered AmberTools system-builder stage. Both archives contain `LICENSE` and `NOTICE`, and neither contains benchmark paths. The wheel includes the AmberTools, MD, and QM stage modules and their plugin entry-point metadata.
+
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`; SHA-256 `c0745e8dc6c098700494868c2f2a543b36c1661f379e495f13d27c8ad6615991`; 218 entries.
+- Sdist: `caddsuite-0.1.0.dev0.tar.gz`; SHA-256 `2bd70e5dd8481f213a792b8e93d4f3cb3a3262ec18f78b218e70f509ffd988b4`; 661 entries.
+- Installed the wheel into a new Python 3.12 virtual environment with system-site-packages enabled and no source checkout on its import path. `caddsuite version` succeeded; database upgrade created revision `0007`; package import resolved inside the virtual environment's site-packages.
+- The first smoke command also tried `caddsuite db current`, which is not a supported CLI command. The database revision was instead verified by reading the installed database's `alembic_version` table and returned `0007`.
+
+This validates the exact package build, archive selections, plugin metadata, and a basic installed-wheel migration path. It does not establish dependency-license compatibility, provide complete notices for optional extras, validate a separate frontend distribution, or constitute legal review. These remain public-release gates. Rebuild and reassess the exact commit and artifact pair for any later release.

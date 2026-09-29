@@ -1149,3 +1149,9 @@ When the user says **CONTINUE**:
 - [x] Added tests for Amber stage cache identity, source artifact hashes, gate context, resource requests, unsafe path rejection, missing paths, mode mismatch, and lineage loss. No scientific engine was run.
 - [x] Full local scripts/check.sh passes: 911 passed / 37 skipped; Ruff, format (356 files), strict mypy (201 files), import-linter (260 files), and schemas pass. Coverage gate passes at core 85.08%, adapters 79.44%, workers 33.35%.
 - [x] Pushed coverage correction as 9385418. Hosted Quality #135 and Python package matrix #66 passed; the web build/browser job passed. The earlier failed Quality #134 remains recorded as the trigger for the fix.
+
+### Session log - 2026-09-29, latest clean-commit package audit
+
+- [x] Rebuilt wheel and sdist from a clean Git archive of 2045808ce98048d7c677e77a01e829cca4764a2b. Both include LICENSE and NOTICE; neither contains benchmark paths; the wheel exposes the system-builder, MD, and QM stage entry points.
+- [x] Recorded archive hashes, entry counts, and installed-wheel smoke evidence in docs/release/PACKAGING.md. A new Python 3.12 venv imported the installed wheel from site-packages, reported version 0.1.0.dev0, and upgraded its database to revision 0007.
+- [ ] Exact dependency/license compatibility, complete optional-extra and frontend notices, and counsel review remain open. This package audit is evidence about archive contents, not legal clearance or a public release.
