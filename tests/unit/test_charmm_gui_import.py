@@ -242,3 +242,40 @@ def test_importer_rejects_unsupported_gro_triclinic_form():
             request=request, complex_model=complex_model, bundle_files=files
         )
     assert exc.value.code == "SYSTEM_BUNDLE.GRO_BOX_INVALID"
+
+
+def test_discovered_stage_executes_validated_bundle_and_preserves_complex_lineage(tmp_path):
+    from types import SimpleNamespace
+
+    from caddsuite.application.system_builder_stage_plugin import CharmmGuiSystemBuildStageHandler
+    from caddsuite.contracts.system_plan import SystemBuildPlan
+    from caddsuite.storage.artifacts import ArtifactStore
+
+    files = _bundle()
+    request, complex_model = _inputs(files)
+    complex_model = complex_model.model_copy(update={"parameters": {"md_ready": False}})
+    store = ArtifactStore(tmp_path / "cas")
+    refs = {}
+    for path, payload in files.items():
+        blob = store.put_bytes(payload)
+        assert blob.sha256 == request.source_artifacts[path].sha256
+        refs[path] = request.source_artifacts[path]
+    plan = SystemBuildPlan(
+        mode="import",
+        source_artifacts=refs,
+        selections=request.selections,
+        parameters=request.parameters,
+    )
+    services = SimpleNamespace(run_root=tmp_path / "runs", artifacts=store)
+    handler = CharmmGuiSystemBuildStageHandler(services)
+    invocation = SimpleNamespace(
+        task=SimpleNamespace(stage_id="system_build"),
+        inputs={"complex": (complex_model,), "plan": (plan,)},
+    )
+    result = handler.execute(invocation)
+    assert result.complex_id == complex_model.id
+    assert result.request_id != complex_model.id
+    assert result.system.compound_id == complex_model.compound_id
+    assert result.system.form_id == complex_model.form_id
+    assert result.protocol is not None
+    assert result.validation_issues[0].code == "MD.HMR_UNVERIFIED"
