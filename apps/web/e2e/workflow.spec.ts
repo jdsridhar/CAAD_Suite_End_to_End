@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 function ulid(): string {
@@ -16,6 +17,7 @@ function ulid(): string {
 test("project compound workflow pauses for a decision and resumes successfully", async ({
   page,
 }) => {
+  test.setTimeout(120_000);
   const api = "http://127.0.0.1:8100",
     token = "browser-e2e-token",
     slug = `browser-e2e-${Date.now()}`;
@@ -88,7 +90,7 @@ test("project compound workflow pauses for a decision and resumes successfully",
   await page.locator('input[type="file"]').setInputFiles({
     name: "browser-fixture.cube",
     mimeType: "chemical/x-gaussian-cube",
-    buffer: new TextEncoder().encode(cube),
+    buffer: Buffer.from(cube),
   });
   await page.getByRole("button", { name: "Upload artifact to project" }).click();
   await expect(page.getByText(/Uploaded to project CAS/)).toBeVisible();
@@ -135,7 +137,7 @@ test("project compound workflow pauses for a decision and resumes successfully",
     await page.locator('input[type="file"]').setInputFiles({
       name,
       mimeType,
-      buffer: new TextEncoder().encode(contents),
+      buffer: Buffer.from(contents),
     });
     await page.getByRole("button", { name: "Upload artifact to project" }).click();
     await expect(page.getByText(/Uploaded to project CAS/)).toBeVisible();

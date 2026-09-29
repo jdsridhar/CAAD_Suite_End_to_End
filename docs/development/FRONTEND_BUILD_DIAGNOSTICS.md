@@ -4,7 +4,7 @@
 
 ## Reproduction
 
-From apps/web, npm run build succeeds with TypeScript and Vite 8.3.1. The production build now emits a dedicated molstar-*.js chunk of 3,515.06 kB (980.79 kB gzip), down 27.25% raw and 28.29% gzip from the Viewer convenience app. The main application chunk is 221.18 kB (68.94 kB gzip), and the molecular, trajectory, and volumetric viewer entry chunks are each below 2.4 kB. App.tsx loads each viewer with React.lazy, so the Mol* chunk is requested when a viewer is opened rather than on initial application load. The warning remains relevant to the first visualization load and should be monitored.
+From apps/web, npm run build succeeds with TypeScript and Vite 8.3.1. The production build now emits a dedicated molstar-*.js chunk of 3,515.06 kB (980.78 kB gzip), down 27.25% raw and 28.29% gzip from the Viewer convenience app. The main application chunk is 221.18 kB (68.94 kB gzip), and the molecular, trajectory, and volumetric viewer entry chunks are each below 2.4 kB. App.tsx loads each viewer with React.lazy, so the Mol* chunk is requested when a viewer is opened rather than on initial application load. The warning remains relevant to the first visualization load and should be monitored.
 
 The prior build warned that fs, path, and crypto were externalized from h264-mp4-encoder.node.js. The import chain came from Mol* apps/viewer/extensions.js → its MP4 export extension → molstar/lib/extensions/mp4-export/encoder.js → h264-mp4-encoder. That package's main points to its Node build, while its separate embuild/dist/h264-mp4-encoder.web.js is a browser bundle. The viewer now uses Mol*'s DefaultPluginUISpec/createPluginUI and direct structure, trajectory, and file loaders; this avoids importing the Viewer app extension map and removes all three h264 warnings. MP4 export is consequently omitted from this embedded viewer.
 
@@ -22,3 +22,10 @@ Keep the three viewers lazy-loaded. Do not suppress the remaining chunk warning 
 Hosted [Quality run 36563659612](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36563659612) passed API checks, TypeScript, the production build, and Playwright E2E with the custom plugin UI. The browser test created a project, registered a compound, uploaded a structure, and observed a real Mol* structure canvas. The Python quality and coverage job passed in the same run. The [Python package matrix 36563659570](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36563659570) passed Python 3.11–3.14.
 
 The earlier hosted validation used the previous Viewer convenience app. The current custom plugin UI regression now passes hosted browser E2E, and the local production build no longer emits h264 builtin warnings. Only structure rendering is currently covered by the browser test; add trajectory and cube cases before claiming those paths are runtime-validated.
+
+
+## Expanded local viewer validation
+
+The Playwright workflow now also uploads a synthetic 2×2×2 cube and verifies its Mol* canvas, then uploads a small PDB topology and two-frame LAMMPS trajectory and verifies the trajectory canvas. The cube viewer uses the embedded layout so the outer close control remains within the application viewport. Full local scripts/check-web.sh passed with API contract checks, TypeScript, production build, and 1 E2E test.
+
+The expanded browser test has been pushed and awaits a clean hosted CI run. The current hosted result above predates these additional assertions. The bundled Mol* chunk remains 3,515.06 kB / 980.78 kB gzip and emits Vite's chunk-size warning; it remains a deferred performance review item.
