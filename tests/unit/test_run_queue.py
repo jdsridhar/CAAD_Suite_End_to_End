@@ -174,3 +174,32 @@ def test_supervisor_startup_recovers_expired_worker_lease(tmp_path: Path) -> Non
         assert run is not None
         assert run.status == "succeeded"
     engine.dispose()
+
+
+def test_heartbeat_requires_current_worker_and_running_claim(tmp_path: Path) -> None:
+    queue, (engine, sessions), run_id = _queue(tmp_path)
+    queue.enqueue(run_id, {"inputs": {}})
+    assert queue.claim_next("worker-one") is not None
+
+    heartbeat_at = datetime.now(UTC) + timedelta(seconds=1)
+    assert queue.heartbeat(run_id, "worker-one", now=heartbeat_at)
+    assert not queue.heartbeat(run_id, "worker-two", now=heartbeat_at)
+    assert queue.finish(run_id, "worker-one", state="succeeded", now=heartbeat_at)
+    assert not queue.heartbeat(run_id, "worker-one", now=heartbeat_at)
+    with sessions() as session:
+        row = session.get(RunSubmissionRow, run_id)
+        assert row is not None
+        assert row.heartbeat_at == heartbeat_at
+    engine.dispose()
+
+
+def test_queue_rejects_invalid_terminal_state_and_lease(tmp_path: Path) -> None:
+    import pytest
+
+    queue, (engine, _sessions), run_id = _queue(tmp_path)
+    with pytest.raises(ValueError, match="invalid terminal submission state"):
+        queue.finish(run_id, "worker-one", state="queued")
+    with pytest.raises(ValueError, match="lease_seconds must be positive"):
+        queue.recover_expired(lease_seconds=0)
+    assert not queue.request_cancel("missing-run")
+    engine.dispose()

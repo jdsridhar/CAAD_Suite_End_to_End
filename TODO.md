@@ -919,11 +919,13 @@ When the user says **CONTINUE**:
 - [x] Fixed malformed YAML handling in workflow validate/run and related YAML-backed CLI actions; parser errors now become controlled user-facing CLI failures.
 - [x] Expanded tests for CLI workflow execution, binding-energy request validation, stage artifact lineage, interaction adapter validation, and MDAnalysis artifact validation.
 - [x] Full scripts/check.sh passed: 775 passed, 37 skipped; Ruff, formatting, strict mypy (196 files), import contracts (255 files), and schema freshness pass.
-- [x] Coverage gate cleared with behavior-focused Conda environment lock tests: core 85.03% (target 85%), adapters 71.22% (target 70%).
+- [x] Coverage gate cleared with behavior-focused Conda environment lock tests: core 85.06% (target 85%), adapters 71.22% (target 70%).
 - [!] Public release gate remains independent blinded review of the frozen six-case packet. No new-cohort docking has started; preserve the blind and do not use the unblind key.
 - [x] Reviewed and pushed the tested source, tests, and TODO changes in commit dce642d; frozen cohort files and timer.dat remain untracked and untouched.
 
 - [x] Added tests verifying environment-lock capture behavior, including content-addressed artifact persistence and the non-Conda no-op path; focused strict typing/tests pass.
 - [x] Post-addition coverage run passed thresholds: core 85.03%, adapters 71.22%; 777 passed, 37 skipped.
 
-- [-] GitHub Quality workflow for dce642d passed static checks and is currently running the full coverage step; do not claim hosted completion until its result is terminal.
+- [!] GitHub Quality workflow for dce642d passed static checks but failed the core coverage target; the separate Python package matrix passed. CI and local coverage differed by 7 covered statements in run_queue. Added targeted queue tests and confirmed the local threshold now passes; the follow-up hosted run is pending.
+
+- [x] Added run-queue ownership, heartbeat, invalid-state/lease, and missing-run cancellation tests based on the CI coverage gap; full repository checks pass (779 passed, 37 skipped), local core coverage is 85.06%, and adapter coverage is 71.22%.
