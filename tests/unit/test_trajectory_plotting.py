@@ -219,3 +219,145 @@ def test_renderer_accepts_residue_csv_and_rejects_highlight_window(tmp_path: Pat
     )
     assert len(rendered) == 1
     assert rendered[0].effective_window_ns is None
+
+
+@pytest.mark.parametrize(
+    ("contents", "code"),
+    [
+        ("", "VISUALIZATION.CSV_SCHEMA_INVALID"),
+        ("time_ns,time_ns,value\n0,1,2\n", "VISUALIZATION.CSV_SCHEMA_INVALID"),
+        ("time_ns,value\n0,not-a-number\n", "VISUALIZATION.CSV_VALUE_INVALID"),
+        ("time_ns,value\n0,nan\n", "VISUALIZATION.CSV_VALUE_INVALID"),
+        ("time_ns,value\n1,1\n0,2\n", "VISUALIZATION.CSV_ORDER_INVALID"),
+        ("time_ns,value\n11,1\n", "VISUALIZATION.TIME_OUTSIDE_DECLARED_WINDOW"),
+        ("time_ns,value\n", "VISUALIZATION.CSV_EMPTY"),
+    ],
+)
+def test_plotter_rejects_malformed_metric_csv(tmp_path: Path, contents: str, code: str) -> None:
+    series = _write_csv(tmp_path / "bad.csv", contents)
+    source = _source(series, "bad run")
+    request = TrajectoryPlotRequest(id=new_ulid(), sources=(source,))
+
+    with pytest.raises(TrajectoryPlotError) as error:
+        MatplotlibTrajectoryPlotter().render(
+            request,
+            series_paths={source.metric.series.artifact_id: series},
+            output_directory=tmp_path / "plots",
+        )
+    assert error.value.code == code
+
+
+def test_plotter_rejects_missing_staged_path_and_missing_hash(tmp_path: Path) -> None:
+    series = _write_csv(tmp_path / "metric.csv", "time_ns,value\n0,1\n")
+    source = _source(series, "run")
+    request = TrajectoryPlotRequest(id=new_ulid(), sources=(source,))
+    with pytest.raises(TrajectoryPlotError) as missing_path:
+        MatplotlibTrajectoryPlotter().render(
+            request, series_paths={}, output_directory=tmp_path / "plots"
+        )
+    assert missing_path.value.code == "VISUALIZATION.INPUT_ARTIFACT_MISSING"
+
+    unhashed = source.model_copy(
+        update={
+            "metric": source.metric.model_copy(
+                update={"series": source.metric.series.model_copy(update={"sha256": None})}
+            )
+        }
+    )
+    with pytest.raises(ValidationError, match="SHA-256 hash"):
+        TrajectoryPlotRequest(id=new_ulid(), sources=(unhashed,))
+
+
+def test_residue_overlay_rejects_inconsistent_residue_coordinates(tmp_path: Path) -> None:
+    first = _write_csv(tmp_path / "first.csv", "residue,value\n10,0.2\n11,0.3\n")
+    second = _write_csv(tmp_path / "second.csv", "residue,value\n10,0.2\n12,0.3\n")
+    request = TrajectoryPlotRequest(
+        id=new_ulid(),
+        sources=(
+            _source(first, "A", name="rmsf_ca", axis="residue"),
+            _source(second, "B", name="rmsf_ca", axis="residue"),
+        ),
+        comparison_basis="same target and residue selection",
+    )
+    paths = {
+        request.sources[0].metric.series.artifact_id: first,
+        request.sources[1].metric.series.artifact_id: second,
+    }
+    with pytest.raises(TrajectoryPlotError) as error:
+        MatplotlibTrajectoryPlotter().render(
+            request, series_paths=paths, output_directory=tmp_path / "plots"
+        )
+    assert error.value.code == "VISUALIZATION.RESIDUE_MAPPING_MISMATCH"
+
+
+def test_plotter_rejects_highlight_outside_samples_and_existing_output(tmp_path: Path) -> None:
+    series = _write_csv(tmp_path / "metric.csv", "time_ns,value\n0,1\n1,2\n")
+    source = _source(series, "run")
+    request = TrajectoryPlotRequest(
+        id=new_ulid(), sources=(source,), highlight_window_ns=(5.0, 6.0)
+    )
+    with pytest.raises(TrajectoryPlotError) as highlight_error:
+        MatplotlibTrajectoryPlotter().render(
+            request,
+            series_paths={source.metric.series.artifact_id: series},
+            output_directory=tmp_path / "plots",
+        )
+    assert highlight_error.value.code == "VISUALIZATION.HIGHLIGHT_OUTSIDE_DATA"
+
+    pytest.importorskip("matplotlib")
+    request = TrajectoryPlotRequest(id=new_ulid(), sources=(source,))
+    output = tmp_path / "plots" / f"plot-{request.id}-rg_protein-plain.png"
+    output.parent.mkdir()
+    output.write_bytes(b"existing")
+    with pytest.raises(TrajectoryPlotError) as output_error:
+        MatplotlibTrajectoryPlotter().render(
+            request,
+            series_paths={source.metric.series.artifact_id: series},
+            output_directory=output.parent,
+        )
+    assert output_error.value.code == "VISUALIZATION.OUTPUT_ALREADY_EXISTS"
+
+
+def test_comparison_with_no_common_samples_and_empty_crop_fails() -> None:
+    request = TrajectoryPlotRequest(
+        id=new_ulid(),
+        sources=(
+            TrajectoryPlotSource(
+                analysis_id=new_ulid(),
+                trajectory_id=new_ulid(),
+                label="early",
+                metric=MetricSeries(
+                    name="rg_protein",
+                    definition=MetricDefinition(target_selection="protein"),
+                    unit="Å",
+                    axis="time_ns",
+                    value_column="value",
+                    series=ArtifactRef(artifact_id=new_ulid(), role="early", sha256="a" * 64),
+                    window_ns=(0, 1),
+                ),
+            ),
+            TrajectoryPlotSource(
+                analysis_id=new_ulid(),
+                trajectory_id=new_ulid(),
+                label="late",
+                metric=MetricSeries(
+                    name="rg_protein",
+                    definition=MetricDefinition(target_selection="protein"),
+                    unit="Å",
+                    axis="time_ns",
+                    value_column="value",
+                    series=ArtifactRef(artifact_id=new_ulid(), role="late", sha256="b" * 64),
+                    window_ns=(2, 3),
+                ),
+            ),
+        ),
+        comparison_basis="same target and measurement definition",
+    )
+    with pytest.raises(TrajectoryPlotError) as no_common_range:
+        _effective_window(
+            request, [_Trace((0.0, 1.0), (1.0, 2.0)), _Trace((2.0, 3.0), (3.0, 4.0))], "time_ns"
+        )
+    assert no_common_range.value.code == "VISUALIZATION.NO_COMMON_TIME_RANGE"
+    with pytest.raises(TrajectoryPlotError) as no_samples:
+        _crop_trace(_Trace((0.0, 1.0), (1.0, 2.0)), "time_ns", (2.0, 3.0), "rg_protein")
+    assert no_samples.value.code == "VISUALIZATION.WINDOW_HAS_NO_SAMPLES"
