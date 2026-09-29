@@ -64,12 +64,12 @@ adapter-specific scientific validation.
 
 ## Latest quality/coverage gate (2026-09-29)
 
-The full engine-free repository gate now reports 869 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
+The full engine-free repository gate now reports 871 passed and 38 skipped (the skips require separately installed engines, archived datasets, or optional visualization packages). scripts/check.sh additionally passed Ruff, formatting, strict mypy (196 source files), import-layer checks (255 files), and schema freshness. The two Starlette/httpx deprecation warnings are upstream dependency warnings.
 
 | Source group | Statements | Covered | Coverage | Phase 14 target |
 |---|---:|---:|---:|---:|
 | Core | 11,192 | 9,519 | 85.05% | ≥85% — met |
-| Adapters | 5,360 | 4,193 | 78.23% | ≥70% — met |
+| Adapters | 5,360 | 4,208 | 78.51% | ≥70% — met |
 | Isolated workers | 3,619 | 1,207 | 33.35% | Track separately |
 
 ### Current adapter family snapshot
@@ -79,10 +79,10 @@ The full engine-free repository gate now reports 869 passed and 38 skipped (the 
 | ADMET | 148 | 139 | 93.92% |
 | Analysis | 711 | 545 | 76.65% |
 | Binding energy | 592 | 482 | 81.42% |
-| Docking | 907 | 452 | 49.83% |
+| Docking | 907 | 601 | 66.26% |
 | Interactions | 245 | 202 | 82.45% |
 | MD | 466 | 394 | 84.55% |
-| QM | 656 | 536 | 81.71% |
+| QM | 659 | 539 | 81.79% |
 | Structure preparation | 167 | 130 | 77.84% |
 | Structure sources | 65 | 65 | 100.00% |
 | System builders | 960 | 731 | 76.15% |
@@ -99,14 +99,19 @@ Hosted CI also passed for commit fc74b20: [Quality](https://github.com/jdsridhar
 
 ### PDBFixer handler failure-path addition (2026-09-29)
 
-Engine-free tests cover source-artifact validation, preparation request generation, shell-free worker command planning, and nonzero exit, malformed JSON, and missing-output failures. Focused handler coverage is 87%, up from 63%; structure-preparation family coverage is 78% (130/167). No PDBFixer calculation or scientific preparation was run. Latest full gate: 869 passed / 38 skipped; core 85.05%, adapters 78.23%, workers 33.35%.
+Engine-free tests cover source-artifact validation, preparation request generation, shell-free worker command planning, and nonzero exit, malformed JSON, and missing-output failures. Focused handler coverage is 87%, up from 63%; structure-preparation family coverage is 78% (130/167). No PDBFixer calculation or scientific preparation was run. Latest full gate: 871 passed / 38 skipped; core 85.05%, adapters 78.51%, workers 33.35%.
 
 
 ### RCSB structure-source failure-path addition (2026-09-29)
 
-Engine-free tests cover strict entry-ID validation, fixed HTTPS retrieval behavior, timeouts, retryability for HTTP and transport errors, response-size enforcement, mmCIF validity and identity, registered-artifact hash verification, and successful bounded download. The RCSB source module reaches 100% focused statement coverage (65/65); 25 focused tests pass. This validates retrieval contracts and failure reporting, not experimental structure correctness. Latest full gate: 869 passed / 38 skipped; core 85.05%, adapters 78.23%, workers 33.35%. Hosted Quality run [36567081064](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36567081064) passed its web build and browser tests, including the expanded cube and trajectory viewer assertions.
+Engine-free tests cover strict entry-ID validation, fixed HTTPS retrieval behavior, timeouts, retryability for HTTP and transport errors, response-size enforcement, mmCIF validity and identity, registered-artifact hash verification, and successful bounded download. The RCSB source module reaches 100% focused statement coverage (65/65); 25 focused tests pass. This validates retrieval contracts and failure reporting, not experimental structure correctness. Latest full gate: 871 passed / 38 skipped; core 85.05%, adapters 78.51%, workers 33.35%. Hosted Quality run [36567081064](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36567081064) passed its web build and browser tests, including the expanded cube and trajectory viewer assertions.
 
 
 ### AutoDock4 process-error observability addition (2026-09-29)
 
-Engine-free tests exercise the AutoDock4 handler's subprocess boundary without starting scientific software: successful stdout/stderr artifact association, stage-specific nonzero-exit errors with stderr detail, stdout fallback when stderr has no hash, and missing/unreadable log handling. The focused handler validation module reports 27 passed and one opt-in engine test skipped; focused AutoDock4 handler statement coverage rose from 43% to 47%. Full suite: 869 passed / 38 skipped. Full architecture-group coverage: core 85.05%, adapters 78.23%, workers 33.35%. These checks validate failure reporting and provenance plumbing, not docking calculations.
+Engine-free tests exercise the AutoDock4 handler's subprocess boundary without starting scientific software: successful stdout/stderr artifact association, stage-specific nonzero-exit errors with stderr detail, stdout fallback when stderr has no hash, and missing/unreadable log handling. The focused handler validation module reports 29 passed and one opt-in engine test skipped; focused AutoDock4 handler statement coverage is 52% (154/294). Full suite: 871 passed / 38 skipped. Full architecture-group coverage: core 85.05%, adapters 78.51%, workers 33.35%. These checks validate failure reporting and provenance plumbing, not docking calculations.
+
+
+### AutoDock4 typed-entry validation addition (2026-09-29)
+
+Tests now call the AD4 handler entry point with real contract instances and verify malformed parameters and a wrong typed port fail before artifact access or external execution. The focused handler validation set is 29 passed, one opt-in engine test skipped; handler statement coverage is 52% (154/294). Fresh full suite: 871 passed / 38 skipped; architecture coverage core 85.05%, adapters 78.51%, workers 33.35%. Current family totals are listed above and were recalculated from the full coverage JSON report.

@@ -403,3 +403,45 @@ def test_ad4_artifact_text_handles_absent_hash_and_unreadable_log(tmp_path: Path
     )
     assert handler._artifact_text(no_hash, 100) == ""
     assert handler._artifact_text(unreadable, 100) == ""
+
+
+def test_ad4_execute_rejects_invalid_parameters_before_external_side_effects() -> None:
+    from tests.unit.test_vina_handler_contracts import _lineage
+
+    compound, form, conformer, receptor, structure, site = _lineage()
+    invocation = SimpleNamespace(
+        inputs={
+            "compound": (compound,),
+            "form": (form,),
+            "conformer": (conformer,),
+            "receptor": (receptor,),
+            "target_structure": (structure,),
+            "site": (site,),
+        },
+        task=SimpleNamespace(params={}),
+    )
+    handler = object.__new__(AutoDock4DockingHandler)
+    with pytest.raises(StageExecutionFailure) as error:
+        handler.execute(invocation)
+    assert error.value.code == "DOCKING.AD4_PARAMETERS_INVALID"
+
+
+def test_ad4_execute_rejects_invalid_typed_port_before_external_side_effects() -> None:
+    from tests.unit.test_vina_handler_contracts import _lineage
+
+    _compound, form, conformer, receptor, structure, site = _lineage()
+    handler = object.__new__(AutoDock4DockingHandler)
+    invocation = SimpleNamespace(
+        inputs={
+            "compound": (form,),
+            "form": (form,),
+            "conformer": (conformer,),
+            "receptor": (receptor,),
+            "target_structure": (structure,),
+            "site": (site,),
+        },
+        task=SimpleNamespace(params={}),
+    )
+    with pytest.raises(StageExecutionFailure) as error:
+        handler.execute(invocation)
+    assert error.value.code == "DOCKING.AD4_INPUT_CONTRACT_INVALID"
