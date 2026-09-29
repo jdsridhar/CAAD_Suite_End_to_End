@@ -33,3 +33,27 @@ jobs:
       - name: Core coverage target
         shell: bash -el {0}
         run: xvfb-run -a bash scripts/coverage.sh --minimum-core 85 --minimum-adapters 70
+
+  web:
+    name: Web build and browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend package for browser fixture
+        run: python -m pip install -e ".[chem]"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+      - name: Install Playwright Chromium and system libraries
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - name: Run web API, type, production build, and browser checks
+        run: bash scripts/check-web.sh

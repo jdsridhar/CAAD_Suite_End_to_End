@@ -850,7 +850,7 @@ When the user says **CONTINUE**:
 - [-] **P1 - Engine-enabled continuous validation:** read-only opt-in integration evidence now includes 21 MD/trajectory tests, 2 real AmberTools/GROMACS/OpenMM checks, MM/GBSA regressions, and 11 PSI4/PySCF worker/application tests. Two PSI4 feature-specific tests skip correctly because this worker environment lacks pyddx and RDKit; runtime capability discovery now hides those features and blocks their use before execution. A locked PySCF real-engine CI job passed hosted run 36558751976 on commit ea73098. Remaining optional adapters / engine profiles are open; do not bundle licensed engines.
 - [-] **P2 — Adapter coverage quality:** latest full no-engine coverage is 75.23% adapters (4,030/5,357), core 85.04% (9,518/11,192), and workers 33.35% (1,207/3,619). Adapter family coverage: ADMET 93.92%, analysis 76.65%, binding energy 81.42%, docking 63.29%, interactions 82.45%, MD 84.55%, QM 81.71%, structure preparation 64.07%, structure sources 64.62%, system builders 76.15%, visualization 63.18%. Focused QM selection: 71 passed, 82%; isolated PySCF adapter: 92%. Keep engine-free failure-path tests and real-engine evidence distinct; continue improving the lowest families without gaming exclusions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag or package upload was made. Before distribution, review transitive distribution notices and user-installed engine/model licensing for the actual release artifacts.
-- [ ] **P3 — Product polish:** investigate documented Mol* bundle-size and optional h264 Node builtin warnings; not a blocker for scientific core/runtime acceptance.
+- [-] **P3 — Product polish:** Mol* is lazy-loaded, but its viewer chunk is 4,832.17 kB (1,367.77 kB gzip). The h264 warning comes from Mol*'s MP4 extension resolving the package's Node entry; browser behavior remains untested. Added frontend diagnostic and a hosted web build/E2E job. Await its result, then resolve/disable MP4 export or omit the extension without losing molecular visualization.
 
 
 - [x] P0 diagnostic update: source mmCIF and prepared coordinates were inspected read-only; the possible terminal-cap mechanism and ligand-to-residue distances are recorded in docs/validation/G-DOCK-8.md. No source receptor or frozen v1 benchmark result was modified.
@@ -1007,3 +1007,12 @@ When the user says **CONTINUE**:
 - [x] Full `scripts/check.sh` passed: Ruff, formatting (346 files), strict mypy (196 files), import contracts (255 files), schemas, and 848 passed / 37 skipped; two upstream deprecation warnings remain.
 - [x] Full no-engine coverage gate passed: core 85.04% (9,518/11,192), adapters 75.23% (4,030/5,357), workers 33.35% (1,207/3,619). Frozen benchmark files were not staged or modified.
 - [x] Hosted CI passed for commit fc74b20: [Quality](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601940) and [Python package matrix](https://github.com/jdsridhar/CAAD_Suite_End_to_End/actions/runs/36561601894).
+
+
+### Session log — 2026-09-29, hosted frontend validation and Mol* build diagnostics
+
+- [x] Reproduced the web build: TypeScript and Vite succeed; measured the lazy-loaded Mol* chunk at 4,832.17 kB / 1,367.77 kB gzip, separate from the 221.18 kB / 68.94 kB gzip main chunk.
+- [x] Traced h264 Node builtin warnings to Mol*'s MP4 export extension importing h264-mp4-encoder, whose package default points to its Node entry despite a separate browser bundle. Browser MP4 behavior is not yet verified.
+- [x] Existing local browser E2E could not launch Chromium because this WSL image lacks libasound.so.2; the test assertions did not run. No system package was installed.
+- [x] Added a hosted web quality job that installs Python 3.12 + chemistry extra, Node 22, npm lock dependencies, and Playwright Chromium system libraries, then executes scripts/check-web.sh (API contract check, TypeScript, build, and browser E2E).
+- [-] Await hosted browser validation, then resolve the optional MP4 extension and assess Mol*'s lazy-load size without suppressing warnings or losing viewer features.
