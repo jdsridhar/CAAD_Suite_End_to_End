@@ -980,4 +980,4 @@ When the user says **CONTINUE**:
 
 - [x] Added a focused GitHub Actions engine workflow using the exact core and PySCF Linux explicit locks, a separate worker environment, and single-threaded BLAS/OpenMP.
 - [x] The workflow exercises the existing seeded real PySCF worker normalization and application-level workflow/report/provenance tests; documented the execution boundary and local reproduction steps in docs/development/ENGINE_TESTING.md.
-- [-] First hosted run is pending for the pushed change. This establishes PySCF CI coverage only; other engine integrations remain open.
+- [!] First hosted run exposed an invalid GitHub Actions context in job-level env (runner.temp is not allowed there). Moved the path to the test step; rerun must pass before marking CI validation complete. This establishes PySCF CI coverage only; other engine integrations remain open.

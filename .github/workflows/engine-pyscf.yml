@@ -36,7 +36,6 @@ jobs:
     name: PySCF worker + application integration / Linux x86_64 / Python 3.12
     runs-on: ubuntu-latest
     env:
-      CADDSUITE_PYSCF_PYTHON: ${{ runner.temp }}/caddsuite-pyscf/bin/python
       OMP_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
@@ -56,6 +55,8 @@ jobs:
         run: |
           micromamba run --prefix "$RUNNER_TEMP/caddsuite-core" python -m pip install --no-deps --no-build-isolation -e .
       - name: Run real seeded PySCF worker and application tests
+        env:
+          CADDSUITE_PYSCF_PYTHON: ${{ runner.temp }}/caddsuite-pyscf/bin/python
         shell: bash -el {0}
         run: |
           micromamba run --prefix "$RUNNER_TEMP/caddsuite-core" python -m pytest -q tests/integration/test_pyscf_adapter.py::test_real_pyscf_worker_normalizes_to_the_shared_qm_result tests/integration/test_qm_application_runtime.py::test_pyscf_application_run_records_normalized_result_and_provenance
