@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-58 extends nearest-water ligand checks to 15 5NIU/RC8 replica frames; 6/15 residuals exceed the ±0.0003 kcal/mol displayed-energy bound. G-MD-57 and G-MD-58 are local, correlated, short-run checks and do not explain the whole-system residual or qualify compatibility. No tolerance is set.
+| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-59 compares 15 G-MD-58 nearest-water pairs with an analytic Ewald lattice sum; the direct-space term closely tracks GROMACS while the reciprocal component carries most analytic-vs-GROMACS difference (max absolute 0.001103 kcal/mol). This is a numerical diagnostic on local, correlated, short-run frames; it does not explain the whole-system Amber/GROMACS residual or qualify compatibility. No tolerance is set.
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-58: 15 frame-specific nearest-water ligand–water inclusion–exclusion checks on pose-derived 5NIU/RC8 replicas; 6/15 residuals exceed the conservative Amber output-rounding bound. See docs/validation/G-MD-58.md. |
+| **Last completed** | G-MD-59: analytic direct + reciprocal Ewald comparison on the 15 G-MD-58 ligand–water pairs; reciprocal PME discretization is the largest analytic-vs-GROMACS difference, but Amber/GROMACS compatibility remains unqualified. See docs/validation/G-MD-59.md. |
 | **Blocking questions** | Matched-coordinate residual is about −2.44 kcal/mol across short, correlated frames from three velocity-seeded replicas of one pose-derived system; minimization-path results differ. G-MD-43 excludes the small logged-alpha mismatch as the main cause; G-MD-46 bounds analytic self/background differences as negligible for this neutral system. Reciprocal-exclusion/direct-space convention differences remain unresolved. Evidence still covers few, correlated configurations; independent equilibrated and chemically distinct systems are required. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1557,3 +1557,12 @@ When the user says **CONTINUE**:
 - [x] Added focused tests for PEP 639 expression, raw License text whitespace normalization, license classifier, primary-source fallback rows, unresolved metadata exit status, and pathspec wheel SHA-256 verification/rejection.
 - [x] Targeted test run: 3 passed. Ruff and format checks pass for the inventory builder and its test; git diff --check passes.
 - [-] Phase 18.4 human dependency/frontend license and notice review remains open; no legal compatibility claim or public package release.
+
+
+### Session log — 2026-09-30, analytic Ewald comparison on G-MD-58 pairs (G-MD-59)
+
+- [x] Added `scripts/validation/analytic_ewald_pair.py`, a parameterized, reproducible diagnostic for direct-space and reciprocal-lattice cross energies on matched neutral ligand–water groups; records input/output hashes and frame-level engine components.
+- [x] Evaluated all 15 nearest-water snapshots from the three G-MD-44 5NIU/RC8 replicas. Analytic-minus-GROMACS real-space mean −0.0000048 kcal/mol (RMSE 0.0000232); reciprocal mean +0.0002311 (RMSE 0.0003851; maximum absolute 0.0011026).
+- [x] Checked reciprocal vector cutoff convergence at 2.5 vs 3.0 Å⁻¹ on first, middle, and last frames; energy changes are ≤3.0×10⁻¹⁰ kcal/mol. Re-ran the committed runner against the retained capture; results and manifest are stored externally under `/home/sridhar/gmd59-analytic-ewald-checks-20260930/`.
+- [x] Documented equations, method assumptions, results, exact limitations, and reproduction command in `docs/validation/G-MD-59.md`. Ruff and format checks pass. This result diagnoses a reciprocal numerical contribution but does not explain the full Amber/GROMACS residual; no tolerance or compatibility qualification is set.
+- [-] Continue independent PME validation on additional configurations and chemically distinct systems; independent blind review and public-release license/notice review remain open.
