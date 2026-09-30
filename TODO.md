@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Audit Amber/GROMACS pair-specific nonbonded/exclusion mapping and remaining PME conventions; extend charge and component-energy checks to more chemically diverse ligand/protein systems. G-MD-28/29 cover two systems but do not qualify cross-engine equivalence. |
+| **Current task** | [-] Pair/exclusion mapping audit completed for the two retained systems (G-MD-30); continue reconciling PME/electrostatic conventions and extend charge/component-energy checks to chemically diverse ligand/protein systems. Cross-engine equivalence remains unqualified. |
 | **Next task** | Continue adapter-family scientific validation. Run the preregistered redocking cohort only after independent blinded review. Complete public-release dependency/license/notice review before any release. |
-| **Last completed** | G-MD-29: second real AmberTools→GROMACS system, bounded ligand-charge normalization, component decomposition, and PME refinement; comparison remains unqualified. |
-| **Blocking questions** | At fine mesh and matched screening coefficient, the 5NIU/RC8 potential residual is −9.7178 kcal/mol; the tiny ethanol/GLY fixture residual is −0.1463 kcal/mol. Pair-specific interactions/exclusions and broader system dependence are unresolved; no Amber→GROMACS tolerance is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
+| **Last completed** | G-MD-30: exact exclusion and 1–4 pair/scaling record agreement measured on the G-MD-28/29 systems; PME/total-energy comparison remains unqualified. |
+| **Blocking questions** | At fine mesh and matched screening coefficient, the 5NIU/RC8 potential residual is −9.7178 kcal/mol; the tiny ethanol/GLY fixture residual is −0.1463 kcal/mol. Pair/exclusion mapping agrees on the two inspected systems (G-MD-30), while PME/electrostatic causes and broader system dependence remain unresolved; no Amber→GROMACS tolerance is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1295,7 +1295,8 @@ When the user says **CONTINUE**:
 - [x] G-MD-29 re-ran the existing 1,376-atom ethanol/two-GLY AmberTools→GROMACS integration: 1 passed in 3.16 s. Raw ligand charge residual `+1e-6 e` was verified as SQM print roundoff and corrected by `−1e-6 e`; system net charge `−1.03e-8 e`. Worker output hashes: 42/42 verified.
 - [x] ParmEd 4.3.0 comparison on the tiny system found exact ordered identity, maximum per-atom charge delta `3.05e-9 e`, net delta `2.03e-8 e`, maximum LJ sigma/epsilon deltas `4.48e-8 Å` / `2.79e-10 kcal/mol`, and coordinate displacement max `8.43e-5 Å`.
 - [x] The tiny system's default-grid delta is `−0.5945 kcal/mol`, mostly electrostatic (`−0.5795 kcal/mol`). Grid refinement to 0.03 nm plus coefficient-matched `ewald-rtol=0.0001` reduces the residual to `−0.1463 kcal/mol`; it remains unqualified. Evidence is in `docs/validation/G-MD-29.md` and `G-MD-29-worker-result.json`.
-- [-] Compare Amber/GROMACS pair-specific nonbonded terms and exclusions, investigate remaining PME conventions, and repeat on additional chemically varied systems. No acceptance tolerance or general compatibility claim until these checks pass.
+- [x] G-MD-30: compare ParmEd Amber/GROMACS symmetric exclusion sets, 1–4 pair identities, SCEE charge scales, and SCNB-scaled LJ records on both retained systems; zero mismatches observed within documented tolerances. This bounded topology-record check is not full force-field equivalence.
+- [-] Reconcile remaining PME/electrostatic conventions and repeat component-energy/charge checks on additional chemically varied protein–ligand systems. No acceptance tolerance or general compatibility claim until a justified qualification protocol passes.
 
 ### Session log — 2026-09-30, G-MD-28 energy decomposition and PME refinement
 
@@ -1305,4 +1306,13 @@ When the user says **CONTINUE**:
 - [x] Compared 18,169 ordered Amber/GROMACS atom records with ParmEd 4.3.0: identities match; max per-atom charge difference `4.48e-9 e`; net delta `−4.85e-8 e`; maximum LJ sigma/epsilon deltas `4.54e-8 Å` / `5.19e-10 kcal/mol`; maximum coordinate displacement `8.43e-5 Å`. Pair-specific parameter/exclusion equivalence remains untested.
 - [x] Recorded methods, per-term values, PME grid choices, hashes, reproducible refinement script, source references, and scientific limits in `docs/validation/G-MD-28.md` and `scripts/validation/gmd27_pme_refinement.sh`.
 - [x] Verified all 43 hashes in the clean captured worker-artifact manifest before and after the corrected PME refinement script; the source capture remained unchanged.
-- [-] PME behavior is now characterized for one fixture, but pair-specific parameter/exclusion equivalence and additional-system charge/energy checks remain. No tolerance or force-field compatibility claim is accepted.
+- [x] G-MD-30 subsequently compared exclusion and 1–4 pair/scaling records on the pose-derived fixture and the second tiny system; the inspected records matched within documented tolerances.
+- [-] PME behavior is characterized on two fixtures, but electrostatic convention analysis and additional-system charge/energy checks remain. No tolerance or force-field compatibility claim is accepted.
+
+### Session log — 2026-09-30, Amber/GROMACS exclusions and 1–4 pair audit
+
+- [x] Read the retained G-MD-28 pose-derived 5NIU/RC8 and G-MD-29 ethanol/two-GLY AMBER and GROMACS topology artifacts with ParmEd 4.3.0.
+- [x] Symmetric exclusion sets matched exactly: 27,365 pairs for 5NIU/RC8 and 1,457 for ethanol/GLY.
+- [x] AMBER proper-dihedral-derived 1–4 pair identity matched every GROMACS explicit pair: 5,406 and 43 pairs respectively. All matched 1/SCEE charge scaling and geometric_mean(epsilon)/SCNB LJ scaling within the documented numeric tolerances; no ambiguous pair scaling was found.
+- [x] Recorded the method, bounded conclusion, references, tolerances, and scientific limits in docs/validation/G-MD-30.md. This is topology representation evidence only; it does not explain the remaining PME energy residuals or enable Amber→GROMACS compatibility.
+- [-] Continue PME/electrostatic convention analysis and add chemically diverse systems before considering any tolerance or profile qualification.
