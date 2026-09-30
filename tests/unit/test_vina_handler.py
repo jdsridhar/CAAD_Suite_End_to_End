@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
 import json
 import math
@@ -580,8 +581,23 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                         "ewald_error_tolerance": 0.0005,
                     },
                 )
+                nvt = MDStage(
+                    kind=MDStageKind.NVT,
+                    integrator="langevin",
+                    timestep_fs=2.0,
+                    n_steps=10,
+                    temperature_K=303.15,
+                    thermostat="langevin",
+                    constraints="HBonds",
+                    hmr=False,
+                    nonbonded={
+                        "method": "PME",
+                        "cutoff_nm": 0.8,
+                        "ewald_error_tolerance": 0.0005,
+                    },
+                )
                 minimized_build = built_system.model_copy(
-                    update={"protocol": MDProtocol(stages=(minimization,))}
+                    update={"protocol": MDProtocol(stages=(minimization, nvt))}
                 )
                 stage_input = MDStageInput(
                     id=new_ulid(),
@@ -634,7 +650,63 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                 assert minimization_report["potential_energy_kcal_mol"] <= (
                     minimization_report["initial_potential_energy_kcal_mol"] + 1e-5
                 )
-                assert (stage_dir / "pose_minimized.pdb").is_file()
+                minimized_pdb = stage_dir / "pose_minimized.pdb"
+                assert minimized_pdb.is_file()
+                minimized_coordinates_ref = ArtifactRef(
+                    artifact_id=new_ulid(),
+                    role="md_pdb",
+                    sha256=hashlib.sha256(minimized_pdb.read_bytes()).hexdigest(),
+                )
+                nvt_input = MDStageInput(
+                    id=new_ulid(),
+                    system_id=built_system.system.id,
+                    compound_id=built_system.system.compound_id,
+                    form_id=built_system.system.form_id,
+                    stage_index=1,
+                    artifacts={
+                        "topology": topology_ref,
+                        "coordinates": minimized_coordinates_ref,
+                    },
+                )
+                nvt_context = AdapterContext(
+                    inputs={"system_build": minimized_build, "stage_input": nvt_input},
+                    parameters={
+                        "openmm": {
+                            "stage_index": 1,
+                            "python_executable": OPENMM_PYTHON,
+                            "worker_script": str(ROOT / "src/caddsuite_worker/openmm_md_worker.py"),
+                            "topology_path": staged_topology,
+                            "coordinates_path": "pose_minimized.pdb",
+                            "output_prefix": "pose_nvt",
+                            "random_seed": 42,
+                            "friction_per_ps": 1.0,
+                            "report_interval_steps": 5,
+                            "cpu_threads": 1,
+                            "platform_name": "CPU",
+                        }
+                    },
+                    working_directory=stage_dir,
+                )
+                assert openmm_adapter.validate_stage(nvt_context) == ()
+                nvt_plan = openmm_adapter.plan_stage(nvt_context)
+                completed = subprocess.run(
+                    nvt_plan.commands[0].argv,
+                    cwd=stage_dir,
+                    env={**os.environ, **nvt_plan.commands[0].environment},
+                    capture_output=True,
+                    check=False,
+                    shell=False,
+                    timeout=300,
+                )
+                output = completed.stdout + completed.stderr
+                assert completed.returncode == 0, output.decode(errors="replace")[-4000:]
+                nvt_report = json.loads(
+                    (stage_dir / "pose_nvt.result.json").read_text(encoding="utf-8")
+                )
+                assert nvt_report["parameters"]["stage_kind"] == "nvt"
+                assert nvt_report["steps_completed"] == 10
+                assert nvt_report["time_ps"] == pytest.approx(0.02)
+                assert nvt_report["atom_count"] == built_system.system.n_atoms
         ad4_bin_dir = os.environ.get("CADDSUITE_AUTODOCK4_BIN_DIR")
         if ad4_bin_dir:
             ad4_bin = Path(ad4_bin_dir)

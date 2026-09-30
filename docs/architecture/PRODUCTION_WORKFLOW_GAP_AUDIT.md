@@ -9,7 +9,7 @@ The dated snapshot below predates the real AmberTools run. G-MD-22 now records a
 
 Remaining: OpenMM has not yet run on the actual pose-derived system, so a complete selected-pose → MD → trajectory analysis/report composition remains open. A GROMACS-format build of the pose-derived system currently fails closed because GROMACS reports `+0.001 e` net charge under PME; warning suppression and charge edits were intentionally not used. The Amber-to-GROMACS compatibility profile remains disabled. See `docs/validation/G-MD-22.md` for evidence and limits.
 
-G-MD-23 supersedes the OpenMM portion of that note: a bounded OpenMM minimization now runs on the actual pose-derived Amber system, and the resulting topology-matched PDB can feed a later production stage. A separate tiny Amber regression exercises minimization → PDB → 50-step production. The actual pose has not yet run production dynamics, and the 10-iteration cap used there is not convergence evidence. Thus the pose-derived MD → trajectory analysis/report composition remains open.
+G-MD-23 supersedes the OpenMM portion of that note: a bounded OpenMM minimization now runs on the actual pose-derived Amber system, and the resulting topology-matched PDB can feed a later stage. G-MD-24 adds a 10-step NVT smoke on that actual pose-derived system. A separate tiny Amber regression exercises minimization → NVT → 50-step production. The actual pose has not yet run production dynamics, and the 10-iteration minimization / 10-step NVT are not convergence or stability evidence. Thus the pose-derived MD → trajectory analysis/report composition remains open.
 
 ## Production-discovered stage capabilities
 

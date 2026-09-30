@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Validate an explicit pose-derived OpenMM minimization convergence/equilibration policy, then execute and bind short pose-derived MD outputs into analysis/reporting. |
+| **Current task** | [-] Add a topology-aware OpenMM DCD/PDB trajectory-processing and analysis path, then bind pose-derived run outputs into the report workflow. |
 | **Next task** | Complete pose-derived system → MD → trajectory analysis/report runtime validation; then continue adapter-family scientific validation and the locked redocking benchmark after independent blind review. |
-| **Last completed** | G-MD-23: OpenMM minimization on the actual Vina-derived 5NIU/RC8 Amber system, plus real minimized-PDB → production handoff on the tiny regression. Full local gate: 932 passed, 38 optional skips. |
-| **Blocking questions** | Pose-derived minimization was capped at 10 iterations as an execution smoke, not a convergence result; OpenMM production has not run on that pose. GROMACS output correctly fails closed on its `+0.001 e` PME warning. Independent blind review and public-release license/notice review remain open. |
+| **Last completed** | G-MD-24: pose-derived OpenMM minimization → NVT (10 steps, 0.02 ps) and tiny-system minimization → NVT → production handoff. Full local gate: 933 passed, 38 optional skips. |
+| **Blocking questions** | The pose-derived 10-iteration minimization and 10-step NVT are execution smokes only; no pose-derived production, trajectory analysis, or stability claim yet. GROMACS output fails closed on its `+0.001 e` PME warning. Independent blind review and public-release license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1254,3 +1254,11 @@ When the user says **CONTINUE**:
 - [x] OpenMM minimization ran on the actual pose-derived 5NIU/RC8 native Amber system. The worker records before/after energy, outputs a minimized PDB, and fails closed if final potential energy rises beyond numerical tolerance. Adapter handoff checks accept only a hash-linked OpenMM PDB output for the same system and verify atom/residue identity against topology.
 - [x] The tiny real native Amber regression now executes minimization followed by a 50-step OpenMM production smoke from the generated PDB. Focused OpenMM adapter tests: 5 passed. Full `scripts/check.sh`: 932 passed, 38 optional skips; Ruff, formatting, strict mypy (202 source files), import contracts (261 files), and schemas passed. Evidence in `docs/validation/G-MD-23.md`.
 - [-] The 10-iteration pose-derived minimization is an execution smoke, not convergence; OpenMM production has not run on that pose. The GROMACS output route still fails closed because the converted PME topology reports `+0.001 e`; the warning remains unresolved. Independent blind review and public-release license review remain separate gates.
+
+### Session log — 2026-09-30, OpenMM NVT and pose-derived runtime
+
+- [x] Extended the OpenMM adapter/worker capability to an explicit NVT stage using the existing Langevin settings; minimized or prior-stage PDB coordinates must be a hash-linked `md_pdb` artifact and match the Amber topology's atom/residue order.
+- [x] Real tiny-system Amber/OpenMM integration passed minimization → NVT (10 steps, 0.02 ps) → production (50 steps, 0.1 ps), passing the generated PDB between stages. The separate 2M2D fixture was not used for this flow.
+- [x] Real Vina-derived 5NIU/RC8 workflow passed Amber parameterization → 10-iteration OpenMM minimization → 10-step NVT (0.02 ps); identity, atom count, stage kind, and output receipt assertions passed. This is a runtime smoke, not an equilibration/convergence or stability claim.
+- [x] OpenMM adapter tests: 6 passed. Full `scripts/check.sh`: 933 passed, 38 optional skips; Ruff, formatting, strict mypy (202 source files), import contracts (261 files), and schemas passed. Evidence in `docs/validation/G-MD-24.md`.
+- [-] Actual pose-derived production dynamics and DCD trajectory processing/analysis/report composition remain open. GROMACS-profile `+0.001 e` PME warning, independent blinded benchmark review, and public-release licensing review remain unresolved.

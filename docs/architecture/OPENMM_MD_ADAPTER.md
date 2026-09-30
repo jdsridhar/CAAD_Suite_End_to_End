@@ -17,9 +17,9 @@ GROMACS topology or CHARMM force-field profile is rejected before execution.
 ## Supported proof scope
 
 - Native Amber ff14SB protein + GAFF2 ligand + AM1-BCC + TIP3P + Joung-Cheatham ion profile.
-- Energy minimization with an explicit maximum-iteration count, or one NVT-like production stage
-  with an explicit Langevin integrator, temperature, `<=2 fs` timestep,
-  constrained hydrogens, `hmr=false`, and no barostat.
+- Energy minimization with an explicit maximum-iteration count, NVT equilibration, and production
+  stages with an explicit Langevin integrator, temperature, `<=2 fs` timestep, constrained
+  hydrogens, `hmr=false`, and no barostat.
 - PME with explicit cutoff and Ewald tolerance.
 - CPU or Reference platform, explicit thread count, random seed, friction and output interval.
 - Amber topology and coordinate SHA-256 values are checked in the isolated worker before OpenMM
@@ -41,9 +41,10 @@ responsible for process supervision and durable artifact registration.
 
 The enabled native Amber profile is limited to the adapter's declared input semantics. The
 real-engine evidence includes a 50-step CPU smoke stage on a tiny solvated ethanol + two-residue
-GLY system, minimization on the Vina-derived 5NIU/RC8 system, and minimization-PDB → production
-handoff on the tiny system. These establish adapter execution and artifact continuity only. The
-10-iteration pose-derived minimization is an execution smoke, not a convergence claim. This
+GLY system, minimization → NVT → production on that tiny system, and minimization → 10-step NVT
+on the Vina-derived 5NIU/RC8 system. These establish adapter execution and artifact continuity
+only. The 10-iteration pose-derived minimization and 10-step NVT are execution smokes, not
+convergence or stability claims. This
 evidence does not qualify Amber force-field accuracy, thermal stability, long simulations,
 protein-ligand stability, or binding affinity. The separate Amber-to-GROMACS profile remains
 disabled pending a broader conversion benchmark and a justified energy tolerance.

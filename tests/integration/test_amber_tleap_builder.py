@@ -295,8 +295,23 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                     "ewald_error_tolerance": 0.0005,
                 },
             )
+            nvt = MDStage(
+                kind=MDStageKind.NVT,
+                integrator="langevin",
+                timestep_fs=2.0,
+                n_steps=10,
+                temperature_K=303.15,
+                thermostat="langevin",
+                constraints="HBonds",
+                hmr=False,
+                nonbonded={
+                    "method": "PME",
+                    "cutoff_nm": 0.8,
+                    "ewald_error_tolerance": 0.0005,
+                },
+            )
             openmm_build = result.model_copy(
-                update={"protocol": MDProtocol(stages=(minimization, mdp))}
+                update={"protocol": MDProtocol(stages=(minimization, nvt, mdp))}
             )
             stage_dir = tmp_path / "openmm_stage"
             stage_dir.mkdir()
@@ -365,7 +380,7 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                 role="md_pdb",
                 sha256=hashlib.sha256(minimized_path.read_bytes()).hexdigest(),
             )
-            production_input = MDStageInput(
+            nvt_input = MDStageInput(
                 id=new_ulid(),
                 system_id=result.system.id,
                 compound_id=result.system.compound_id,
@@ -373,12 +388,56 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
                 stage_index=1,
                 artifacts={"topology": topology_ref, "coordinates": minimized_ref},
             )
-            production_context = AdapterContext(
-                inputs={"system_build": openmm_build, "stage_input": production_input},
+            nvt_context = AdapterContext(
+                inputs={"system_build": openmm_build, "stage_input": nvt_input},
                 parameters={
                     "openmm": {
                         "stage_index": 1,
                         "coordinates_path": "openmm_minimized.pdb",
+                        "output_prefix": "openmm_nvt",
+                        **common_parameters,
+                    }
+                },
+                working_directory=stage_dir,
+            )
+            assert openmm.validate_stage(nvt_context) == ()
+            nvt_plan = openmm.plan_stage(nvt_context)
+            completed = subprocess.run(
+                nvt_plan.commands[0].argv,
+                cwd=stage_dir,
+                env={**os.environ, **nvt_plan.commands[0].environment},
+                capture_output=True,
+                check=False,
+                shell=False,
+                timeout=120,
+            )
+            output = completed.stdout + completed.stderr
+            assert completed.returncode == 0, output.decode(errors="replace")[-4000:]
+            nvt_report = json.loads(
+                (stage_dir / "openmm_nvt.result.json").read_text(encoding="utf-8")
+            )
+            assert nvt_report["parameters"]["stage_kind"] == "nvt"
+            assert nvt_report["steps_completed"] == 10
+            assert nvt_report["time_ps"] == pytest.approx(0.02)
+            nvt_ref = ArtifactRef(
+                artifact_id=new_ulid(),
+                role="md_pdb",
+                sha256=hashlib.sha256((stage_dir / "openmm_nvt.pdb").read_bytes()).hexdigest(),
+            )
+            production_input = MDStageInput(
+                id=new_ulid(),
+                system_id=result.system.id,
+                compound_id=result.system.compound_id,
+                form_id=result.system.form_id,
+                stage_index=2,
+                artifacts={"topology": topology_ref, "coordinates": nvt_ref},
+            )
+            production_context = AdapterContext(
+                inputs={"system_build": openmm_build, "stage_input": production_input},
+                parameters={
+                    "openmm": {
+                        "stage_index": 2,
+                        "coordinates_path": "openmm_nvt.pdb",
                         "output_prefix": "openmm_smoke",
                         **common_parameters,
                     }

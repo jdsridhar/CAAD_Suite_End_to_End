@@ -86,7 +86,7 @@ class OpenMMMDAdapter:
     adapter_id = "caddsuite.md.openmm"
     version = "0.1.0"
     capabilities = MDExecutionCapabilities(
-        stage_kinds=(MDStageKind.MINIMIZATION, MDStageKind.PRODUCTION),
+        stage_kinds=(MDStageKind.MINIMIZATION, MDStageKind.NVT, MDStageKind.PRODUCTION),
         topology_formats=("Amber prmtop/inpcrd",),
         trajectory_formats=("DCD",),
         supports_cpu=True,
@@ -157,7 +157,7 @@ class OpenMMMDAdapter:
             "--platform",
             parameters.platform_name,
         ]
-        if stage.kind is MDStageKind.PRODUCTION:
+        if stage.kind in {MDStageKind.NVT, MDStageKind.PRODUCTION}:
             if stage.timestep_fs is None or stage.temperature_K is None:
                 _fail(
                     "MD.OPENMM_STAGE_SETTINGS_MISSING",
@@ -294,10 +294,14 @@ class OpenMMMDAdapter:
         if parameters.stage_index >= len(build.protocol.stages):
             _fail("MD.OPENMM_STAGE_INDEX_INVALID", "stage index is outside the selected MDProtocol")
         stage = build.protocol.stages[parameters.stage_index]
-        if stage.kind not in {MDStageKind.MINIMIZATION, MDStageKind.PRODUCTION}:
+        if stage.kind not in {
+            MDStageKind.MINIMIZATION,
+            MDStageKind.NVT,
+            MDStageKind.PRODUCTION,
+        }:
             _fail(
                 "MD.OPENMM_STAGE_UNSUPPORTED",
-                "OpenMM supports only explicit minimization and production stages",
+                "OpenMM supports explicit minimization, NVT, and production stages",
             )
         if stage.kind is MDStageKind.MINIMIZATION:
             if (
@@ -322,7 +326,7 @@ class OpenMMMDAdapter:
                 "MD.OPENMM_INTEGRATOR_UNSUPPORTED",
                 "select the supported Langevin production integrator",
             )
-        if stage.kind is MDStageKind.PRODUCTION and (
+        if stage.kind in {MDStageKind.NVT, MDStageKind.PRODUCTION} and (
             stage.n_steps is None
             or stage.n_steps < 1
             or stage.timestep_fs is None

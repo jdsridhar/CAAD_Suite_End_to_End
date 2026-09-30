@@ -1,4 +1,4 @@
-"""Isolated OpenMM worker for native-Amber minimization and MD production stages.
+"""Isolated OpenMM worker for native-Amber minimization, NVT, and production stages.
 
 The worker intentionally depends only on the Python standard library and user-installed OpenMM.
 It exchanges primitive CLI arguments and a JSON result, never importing the platform package.
@@ -63,7 +63,7 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
     result_path = _output(root, args.output_prefix, "result.json")
     if args.steps < 1:
         raise ValueError("steps/maximum iterations must be positive")
-    if args.stage_kind == "production":
+    if args.stage_kind in {"nvt", "production"}:
         dcd_path = _output(root, args.output_prefix, "dcd")
         csv_path = _output(root, args.output_prefix, "csv")
         if args.report_interval_steps < 1:
@@ -118,7 +118,7 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
     system.setDefaultPeriodicBoxVectors(*box_vectors)
     if args.stage_kind == "minimization":
         integrator = openmm.VerletIntegrator(1.0 * unit.femtoseconds)
-    elif args.stage_kind == "production":
+    elif args.stage_kind in {"nvt", "production"}:
         integrator = openmm.LangevinMiddleIntegrator(
             args.temperature_k * unit.kelvin,
             args.friction_per_ps / unit.picosecond,
@@ -158,7 +158,7 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
         )
 
     completed = 0
-    if args.stage_kind == "production":
+    if args.stage_kind in {"nvt", "production"}:
         while completed < args.steps:
             count = min(args.report_interval_steps, args.steps - completed)
             simulation.step(count)
@@ -207,8 +207,12 @@ def _run(args: argparse.Namespace) -> dict[str, Any]:
         "limitations": [
             "Minimization is not equilibration or production dynamics."
             if args.stage_kind == "minimization"
-            else "Short adapter execution check; not a production MD validation or "
-            "binding-stability result."
+            else (
+                "Short NVT equilibration smoke; not a stability or production validation."
+                if args.stage_kind == "nvt"
+                else "Short adapter execution check; not a production MD validation or "
+                "binding-stability result."
+            )
         ],
     }
     if args.stage_kind == "minimization":
@@ -248,7 +252,9 @@ def main() -> int:
     parser.add_argument("--coordinates-sha256", required=True)
     parser.add_argument("--output-prefix", required=True)
     parser.add_argument("--steps", type=int, required=True)
-    parser.add_argument("--stage-kind", choices=("minimization", "production"), required=True)
+    parser.add_argument(
+        "--stage-kind", choices=("minimization", "nvt", "production"), required=True
+    )
     parser.add_argument("--timestep-fs", type=float, default=2.0)
     parser.add_argument("--temperature-k", type=float, default=303.15)
     parser.add_argument("--friction-per-ps", type=float, default=1.0)

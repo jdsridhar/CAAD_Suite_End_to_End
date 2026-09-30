@@ -236,6 +236,32 @@ def test_openmm_minimization_emits_coordinates_for_hash_linked_production(tmp_pa
     assert adapter.validate_stage(chained_context) == ()
 
 
+def test_openmm_plans_explicit_nvt_stage(tmp_path: Path):
+    context = _context(tmp_path)
+    build = context.inputs["system_build"]
+    assert isinstance(build, SystemBuildResult)
+    assert build.protocol is not None
+    nvt = build.protocol.stages[0].model_copy(update={"kind": MDStageKind.NVT})
+    nvt_build = build.model_copy(update={"protocol": MDProtocol(stages=(nvt,))})
+    nvt_context = AdapterContext(
+        inputs={**context.inputs, "system_build": nvt_build},
+        parameters=context.parameters,
+        working_directory=context.working_directory,
+    )
+    adapter = OpenMMMDAdapter()
+    assert adapter.validate_stage(nvt_context) == ()
+    plan = adapter.plan_stage(nvt_context)
+    command = plan.commands[0]
+    assert command.argv[command.argv.index("--stage-kind") + 1] == "nvt"
+    assert command.argv[command.argv.index("--temperature-k") + 1] == "303.15"
+    assert plan.expected_outputs == (
+        "smoke.dcd",
+        "smoke.pdb",
+        "smoke.csv",
+        "smoke.result.json",
+    )
+
+
 def test_openmm_rejects_gromacs_profile_and_non_explicit_engine_settings(tmp_path: Path):
     adapter = OpenMMMDAdapter()
     context = _context(tmp_path)
