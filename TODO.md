@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] G-MD-31 matched Amber and GROMACS nominal PME grids, order, and screening coefficient on both retained systems; residuals persist. Isolate PME components/forces and extend charge/component-energy checks to chemically diverse protein–ligand systems. Cross-engine equivalence remains unqualified. |
+| **Current task** | [-] G-MD-32 found P3M-AD changes coarse-grid energies but not the fine-grid residual. Next seek a validated AmberTools 23.6 force diagnostic/runtime, then compare electrostatic forces and extend component/charge checks to chemically varied protein–ligand systems. Cross-engine equivalence remains unqualified. |
 | **Next task** | Continue adapter-family scientific validation. Run the preregistered redocking cohort only after independent blinded review. Complete public-release dependency/license/notice review before any release. |
-| **Last completed** | G-MD-31: same-grid PME comparison on both retained systems; residuals persist and remain unqualified. |
+| **Last completed** | G-MD-32: PME/P3M-AD comparison at Amber-sized and fine grids on both retained systems; residuals persist and remain unqualified. |
 | **Blocking questions** | At fine mesh and matched screening coefficient, the 5NIU/RC8 potential residual is −9.7178 kcal/mol; the tiny ethanol/GLY fixture residual is −0.1463 kcal/mol. Pair/exclusion mapping agrees on the two inspected systems (G-MD-30), while PME/electrostatic causes and broader system dependence remain unresolved; no Amber→GROMACS tolerance is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1297,7 +1297,8 @@ When the user says **CONTINUE**:
 - [x] The tiny system's default-grid delta is `−0.5945 kcal/mol`, mostly electrostatic (`−0.5795 kcal/mol`). Grid refinement to 0.03 nm plus coefficient-matched `ewald-rtol=0.0001` reduces the residual to `−0.1463 kcal/mol`; it remains unqualified. Evidence is in `docs/validation/G-MD-29.md` and `G-MD-29-worker-result.json`.
 - [x] G-MD-30: compare ParmEd Amber/GROMACS symmetric exclusion sets, 1–4 pair identities, SCEE charge scales, and SCNB-scaled LJ records on both retained systems; zero mismatches observed within documented tolerances. This bounded topology-record check is not full force-field equivalence.
 - [x] G-MD-31: forced GROMACS grids to Amber's exact recorded PME grid dimensions and matched the Ewald coefficient on both systems. Residuals were −10.4236 kcal/mol (5NIU/RC8) and −0.2528 kcal/mol (ethanol/GLY); same nominal grid/settings do not establish energy equivalence. See docs/validation/G-MD-31.md.
-- [-] Isolate PME components/forces with engine-supported diagnostics and repeat charge/component-energy checks on additional chemically varied protein–ligand systems. No acceptance tolerance or general compatibility claim until a justified qualification protocol passes.
+- [x] G-MD-32: compare P3M-AD with PME on both Amber-sized and 0.03 nm grids. The influence function moves coarse-grid energies toward Amber but fine-grid residuals remain −9.7104 kcal/mol (5NIU/RC8) and −0.1459 kcal/mol (ethanol/GLY). See docs/validation/G-MD-32.md.
+- [-] Validate an AmberTools 23.6 electrostatic force diagnostic and compare per-atom forces at matched coordinates/conventions; then expand charge/component checks to chemically varied systems. No acceptance tolerance or general compatibility claim until a justified qualification protocol passes.
 
 ### Session log — 2026-09-30, G-MD-28 energy decomposition and PME refinement
 
@@ -1325,3 +1326,11 @@ When the user says **CONTINUE**:
 - [x] GROMACS confirmed meshes 60×81×48 and 36×25×24. Residuals measured −10.4236 kcal/mol for 5NIU/RC8 and −0.2528 kcal/mol for ethanol/GLY. No acceptance tolerance was used.
 - [x] Recorded methods, outputs/hashes, interpretation, source documentation, and limitations in docs/validation/G-MD-31.md. Captures were read-only; derived outputs are separate under /home/sridhar/gmd30-common-grid-*.
 - [-] PME implementation/energy-correction source remains unresolved; profile remains disabled pending stronger diagnostics and broader validation.
+
+
+### Session log — 2026-09-30, P3M-AD influence-function diagnostic
+
+- [x] Ran GROMACS 2026.3 P3M-AD single-point reruns on both retained systems at Amber's exact grids and at 0.03 nm spacing, with pme-order 4 and ewald-rtol 0.0001. Source captures remained read-only; all outputs are retained in separate directories.
+- [x] Amber-sized-grid energy residuals shifted toward Amber by +0.5714 kcal/mol (5NIU/RC8) and +0.0665 kcal/mol (ethanol/GLY). Fine-grid P3M-AD residuals were −9.7104 and −0.1459 kcal/mol, close to regular PME's −9.7178 and −0.1463.
+- [x] Documented hashes, settings, results, official GROMACS method description, and limitations in docs/validation/G-MD-32.md. No tolerance or qualification inferred.
+- [-] Next: validate availability/behavior of Sander electrostatic force diagnostics for AmberTools 23.6, then perform same-coordinate force comparison. Existing WSL environments currently have no discoverable sander executable.
