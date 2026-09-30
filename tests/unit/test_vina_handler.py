@@ -7,6 +7,7 @@ import importlib.metadata
 import json
 import math
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -567,6 +568,30 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
             if capture_path:
                 with Path(capture_path).open("x", encoding="utf-8") as stream:
                     stream.write(json.dumps(build_report, sort_keys=True, indent=2) + "\n")
+            artifact_capture = os.environ.get("CADDSUITE_TEST_AMBER_ARTIFACT_CAPTURE")
+            if artifact_capture:
+                capture_root = Path(artifact_capture)
+                capture_root.mkdir(parents=True, exist_ok=False)
+                captured_artifacts: dict[str, str] = {}
+                for artifact_name, artifact_ref in built_system.raw_artifacts.items():
+                    parts = Path(artifact_name).parts
+                    if not parts or parts[0] != "amber_outputs":
+                        continue
+                    if len(parts) < 2:
+                        raise AssertionError(f"invalid worker artifact path: {artifact_name}")
+                    relative = Path(*parts[1:])
+                    if any(part in {".", ".."} for part in relative.parts):
+                        raise AssertionError(f"unsafe raw artifact path: {artifact_name}")
+                    if artifact_ref.sha256 is None:
+                        raise AssertionError(f"raw artifact has no hash: {artifact_name}")
+                    destination = capture_root / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(store.path_for(artifact_ref.sha256), destination)
+                    captured_artifacts[relative.as_posix()] = artifact_ref.sha256
+                (capture_root / "manifest.json").write_text(
+                    json.dumps(captured_artifacts, sort_keys=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
             charge_normalization = build_report["ligand_charge_normalization"]
             assert charge_normalization["normalized_charge_sum_e"] == pytest.approx(
                 charge_normalization["formal_charge_e"], abs=1e-10
