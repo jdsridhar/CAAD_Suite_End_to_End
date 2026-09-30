@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue Amber/GROMACS PME diagnostics on chemically distinct systems and independent configurations. G-MD-56 compares neutral ligand–dipeptide interactions across 15 saved frames from three velocity-seeded replicas of the 1,376-atom system; every pair residual lies within the ±0.0003 kcal/mol displayed-energy bound. These correlated, shared-start snapshots do not qualify full-system compatibility or resolve the 5NIU/RC8 residual. No tolerance is set.
+| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-57 measured nearest-water ligand pairs in 15 frames from the three G-MD-47 replicas: residual mean −0.000143 kcal/mol, range −0.000685 to +0.000426, with 5/15 outside the ±0.0003 kcal/mol displayed-energy bound. This is local, correlated, short-run evidence and does not qualify full-system compatibility or explain the system-dependent residual. No tolerance is set.
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-56: 15 neutral ligand–dipeptide inclusion–exclusion checks across three short replicas gave GROMACS-minus-Amber differences −0.000155 to +0.000123 kcal/mol, all within the conservative Amber output-rounding bound. See docs/validation/G-MD-56.md. |
+| **Last completed** | G-MD-57: 15 frame-specific nearest-water ligand–water inclusion–exclusion checks across three short replicas; 5/15 residuals exceed the conservative Amber output-rounding bound. See docs/validation/G-MD-57.md. |
 | **Blocking questions** | Matched-coordinate residual is about −2.44 kcal/mol across short, correlated frames from three velocity-seeded replicas of one pose-derived system; minimization-path results differ. G-MD-43 excludes the small logged-alpha mismatch as the main cause; G-MD-46 bounds analytic self/background differences as negligible for this neutral system. Reciprocal-exclusion/direct-space convention differences remain unresolved. Evidence still covers few, correlated configurations; independent equilibrated and chemically distinct systems are required. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1523,3 +1523,12 @@ When the user says **CONTINUE**:
 - [x] Evaluated neutral ethanol ligand residue 2 against the combined neutral GLY0/GLY1 dipeptide in 15 snapshots from the three G-MD-47 independently velocity-seeded replicas. Used the existing exact Amber/GROMACS sources and validated charge-isolated topologies.
 - [x] Verified GROMACS TRR coordinates/boxes exactly match exported NPZ frames and Amber restarts match to 5.0×10⁻⁸ Å. Pair residuals range −0.000155 to +0.000123 kcal/mol (mean −0.0000065); all are within the conservative ±0.0003 kcal/mol displayed-energy bound. Full values, inputs, hashes and failed preliminary-route note are in docs/validation/G-MD-56.md and external summary.json.
 - [-] These short correlated frames share one starting NPT structure and probe only one pair in one small system. Continue broader independent-system/configuration checks; no full-system tolerance or compatibility qualification.
+
+
+### Session log — 2026-09-30, G-MD-57 nearest-water replica-pair comparison
+
+- [x] Recomputed all 15 nearest-water cases from raw Amber Sander outputs and matching GROMACS flexible-water reruns; used flexible-water ligand-only Coulomb results in the inclusion–exclusion calculation.
+- [x] Confirmed the flexible-water ligand-only rerun differs from the prior G-MD-56 GROMACS values by at most 1.92×10⁻⁶ kcal/mol.
+- [x] Residual mean −0.000143 kcal/mol, range −0.000685 to +0.000426; 5/15 exceed the conservative ±0.0003 kcal/mol output-rounding bound. Did not set a tolerance.
+- [x] Verified 229 raw/derived hashes and all 15 selected-frame hashes. Documented selection bias, correlated-frame limitations, and failed initial SETTLE route in docs/validation/G-MD-57.md; capture remains outside Git.
+- [-] Continue PME diagnostics on independent configurations and further chemically distinct systems. Compatibility remains unqualified; independent blind review, real-engine stability validation, and release licensing review remain open.
