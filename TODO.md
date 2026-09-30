@@ -1472,3 +1472,9 @@ When the user says **CONTINUE**:
 - [x] Read the GROMACS 2026.3 manual's explicit description of PME exclusion corrections across `Coulomb (SR)` and `Coul. recip.`. Confirmed that the existing total-energy comparison correctly sums these terms; individual terms should not be directly mapped to Amber `EEL`.
 - [x] Recorded the bounded finding and next diagnostic implication in `docs/validation/G-MD-48.md`. This does not establish Amber's convention or explain the residual.
 - [-] Next: inspect or isolate Amber Sander reciprocal exclusion terms, then broaden independent configuration/system validation. Keep compatibility unqualified.
+
+### Session log — 2026-09-30, AmberTools source-availability check
+
+- [x] Inspected the isolated AmberTools 23.6 package and cache. Sander executable/shared library/header and Python extension are installed, but Sander PME source is not present in the packaged source subset. Recorded exact Conda build and limits in `docs/validation/G-MD-49.md`.
+- [x] Checked exported library symbols as an inventory aid only; did not interpret symbol names as evidence of PME equations or exclusion behavior.
+- [-] Obtain matching official AmberTools 23.6 source or proceed with a controlled excluded-pair numerical isolation. Then extend chemically varied, independently sampled system validation. Keep compatibility unqualified.
