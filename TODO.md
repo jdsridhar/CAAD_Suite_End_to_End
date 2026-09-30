@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Investigate the GROMACS Amber-profile PME charge warning and establish a scientifically defensible resolution or retain a precise compatibility block. |
-| **Next task** | Continue adapter-family scientific validation. Run the preregistered redocking cohort only after independent blinded review. Complete public-release dependency/license/notice review before any release. |
+| **Current task** | [-] Implement and validate bounded, provenance-recorded correction of AM1-BCC charge quantization residuals, and correct Sander total-energy display-precision validation. |
+| **Next task** | Re-run real pose-derived Amber→GROMACS preparation and single-point comparison; then continue adapter-family scientific validation. Run the preregistered redocking cohort only after independent blinded review. Complete public-release dependency/license/notice review before any release. |
 | **Last completed** | G-MD-26: real Vina-derived 5NIU/RC8 AmberTools → OpenMM minimization/NVT/production (50 steps, 0.1 ps) → DCD processing → protein–ligand distance metrics → identity-linked JSON/HTML report. Full local gate: 940 passed, 39 optional skips. |
-| **Blocking questions** | This short trajectory is execution evidence only, not stability evidence. GROMACS output fails closed on its `+0.001 e` PME warning. Independent blind review and public-release dependency/license/notice review remain open. |
+| **Blocking questions** | The charge residual source is traced to three-decimal SQM per-atom charge output. A diagnostic redistribution removes GROMACS's PME warning, but production correction still needs explicit limits, provenance, and energy validation. Sander parser uses an overly strict fixed tolerance against rounded output. This trajectory remains execution evidence only, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
