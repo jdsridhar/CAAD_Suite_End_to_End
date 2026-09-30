@@ -69,3 +69,13 @@ Built the wheel and sdist from a clean `git archive` checkout using Hatchling. T
 - The first smoke command also tried `caddsuite db current`, which is not a supported CLI command. The database revision was instead verified by reading the installed database's `alembic_version` table and returned `0007`.
 
 This validates the exact package build, archive selections, plugin metadata, and a basic installed-wheel migration path. It does not establish dependency-license compatibility, provide complete notices for optional extras, validate a separate frontend distribution, or constitute legal review. These remain public-release gates. Rebuild and reassess the exact commit and artifact pair for any later release.
+
+
+## Current clean-commit package artifacts (2026-09-30, commit `c6c1691`)
+
+Rebuilt wheel and source archive from `git archive HEAD` in a temporary directory, so the pre-existing untracked benchmark review data was not included. Archive inspection found 222 wheel entries and 710 source-archive entries; both include project `LICENSE` and `NOTICE`, and the source archive contains zero benchmark paths. The wheel entry-point metadata contains 21 registered handler/engine declarations.
+
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`; SHA-256 `08a7b1efaa224b0553d7b25ae2e32c3c7aff06154e764e732cdd2032f63a2d48`.
+- Source archive: `caddsuite-0.1.0.dev0.tar.gz`; SHA-256 `e04f7301e52dff843f6772802cacc8c806e328c57d1c968781ed8cd977e374a4`.
+
+This verifies archive selection and metadata for this commit only. It does not test installation, dependency-license compatibility, optional-extra notices, or legal clearance. Rebuild and review the exact artifacts selected for any eventual release.

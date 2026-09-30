@@ -1463,3 +1463,6 @@ When the user says **CONTINUE**:
 - [x] Rebuilt the current committed web application with source maps; TypeScript passed and Vite transformed 1,609 modules. The build still reports the 3.515 MB Molstar JavaScript chunk.
 - [x] Re-ran the bundle license inventory and hash-verified notice generation: 81 mapped packages, 7 emitted JS/CSS assets, 81 notice texts. The generated inventory, asset manifest, and notice hashes match the prior snapshot exactly; README now records the current rebuild.
 - [ ] Human review of license compatibility/attribution, CSS and embedded asset provenance, and counsel review remain required. This refresh is engineering evidence only; public release remains gated.
+
+- [x] Rebuilt current commit `c6c1691` wheel and source archive from a clean Git archive; inspected LICENSE/NOTICE inclusion, benchmark exclusion, and wheel plugin entry-point metadata. Hashes and limits are recorded in `docs/release/PACKAGING.md`.
+- [ ] Exact dependency/license compatibility, optional-extra/frontend notices, and human/counsel review remain open; no public tag or upload.
