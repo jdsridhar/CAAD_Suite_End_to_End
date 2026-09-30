@@ -1466,3 +1466,9 @@ When the user says **CONTINUE**:
 
 - [x] Rebuilt current commit `c6c1691` wheel and source archive from a clean Git archive; inspected LICENSE/NOTICE inclusion, benchmark exclusion, and wheel plugin entry-point metadata. Hashes and limits are recorded in `docs/release/PACKAGING.md`.
 - [ ] Exact dependency/license compatibility, optional-extra/frontend notices, and human/counsel review remain open; no public tag or upload.
+
+### Session log — 2026-09-30, PME energy-term documentation audit
+
+- [x] Read the GROMACS 2026.3 manual's explicit description of PME exclusion corrections across `Coulomb (SR)` and `Coul. recip.`. Confirmed that the existing total-energy comparison correctly sums these terms; individual terms should not be directly mapped to Amber `EEL`.
+- [x] Recorded the bounded finding and next diagnostic implication in `docs/validation/G-MD-48.md`. This does not establish Amber's convention or explain the residual.
+- [-] Next: inspect or isolate Amber Sander reciprocal exclusion terms, then broaden independent configuration/system validation. Keep compatibility unqualified.
