@@ -13,7 +13,9 @@ from caddsuite_worker.amber_tleap_worker import (
     _ambertools_version,
     _energy_values,
     _hash_parameter_sources,
+    _normalize_sqm_roundoff_charge,
     _prepare_protein,
+    _sander_energy_values,
     _validate_mol2_identity,
     _validate_protein_topology_identity,
     _validated_inputs,
@@ -170,6 +172,77 @@ USER_CHARGES
         _validate_mol2_identity(mol2, metadata, 0)
 
 
+def _charge_probe_files(tmp_path: Path, *, final_charge: str = "0.051") -> tuple[Path, Path]:
+    mol2 = tmp_path / "raw_ligand.mol2"
+    sqm = tmp_path / "sqm.out"
+    mol2.write_text(
+        """@<TRIPOS>MOLECULE
+probe
+4 0 0 0 0
+SMALL
+USER_CHARGES
+
+@<TRIPOS>ATOM
+1 C1 0.0 0.0 0.0 c3 1 LIG 0.100000
+2 C2 1.0 0.0 0.0 c3 1 LIG -0.200000
+3 C3 2.0 0.0 0.0 c3 1 LIG 0.050000
+4 C4 3.0 0.0 0.0 c3 1 LIG 0.051000
+@<TRIPOS>BOND
+""",
+        encoding="ascii",
+    )
+    if final_charge != "0.051":
+        mol2.write_text(
+            mol2.read_text(encoding="ascii").replace("0.051000", f"{final_charge}000"),
+            encoding="ascii",
+        )
+    sqm.write_text(
+        f"""Atomic Charges for Step       1 :
+ Atom    Element       Mulliken Charge
+ 1       C              0.100
+ 2       C             -0.200
+ 3       C              0.050
+ 4       C              {final_charge}
+ Total Mulliken Charge =       0.000
+""",
+        encoding="ascii",
+    )
+    return mol2, sqm
+
+
+def test_sqm_charge_roundoff_is_corrected_uniformly_and_raw_mol2_retained(
+    tmp_path: Path,
+) -> None:
+    raw, sqm = _charge_probe_files(tmp_path)
+    original = raw.read_bytes()
+    normalized = tmp_path / "normalized_ligand.mol2"
+
+    result = _normalize_sqm_roundoff_charge(raw, normalized, sqm, expected_charge=0)
+
+    assert raw.read_bytes() == original
+    assert result["raw_mol2_charge_sum_e"] == pytest.approx(0.001)
+    assert result["sqm_reported_total_charge_e"] == pytest.approx(0.0)
+    assert result["sqm_printed_atom_charge_sum_e"] == pytest.approx(0.001)
+    assert result["total_charge_correction_e"] == pytest.approx(-0.001)
+    assert result["max_per_atom_charge_change_e"] == pytest.approx(0.00025)
+    assert result["normalized_charge_sum_e"] == pytest.approx(0.0, abs=1e-12)
+    normalized_charges = [
+        float(line.split()[8])
+        for line in normalized.read_text(encoding="ascii").splitlines()
+        if len(line.split()) >= 9 and line.split()[0] in {"1", "2", "3", "4"}
+    ]
+    assert sum(normalized_charges) == pytest.approx(0.0, abs=1e-10)
+
+
+def test_sqm_charge_roundoff_correction_fails_if_per_atom_bound_is_exceeded(
+    tmp_path: Path,
+) -> None:
+    raw, sqm = _charge_probe_files(tmp_path, final_charge="0.053")
+
+    with pytest.raises(WorkerFailure, match="exceeds the SQM per-atom"):
+        _normalize_sqm_roundoff_charge(raw, tmp_path / "normalized.mol2", sqm, 0)
+
+
 def test_protein_identity_validation_allows_only_terminal_oxt_addition() -> None:
     residue = SimpleNamespace(name="GLY", chain="A", number=7, insertion_code="", idx=0)
     atoms = [
@@ -300,6 +373,44 @@ def test_sander_energy_parser_rejects_output_without_final_results(tmp_path: Pat
     gromacs.write_text("0.0 4.2\n", encoding="ascii")
     with pytest.raises(WorkerFailure, match="final single-point ENERGY row"):
         _energy_values(gromacs, amber)
+
+
+def test_sander_energy_parser_accounts_for_scientific_notation_print_precision(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "sander.out"
+    output.write_text(
+        """FINAL RESULTS
+      1      -4.5745E+04     1.6154E+01     1.2187E+03
+ BOND    =      176.7914  ANGLE   =      687.0889  DIHED      =     1528.2716
+ VDWAALS =     5037.9134  EEL     =   -59542.1319  HBOND      =        0.0000
+ 1-4 VDW =      599.2784  1-4 EEL =     5768.0902  RESTRAINT  =        0.0000
+""",
+        encoding="ascii",
+    )
+
+    energy, components = _sander_energy_values(output)
+
+    assert energy == pytest.approx(-45744.6984)
+    assert sum(components.values()) == pytest.approx(energy)
+
+
+def test_sander_energy_parser_rejects_difference_beyond_print_precision(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "sander.out"
+    output.write_text(
+        """FINAL RESULTS
+      1      -4.5735E+04     1.6154E+01     1.2187E+03
+ BOND    =      176.7914  ANGLE   =      687.0889  DIHED      =     1528.2716
+ VDWAALS =     5037.9134  EEL     =   -59542.1319  HBOND      =        0.0000
+ 1-4 VDW =      599.2784  1-4 EEL =     5768.0902  RESTRAINT  =        0.0000
+""",
+        encoding="ascii",
+    )
+
+    with pytest.raises(WorkerFailure, match="beyond print precision"):
+        _sander_energy_values(output)
 
 
 def test_worker_rejects_inputs_and_outputs_that_escape_the_stage(tmp_path: Path) -> None:

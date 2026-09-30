@@ -563,6 +563,22 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
             build_report = json.loads(
                 store.path_for(build_report_ref.sha256).read_text(encoding="utf-8")
             )
+            capture_path = os.environ.get("CADDSUITE_TEST_AMBER_REPORT_CAPTURE")
+            if capture_path:
+                with Path(capture_path).open("x", encoding="utf-8") as stream:
+                    stream.write(json.dumps(build_report, sort_keys=True, indent=2) + "\n")
+            charge_normalization = build_report["ligand_charge_normalization"]
+            assert charge_normalization["normalized_charge_sum_e"] == pytest.approx(
+                charge_normalization["formal_charge_e"], abs=1e-10
+            )
+            assert charge_normalization["max_per_atom_charge_change_e"] <= (
+                charge_normalization["sqm_atom_charge_print_quantum_e"] / 2 + 1e-10
+            )
+            assert "amber_outputs/antechamber_ligand_raw.mol2" in built_system.raw_artifacts
+            assert "amber_outputs/ligand.mol2" in built_system.raw_artifacts
+            assert built_system.system.net_charge == pytest.approx(0.0, abs=1e-5)
+            if system_request.parameters["output_format"] == "gromacs":
+                assert build_report["single_point_energy"]["gromacs_potential_kj_mol"] is not None
             disulfide_records = build_report["protein_preparation"]["disulfide_bonds"]
             assert len(disulfide_records) == 1
             assert set(disulfide_records[0]["residue_keys"]) == {"A:40:_", "A:114:_"}

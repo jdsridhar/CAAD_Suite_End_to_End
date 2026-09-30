@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+from decimal import Decimal, InvalidOperation
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -641,6 +642,159 @@ def _validate_mol2_identity(
     }
 
 
+def _normalize_sqm_roundoff_charge(
+    raw_mol2_path: Path,
+    normalized_mol2_path: Path,
+    sqm_output_path: Path,
+    expected_charge: int,
+) -> dict[str, Any]:
+    """Conserve the declared molecular charge after SQM's rounded per-atom charge handoff.
+
+    SQM prints atomic Mulliken charges to finite decimal precision. Antechamber consumes those
+    atomwise values for AM1-BCC; their sum can differ slightly from the declared formal charge.
+    This function only corrects that demonstrable handoff residual, distributes
+    it uniformly, preserves the raw MOL2, and rejects deviations beyond the source print bound.
+    """
+    raw_lines = raw_mol2_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    atom_lines: list[tuple[int, Decimal]] = []
+    in_atoms = False
+    for line_index, line in enumerate(raw_lines):
+        stripped = line.strip()
+        if stripped == "@<TRIPOS>ATOM":
+            in_atoms = True
+            continue
+        if stripped.startswith("@<TRIPOS>"):
+            in_atoms = False
+        if not in_atoms or not stripped:
+            continue
+        fields = stripped.split()
+        if len(fields) < 9:
+            raise WorkerFailure(
+                "AMBER_WORKER.LIGAND_MOL2_INVALID", "malformed MOL2 atom row during charge audit"
+            )
+        try:
+            charge = Decimal(fields[8])
+        except InvalidOperation as exc:
+            raise WorkerFailure(
+                "AMBER_WORKER.LIGAND_MOL2_INVALID", "invalid MOL2 partial charge"
+            ) from exc
+        if not charge.is_finite():
+            raise WorkerFailure(
+                "AMBER_WORKER.LIGAND_MOL2_INVALID", "non-finite MOL2 partial charge"
+            )
+        atom_lines.append((line_index, charge))
+    if not atom_lines:
+        raise WorkerFailure("AMBER_WORKER.LIGAND_MOL2_INVALID", "MOL2 has no atom charges")
+
+    sqm_text = sqm_output_path.read_text(encoding="utf-8", errors="replace")
+    charge_sections = sqm_text.rsplit("Atomic Charges for Step", 1)
+    if len(charge_sections) != 2:
+        raise WorkerFailure(
+            "AMBER_WORKER.SQM_CHARGES_MISSING", "SQM output has no atomic Mulliken charge table"
+        )
+    sqm_section = charge_sections[-1]
+    total_match = re.search(r"Total Mulliken Charge\s*=\s*(" + _FLOAT + r")", sqm_section)
+    if total_match is None:
+        raise WorkerFailure(
+            "AMBER_WORKER.SQM_CHARGES_MISSING", "SQM output has no total Mulliken charge"
+        )
+    sqm_total = Decimal(total_match.group(1))
+    sqm_charge_tokens = re.findall(
+        r"^\s*\d+\s+\S+\s+(" + _FLOAT + r")\s*$",
+        sqm_section[: total_match.start()],
+        re.MULTILINE,
+    )
+    if len(sqm_charge_tokens) != len(atom_lines):
+        raise WorkerFailure(
+            "AMBER_WORKER.SQM_CHARGE_ATOM_COUNT",
+            "SQM atomic charge count differs from the Antechamber ligand atom count",
+        )
+    sqm_charges = [Decimal(token) for token in sqm_charge_tokens]
+    charge_quantum = max(_decimal_resolution(value) for value in sqm_charges)
+    sqm_sum = sum(sqm_charges, Decimal(0))
+    mol2_sum = sum((charge for _, charge in atom_lines), Decimal(0))
+    formal_charge = Decimal(expected_charge)
+    atom_count = len(atom_lines)
+    sqm_total_quantum = _decimal_resolution(sqm_total)
+    sqm_rounding_bound = Decimal(atom_count) * charge_quantum / 2
+    mol2_charge_quantum = max(_decimal_resolution(charge) for _line_index, charge in atom_lines)
+    mol2_rounding_bound = Decimal(atom_count) * mol2_charge_quantum / 2
+    comparison_tolerance = mol2_rounding_bound + Decimal("0.00000001")
+
+    if abs(sqm_total - formal_charge) > sqm_total_quantum / 2:
+        raise WorkerFailure(
+            "AMBER_WORKER.SQM_FORMAL_CHARGE_MISMATCH",
+            "SQM reported molecular total does not agree with the selected formal charge "
+            "within its displayed precision",
+        )
+    if abs(sqm_sum - mol2_sum) > comparison_tolerance:
+        raise WorkerFailure(
+            "AMBER_WORKER.LIGAND_CHARGE_ROUNDOFF_UNVERIFIED",
+            "Antechamber MOL2 charge residual is not explained by the rounded SQM "
+            "atom-charge table",
+        )
+    correction = formal_charge - mol2_sum
+    per_atom_limit = charge_quantum / 2
+    uniform_adjustment = correction / Decimal(atom_count)
+    if abs(correction) > sqm_rounding_bound + comparison_tolerance or abs(
+        uniform_adjustment
+    ) > per_atom_limit + Decimal("0.0000000001"):
+        raise WorkerFailure(
+            "AMBER_WORKER.LIGAND_CHARGE_ROUNDOFF_EXCEEDED",
+            "charge conservation correction exceeds the SQM per-atom print-precision bound",
+        )
+
+    normalized_values: list[Decimal] = []
+    running = Decimal(0)
+    for index, (_line_index, raw_charge) in enumerate(atom_lines):
+        value = (
+            formal_charge - running if index == atom_count - 1 else raw_charge + uniform_adjustment
+        )
+        value = value.quantize(Decimal("0.0000000001"))
+        normalized_values.append(value)
+        running += value
+    normalized_sum = sum(normalized_values, Decimal(0))
+    max_adjustment = max(
+        abs(normalized_values[index] - atom_lines[index][1]) for index in range(atom_count)
+    )
+    if normalized_sum != formal_charge or max_adjustment > per_atom_limit + Decimal("0.0000000001"):
+        raise WorkerFailure(
+            "AMBER_WORKER.LIGAND_CHARGE_NORMALIZATION_INVALID",
+            "normalized ligand charges failed exact total or per-atom correction validation",
+        )
+
+    for index in range(atom_count):
+        line_index = atom_lines[index][0]
+        value = normalized_values[index]
+        match = re.search(r"(?P<charge>" + _FLOAT + r")(?P<trailing>\s*)$", raw_lines[line_index])
+        if match is None:
+            raise WorkerFailure(
+                "AMBER_WORKER.LIGAND_MOL2_INVALID", "could not locate MOL2 atom charge field"
+            )
+        raw_lines[line_index] = (
+            raw_lines[line_index][: match.start("charge")]
+            + format(value, ".10f")
+            + match.group("trailing")
+        )
+    normalized_mol2_path.write_text("".join(raw_lines), encoding="utf-8")
+    return {
+        "method": "uniform_atomwise_correction_of_verified_SQM_print_roundoff",
+        "formal_charge_e": expected_charge,
+        "raw_mol2_charge_sum_e": float(mol2_sum),
+        "sqm_reported_total_charge_e": float(sqm_total),
+        "sqm_printed_atom_charge_sum_e": float(sqm_sum),
+        "sqm_atom_charge_print_quantum_e": float(charge_quantum),
+        "mol2_charge_print_quantum_e": float(mol2_charge_quantum),
+        "max_roundoff_bound_e": float(sqm_rounding_bound),
+        "total_charge_correction_e": float(correction),
+        "max_per_atom_charge_change_e": float(max_adjustment),
+        "normalized_charge_sum_e": float(normalized_sum),
+        "atom_count": atom_count,
+        "raw_artifact": raw_mol2_path.name,
+        "normalized_artifact": normalized_mol2_path.name,
+    }
+
+
 def _classify_structure(
     structure: Any, expected_ligand_atoms: int
 ) -> tuple[list[int], list[int], dict[str, int]]:
@@ -877,7 +1031,8 @@ def _sander_energy_values(sander_out: Path) -> tuple[float, dict[str, float]]:
             "AMBER_WORKER.SANDER_ENERGY_MISSING",
             "Sander output has no final single-point ENERGY row",
         )
-    displayed_amber_kcal = float(amber_matches[-1])
+    displayed_amber_text = amber_matches[-1]
+    displayed_amber_kcal = float(displayed_amber_text)
     component_matches = re.findall(
         r"(?<!\S)(BOND|ANGLE|DIHED|VDWAALS|EEL|HBOND|1-4 VDW|1-4 EEL|RESTRAINT)"
         r"\s*=\s*(" + _FLOAT + r")",
@@ -901,14 +1056,46 @@ def _sander_energy_values(sander_out: Path) -> tuple[float, dict[str, float]]:
             "Sander final result does not contain the expected explicit-solvent energy terms",
         )
     amber_kcal = sum(amber_components.values())
-    if not math.isclose(amber_kcal, displayed_amber_kcal, abs_tol=0.11):
+    total_rounding = _printed_decimal_resolution(displayed_amber_text) / 2.0
+    component_rounding = sum(
+        _printed_decimal_resolution(value) / 2.0 for _name, value in component_matches
+    )
+    rounding_tolerance = total_rounding + component_rounding + 1e-9
+    difference = abs(amber_kcal - displayed_amber_kcal)
+    if difference > rounding_tolerance:
         raise WorkerFailure(
             "AMBER_WORKER.SANDER_ENERGY_INCONSISTENT",
-            "Sander component sum does not agree with its displayed total energy",
+            "Sander component sum differs from its displayed total beyond print precision "
+            f"(difference={difference:.6g} kcal/mol, tolerance={rounding_tolerance:.6g})",
         )
     if not math.isfinite(amber_kcal):
         raise WorkerFailure("AMBER_WORKER.SANDER_ENERGY_MISSING", "Sander energy is non-finite")
     return amber_kcal, amber_components
+
+
+def _printed_decimal_resolution(value: str) -> float:
+    """Return the least-significant printed decimal step, including scientific exponents."""
+    try:
+        decimal_value = Decimal(value)
+    except InvalidOperation as exc:
+        raise WorkerFailure(
+            "AMBER_WORKER.SANDER_ENERGY_INVALID", "Sander printed an invalid energy value"
+        ) from exc
+    return float(_decimal_resolution(decimal_value))
+
+
+def _decimal_resolution(value: Decimal) -> Decimal:
+    if not value.is_finite():
+        raise WorkerFailure(
+            "AMBER_WORKER.DECIMAL_VALUE_INVALID",
+            "cannot determine precision for a non-finite value",
+        )
+    exponent = value.as_tuple().exponent
+    if not isinstance(exponent, int):
+        raise WorkerFailure(
+            "AMBER_WORKER.DECIMAL_VALUE_INVALID", "decimal value has no finite print resolution"
+        )
+    return Decimal(1).scaleb(exponent)
 
 
 def _energy_values(xvg: Path, sander_out: Path) -> tuple[float, float, dict[str, float]]:
@@ -996,6 +1183,7 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
     records: list[dict[str, Any]] = []
     parameter_files = _hash_parameter_sources(amber_home)
     protein_prepared = _safe_output(output_dir, "protein_amber.pdb")
+    ligand_mol2_raw = _safe_output(output_dir, "antechamber_ligand_raw.mol2")
     ligand_mol2 = _safe_output(output_dir, "ligand.mol2")
     ligand_frcmod = _safe_output(output_dir, "ligand.frcmod")
     leap_input = _safe_output(output_dir, "tleap.in")
@@ -1016,7 +1204,7 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
             "-fi",
             "sdf",
             "-o",
-            str(ligand_mol2),
+            str(ligand_mol2_raw),
             "-fo",
             "mol2",
             "-c",
@@ -1036,6 +1224,12 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         output_dir=output_dir,
         records=records,
         label="antechamber",
+    )
+    ligand_charge_normalization = _normalize_sqm_roundoff_charge(
+        ligand_mol2_raw,
+        ligand_mol2,
+        output_dir / "sqm.out",
+        ligand_charge,
     )
     ligand_identity = _validate_mol2_identity(
         ligand_mol2,
@@ -1358,6 +1552,7 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         "protein_preparation": protein_metadata,
         "protein_identity_validation": protein_identity_validation,
         "ligand_identity_validation": ligand_identity,
+        "ligand_charge_normalization": ligand_charge_normalization,
         "system": {
             "atom_count": atom_count,
             "protein_atom_count": len(protein_indices),
