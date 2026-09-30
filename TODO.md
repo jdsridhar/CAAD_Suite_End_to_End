@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Investigate the remaining Amber/GROMACS energy residual across additional configurations and chemically distinct systems. G-MD-34 resolves most force residual as a rigid-versus-flexible water representation mismatch, while matched flexible-water energies shift only +0.023/+0.269 kcal/mol and leave the residual largely intact. The profile remains unqualified. |
+| **Current task** | [-] Investigate the remaining Amber/GROMACS energy residual across additional configurations and chemically distinct systems. G-MD-34 explains most tested force mismatch as rigid-versus-flexible water representation. G-MD-35 verifies the residual using standard Sander energy on GRO-derived coordinates (~−10.282 kcal/mol for 5NIU/RC8) and excludes `&debugf` energy summaries from energy comparisons. The profile remains unqualified. |
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-34: isolated electrostatic and non-electrostatic forces; matching the harmonic flexible-water representation reduced water-force RMSE from ~4.18% to <0.04% in both systems. |
-| **Blocking questions** | Matched-grid total-energy residuals remain −9.7178 kcal/mol (5NIU/RC8) and −0.1463 kcal/mol (ethanol/two-GLY) at the fine mesh. Force component agreement does not explain or eliminate these energy residuals and covers only one configuration per system. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
+| **Last completed** | G-MD-35: standard-energy and coordinate-serialization control; debug-force summary energies distinguished from force-vector evidence. |
+| **Blocking questions** | Matched-coordinate standard-energy residual is about −10.282 kcal/mol for 5NIU/RC8; the fine-mesh ethanol/two-GLY residual is −0.1463 kcal/mol. G-MD-35 shows coordinate serialization changes the pose energy by only ~0.14 kcal/mol. Force component agreement does not explain the energy residual and evidence covers few configurations. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1352,3 +1352,12 @@ When the user says **CONTINUE**:
 - [x] Recorded force methods, results, GROMACS preprocessor evidence, hashes, and limits in docs/validation/G-MD-34.md. Extended the comparison script to combine matched-coordinate Amber and GROMACS force dumps/TRRs; focused Ruff/format checks pass.
 - [x] Same-coordinate CPU PME reruns with the flexible-water branch changed GROMACS potential by only +0.0226 kcal/mol (tiny) and +0.2689 kcal/mol (pose-derived), leaving deltas −0.2301 and −10.1548 kcal/mol vs Amber. This does not explain the remaining energy residual.
 - [-] The force representation mismatch is substantially explained for these snapshots; matched-grid energy differences and broader system/conformer validation remain open. This is not an Amber-to-GROMACS compatibility qualification.
+
+### Session log — 2026-09-30, standard Sander energy control (G-MD-35)
+
+- [x] Re-evaluated the original Amber restart and a GRO-derived Amber restart using standard Sander single-point energy (no `&debugf`), the same topology, and matching Amber PME controls.
+- [x] Verified GRO→restart coordinate conversion is at most 8.43×10⁻⁵ Å and shifts standard Sander potential by only about −0.1414 kcal/mol.
+- [x] Standard same-coordinate comparison retains an approximately −10.2819 kcal/mol GROMACS-minus-Amber residual for 5NIU/RC8. It is not explained by coordinate serialization.
+- [x] Identified that the Sander `&debugf` summary energy differs materially from standard Sander (including about −101.50 kcal/mol in VDWAALS). Exclude debugf energy totals from energy comparisons; retain its force-vector output only for G-MD-33/34 force diagnostics.
+- [x] Documented methods, energies, hashes, and limitations in `docs/validation/G-MD-35.md`.
+- [-] Continue investigating the true electrostatic energy residual across additional configurations and chemically distinct systems. Compatibility remains unqualified; no tolerance is set.
