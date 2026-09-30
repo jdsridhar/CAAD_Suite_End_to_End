@@ -36,13 +36,18 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def metadata_text(value: str) -> str:
+    """Normalize line-ending whitespace; original upstream metadata stays in pip report."""
+    return "\n".join(line.rstrip() for line in value.strip().splitlines())
+
+
 def metadata_license(metadata: dict[str, object]) -> tuple[str, str]:
     expression = metadata.get("license_expression")
     if isinstance(expression, str) and expression.strip():
         return expression.strip(), "PEP 639 License-Expression field"
     value = metadata.get("license")
     if isinstance(value, str) and value.strip():
-        return value.strip(), "License metadata field (raw)"
+        return metadata_text(value), "License metadata field (whitespace-normalized; raw report retained)"
     classifiers = metadata.get("classifiers", [])
     if isinstance(classifiers, list):
         licenses = [x for x in classifiers if isinstance(x, str) and x.startswith("License ::")]
