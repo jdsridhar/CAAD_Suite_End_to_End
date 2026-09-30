@@ -1279,4 +1279,10 @@ When the user says **CONTINUE**:
 - [x] Extended the real Vina-derived 5NIU/RC8 integration through 50-step/0.1 ps OpenMM production, actual PDB/DCD artifact binding, MDAnalysis processing, protein–ligand minimum-distance analysis, and JSON/HTML reporting. MDAnalysis validated named `protein` / `resname LIG` selections against the generated topology because the builder's original selections refer to GROMACS index files.
 - [x] Opt-in pose-derived integration passed: 1 test in 209.78 s. Evidence and limitations are documented in `docs/validation/G-MD-26.md`.
 - [x] `scripts/check.sh`: 940 passed, 39 optional skips; Ruff, format (367 files), strict mypy (205 source files), import contracts (264 files), and schema freshness all pass. Two upstream Starlette/httpx deprecation warnings remain.
-- [-] Commit and push this increment, then check hosted CI. This smoke does not establish MD stability. GROMACS PME warning, independent blinded cohort review, and public-release license/notice review remain open.
+- [x] Commit `613dd76` was pushed to `origin/main`; GitHub Actions API currently reports no workflow run for this commit, so hosted CI remains unverified. This smoke does not establish MD stability. GROMACS PME warning, independent blinded cohort review, and public-release license/notice review remain open.
+
+### Session log — 2026-09-30, initial GROMACS PME warning trace
+
+- [x] Confirmed the warning is enforced at `grompp` and the Amber-to-GROMACS profile remains fail-closed. The native Amber pose workflow skips that cross-engine route; its passing OpenMM production does not resolve GROMACS compatibility.
+- [x] Inspected the installed ParmEd topology writer: atom partial charges are serialized with eight decimal places, so coarse text rounding is not established as the cause. The builder's neutralization check currently accepts absolute net-charge residuals up to 0.02 e; this is a distinct tolerance from GROMACS PME's requirement.
+- [-] Need capture a pose-derived GROMACS topology and `grompp` diagnostics with component-level charge sums (protein, ligand, solvent, ions), then determine whether the residual comes from source charge/protonation, ion placement, conversion, or a documented engine tolerance. Do not round or adjust charges, add ions speculatively, or use `-maxwarn`.
