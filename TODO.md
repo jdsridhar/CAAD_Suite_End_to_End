@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-57 measured nearest-water ligand pairs in 15 frames from the three G-MD-47 replicas: residual mean −0.000143 kcal/mol, range −0.000685 to +0.000426, with 5/15 outside the ±0.0003 kcal/mol displayed-energy bound. This is local, correlated, short-run evidence and does not qualify full-system compatibility or explain the system-dependent residual. No tolerance is set.
+| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-58 extends nearest-water ligand checks to 15 5NIU/RC8 replica frames; 6/15 residuals exceed the ±0.0003 kcal/mol displayed-energy bound. G-MD-57 and G-MD-58 are local, correlated, short-run checks and do not explain the whole-system residual or qualify compatibility. No tolerance is set.
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-57: 15 frame-specific nearest-water ligand–water inclusion–exclusion checks across three short replicas; 5/15 residuals exceed the conservative Amber output-rounding bound. See docs/validation/G-MD-57.md. |
+| **Last completed** | G-MD-58: 15 frame-specific nearest-water ligand–water inclusion–exclusion checks on pose-derived 5NIU/RC8 replicas; 6/15 residuals exceed the conservative Amber output-rounding bound. See docs/validation/G-MD-58.md. |
 | **Blocking questions** | Matched-coordinate residual is about −2.44 kcal/mol across short, correlated frames from three velocity-seeded replicas of one pose-derived system; minimization-path results differ. G-MD-43 excludes the small logged-alpha mismatch as the main cause; G-MD-46 bounds analytic self/background differences as negligible for this neutral system. Reciprocal-exclusion/direct-space convention differences remain unresolved. Evidence still covers few, correlated configurations; independent equilibrated and chemically distinct systems are required. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1532,3 +1532,12 @@ When the user says **CONTINUE**:
 - [x] Residual mean −0.000143 kcal/mol, range −0.000685 to +0.000426; 5/15 exceed the conservative ±0.0003 kcal/mol output-rounding bound. Did not set a tolerance.
 - [x] Verified 229 raw/derived hashes and all 15 selected-frame hashes. Documented selection bias, correlated-frame limitations, and failed initial SETTLE route in docs/validation/G-MD-57.md; capture remains outside Git.
 - [-] Continue PME diagnostics on independent configurations and further chemically distinct systems. Compatibility remains unqualified; independent blind review, real-engine stability validation, and release licensing review remain open.
+
+
+### Session log — 2026-09-30, G-MD-58 nearest-water pairs in 5NIU/RC8 replicas
+
+- [x] Extended charge-isolated LIG/WAT/LIG+WAT PME checks to 15 frames from the three short G-MD-44 5NIU/RC8 replicas. Selected the nearest neutral water independently in each frame.
+- [x] Evaluated matched GRO-precision coordinates and boxes. Verified 15 single-frame TRRs reproduce each GRO exactly, and Amber restarts/boxes match the common GRO within 1.5×10⁻¹⁴ Å.
+- [x] Recomputed all 45 raw group energies and 15 inclusion–exclusion pairs with an independent verifier. Residual mean −0.000156 kcal/mol, range −0.000912 to +0.000300; 6/15 exceed the conservative display-rounding bound.
+- [x] Hashed 1,265 external raw/derived files. Documented methods, source hashes, frame-level summary and limitations in docs/validation/G-MD-58.md; no tolerance or compatibility claim.
+- [-] Continue broader PME convention/energy diagnostics and validated sampling. Independent blind review, engine-backed production stability validation and public-release license/notice review remain open.
