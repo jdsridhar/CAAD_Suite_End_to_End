@@ -1,0 +1,241 @@
+{
+  "complex_id": "01M3RJTWS0YDX8N8QJR2XCA2RC",
+  "conversion_validation": {
+    "atom_order_and_residue_identity_match": true,
+    "charge_delta_e": 2.0317029170158207e-08,
+    "gromacs_atom_count": 1376,
+    "max_coordinate_deviation_A": 8.430895563341751e-05,
+    "source_atom_count": 1376
+  },
+  "input_sha256": {
+    "ligand": "561d18944d800e50f14fdb11488c737c06f203a719459282646a6d4b50bcfa39",
+    "protein": "4eb9f2a4b9c4d7464e9bb9981e7e1308da498d8e51da66e3959ace86e3a292c4"
+  },
+  "ligand_charge_normalization": {
+    "atom_count": 9,
+    "formal_charge_e": 0,
+    "max_per_atom_charge_change_e": 1.112e-07,
+    "max_roundoff_bound_e": 0.0045,
+    "method": "uniform_atomwise_correction_of_verified_SQM_print_roundoff",
+    "mol2_charge_print_quantum_e": 1e-06,
+    "normalized_artifact": "ligand.mol2",
+    "normalized_charge_sum_e": 0.0,
+    "raw_artifact": "antechamber_ligand_raw.mol2",
+    "raw_mol2_charge_sum_e": 1e-06,
+    "sqm_atom_charge_print_quantum_e": 0.001,
+    "sqm_printed_atom_charge_sum_e": 0.0,
+    "sqm_reported_total_charge_e": -0.0,
+    "total_charge_correction_e": -1e-06
+  },
+  "ligand_identity_validation": {
+    "atom_count": 9,
+    "atom_order_and_graph_match": true,
+    "bond_count": 8,
+    "max_coordinate_deviation_A": 0.0007071067811862498,
+    "net_charge_e": -1.1102230246251565e-16
+  },
+  "ligand_parameter_fallback_records": [],
+  "ok": true,
+  "options": {
+    "box_padding_A": 8.0,
+    "disulfide_bonds": [],
+    "histidine_states": {},
+    "ion_parameters": "Joung-Cheatham TIP3P",
+    "ion_policy": "neutralize_only",
+    "ligand_artifact_path": "inputs/ligand.sdf",
+    "ligand_charge_model": "AM1-BCC",
+    "ligand_method": "GAFF2",
+    "ligand_net_charge": 0,
+    "output_format": "gromacs",
+    "protein_artifact_path": "inputs/protein.pdb",
+    "protein_ff": "ff14SB",
+    "protein_ph": 7.4,
+    "water_model": "TIP3P"
+  },
+  "outputs": {
+    "antechamber.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "antechamber.stdout.log": "68e85e0e38bb6ce60aae91431e440f94a7d1a5a0b8ed90546922d2522168cbf4",
+    "antechamber_ligand_raw.mol2": "e7d340a2a791cf393ddbecd3c2a5f25abe22712861183cd5f4ec58df3b8cd795",
+    "commands.json": "59e3787087f9fc70cb82a620903cd0918be6ba4bd63119cac577c32a7963285a",
+    "energy.mdp": "6a43c6c568d35e91459a4ccdb7d4f483c0c06c4bbb495d19db1cb0b9d0986e7d",
+    "energy.tpr": "bae3a5230d148d5c115812210011fc0dde33ccf7b29cc5e4807f1d0c3bf5c100",
+    "gromacs_energy.edr": "2774761340ba46fd0172eb9b2669ab1df516928807923e8706f45266c3b2b569",
+    "gromacs_energy.log": "3526c25d6e1c9aa7a206c1a2966650da6b44f1e2ad82db4fae14b221ff192889",
+    "gromacs_energy.stderr.log": "1ed7262bc791a1d3899fae973eb64a7ce02be425e4e8b4395094fbf1f941441b",
+    "gromacs_energy.stdout.log": "7c114e5a2bc1fdc897f7fa3e663e97432eca91a630c26724d8d7a2702533d253",
+    "gromacs_energy.xvg": "746a94583fc4d66a099d13c770453cd43c2461a85e996e763ae376593e374b91",
+    "gromacs_mdrun_rerun.stderr.log": "a33d303412199cbb95817be6790c6dbbfa88070e5dc3843b345f8f82172834bd",
+    "gromacs_mdrun_rerun.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gromacs_version.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gromacs_version.stdout.log": "8b004223978c460cb9fc11376d05faf1756784001662ee80138d21cf5ebedded",
+    "grompp.stderr.log": "ef89f370f220d71757998e84fbc235eba07c7862fd478f1fd8a8c4bce5cf39e5",
+    "grompp.stdout.log": "93890ef2322f8e8f02bcd4164e12f1afebc6a579a3ecd06cccd9c3d6b4e2f59f",
+    "index.ndx": "381ad3b865f5ab4e876643759a111b2e270fcefd3e61af495b4f14d5a5352df4",
+    "leap.log": "954e5e9995faf8668c2ff4a9956562799efecc87998b8c1697ab5dda31eda141",
+    "ligand.frcmod": "bf922808a85c35c2c11e49229322f906ba4bfc17fa247ee240d7221744a82dd5",
+    "ligand.mol2": "e4ad10fa8b2a3f07500009becdbe2978e706372623c020472075dd421075e036",
+    "mdinfo": "87c28510c31e0d86ddca2b8d7ceac6afa74cc1ff183fbf3c7b158b7f9c3255cc",
+    "mdout.mdp": "a13499b5f162da5fc2ea88de705592009ea4a6439be542781c2d63afa1c46298",
+    "parmchk2.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "parmchk2.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "protein_amber.pdb": "4eb9f2a4b9c4d7464e9bb9981e7e1308da498d8e51da66e3959ace86e3a292c4",
+    "sander_single_point.in": "9c8f29ccd5a1846c085022f3679e1ca39e1b6977418c3da29b6b700e23f7717b",
+    "sander_single_point.out": "16fe0872435e4f682db02b899f3859b550a9e297e93b002c9ff40ced929ee44d",
+    "sander_single_point.rst7": "1d8765be4845e73386fe2706b194a3984de76656bf1650a281b14e338cc72305",
+    "sander_single_point.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "sander_single_point.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "solvated_amber.pdb": "081a03e2d023d4a23315be769d1631e023d1539feefae514e91b1c4e6986cfb1",
+    "sqm.in": "48727510debeba68c5747ce0fbcf28de15051198c4e796e698b9d3f33d65894b",
+    "sqm.out": "91829d2bb99f12feded921666038eba47886f9bf2a7f3650283366e28da64b34",
+    "sqm.pdb": "c9e77926b6f018f2d3a7ce2b0da00ffb8b6e228aec3cc53abf430a620c49cd77",
+    "system.gro": "03879b1e1c900e48b44915740bc85b78696722f7501b745d865c9b2e6090968c",
+    "system.inpcrd": "1b9a00bbc29045b3de69455e4df1901d0aaa440ce310e83ba4a2b49a53c7d887",
+    "system.prmtop": "387fc9c43c27ec50e741755750c95eab30e3a67068c19843a760317b58b12da1",
+    "tleap.in": "7fcfb6df6e7741a1bfb91f4d968054c506e86d1780bdbdd2b100961836e8f18a",
+    "tleap.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tleap.stdout.log": "65d74edf0d9752fa24dcd500f6bc6c3ecd7c66ce856b5a544ecc94cbbde1af07",
+    "topol.top": "8edd5f3bfae83a2599ddc72b2730ecf069105957a41d2a8fbcd800f62b5578d7"
+  },
+  "parameter_files": {
+    "cmd/leaprc.gaff2": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/cmd/leaprc.gaff2",
+      "sha256": "5eec3b6f07e21617b90d68432168e5b514a8446faa19a88ab917aabe78907c61"
+    },
+    "cmd/leaprc.protein.ff14SB": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/cmd/leaprc.protein.ff14SB",
+      "sha256": "e96bd5b9d5fba9c027050e33efd3414e4d26ff616566b08730abedc554fac98c"
+    },
+    "cmd/leaprc.water.tip3p": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/cmd/leaprc.water.tip3p",
+      "sha256": "679041e7b6a6776cd6a7552480ded0986c33ddd209da58f0c30a96bfb8818db7"
+    },
+    "lib/amino12.lib": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/lib/amino12.lib",
+      "sha256": "dcd92afbb7ee4c8a737f1ad47eb714618b6c186759c902cd5c06c22a5378df77"
+    },
+    "lib/aminoct12.lib": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/lib/aminoct12.lib",
+      "sha256": "4f45d160211ae20450ee59632012cba3ada60a5129de410da1bfbfd7f9a9a5f7"
+    },
+    "lib/aminont12.lib": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/lib/aminont12.lib",
+      "sha256": "a7a267adbe63c3559283204ffd135b37e14dac0f33a7eae76f94cba80a56b58c"
+    },
+    "lib/atomic_ions.lib": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/lib/atomic_ions.lib",
+      "sha256": "0f56b0f1b1cbf0e275c7e5e815f7f85b9b22e26de3b591a0b8a87c28d75d0d53"
+    },
+    "lib/solvents.lib": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/lib/solvents.lib",
+      "sha256": "c8aeb703f5769331541d1233e2f2c8f823dd516e861b04e215ae4da903f1d69b"
+    },
+    "parm/frcmod.ff14SB": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/frcmod.ff14SB",
+      "sha256": "d7240947ca454e49fa2419343cff0090c1e9c02f39618e826d99fc5f1b29dc73"
+    },
+    "parm/frcmod.ions1lm_126_tip3p": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/frcmod.ions1lm_126_tip3p",
+      "sha256": "09690dfab18fe46fe9bd9651d254db1ff4d6edfdfa4f74e0ff8c41a069715eeb"
+    },
+    "parm/frcmod.ions234lm_126_tip3p": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/frcmod.ions234lm_126_tip3p",
+      "sha256": "4252f496d5462dc84ddfae7ef8e941bf8c927584201284be3ccae178ebab08d3"
+    },
+    "parm/frcmod.ionsjc_tip3p": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/frcmod.ionsjc_tip3p",
+      "sha256": "eb7a1a59bf356581f89534287dd59d1bebbb2e5de7176d7c7dd69cb1d4928a55"
+    },
+    "parm/frcmod.tip3p": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/frcmod.tip3p",
+      "sha256": "a66a30117d8c0af008476715e1405587a67f473793c4ab1db822da41465e48f1"
+    },
+    "parm/gaff2.dat": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/gaff2.dat",
+      "sha256": "14ad62c8e532c47e2e400e2ca6ad8052b33bda4c4b9bc6f49b6a528e527512be"
+    },
+    "parm/parm10.dat": {
+      "path": "/home/sridhar/miniconda3/envs/gmxMMPBSA/dat/leap/parm/parm10.dat",
+      "sha256": "dc0c02d28fb7ee4f04d0a5edee3cd62968ba5e9bdb69e0f728bf01d242d7d062"
+    }
+  },
+  "protein_identity_validation": {
+    "identity_match_except_documented_terminal_atoms": true,
+    "input_heavy_atom_count": 8,
+    "parameterized_heavy_atom_count": 9,
+    "tleap_added_terminal_atoms": [
+      {
+        "atom_name": "OXT",
+        "input_residue_key": "A:2:_",
+        "residue_name": "GLY"
+      }
+    ]
+  },
+  "protein_preparation": {
+    "atom_records_after_hydrogen_removal": 8,
+    "disulfide_bonds": [],
+    "heavy_atom_records": 8,
+    "histidine_states": {},
+    "hydrogen_policy": "remove input protein hydrogens; tleap addH from explicit residue templates",
+    "input_hydrogen_records_removed": 0,
+    "residue_count": 2,
+    "residue_names": [
+      "GLY"
+    ]
+  },
+  "protocol": "caddsuite.amber-tleap-worker/1",
+  "request_id": "01M3RJTWS0TZ49XRQMBVH7MX1J",
+  "single_point_energy": {
+    "absolute_relative_delta": 0.0001769080587156385,
+    "acceptance_tolerance": null,
+    "amber_energy_components_kcal_mol": {
+      "1-4 EEL": 98.5288,
+      "1-4 VDW": 13.8603,
+      "ANGLE": 27.2584,
+      "BOND": 8.8017,
+      "DIHED": 5.4835,
+      "EEL": -3944.5706,
+      "HBOND": 0.0,
+      "RESTRAINT": 0.0,
+      "VDWAALS": 430.3071
+    },
+    "amber_energy_kcal_mol": -3360.3308,
+    "delta_gromacs_minus_amber_kcal_mol": -0.5944695984703685,
+    "gromacs_potential_kcal_mol": -3360.9252695984705,
+    "gromacs_potential_kj_mol": -14062.111328,
+    "method": "Sander final ENERGY row vs GROMACS rerun Potential on ParmEd-exported coordinates",
+    "parameters": {
+      "amber_cutoff_A": 10.0,
+      "amber_periodic_boundary": "constant_volume_PME",
+      "amber_vdwmeth": 0,
+      "coordinates": "same prepared system; Amber inpcrd and exported GROMACS GRO",
+      "dispersion_correction": false,
+      "gromacs_coulomb_modifier": "None; unmodified cutoff potential for energy comparison",
+      "gromacs_cutoff_nm": 1.0,
+      "gromacs_electrostatics": "PME; order 4; spacing 0.12 nm",
+      "gromacs_vdw_modifier": "None; unmodified cutoff potential for energy comparison"
+    },
+    "status": "measured_unqualified"
+  },
+  "system": {
+    "atom_count": 1376,
+    "box_lengths_A": [
+      36.281269,
+      25.58449,
+      24.782571
+    ],
+    "composition_residue_counts": {
+      "GLY": 2,
+      "LIG": 1,
+      "WAT": 450
+    },
+    "ligand_atom_count": 9,
+    "net_charge_e": -1.031702889786601e-08,
+    "protein_atom_count": 17
+  },
+  "versions": {
+    "ambertools_package": "23.6",
+    "antechamber_banner": "22.0",
+    "gromacs": "2026.3-conda_forge",
+    "parmed": "4.3.0"
+  }
+}

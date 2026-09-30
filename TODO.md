@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Audit remaining Amber/GROMACS pair-specific nonbonded/exclusion and PME conventions; repeat charge-conservation and component-energy comparisons across representative systems. G-MD-28 verifies ordered atom identity, per-atom charge/LJ values, and coordinates for 5NIU/RC8, but does not qualify cross-engine equivalence. |
+| **Current task** | [-] Audit Amber/GROMACS pair-specific nonbonded/exclusion mapping and remaining PME conventions; extend charge and component-energy checks to more chemically diverse ligand/protein systems. G-MD-28/29 cover two systems but do not qualify cross-engine equivalence. |
 | **Next task** | Continue adapter-family scientific validation. Run the preregistered redocking cohort only after independent blinded review. Complete public-release dependency/license/notice review before any release. |
-| **Last completed** | G-MD-28: term-level energy comparison and GROMACS PME grid-refinement series; the residual remains unqualified. |
-| **Blocking questions** | At 0.03 nm GROMACS PME spacing and a GROMACS Ewald coefficient matched to Amber's logged coefficient, the 5NIU/RC8 potential still differs by −9.7178 kcal/mol. Remaining cross-package PME conventions are unresolved; no Amber→GROMACS acceptance tolerance is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
+| **Last completed** | G-MD-29: second real AmberTools→GROMACS system, bounded ligand-charge normalization, component decomposition, and PME refinement; comparison remains unqualified. |
+| **Blocking questions** | At fine mesh and matched screening coefficient, the 5NIU/RC8 potential residual is −9.7178 kcal/mol; the tiny ethanol/GLY fixture residual is −0.1463 kcal/mol. Pair-specific interactions/exclusions and broader system dependence are unresolved; no Amber→GROMACS tolerance is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1292,7 +1292,10 @@ When the user says **CONTINUE**:
 - [x] Real pose-derived GROMACS-profile integration passed with AmberTools 23.6/Antechamber 22.0, ParmEd 4.3.0 and GROMACS 2026.3: `grompp` and rerun energy extraction completed; worker result records a `−13.71371281 kcal/mol` GROMACS-minus-Amber potential difference, relative `0.00030072`, with no acceptance tolerance. Result and artifact hashes are preserved in `docs/validation/G-MD-27-worker-result.json`; interpretation/limits are in `docs/validation/G-MD-27.md`.
 - [x] Pose-derived native Amber→OpenMM production/DCD→metrics/report integration passed (1 test in 213.78 s; 50 steps / 0.1 ps), alongside focused charge-normalization and Sander parser tests. Full gate: 944 passed, 39 optional skips; Ruff, formatting, strict mypy (205 source files), import-linter (265 files), and schemas passed.
 - [x] G-MD-28 decomposed the 5NIU/RC8 total-energy delta: electrostatics account for −13.5934 kcal/mol of the −13.7137 kcal/mol default-grid difference; bonded/LJ mapped terms are comparatively close. Refining the GROMACS grid and matching its logged Ewald screening coefficient to Amber's shifts and stabilizes the result, but leaves a −9.7178 kcal/mol total residual. This is diagnostic only; it does not qualify force-field compatibility.
-- [-] Audit and align exact Amber/GROMACS PME accuracy controls, compare atom-level force-field parameters and coordinate precision, and repeat component/charge-conservation checks across additional ligand/protein systems. No acceptance tolerance or general compatibility claim until these checks pass.
+- [x] G-MD-29 re-ran the existing 1,376-atom ethanol/two-GLY AmberTools→GROMACS integration: 1 passed in 3.16 s. Raw ligand charge residual `+1e-6 e` was verified as SQM print roundoff and corrected by `−1e-6 e`; system net charge `−1.03e-8 e`. Worker output hashes: 42/42 verified.
+- [x] ParmEd 4.3.0 comparison on the tiny system found exact ordered identity, maximum per-atom charge delta `3.05e-9 e`, net delta `2.03e-8 e`, maximum LJ sigma/epsilon deltas `4.48e-8 Å` / `2.79e-10 kcal/mol`, and coordinate displacement max `8.43e-5 Å`.
+- [x] The tiny system's default-grid delta is `−0.5945 kcal/mol`, mostly electrostatic (`−0.5795 kcal/mol`). Grid refinement to 0.03 nm plus coefficient-matched `ewald-rtol=0.0001` reduces the residual to `−0.1463 kcal/mol`; it remains unqualified. Evidence is in `docs/validation/G-MD-29.md` and `G-MD-29-worker-result.json`.
+- [-] Compare Amber/GROMACS pair-specific nonbonded terms and exclusions, investigate remaining PME conventions, and repeat on additional chemically varied systems. No acceptance tolerance or general compatibility claim until these checks pass.
 
 ### Session log — 2026-09-30, G-MD-28 energy decomposition and PME refinement
 
