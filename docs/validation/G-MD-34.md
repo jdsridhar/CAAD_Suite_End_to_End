@@ -31,14 +31,25 @@ Relative vector RMSE is 100 × ||F_Gmx−F_Amber||₂ / ||F_Gmx||₂. Component 
 |---|---:|---:|---:|---:|
 | Electrostatic-only, ethanol/two-GLY | 0.03873% | 0.05320% | 0.06574% | 0.03860% |
 | Electrostatic-only, 5NIU/RC8 | 0.03868% | 0.05589% | 0.06513% | 0.03834% |
-| Non-electrostatic, SETTLE water, ethanol/two-GLY | — | 0.00222% | 0.00439% | 4.17722% |
-| Non-electrostatic, SETTLE water, 5NIU/RC8 | — | 0.00675% | 0.00738% | 4.17908% |
+| Non-electrostatic, SETTLE water, ethanol/two-GLY | 2.57939% | 0.00222% | 0.00439% | 4.17722% |
+| Non-electrostatic, SETTLE water, 5NIU/RC8 | 1.21113% | 0.00675% | 0.00738% | 4.17908% |
 | Non-electrostatic, flexible water, ethanol/two-GLY | 0.01646% | 0.00222% | 0.00439% | 0.02647% |
 | Non-electrostatic, flexible water, 5NIU/RC8 | 0.01310% | 0.00675% | 0.00738% | 0.03927% |
 | Reconstructed total with flexible-water background, ethanol/two-GLY | 0.03519% | 0.01147% | 0.01140% | 0.03762% |
 | Reconstructed total with flexible-water background, 5NIU/RC8 | 0.02773% | 0.00947% | 0.00889% | 0.03858% |
 
 The reconstructed total component correlations were >0.9999999 for each reported group. Its maximum componentwise force error was 0.0892 kJ/(mol·Å) for ethanol/two-GLY and 0.1212 kJ/(mol·Å) for 5NIU/RC8. Compare with G-MD-33's unadjusted rigid-water all-force relative RMSE of 1.25175% and 0.91039%.
+
+## Same-coordinate energy check
+
+Because force components were the trigger for this audit, a matched-grid potential check was also run. The G-MD-31 CPU PME TPR and a derived TPR with FLEXIBLE water were each evaluated using \`gmx mdrun -rerun system.gro -nb cpu\` at the identical system.gro coordinates. The flexible MDP kept the same PME mesh, order, screening coefficient, cutoffs, and topology; it changed the diagnostic timestep to 0.0001 ps and enabled \`define = -DFLEXIBLE\`. Energy values below are the initial-frame Potential converted from kJ/mol to kcal/mol.
+
+| System | Rigid SETTLE Potential | Flexible harmonic-water Potential | Shift | Amber potential | Flexible-water delta vs Amber |
+|---|---:|---:|---:|---:|---:|
+| Ethanol/two-GLY | −3,360.58357 | −3,360.56093 | +0.02264 | −3,360.3308 | −0.23013 |
+| 5NIU/RC8 | −45,613.38955 | −45,613.12067 | +0.26888 | −45,602.9659 | −10.15477 |
+
+The energy changes are small relative to the original residuals (about 9% for the tiny system and 2.6% for 5NIU/RC8). The rigid-versus-flexible force representation mismatch explains most of the water force residual in the tested snapshots, but replacing SETTLE by harmonic water does not explain the unresolved total-energy difference. G-MD-31 and this rerun use the same exact-grid source structures and CPU evaluation mode; raw EDR/XVG hashes are listed below.
 
 ## Interpretation and limits
 
@@ -81,3 +92,5 @@ Key derived force artifact hashes:
 | Rigid zero-charge force TRR | 155e61fba606f726c0ca5c90614f8f48ae294c4c74dbedf86e96da0fe9d6bb95 | 60e2c96e9807329c4bcec26765ec1264803583a571f5d43a59ac766717765332 |
 | Flexible zero-charge force TRR | 02bbc0030d59bdd721d00ffcf7796bf9822d43ecccc168d622e726970289f39d | 5461de15fc3c86194da90cd035b5d34c6ebd41ad9bbe06a54ac3e08b6b15b79f |
 | Reconstructed total comparison JSON | 1455845016b0a6f4f03b0a5e3e3f01de151d512668e5543acbc73b49c536bb9b | 20bc2a6b23f32ca996abe8bec3bba0c9fcd4df7d091a7703bd9275fa5184195d |
+| Flexible-water PME potential EDR | 9c09b4f8e5e0001a2847d274fbc2bdb28f1d3924018a5c6ac2871248ed7eb134 | 1780b41312e139e463a5f732d7e0b93ae1c6a37d9a2f977adf553035a1be27c4 |
+| Flexible-water PME potential XVG | a76bc51d2fff88af8e3c47838e066ebac6338d452f4a0b19acf7efce979fbce3 | defe3fe0c2be9f3b16a51572219164be9c4d1170a24461474cb669b72064ad90 |
