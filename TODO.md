@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Run a pose-derived OpenMM production segment and bind its DCD output through trajectory processing, metrics, and report generation. |
-| **Next task** | Continue adapter-family scientific validation; then run the preregistered redocking cohort only after independent blinded review. |
-| **Last completed** | G-MD-25: OpenMM-generated PDB/DCD → MDAnalysis validation → normalized PDB/DCD processing result → engine-neutral metrics; exact fixture distance and artifact lineage verified. Full gate: 939 passed, 39 optional skips. |
-| **Blocking questions** | Pose-derived minimization/NVT were execution smokes; pose-derived production, downstream metrics/report, and stability evidence remain. GROMACS output fails closed on its `+0.001 e` PME warning. Independent blind review and public-release license/notice review remain open. |
+| **Current task** | [-] Investigate the GROMACS Amber-profile PME charge warning and establish a scientifically defensible resolution or retain a precise compatibility block. |
+| **Next task** | Continue adapter-family scientific validation. Run the preregistered redocking cohort only after independent blinded review. Complete public-release dependency/license/notice review before any release. |
+| **Last completed** | G-MD-26: real Vina-derived 5NIU/RC8 AmberTools → OpenMM minimization/NVT/production (50 steps, 0.1 ps) → DCD processing → protein–ligand distance metrics → identity-linked JSON/HTML report. Full local gate: 940 passed, 39 optional skips. |
+| **Blocking questions** | This short trajectory is execution evidence only, not stability evidence. GROMACS output fails closed on its `+0.001 e` PME warning. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1272,3 +1272,11 @@ When the user says **CONTINUE**:
 - [x] The PDB/DCD handler is discoverable from its entry point; focused adapter/workflow tests passed. The final `scripts/check.sh` passed: 939 tests, 39 optional skips; Ruff, format, strict mypy (205 files), import contracts (264 files), and schema freshness pass.
 - [x] Re-ran opt-in G-MD-25 after hardening worker receipt validation; it passed with both real engine environments configured. `git diff --check` passed.
 - [-] Actual pose-derived production DCD → metrics → report remains the next task. The GROMACS PME warning, independent blinded cohort review, and public-release licensing review remain open.
+
+### Session log — 2026-09-30, pose-derived OpenMM production and report handoff
+
+- [x] Fixed OpenMM input staging to fall back to native Amber system inputs when an OpenMM-specific alias is absent; added a focused adapter regression (7 OpenMM adapter tests pass).
+- [x] Extended the real Vina-derived 5NIU/RC8 integration through 50-step/0.1 ps OpenMM production, actual PDB/DCD artifact binding, MDAnalysis processing, protein–ligand minimum-distance analysis, and JSON/HTML reporting. MDAnalysis validated named `protein` / `resname LIG` selections against the generated topology because the builder's original selections refer to GROMACS index files.
+- [x] Opt-in pose-derived integration passed: 1 test in 209.78 s. Evidence and limitations are documented in `docs/validation/G-MD-26.md`.
+- [x] `scripts/check.sh`: 940 passed, 39 optional skips; Ruff, format (367 files), strict mypy (205 source files), import contracts (264 files), and schema freshness all pass. Two upstream Starlette/httpx deprecation warnings remain.
+- [-] Commit and push this increment, then check hosted CI. This smoke does not establish MD stability. GROMACS PME warning, independent blinded cohort review, and public-release license/notice review remain open.

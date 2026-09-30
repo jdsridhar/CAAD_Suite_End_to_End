@@ -169,6 +169,23 @@ def test_openmm_is_an_engine_port_implementation_with_native_amber_requirements(
     assert adapter.capabilities.supports_checkpoint_restart is False
 
 
+def test_openmm_stages_native_amber_inputs_without_openmm_alias(tmp_path: Path):
+    """Native Amber builder artifacts are valid OpenMM inputs when explicitly selected."""
+    context = _context(tmp_path)
+    adapter = OpenMMMDAdapter()
+
+    staged = adapter.stage_input_artifacts(context)
+
+    build = context.inputs["system_build"]
+    stage_input = context.inputs["stage_input"]
+    assert isinstance(build, SystemBuildResult)
+    assert isinstance(stage_input, MDStageInput)
+    assert "openmm" not in build.system.engine_inputs
+    assert staged["system.prmtop"] == stage_input.artifacts["topology"]
+    assert staged["system.inpcrd"] == stage_input.artifacts["coordinates"]
+    assert set(staged) == {"system.prmtop", "system.inpcrd"}
+
+
 def test_openmm_minimization_emits_coordinates_for_hash_linked_production(tmp_path: Path):
     context = _context(tmp_path)
     build = context.inputs["system_build"]

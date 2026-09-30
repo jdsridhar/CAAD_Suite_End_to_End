@@ -10,6 +10,7 @@ import os
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from rdkit import Chem
@@ -24,12 +25,36 @@ from caddsuite.adapters.structure_preparation.pdbfixer import PDBFixerPreparatio
 from caddsuite.adapters.system_builders.amber_handler import AmberTLeapBuilderHandler
 from caddsuite.adapters.system_builders.amber_tleap import AmberTLeapBuilderAdapter
 from caddsuite.application.handlers import StageHandlerRegistry
+from caddsuite.application.md_stage_plugin import MDStagePlugin
+from caddsuite.application.md_trajectory_binding_stage_plugin import (
+    MDOutputTrajectoryBindingHandler,
+)
+from caddsuite.application.mdanalysis_trajectory_stage_plugin import (
+    MDAnalysisTrajectoryStagePlugin,
+)
 from caddsuite.application.report_builder import build_provenance_report
+from caddsuite.application.report_stage_plugin import ReportStagePlugin
 from caddsuite.application.runtime import LocalWorkflowRuntime
+from caddsuite.application.trajectory_stage_plugin import TrajectoryAnalysisStagePlugin
+from caddsuite.contracts.analysis import (
+    MDOutputTrajectoryPlan,
+    TrajectoryAnalysisPlan,
+    TrajectoryAnalysisResult,
+    TrajectoryMetric,
+    TrajectoryProcessingResult,
+    TrajectoryTransform,
+)
 from caddsuite.contracts.base import ArtifactRef, SoftwareRef
 from caddsuite.contracts.docking import DockingResult
 from caddsuite.contracts.execution import TaskAttempt
-from caddsuite.contracts.md import MDProtocol, MDStage, MDStageInput, MDStageKind
+from caddsuite.contracts.md import (
+    AtomSelection,
+    MDProtocol,
+    MDStage,
+    MDStageInput,
+    MDStageKind,
+    MDStageResult,
+)
 from caddsuite.contracts.registry import (
     ChemicalIdentity,
     Compound,
@@ -40,7 +65,7 @@ from caddsuite.contracts.registry import (
     StandardizationRecord,
     StandardizationStep,
 )
-from caddsuite.contracts.reporting import ReportSectionName, ReportSectionStatus
+from caddsuite.contracts.reporting import ReportBundle, ReportSectionName, ReportSectionStatus
 from caddsuite.contracts.structure import (
     BindingSite,
     BindingSiteMethod,
@@ -57,13 +82,15 @@ from caddsuite.reporting.renderers import render_report
 from caddsuite.storage.artifacts import register_blob
 from caddsuite.storage.models import ProjectRow, TaskAttemptRow, WorkflowRunRow
 from caddsuite.storage.provenance_graph import attempt_lineage
-from caddsuite.workflow.definition import WorkflowDefinition
+from caddsuite.workflow.definition import StageDefinition, WorkflowDefinition
+from caddsuite.workflow.scheduler import TaskInvocation
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXER_PYTHON = os.environ.get("CADDSUITE_PDBFIXER_PYTHON")
 AMBER_HOME = os.environ.get("CADDSUITE_AMBER_HOME")
 GROMACS = os.environ.get("CADDSUITE_GROMACS_EXECUTABLE")
 OPENMM_PYTHON = os.environ.get("CADDSUITE_OPENMM_PYTHON")
+MDA_PYTHON = os.environ.get("CADDSUITE_MDA_PYTHON")
 pytestmark = pytest.mark.skipif(
     not FIXER_PYTHON,
     reason="set CADDSUITE_PDBFIXER_PYTHON to run the real Vina/Meeko stage integration",
@@ -707,6 +734,261 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                 assert nvt_report["steps_completed"] == 10
                 assert nvt_report["time_ps"] == pytest.approx(0.02)
                 assert nvt_report["atom_count"] == built_system.system.n_atoms
+                if MDA_PYTHON:
+                    production = MDStage(
+                        kind=MDStageKind.PRODUCTION,
+                        integrator="langevin",
+                        timestep_fs=2.0,
+                        n_steps=50,
+                        temperature_K=303.15,
+                        thermostat="langevin",
+                        constraints="HBonds",
+                        hmr=False,
+                        nonbonded={
+                            "method": "PME",
+                            "cutoff_nm": 0.8,
+                            "ewald_error_tolerance": 0.0005,
+                        },
+                    )
+                    production_build = built_system.model_copy(
+                        update={"protocol": MDProtocol(stages=(minimization, nvt, production))}
+                    )
+                    nvt_pdb = stage_dir / "pose_nvt.pdb"
+                    nvt_blob = store.put_file(nvt_pdb)
+                    production_input = MDStageInput(
+                        id=new_ulid(),
+                        system_id=built_system.system.id,
+                        compound_id=built_system.system.compound_id,
+                        form_id=built_system.system.form_id,
+                        stage_index=2,
+                        artifacts={
+                            "topology": topology_ref,
+                            "coordinates": ArtifactRef(
+                                artifact_id=new_ulid(), role="md_pdb", sha256=nvt_blob.sha256
+                            ),
+                        },
+                    )
+                    production_stage = StageDefinition.model_validate(
+                        {
+                            "id": "pose_openmm_production",
+                            "kind": "molecular_dynamics",
+                            "engine": "openmm",
+                            "params": {
+                                "engine_parameters": {
+                                    "memory_MiB": 4096,
+                                    "timeout_seconds": 600,
+                                    "openmm": {
+                                        "stage_index": 2,
+                                        "python_executable": OPENMM_PYTHON,
+                                        "worker_script": str(
+                                            ROOT / "src/caddsuite_worker/openmm_md_worker.py"
+                                        ),
+                                        "topology_path": staged_topology,
+                                        "coordinates_path": "pose_nvt.pdb",
+                                        "output_prefix": "pose_production",
+                                        "random_seed": 43,
+                                        "friction_per_ps": 1.0,
+                                        "report_interval_steps": 5,
+                                        "cpu_threads": 2,
+                                        "platform_name": "CPU",
+                                    },
+                                }
+                            },
+                        }
+                    )
+                    production_handler = MDStagePlugin._build(
+                        "openmm", production_stage, runtime.services
+                    )
+                    production_result = cast(
+                        MDStageResult,
+                        production_handler.execute(
+                            cast(
+                                TaskInvocation,
+                                SimpleNamespace(
+                                    inputs={
+                                        "system_build": (production_build,),
+                                        "stage_input": (production_input,),
+                                    }
+                                ),
+                            )
+                        ),
+                    )
+                    assert production_result.stage_kind is MDStageKind.PRODUCTION
+                    assert production_result.stage_index == 2
+                    assert production_result.compound_id == compound.id
+                    assert production_result.form_id == form.id
+                    assert any(ref.role == "md_dcd" for ref in production_result.artifacts.values())
+
+                    dcd_key = next(
+                        key
+                        for key, ref in production_result.artifacts.items()
+                        if ref.role == "md_dcd"
+                    )
+                    pdb_key = next(
+                        key
+                        for key, ref in production_result.artifacts.items()
+                        if ref.role == "md_pdb"
+                    )
+                    trajectory_plan = MDOutputTrajectoryPlan(
+                        simulation_id=new_ulid(),
+                        topology_output_key=pdb_key,
+                        trajectory_output_key=dcd_key,
+                        topology_format="PDB",
+                        trajectory_format="DCD",
+                        topology_has_connectivity=False,
+                        output_start_time_ps=0.01,
+                        n_frames=10,
+                        frame_interval_ps=0.01,
+                        transforms=(TrajectoryTransform.VALIDATE_ONLY,),
+                    )
+                    processing_request = MDOutputTrajectoryBindingHandler(runtime.services).execute(
+                        cast(
+                            TaskInvocation,
+                            SimpleNamespace(
+                                inputs={
+                                    "system_build": (production_build,),
+                                    "md_result": (production_result,),
+                                    "plan": (trajectory_plan,),
+                                }
+                            ),
+                        )
+                    )
+                    processor_stage = StageDefinition.model_validate(
+                        {
+                            "id": "pose_dcd_validate",
+                            "kind": "trajectory.process",
+                            "engine": "mdanalysis",
+                            "params": {
+                                "engine_parameters": {
+                                    "python_executable": MDA_PYTHON,
+                                    "worker_script": str(
+                                        ROOT
+                                        / "src/caddsuite_worker/mdanalysis_trajectory_worker.py"
+                                    ),
+                                }
+                            },
+                        }
+                    )
+                    processed = cast(
+                        TrajectoryProcessingResult,
+                        MDAnalysisTrajectoryStagePlugin._build(
+                            processor_stage, runtime.services
+                        ).execute(
+                            cast(
+                                TaskInvocation,
+                                SimpleNamespace(inputs={"request": (processing_request,)}),
+                            )
+                        ),
+                    )
+                    assert processed.time_range_ps == pytest.approx((0.01, 0.10), abs=1e-5)
+
+                    source_selections = built_system.system.selections
+                    assert "protein" in source_selections
+                    assert "ligand" in source_selections
+                    # The builder's selections are GROMACS index artifacts. For the
+                    # generated PDB/DCD pair, use equivalent named selections and let
+                    # MDAnalysis verify their atom counts against the topology.
+                    selections = {
+                        "protein": AtomSelection(
+                            description="protein",
+                            n_atoms=source_selections["protein"].n_atoms,
+                            verified=True,
+                        ),
+                        "ligand": AtomSelection(
+                            description="resname LIG",
+                            n_atoms=source_selections["ligand"].n_atoms,
+                            verified=True,
+                        ),
+                    }
+                    analysis_plan = TrajectoryAnalysisPlan(
+                        id=new_ulid(),
+                        simulation_id=trajectory_plan.simulation_id,
+                        trajectory_id=new_ulid(),
+                        compound_id=compound.id,
+                        form_id=form.id,
+                        selections={
+                            "protein": selections["protein"],
+                            "ligand": selections["ligand"],
+                        },
+                        metrics=(TrajectoryMetric.PROTEIN_LIGAND_MIN_DISTANCE,),
+                        start_time_ns=0.00001,
+                        end_time_ns=0.00010,
+                    )
+                    analysis_stage = StageDefinition.model_validate(
+                        {
+                            "id": "pose_dcd_metrics",
+                            "kind": "trajectory.analyze_processed",
+                            "engine": "mdanalysis",
+                            "params": {
+                                "engine_parameters": {
+                                    "python_executable": MDA_PYTHON,
+                                    "worker_script": str(
+                                        ROOT / "src/caddsuite_worker/mdanalysis_metrics_worker.py"
+                                    ),
+                                }
+                            },
+                        }
+                    )
+                    analysis_result = cast(
+                        TrajectoryAnalysisResult,
+                        TrajectoryAnalysisStagePlugin._build(
+                            analysis_stage, runtime.services
+                        ).execute(
+                            cast(
+                                TaskInvocation,
+                                SimpleNamespace(
+                                    inputs={
+                                        "analysis_plan": (analysis_plan,),
+                                        "preprocessing": (processed,),
+                                    }
+                                ),
+                            )
+                        ),
+                    )
+                    assert analysis_result.simulation_id == trajectory_plan.simulation_id
+                    assert analysis_result.compound_id == compound.id
+                    assert analysis_result.form_id == form.id
+
+                    report_stage = StageDefinition.model_validate(
+                        {
+                            "id": "pose_report",
+                            "kind": "report",
+                            "params": {"formats": ["json", "html"]},
+                        }
+                    )
+                    report_bundle = cast(
+                        ReportBundle,
+                        ReportStagePlugin._build(report_stage, runtime.services).execute(
+                            cast(
+                                TaskInvocation,
+                                SimpleNamespace(
+                                    run_id=str(run.id),
+                                    inputs={
+                                        "compounds": (compound,),
+                                        "compound_forms": (form,),
+                                        "docking_results": (result,),
+                                        "md_results": (production_result,),
+                                        "trajectory_results": (analysis_result,),
+                                    },
+                                ),
+                            )
+                        ),
+                    )
+                    report_ref = next(
+                        artifact.artifact
+                        for artifact in report_bundle.artifacts
+                        if artifact.format == "json"
+                    )
+                    report_json = json.loads(
+                        store.path_for(report_ref.sha256 or "").read_text(encoding="utf-8")
+                    )
+                    trajectory_report_sections = {
+                        section["name"]: section for section in report_json["sections"]
+                    }
+                    trajectory_section = trajectory_report_sections["trajectory_analyses"]
+                    assert trajectory_section["status"] == "available"
+                    assert trajectory_section["data"][0]["compound_id"] == str(compound.id)
+                    assert trajectory_section["data"][0]["form_id"] == str(form.id)
         ad4_bin_dir = os.environ.get("CADDSUITE_AUTODOCK4_BIN_DIR")
         if ad4_bin_dir:
             ad4_bin = Path(ad4_bin_dir)

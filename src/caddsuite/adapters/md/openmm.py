@@ -196,7 +196,15 @@ class OpenMMMDAdapter:
 
     def stage_input_artifacts(self, context: AdapterContext) -> dict[str, ArtifactRef]:
         build, parameters, _stage, stage_input = self._resolve(context)
-        bindings = dict(build.system.engine_inputs["openmm"])
+        engine_inputs = build.system.engine_inputs.get("openmm")
+        if engine_inputs is None:
+            engine_inputs = build.system.engine_inputs.get("amber")
+        if engine_inputs is None:
+            _fail(
+                "MD.OPENMM_ENGINE_INPUTS_MISSING",
+                "MDSystem has neither OpenMM-specific inputs nor its declared Amber inputs",
+            )
+        bindings = dict(engine_inputs)
         bindings[parameters.topology_path] = stage_input.artifacts["topology"]
         bindings[parameters.coordinates_path] = stage_input.artifacts["coordinates"]
         return bindings
