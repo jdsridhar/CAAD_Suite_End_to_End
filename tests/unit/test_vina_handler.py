@@ -519,7 +519,9 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                     "ion_parameters": "Joung-Cheatham TIP3P",
                     "ion_policy": "neutralize_only",
                     "box_padding_A": 8.0,
-                    "output_format": "amber",
+                    # Allow an opt-in comparison run to exercise GROMACS conversion on this
+                    # same pose-derived complex while keeping native Amber as the default.
+                    "output_format": os.environ.get("CADDSUITE_TEST_AMBER_OUTPUT_FORMAT", "amber"),
                 },
             )
             amber_adapter = AmberTLeapBuilderAdapter(
