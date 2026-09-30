@@ -1478,3 +1478,10 @@ When the user says **CONTINUE**:
 - [x] Inspected the isolated AmberTools 23.6 package and cache. Sander executable/shared library/header and Python extension are installed, but Sander PME source is not present in the packaged source subset. Recorded exact Conda build and limits in `docs/validation/G-MD-49.md`.
 - [x] Checked exported library symbols as an inventory aid only; did not interpret symbol names as evidence of PME equations or exclusion behavior.
 - [-] Obtain matching official AmberTools 23.6 source or proceed with a controlled excluded-pair numerical isolation. Then extend chemically varied, independently sampled system validation. Keep compatibility unqualified.
+
+### Session log — 2026-09-30, charge-isolated PME diagnostics (G-MD-50)
+
+- [x] Added `scripts/validation/isolate_residue_charges.py`, which checks atom identity/order and charge agreement, preserves the selected neutral residue's atom charges, zeros all other charges only in derived copies, writes matched coordinates, and records input/output hashes.
+- [x] Evaluated one TIP3P water and the neutral nine-atom ligand independently with Amber Sander and GROMACS 2026.3 PME on the same 1,376-atom box. Included all Coulomb-14/SR/reciprocal and Amber EEL/1-4 EEL terms. The ligand energies agree within Amber's printed precision; water delta is −0.000862 kcal/mol. CPU/GPU GROMACS checks differ by at most 6.9×10⁻⁵ kJ/mol in the compared components.
+- [x] Rejected and documented an initial incomplete ligand energy mapping that omitted the 1-4 terms; it is not used in the result. Full methods, hashes, scope, and limits are in `docs/validation/G-MD-50.md`; raw runs remain outside Git.
+- [-] Next: use matched neutral group-pair charge isolation and inclusion-exclusion energies to measure intermolecular contributions. Source-level Amber PME behavior, more independent configurations and chemically distinct systems remain open. No tolerance or compatibility qualification.
