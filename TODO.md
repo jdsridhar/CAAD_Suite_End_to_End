@@ -488,7 +488,7 @@ When the user says **CONTINUE**:
 
 ## Phase 18 — Packaging and release [-]
 
-- [x] 18.1 Engineering license inventories cover the 198-package Conda lock, 283 npm lock entries, current clean-wheel 28-package base runtime and 93-package all-extras resolution; generated bundle inventory maps 81 frontend package roots. Project Apache-2.0/NOTICE reviewed and web metadata corrected. Metadata inventories are not compatibility clearance.
+- [x] 18.1 Engineering license inventories cover the 198-package Conda lock, 283 npm lock entries, current clean-wheel 28-package base runtime and 93-package all-extras resolution; generated bundle inventory maps 81 frontend package roots. The inventory generator now has regression coverage for license-field precedence, metadata fallbacks, hash matching, and unresolved packages. Project Apache-2.0/NOTICE reviewed and web metadata corrected. Metadata inventories are not compatibility clearance.
 - [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
 - [x] 18.3 Clean-commit wheel and sdist builds, archive inspection, fresh base-wheel install, CLI and Alembic 0007 migration verified. Hosted package matrix and Quality passed on the earlier recorded commit; current artifact evidence is in docs/release/PACKAGING.md. Conda remains a development/engine environment, cross-OS support is outside the current claim.
 - [-] 18.4 Human review of dependency and frontend license texts, compatibility, attributions, CSS/embedded assets, and counsel review for ambiguities before any public package/frontend release. Rebuild and review artifacts from the exact release commit.
@@ -1550,3 +1550,10 @@ When the user says **CONTINUE**:
 - [x] Resolved all eight declared Python extras together with pip 26.2.1 on Linux x86_64 / CPython 3.12.14: 93 packages, no solver conflict. Saved pip report and package artifact hashes.
 - [x] Refreshed base runtime inventory to 28 packages; added 93-row all-extras metadata inventory and repeatable generator. Four missing report metadata fields were recovered from exact wheel/upstream release license evidence; no unresolved inventory rows remain.
 - [-] Human license/notice compatibility review remains open. Biopython's custom License Agreement, MDAnalysis LGPL-3.0-or-later, frontend CSS/embedded assets, exact notices, and intended distribution model require review; counsel review remains open for ambiguity. No package or compiled frontend release is authorized by these engineering checks.
+
+
+### Session log — 2026-09-30, release inventory generator regression coverage
+
+- [x] Added focused tests for PEP 639 expression, raw License text whitespace normalization, license classifier, primary-source fallback rows, unresolved metadata exit status, and pathspec wheel SHA-256 verification/rejection.
+- [x] Targeted test run: 3 passed. Ruff and format checks pass for the inventory builder and its test; git diff --check passes.
+- [-] Phase 18.4 human dependency/frontend license and notice review remains open; no legal compatibility claim or public package release.

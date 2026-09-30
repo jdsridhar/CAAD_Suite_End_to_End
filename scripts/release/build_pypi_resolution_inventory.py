@@ -1,4 +1,5 @@
 """Build a metadata-only license inventory from pip's reproducible install report."""
+
 from __future__ import annotations
 
 import argparse
@@ -47,7 +48,9 @@ def metadata_license(metadata: dict[str, object]) -> tuple[str, str]:
         return expression.strip(), "PEP 639 License-Expression field"
     value = metadata.get("license")
     if isinstance(value, str) and value.strip():
-        return metadata_text(value), "License metadata field (whitespace-normalized; raw report retained)"
+        return metadata_text(
+            value
+        ), "License metadata field (whitespace-normalized; raw report retained)"
     classifiers = metadata.get("classifiers", [])
     if isinstance(classifiers, list):
         licenses = [x for x in classifiers if isinstance(x, str) and x.startswith("License ::")]
@@ -66,7 +69,9 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True, help="pip install --report JSON")
     parser.add_argument("--output", type=Path, required=True, help="Output inventory CSV")
     parser.add_argument("--context", required=True, help="Resolution platform and source wheel")
-    parser.add_argument("--pathspec-wheel", type=Path, help="Exact pathspec wheel used for license fallback")
+    parser.add_argument(
+        "--pathspec-wheel", type=Path, help="Exact pathspec wheel used for license fallback"
+    )
     args = parser.parse_args()
 
     report = json.loads(args.report.read_text(encoding="utf-8"))
@@ -80,23 +85,40 @@ def main() -> int:
             raise ValueError(f"Duplicate package resolution: {name} {version}")
         seen.add(key)
         license_value, source = metadata_license(metadata)
-        archive_hash = install.get("download_info", {}).get("archive_info", {}).get("hashes", {}).get("sha256", "")
-        rows.append({
-            "name": name,
-            "version": version,
-            "license_metadata": license_value,
-            "metadata_source": source,
-            "artifact_sha256": archive_hash,
-            "resolution_context": args.context,
-        })
+        archive_hash = (
+            install.get("download_info", {})
+            .get("archive_info", {})
+            .get("hashes", {})
+            .get("sha256", "")
+        )
+        rows.append(
+            {
+                "name": name,
+                "version": version,
+                "license_metadata": license_value,
+                "metadata_source": source,
+                "artifact_sha256": archive_hash,
+                "resolution_context": args.context,
+            }
+        )
 
-    pathspec = next((r for r in rows if r["name"].lower() == "pathspec" and r["version"] == "1.1.1"), None)
+    pathspec = next(
+        (r for r in rows if r["name"].lower() == "pathspec" and r["version"] == "1.1.1"), None
+    )
     if pathspec and args.pathspec_wheel:
         with ZipFile(args.pathspec_wheel) as wheel:
-            names = [n for n in wheel.namelist() if n.lower().endswith(".dist-info/licenses/license")]
-            if len(names) != 1 or b"Mozilla Public License Version 2.0" not in wheel.read(names[0])[:100]:
+            names = [
+                n for n in wheel.namelist() if n.lower().endswith(".dist-info/licenses/license")
+            ]
+            if (
+                len(names) != 1
+                or b"Mozilla Public License Version 2.0" not in wheel.read(names[0])[:100]
+            ):
                 raise ValueError("Expected MPL-2.0 license text not found in exact pathspec wheel")
-        if pathspec["artifact_sha256"] and sha256(args.pathspec_wheel) != pathspec["artifact_sha256"]:
+        if (
+            pathspec["artifact_sha256"]
+            and sha256(args.pathspec_wheel) != pathspec["artifact_sha256"]
+        ):
             raise ValueError("pathspec wheel SHA-256 differs from pip resolution report")
         pathspec["metadata_source"] += f"; SHA-256 checked: {sha256(args.pathspec_wheel)}"
 
