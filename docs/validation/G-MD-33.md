@@ -71,3 +71,8 @@ Key Amber force-comparison artifact hashes:
 ## Conclusion and next work
 
 The matched-coordinate diagnostic demonstrates close ligand/protein force agreement and a larger water force difference for these single snapshots. The direct-space cutoff-shift estimate explains only a fraction of the total electrostatic energy residual. Neither observation establishes cross-engine equivalence. Keep the Amber-to-GROMACS profile unqualified. Next compare additional conformations and chemically distinct systems, separate force components where Amber and GROMACS diagnostics permit, and predefine a scientifically justified validation protocol before setting any acceptance tolerance.
+
+
+## Follow-up — G-MD-34 force-component isolation
+
+G-MD-34 subsequently isolated Amber and GROMACS electrostatic forces and found the earlier G-MD-33 total-force comparison used different water force representations: Amber used flexible harmonic water, while the default converted GROMACS topology selected rigid SETTLE water. With matched flexible-water treatment, the reconstructed total force relative RMSE was 0.0352% (ethanol/two-GLY) and 0.0277% (5NIU/RC8). See [G-MD-34](G-MD-34.md). This follow-up explains most of the snapshot force difference; it does not explain the remaining potential-energy residual or qualify engine compatibility.

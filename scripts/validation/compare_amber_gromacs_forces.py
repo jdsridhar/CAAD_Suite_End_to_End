@@ -87,8 +87,28 @@ def compare(
     frame: int,
     groups: list[tuple[str, str]],
     coordinate_tolerance_A: float,
+    background_trajectory: Path | None = None,
+    amber_subtract_dump: Path | None = None,
+    add_trajectory: Path | None = None,
 ) -> dict[str, Any]:
     amber_coordinates, amber_forces_kcal = read_amber_debug_force_dump(amber_dump)
+    amber_subtract_max_coordinate_error_A = None
+    if amber_subtract_dump is not None:
+        subtract_coordinates, subtract_forces_kcal = read_amber_debug_force_dump(
+            amber_subtract_dump
+        )
+        if subtract_coordinates.shape != amber_coordinates.shape:
+            raise ValueError("subtracted Amber force dump atom count differs")
+        amber_subtract_max_coordinate_error_A = float(
+            np.max(np.abs(subtract_coordinates - amber_coordinates))
+        )
+        if amber_subtract_max_coordinate_error_A > coordinate_tolerance_A:
+            raise ValueError(
+                "subtracted Amber force dump coordinate mismatch exceeds tolerance: "
+                f"{amber_subtract_max_coordinate_error_A:.8g} A > "
+                f"{coordinate_tolerance_A:.8g} A"
+            )
+        amber_forces_kcal = amber_forces_kcal - subtract_forces_kcal
     universe = mda.Universe(str(topology), str(trajectory))
     if not 0 <= frame < len(universe.trajectory):
         raise ValueError(f"frame {frame} is outside the trajectory")
@@ -100,8 +120,50 @@ def compare(
 
     # MDAnalysis converts TRR force records from native kJ/(mol*nm) to its
     # base force unit kJ/(mol*Angstrom) when convert_units=True (the default).
-    gromacs_forces = np.asarray(timestep.forces, dtype=np.float64)
+    gromacs_forces = np.asarray(timestep.forces, dtype=np.float64).copy()
     gromacs_coordinates_A = np.asarray(universe.atoms.positions, dtype=np.float64)
+    background_max_coordinate_error_A = None
+    added_max_coordinate_error_A = None
+    if background_trajectory is not None:
+        background = mda.Universe(str(topology), str(background_trajectory))
+        if len(background.atoms) != len(universe.atoms):
+            raise ValueError("background trajectory atom count differs from full-force trajectory")
+        if not 0 <= frame < len(background.trajectory):
+            raise ValueError(f"frame {frame} is outside the background trajectory")
+        background_timestep = background.trajectory[frame]
+        background_coordinates_A = np.asarray(background.atoms.positions, dtype=np.float64)
+        background_max_coordinate_error_A = float(
+            np.max(np.abs(background_coordinates_A - gromacs_coordinates_A))
+        )
+        if background_max_coordinate_error_A > coordinate_tolerance_A:
+            raise ValueError(
+                "background trajectory coordinate mismatch exceeds requested tolerance: "
+                f"{background_max_coordinate_error_A:.8g} A > "
+                f"{coordinate_tolerance_A:.8g} A"
+            )
+        if not np.isclose(background_timestep.time, timestep.time, atol=1e-6, rtol=0):
+            raise ValueError("background and full-force trajectory frame times differ")
+        gromacs_forces -= np.asarray(background_timestep.forces, dtype=np.float64)
+    if add_trajectory is not None:
+        added = mda.Universe(str(topology), str(add_trajectory))
+        if len(added.atoms) != len(universe.atoms):
+            raise ValueError("added trajectory atom count differs from full-force trajectory")
+        if not 0 <= frame < len(added.trajectory):
+            raise ValueError(f"frame {frame} is outside the added trajectory")
+        added_timestep = added.trajectory[frame]
+        added_coordinates_A = np.asarray(added.atoms.positions, dtype=np.float64)
+        added_max_coordinate_error_A = float(
+            np.max(np.abs(added_coordinates_A - gromacs_coordinates_A))
+        )
+        if added_max_coordinate_error_A > coordinate_tolerance_A:
+            raise ValueError(
+                "added trajectory coordinate mismatch exceeds requested tolerance: "
+                f"{added_max_coordinate_error_A:.8g} A > "
+                f"{coordinate_tolerance_A:.8g} A"
+            )
+        if not np.isclose(added_timestep.time, timestep.time, atol=1e-6, rtol=0):
+            raise ValueError("added and full-force trajectory frame times differ")
+        gromacs_forces += np.asarray(added_timestep.forces, dtype=np.float64)
     amber_forces = amber_forces_kcal * AMBER_KCAL_TO_BASE_KJ
     coordinate_error_A = np.abs(gromacs_coordinates_A - amber_coordinates)
     max_coordinate_error_A = float(np.max(coordinate_error_A))
@@ -130,6 +192,9 @@ def compare(
         for label, indices in all_groups
     }
     files = (amber_dump, topology, trajectory)
+    files += (background_trajectory,) if background_trajectory is not None else ()
+    files += (amber_subtract_dump,) if amber_subtract_dump is not None else ()
+    files += (add_trajectory,) if add_trajectory is not None else ()
     return {
         "schema": "caddsuite.amber_gromacs_force_comparison/1",
         "frame_index": frame,
@@ -137,6 +202,23 @@ def compare(
         "atom_count": len(universe.atoms),
         "coordinate_max_abs_difference_A": max_coordinate_error_A,
         "coordinate_tolerance_A": coordinate_tolerance_A,
+        "background_coordinate_max_abs_difference_A": background_max_coordinate_error_A,
+        "amber_subtract_coordinate_max_abs_difference_A": (amber_subtract_max_coordinate_error_A),
+        "added_coordinate_max_abs_difference_A": added_max_coordinate_error_A,
+        "force_isolation": {
+            "amber": (
+                "primary Amber force minus secondary Amber force dump"
+                if amber_subtract_dump is not None
+                else "primary Amber force dump"
+            ),
+            "gromacs": {
+                "primary": "primary GROMACS force TRR",
+                "subtract": (
+                    "matched background force TRR" if background_trajectory is not None else None
+                ),
+                "add": ("matched additional force TRR" if add_trajectory is not None else None),
+            },
+        },
         "force_unit": "kJ/(mol*Angstrom)",
         "amber_force_conversion": "kcal/(mol*Angstrom) x 4.184",
         "gromacs_native_force_unit": universe.trajectory.units.get("force"),
@@ -163,6 +245,21 @@ def main() -> int:
         help="GRO or other MDAnalysis topology",
     )
     parser.add_argument("--gromacs-force-trr", type=Path, required=True)
+    parser.add_argument(
+        "--gromacs-background-force-trr",
+        type=Path,
+        help="optional matched-coordinate background TRR to subtract from GROMACS forces",
+    )
+    parser.add_argument(
+        "--amber-subtract-forcedump",
+        type=Path,
+        help="optional matched-coordinate Amber force dump to subtract from the primary dump",
+    )
+    parser.add_argument(
+        "--gromacs-add-force-trr",
+        type=Path,
+        help="optional matched-coordinate force TRR to add to the primary GROMACS force",
+    )
     parser.add_argument("--frame", type=int, default=0)
     parser.add_argument(
         "--group",
@@ -185,6 +282,9 @@ def main() -> int:
             args.frame,
             args.group,
             args.coordinate_tolerance_A,
+            args.gromacs_background_force_trr,
+            args.amber_subtract_forcedump,
+            args.gromacs_add_force_trr,
         )
     except (OSError, ValueError) as exc:
         parser.error(str(exc))

@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Extend G-MD-33 force diagnostics across additional configurations and chemically distinct systems; isolate water/electrostatic conventions before defining any Amber→GROMACS validation tolerance. The profile remains unqualified. |
+| **Current task** | [-] Extend G-MD-34 energy diagnostics to additional configurations and chemically distinct systems. G-MD-34 resolves most of the G-MD-33 force residual as a rigid-versus-flexible water representation mismatch for the two tested snapshots; energy equivalence remains unresolved and the profile stays unqualified. |
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-33: same-coordinate Sander/GROMACS per-atom force comparison and bounded PME cutoff-shift estimate on two systems. Ligand/protein forces closely agree in these snapshots; water dominates the aggregate difference. |
-| **Blocking questions** | Matched-grid energy residuals remain −9.7178 kcal/mol (5NIU/RC8) and −0.1463 kcal/mol (ethanol/two-GLY) at the fine mesh. The direct-space shift estimate explains only part. Force comparison covers one configuration per system and establishes no tolerance or cross-engine equivalence. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
+| **Last completed** | G-MD-34: isolated electrostatic and non-electrostatic forces; matching the harmonic flexible-water representation reduced water-force RMSE from ~4.18% to <0.04% in both systems. |
+| **Blocking questions** | Matched-grid total-energy residuals remain −9.7178 kcal/mol (5NIU/RC8) and −0.1463 kcal/mol (ethanol/two-GLY) at the fine mesh. Force component agreement does not explain or eliminate these energy residuals and covers only one configuration per system. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -845,7 +845,7 @@ When the user says **CONTINUE**:
 
 - [x] **P1 — Docked-pose-to-MD application handoff:** G-MD-26 runs pose-derived AmberTools preparation → OpenMM minimization/NVT → 50-step production → PDB/DCD binding → MDAnalysis processing/metrics → JSON/HTML report. Runtime composition is verified; stability and convergence are not. G-MD-27 also resolves the fixture fractional-charge warning using a bounded, recorded SQM-print-precision correction.
 - [!] **P0 — Independent blinded benchmark review:** the frozen six-case packet must receive independent review and discrepancies must be reconciled before starting the preregistered 90-attempt cohort docking. Preserve blinding; do not access the unblind key.
-- [-] **P1 — Amber/GROMACS scientific qualification:** G-MD-28–33 characterize energy and force discrepancies on two systems, including matched-coordinate force comparison. Water dominates the snapshot force differences; the PME cutoff-shift estimate explains only part of the energy residual. Add configurations and chemically distinct systems, investigate component conventions, and define a defensible protocol before any tolerance/profile qualification.
+- [-] **P1 — Amber/GROMACS scientific qualification:** G-MD-28–34 characterize energy and force discrepancies on two systems. G-MD-34 traced most of the prior snapshot water-force residual to unlike rigid SETTLE versus flexible harmonic water representations; force residuals fall below 0.04% with matched flexible-water treatment. The PME cutoff-shift estimate explains only part of the unresolved energy residual. Add configurations and chemically distinct systems, then define a defensible qualification protocol before any tolerance/profile qualification.
 - [-] **P1 — Engine-backed workflow validation:** real short-run execution and pose-derived MD→analysis→report composition exist, but MD runs are only 0.1 ps and do not establish stability or sampling. Real AutoDock4/AutoGrid integration/accuracy and additional optional engine profiles remain open; distinguish mocked, contract, and real-engine evidence.
 - [-] **P2 — Adapter coverage quality:** latest recorded no-engine coverage is 80.19% adapters, 85.10% core, 33.35% workers, and 76.52% docking family. Continue validation-focused coverage work without gaming exclusions; refresh these metrics before release decisions.
 - [ ] **P2 — Public release:** packaging and CI pre-release gates passed, but no public version tag/package upload was made. Complete exact dependency/license compatibility and transitive/frontend notice review for release artifacts, plus required human/counsel review.
@@ -1341,3 +1341,13 @@ When the user says **CONTINUE**:
 - [x] Estimated the regular-pair Verlet PME direct-potential cutoff shift at −2.1329 kcal/mol (5NIU/RC8) and −0.15775 kcal/mol (ethanol/two-GLY), only part of the matched-grid electrostatic residual.
 - [x] Added reproducible scripts/validation/compare_amber_gromacs_forces.py and scripts/validation/estimate_pme_cutoff_shift.py; reran both against retained captures. Ruff checks and formatting pass. Evidence and capture hashes: docs/validation/G-MD-33.md.
 - [-] Continue with more configurations and chemically distinct systems; isolate PME/water conventions. Keep Amber-to-GROMACS compatibility unqualified.
+
+
+### Session log — 2026-09-30, G-MD-34 force-component isolation
+
+- [x] Generated Amber electrostatic-only force dumps with Sander debug-force controls, and GROMACS same-coordinate zero-charge backgrounds; zero-charge topologies preserve the bonded/LJ records.
+- [x] Electrostatic-only force relative vector RMSE is approximately 0.039% overall on both systems.
+- [x] Found the topology's WAT molecule selects harmonic bonds/angle only under FLEXIBLE, otherwise SETTLE. The earlier force run compared Amber's unconstrained harmonic water terms (ntc=1, ntf=1) with GROMACS SETTLE.
+- [x] With GROMACS FLEXIBLE water enabled, the non-electrostatic water-force RMSE fell from 4.177/4.179% to 0.0265/0.0393%; reconstructed total RMSE is 0.0165/0.0131% for component comparisons and 0.0352/0.0277% for recombined totals, tiny/pose respectively.
+- [x] Recorded methods, results, GROMACS preprocessor evidence, hashes, and limitations in docs/validation/G-MD-34.md. Extended the comparison script to combine matched-coordinate Amber and GROMACS force dumps/TRRs; focused Ruff/format checks pass.
+- [-] The force representation mismatch is substantially explained for these snapshots; matched-grid energy differences and broader system/conformer validation remain open. This is not an Amber-to-GROMACS compatibility qualification.
