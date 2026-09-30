@@ -1485,3 +1485,10 @@ When the user says **CONTINUE**:
 - [x] Evaluated one TIP3P water and the neutral nine-atom ligand independently with Amber Sander and GROMACS 2026.3 PME on the same 1,376-atom box. Included all Coulomb-14/SR/reciprocal and Amber EEL/1-4 EEL terms. The ligand energies agree within Amber's printed precision; water delta is −0.000862 kcal/mol. CPU/GPU GROMACS checks differ by at most 6.9×10⁻⁵ kJ/mol in the compared components.
 - [x] Rejected and documented an initial incomplete ligand energy mapping that omitted the 1-4 terms; it is not used in the result. Full methods, hashes, scope, and limits are in `docs/validation/G-MD-50.md`; raw runs remain outside Git.
 - [-] Next: use matched neutral group-pair charge isolation and inclusion-exclusion energies to measure intermolecular contributions. Source-level Amber PME behavior, more independent configurations and chemically distinct systems remain open. No tolerance or compatibility qualification.
+
+### Session log — 2026-09-30, ligand–water PME inclusion-exclusion (G-MD-51)
+
+- [x] Extended the charge-isolation helper to accept multiple neutral residues jointly; single-residue behavior remains available. It validates per-atom charges and atom order after saving both engine topologies.
+- [x] Located the three nearest water residues to the ligand in the retained start structure (2.479, 2.679, 2.772 Å minimum-image distances) and ran LIG-only, WAT-only, and LIG+WAT charge cases with Amber Sander and GROMACS CPU PME.
+- [x] Inclusion-exclusion interaction differences were −0.000050, −0.000169, and −0.000068 kcal/mol for the three pairs. Documented methods, precision limits, manifests, hashes, and interpretation in `docs/validation/G-MD-51.md`; raw outputs are retained externally.
+- [-] This is one geometry and three contacts, not a complete decomposition. Continue with chemically diverse groups/configurations and source-backed Amber PME analysis; full-system compatibility remains unqualified.

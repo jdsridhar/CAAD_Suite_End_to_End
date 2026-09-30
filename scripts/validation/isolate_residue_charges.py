@@ -29,7 +29,7 @@ def atom_identity(atom: parmed.Atom) -> tuple[str, str]:
     return atom.residue.name, atom.name
 
 
-def prepare(source: Path, output: Path, residue_index: int) -> Path:
+def prepare(source: Path, output: Path, residue_indices: list[int]) -> Path:
     source = source.resolve()
     output = output.resolve()
     inputs = {
@@ -54,8 +54,11 @@ def prepare(source: Path, output: Path, residue_index: int) -> Path:
     gromacs_ids = [atom_identity(atom) for atom in gromacs.atoms]
     if amber_ids != gromacs_ids:
         raise ValueError("Amber/GROMACS atom order or identity differs")
-    if not 0 <= residue_index < len(gromacs.residues):
-        raise ValueError(f"Residue index {residue_index} is out of range")
+    if not residue_indices or len(set(residue_indices)) != len(residue_indices):
+        raise ValueError("Provide one or more unique residue indices")
+    if any(not 0 <= index < len(gromacs.residues) for index in residue_indices):
+        raise ValueError("At least one selected residue index is out of range")
+    selected_indices = set(residue_indices)
 
     charge_delta = max(
         abs(float(a.charge) - float(g.charge))
@@ -64,10 +67,17 @@ def prepare(source: Path, output: Path, residue_index: int) -> Path:
     if charge_delta > 1e-6:
         raise ValueError(f"Source per-atom charges differ by {charge_delta:g} e")
 
-    selected = gromacs.residues[residue_index]
-    selected_charge = float(sum(atom.charge for atom in selected.atoms))
-    selected_charges_amber = [float(atom.charge) for atom in amber.residues[residue_index].atoms]
-    selected_charges_gromacs = [float(atom.charge) for atom in selected.atoms]
+    selected_residues = [gromacs.residues[index] for index in residue_indices]
+    selected_charge = float(
+        sum(atom.charge for residue in selected_residues for atom in residue.atoms)
+    )
+    selected_charges = {
+        index: {
+            "amber": [float(atom.charge) for atom in amber.residues[index].atoms],
+            "gromacs": [float(atom.charge) for atom in gromacs.residues[index].atoms],
+        }
+        for index in residue_indices
+    }
     if abs(selected_charge) > 1e-5:
         raise ValueError(
             f"Selected residue net charge {selected_charge:.8g} e is not neutral; "
@@ -77,7 +87,7 @@ def prepare(source: Path, output: Path, residue_index: int) -> Path:
 
     for structure in (amber, gromacs):
         for atom in structure.atoms:
-            if atom.residue.idx != residue_index:
+            if atom.residue.idx not in selected_indices:
                 atom.charge = 0.0
 
     amber_top = output / "isolated.prmtop"
@@ -88,7 +98,8 @@ def prepare(source: Path, output: Path, residue_index: int) -> Path:
 
     xyz = np.asarray(gromacs.coordinates, dtype=np.float64)
     restart_data = parmed.amber.Rst7(
-        natom=len(gromacs.atoms), title=f"Charge-isolated residue {residue_index}"
+        natom=len(gromacs.atoms),
+        title=f"Charge-isolated residues {','.join(map(str, residue_indices))}",
     )
     restart_data.coordinates = xyz.reshape(-1).tolist()
     restart_data.box = np.asarray(gromacs.box, dtype=np.float64).tolist()
@@ -104,23 +115,23 @@ def prepare(source: Path, output: Path, residue_index: int) -> Path:
         raise ValueError("Saved GROMACS topology changed atom identity/order")
     for structure in (amber_check, gromacs_check):
         for atom in structure.atoms:
-            if atom.residue.idx != residue_index and atom.charge != 0.0:
+            if atom.residue.idx not in selected_indices and atom.charge != 0.0:
                 raise ValueError("A non-selected atom retained nonzero charge")
-    for checked, original in (
-        (amber_check.residues[residue_index], selected_charges_amber),
-        (gromacs_check.residues[residue_index], selected_charges_gromacs),
-    ):
-        if len(checked.atoms) != len(original) or any(
-            abs(float(atom.charge) - charge) > 1e-6
-            for atom, charge in zip(checked.atoms, original, strict=True)
-        ):
-            raise ValueError("Saved topology changed a selected-residue atom charge")
+    for index in residue_indices:
+        for checked, engine in ((amber_check, "amber"), (gromacs_check, "gromacs")):
+            atoms = checked.residues[index].atoms
+            original = selected_charges[index][engine]
+            if len(atoms) != len(original) or any(
+                abs(float(atom.charge) - charge) > 1e-6
+                for atom, charge in zip(atoms, original, strict=True)
+            ):
+                raise ValueError("Saved topology changed a selected-residue atom charge")
 
     manifest = {
-        "selected_residue_index": residue_index,
-        "selected_residue_name": selected.name,
-        "selected_residue_atom_count": len(selected.atoms),
-        "selected_residue_net_charge_e": selected_charge,
+        "selected_residue_indices": residue_indices,
+        "selected_residue_names": [residue.name for residue in selected_residues],
+        "selected_residue_atom_count": sum(len(residue.atoms) for residue in selected_residues),
+        "selected_charge_group_net_charge_e": selected_charge,
         "max_source_per_atom_charge_delta_e": charge_delta,
         "amber_charge_sum_after_isolation_e": float(sum(a.charge for a in amber_check.atoms)),
         "gromacs_charge_sum_after_isolation_e": float(sum(a.charge for a in gromacs_check.atoms)),
@@ -141,10 +152,16 @@ def main() -> int:
     )
     parser.add_argument("--output", type=Path, required=True, help="New derived-output directory")
     parser.add_argument(
-        "--residue-index", type=int, required=True, help="Zero-based neutral residue index"
+        "--residue-index",
+        "--residue-indices",
+        dest="residue_indices",
+        type=int,
+        nargs="+",
+        required=True,
+        help="One or more zero-based residue indices with a neutral combined charge",
     )
     args = parser.parse_args()
-    manifest = prepare(args.source, args.output, args.residue_index)
+    manifest = prepare(args.source, args.output, args.residue_indices)
     print(manifest)
     return 0
 

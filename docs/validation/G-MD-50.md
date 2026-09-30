@@ -59,4 +59,4 @@ python scripts/validation/isolate_residue_charges.py \
   --residue-index 2
 ```
 
-The isolated runs, stdout/stderr, topology/restart inputs, CPU/GPU EDR/XVG results, manifests, and hashes are retained outside the repository under `/home/sridhar/gmd49-residue-isolation-20260930/`. The preparation script SHA-256 is `5ecdf461b85c46229874d53cb98766840580b9af5801cd2c60986bc8bdf6e52f`.
+The isolated runs, stdout/stderr, topology/restart inputs, CPU/GPU EDR/XVG results, manifests, and hashes are retained outside the repository under `/home/sridhar/gmd49-residue-isolation-20260930/`. The preparation script SHA-256 at the time of these calculations was `5ecdf461b85c46229874d53cb98766840580b9af5801cd2c60986bc8bdf6e52f` (the single-residue version in commit `52527a2`). G-MD-51 extends the helper to accept multiple residue indices while retaining the single-index CLI behavior; the extended script hash is recorded in G-MD-51.
