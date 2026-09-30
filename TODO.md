@@ -1492,3 +1492,10 @@ When the user says **CONTINUE**:
 - [x] Located the three nearest water residues to the ligand in the retained start structure (2.479, 2.679, 2.772 Å minimum-image distances) and ran LIG-only, WAT-only, and LIG+WAT charge cases with Amber Sander and GROMACS CPU PME.
 - [x] Inclusion-exclusion interaction differences were −0.000050, −0.000169, and −0.000068 kcal/mol for the three pairs. Documented methods, precision limits, manifests, hashes, and interpretation in `docs/validation/G-MD-51.md`; raw outputs are retained externally.
 - [-] This is one geometry and three contacts, not a complete decomposition. Continue with chemically diverse groups/configurations and source-backed Amber PME analysis; full-system compatibility remains unqualified.
+
+### Session log — 2026-09-30, ligand–water PME checks on pose-derived 5NIU/RC8 (G-MD-52)
+
+- [x] Reused retained G-MD-33 5NIU/RC8 sources as a second, chemically larger fixture; staged exact copies and verified hashes before running.
+- [x] Used inclusion-exclusion for the neutral 47-atom ligand and its three closest neutral waters (2.560, 2.874, 3.322 Å), with all other charges zeroed in derived copies. Matched energy mapping and physical settings across Amber Sander 22.0 and GROMACS 2026.3 CPU PME.
+- [x] Observed matched-alpha Amber/GROMACS pair-energy differences −0.000500, +0.000454, and −0.000552 kcal/mol. Changing `ewald-rtol` from 0.0001 to 0.000099979 shifted these deltas by ≤0.000022 kcal/mol. Results, hashes, and precision limits are in `docs/validation/G-MD-52.md`; raw runs remain outside Git.
+- [-] These three contacts do not explain the much larger whole-system energy residual and do not qualify compatibility. Continue with other group types/configurations and source-backed Amber PME analysis.
