@@ -384,7 +384,7 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
                         "request": "trajectory_processing_request/1.1",
                     },
                     "input_bindings": {"request": "bind_trajectory"},
-                    "output_contract": "trajectory_processing_result/1.1",
+                    "output_contract": "trajectory_processing_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": GROMACS,
@@ -401,7 +401,7 @@ def test_importer_stage_composes_with_real_gromacs(tmp_path: Path) -> None:
                     "needs": ["process_trajectory"],
                     "input_contracts": {
                         "analysis_plan": TrajectoryAnalysisPlan.schema_id(),
-                        "preprocessing": "trajectory_processing_result/1.1",
+                        "preprocessing": "trajectory_processing_result/1.2",
                     },
                     "input_bindings": {
                         "analysis_plan": "$analysis_plan",

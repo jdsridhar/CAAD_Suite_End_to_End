@@ -47,5 +47,5 @@
   "trajectory_analysis_result": "trajectory_analysis_result/1.2",
   "trajectory_plot_request": "trajectory_plot_request/1.0",
   "trajectory_processing_request": "trajectory_processing_request/1.1",
-  "trajectory_processing_result": "trajectory_processing_result/1.1"
+  "trajectory_processing_result": "trajectory_processing_result/1.2"
 }

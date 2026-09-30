@@ -229,8 +229,9 @@ def _run(
         raise WorkerFailure("staged atom-mass table hash differs from its manifest")
     if request.get("protocol") != "caddsuite.mdanalysis-metrics/1":
         raise WorkerFailure("unsupported worker protocol")
-    if request.get("trajectory_format") != "XTC" or request.get("topology_format") != "GRO":
-        raise WorkerFailure("this worker requires a GRO topology and XTC trajectory")
+    format_pair = (request.get("topology_format"), request.get("trajectory_format"))
+    if format_pair not in {("GRO", "XTC"), ("PDB", "DCD")}:
+        raise WorkerFailure("this worker requires a compatible GRO/XTC or PDB/DCD pair")
 
     expected_atoms = request.get("expected_atom_count")
     expected_frames = request.get("expected_frame_count")
@@ -241,7 +242,7 @@ def _run(
         raise WorkerFailure("expected atom/frame counts must be positive integers")
     universe = mda.Universe(str(topology), str(trajectory))
     if len(universe.atoms) != expected_atoms or len(universe.trajectory) != expected_frames:
-        raise WorkerFailure("GRO/XTC atom or frame count differs from the hash-linked request")
+        raise WorkerFailure("trajectory atom or frame count differs from the hash-linked request")
     metric_values = request.get("metrics")
     rmsd_weighting = request.get("rmsd_weighting", "uniform")
     if rmsd_weighting not in {"uniform", "mass"}:
@@ -301,7 +302,7 @@ def _run(
     selected_indices = [
         index
         for index, time_ps in enumerate(times_ps)
-        if start_ns * 1000 <= time_ps <= end_ns * 1000
+        if start_ns * 1000 - 1e-4 <= time_ps <= end_ns * 1000 + 1e-4
     ][::stride]
     if len(selected_indices) < 2:
         raise WorkerFailure("analysis window and stride select fewer than two frames")

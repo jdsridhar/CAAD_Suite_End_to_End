@@ -75,6 +75,7 @@
     "TrajectoryTransform": {
       "description": "Engine-independent meanings of periodic-boundary transformations.",
       "enum": [
+        "validate_only",
         "remove_periodic_jumps",
         "make_molecules_whole",
         "align_rot_trans"

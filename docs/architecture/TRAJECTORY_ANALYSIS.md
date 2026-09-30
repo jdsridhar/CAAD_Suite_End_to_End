@@ -183,7 +183,7 @@ class TrajectoryProcessingRequest(VersionedContract):
 class TrajectoryProcessingResult(VersionedContract):
     """Normalized processing output with raw/derived artifacts and frame metadata."""
 
-    schema_version: str = "trajectory_processing_result/1.1"
+    schema_version: str = "trajectory_processing_result/1.2"
 
     id: ULIDStr
     request_id: ULIDStr

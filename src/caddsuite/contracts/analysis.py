@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import PurePosixPath
@@ -97,6 +98,7 @@ class TrajectoryAnalysis(VersionedContract):
 class TrajectoryTransform(StrEnum):
     """Engine-independent meanings of periodic-boundary transformations."""
 
+    VALIDATE_ONLY = "validate_only"
     REMOVE_PERIODIC_JUMPS = "remove_periodic_jumps"
     MAKE_MOLECULES_WHOLE = "make_molecules_whole"
     ALIGN_ROT_TRANS = "align_rot_trans"
@@ -155,6 +157,8 @@ class TrajectoryProcessingRequest(VersionedContract):
             raise ValueError("trajectory segment artifacts must be unique")
         if len(set(self.transforms)) != len(self.transforms):
             raise ValueError("trajectory transforms must not repeat")
+        if TrajectoryTransform.VALIDATE_ONLY in self.transforms and len(self.transforms) != 1:
+            raise ValueError("validate_only cannot be combined with coordinate transforms")
         if TrajectoryTransform.ALIGN_ROT_TRANS in self.transforms:
             if self.fit_selection is None or self.output_selection is None:
                 raise ValueError("alignment requires explicit fit and output selections")
@@ -275,7 +279,7 @@ class MDOutputTrajectoryPlan(VersionedContract):
 class TrajectoryProcessingResult(VersionedContract):
     """Normalized processing output with raw/derived artifacts and frame metadata."""
 
-    schema_version: str = "trajectory_processing_result/1.1"
+    schema_version: str = "trajectory_processing_result/1.2"
 
     id: ULIDStr
     request_id: ULIDStr
@@ -296,6 +300,8 @@ class TrajectoryProcessingResult(VersionedContract):
     log_artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
     n_atoms: Annotated[int, Field(ge=1)]
     n_frames: Annotated[int, Field(ge=1)]
+    output_topology_format: NonEmptyStr | None = None
+    output_trajectory_format: NonEmptyStr | None = None
     frame_interval_ps: PositiveFloat
     time_range_ps: tuple[NonNegativeFloat, NonNegativeFloat]
 
@@ -510,11 +516,24 @@ class TrajectoryAnalysisPlan(VersionedContract):
             raise ValueError("analysis requires compound_id and form_id together")
         trajectory = preprocessing.output_artifacts.get("processed")
         if trajectory is None or preprocessing.reference_structure is None:
-            raise ValueError("processing result lacks its normalized trajectory or GRO reference")
+            raise ValueError(
+                "processing result lacks its normalized trajectory or topology reference"
+            )
+        if (
+            preprocessing.output_topology_format is None
+            or preprocessing.output_trajectory_format is None
+        ):
+            raise ValueError("processing result lacks normalized topology/trajectory formats")
         if self.reference_frame >= preprocessing.n_frames:
             raise ValueError("analysis plan reference frame is outside the processed trajectory")
         start_ns, end_ns = (value / 1000.0 for value in preprocessing.time_range_ps)
-        if self.start_time_ns < start_ns or self.end_time_ns > end_ns:
+        if (
+            self.start_time_ns < start_ns
+            and not math.isclose(self.start_time_ns, start_ns, rel_tol=0.0, abs_tol=1e-12)
+        ) or (
+            self.end_time_ns > end_ns
+            and not math.isclose(self.end_time_ns, end_ns, rel_tol=0.0, abs_tol=1e-12)
+        ):
             raise ValueError("analysis plan time window is outside the processed trajectory")
         return TrajectoryAnalysisRequest(
             id=self.id,
@@ -528,8 +547,8 @@ class TrajectoryAnalysisPlan(VersionedContract):
             index_file=preprocessing.source_artifacts.get("index"),
             reference_structure=preprocessing.reference_structure,
             atom_masses=preprocessing.atom_masses,
-            trajectory_format="XTC",
-            topology_format="GRO",
+            trajectory_format=preprocessing.output_trajectory_format,
+            topology_format=preprocessing.output_topology_format,
             expected_atom_count=preprocessing.n_atoms,
             expected_frame_count=preprocessing.n_frames,
             frame_interval_ps=preprocessing.frame_interval_ps,

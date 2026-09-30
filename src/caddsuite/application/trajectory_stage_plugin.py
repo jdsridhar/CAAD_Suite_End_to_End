@@ -131,7 +131,7 @@ class MDAnalysisStageHandler:
             str(request.topology.artifact_id): request.topology_format,
         }
         if request.reference_structure is not None:
-            format_by_id[str(request.reference_structure.artifact_id)] = "GRO"
+            format_by_id[str(request.reference_structure.artifact_id)] = request.topology_format
         if request.atom_masses is not None:
             format_by_id[str(request.atom_masses.artifact_id)] = "JSON"
         staged: dict[str, Path] = {}

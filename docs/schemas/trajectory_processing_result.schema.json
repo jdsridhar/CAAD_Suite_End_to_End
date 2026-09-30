@@ -146,6 +146,7 @@
     "TrajectoryTransform": {
       "description": "Engine-independent meanings of periodic-boundary transformations.",
       "enum": [
+        "validate_only",
         "remove_periodic_jumps",
         "make_molecules_whole",
         "align_rot_trans"
@@ -154,7 +155,7 @@
       "type": "string"
     }
   },
-  "$id": "caddsuite://schemas/trajectory_processing_result/1.1",
+  "$id": "caddsuite://schemas/trajectory_processing_result/1.2",
   "additionalProperties": false,
   "description": "Normalized processing output with raw/derived artifacts and frame metadata.",
   "properties": {
@@ -262,6 +263,32 @@
       ],
       "default": null
     },
+    "output_topology_format": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Topology Format"
+    },
+    "output_trajectory_format": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Trajectory Format"
+    },
     "parameters": {
       "additionalProperties": {
         "$ref": "#/$defs/JsonValue"
@@ -289,7 +316,7 @@
       "type": "string"
     },
     "schema_version": {
-      "default": "trajectory_processing_result/1.1",
+      "default": "trajectory_processing_result/1.2",
       "title": "Schema Version",
       "type": "string"
     },

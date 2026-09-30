@@ -125,7 +125,11 @@ class GromacsTrajectoryProcessor:
         input_formats=("XTC",),
         topology_formats=("GROMACS TPR",),
         output_formats=("XTC",),
-        transforms=tuple(TrajectoryTransform),
+        transforms=(
+            TrajectoryTransform.REMOVE_PERIODIC_JUMPS,
+            TrajectoryTransform.MAKE_MOLECULES_WHOLE,
+            TrajectoryTransform.ALIGN_ROT_TRANS,
+        ),
         supports_multiple_segments=True,
         requires_connectivity_for_pbc=True,
     )
@@ -457,6 +461,8 @@ class GromacsTrajectoryProcessor:
             log_artifacts=log_artifacts,
             n_atoms=atom_count,
             n_frames=frame_count,
+            output_topology_format="GRO",
+            output_trajectory_format="XTC",
             frame_interval_ps=interval_value,
             time_range_ps=(first_time_value, last_time_value),
         )

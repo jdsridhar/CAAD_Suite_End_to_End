@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Add a topology-aware OpenMM DCD/PDB trajectory-processing and analysis path, then bind pose-derived run outputs into the report workflow. |
-| **Next task** | Complete pose-derived system → MD → trajectory analysis/report runtime validation; then continue adapter-family scientific validation and the locked redocking benchmark after independent blind review. |
-| **Last completed** | G-MD-24: pose-derived OpenMM minimization → NVT (10 steps, 0.02 ps) and tiny-system minimization → NVT → production handoff. Full local gate: 933 passed, 38 optional skips. |
-| **Blocking questions** | The pose-derived 10-iteration minimization and 10-step NVT are execution smokes only; no pose-derived production, trajectory analysis, or stability claim yet. GROMACS output fails closed on its `+0.001 e` PME warning. Independent blind review and public-release license/notice review remain open. |
+| **Current task** | [-] Run a pose-derived OpenMM production segment and bind its DCD output through trajectory processing, metrics, and report generation. |
+| **Next task** | Continue adapter-family scientific validation; then run the preregistered redocking cohort only after independent blinded review. |
+| **Last completed** | G-MD-25: OpenMM-generated PDB/DCD → MDAnalysis validation → normalized PDB/DCD processing result → engine-neutral metrics; exact fixture distance and artifact lineage verified. Full gate: 939 passed, 39 optional skips. |
+| **Blocking questions** | Pose-derived minimization/NVT were execution smokes; pose-derived production, downstream metrics/report, and stability evidence remain. GROMACS output fails closed on its `+0.001 e` PME warning. Independent blind review and public-release license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -842,7 +842,7 @@ When the user says **CONTINUE**:
 
 
 ## Current pending work and priority (2026-09-29)
-- [-] **P1 — Docked-pose-to-MD scientific transition:** workflow stages and named-artifact binding are implemented. G-MD-21 now passes a short real CHARMM-GUI-import-to-GROMACS runtime composition. That smoke uses a prebuilt audited bundle and lineage-only Complex artifact references; it does not establish that a selected docking pose was assembled and parameterized without identity/coordinate substitution. Remaining: a genuinely pose-linked preparation run, real AmberTools execution, and connecting a newly executed MD stage output to downstream trajectory analysis/report stages. The separate existing-trajectory-to-report workflow already passed in G-WORKFLOW-2. Amber-to-GROMACS remains disabled pending scientific validation. Latest full scripts/check.sh: 916 passed, 38 skipped.
+- [-] **P1 — Docked-pose-to-MD scientific transition:** pose-linked AmberTools preparation and OpenMM minimization/NVT are complete execution smokes. G-MD-25 now validates OpenMM PDB/DCD → MDAnalysis processing → normalized metric through real engine workers (six-atom periodic fixture, 0.02 ps; not a pose run). Remaining: run production on the actual 5NIU/RC8 pose-derived system and bind its actual outputs through metrics/report; strengthen scientific validation beyond runtime execution. The separate existing-trajectory-to-report workflow passed in G-WORKFLOW-2. Amber-to-GROMACS remains disabled because its PME charge warning is unresolved.
 
 - [x] **P0 diagnostic subtask — Site-local receptor experiment:** separate v2 retained whole residues within the ligand-defined docking box expanded by 8 Å; it resolves Meeko preparation for 3ERT and 1M17, retains all failures, and repeats 5NIU with identical pose-file hash and RMSDs. Results: 3ERT top pose 1.2351 Å (pass); 5NIU 12.9228 Å and 1M17 5.9434 Å (fail). Frozen v1 is unchanged. See docs/validation/G-DOCK-10.md and benchmarks/redocking/pilot_v2/site-crop-box8-20260929/.
 - [x] **P0 — Scientific redocking diagnostic:** v2 resolves two Meeko preparation failures without changing v1; it yields 1/3 top-1 cases under 2 Å. Descriptive review of 1M17 shows near-native poses at ranks 3 and 8 (best 1.1234 Å), but the fixed top-1 endpoint still fails. This supports sampling in that one run and is consistent with a ranking limitation; it does not prove the cause or general accuracy. No post-hoc tuning or extra docking was performed. See docs/validation/G-DOCK-10.md and docs/validation/G-DOCK-11.md.
@@ -1262,3 +1262,13 @@ When the user says **CONTINUE**:
 - [x] Real Vina-derived 5NIU/RC8 workflow passed Amber parameterization → 10-iteration OpenMM minimization → 10-step NVT (0.02 ps); identity, atom count, stage kind, and output receipt assertions passed. This is a runtime smoke, not an equilibration/convergence or stability claim.
 - [x] OpenMM adapter tests: 6 passed. Full `scripts/check.sh`: 933 passed, 38 optional skips; Ruff, formatting, strict mypy (202 source files), import contracts (261 files), and schemas passed. Evidence in `docs/validation/G-MD-24.md`.
 - [-] Actual pose-derived production dynamics and DCD trajectory processing/analysis/report composition remain open. GROMACS-profile `+0.001 e` PME warning, independent blinded benchmark review, and public-release licensing review remain unresolved.
+
+### Session log — 2026-09-30, OpenMM DCD processing and metrics handoff
+
+- [x] Added an isolated MDAnalysis PDB/DCD validation processor and stage handler. The worker confines control/input paths, verifies input hashes, dimensions, coordinates, periodic boxes, frame timing, and lineage; `validate_only` preserves coordinates and the original trajectory.
+- [x] Added normalized output topology/trajectory format fields (`trajectory_processing_result/1.2`) and updated GROMACS normalization and workflow contracts. `TrajectoryAnalysisPlan.bind` now consumes declared formats instead of assuming GRO/XTC; MDAnalysis stages stage reference structures using their declared topology format.
+- [x] Extended MDAnalysis metrics input validation and worker dispatch to compatible PDB/DCD pairs. Added time-boundary tolerance for DCD floating-point timestamps.
+- [x] G-MD-25 real OpenMM 8.4 DCD + MDAnalysis 2.10.0 runtime composition passed: two frames at ~0.01/0.02 ps, normalized PDB/DCD handoff, identity-linked analysis result, and 1.0 Å fixture protein–ligand minimum distance. This is a six-atom 0.02 ps software smoke, not pose-derived production or stability validation.
+- [x] The PDB/DCD handler is discoverable from its entry point; focused adapter/workflow tests passed. The final `scripts/check.sh` passed: 939 tests, 39 optional skips; Ruff, format, strict mypy (205 files), import contracts (264 files), and schema freshness pass.
+- [x] Re-ran opt-in G-MD-25 after hardening worker receipt validation; it passed with both real engine environments configured. `git diff --check` passed.
+- [-] Actual pose-derived production DCD → metrics → report remains the next task. The GROMACS PME warning, independent blinded cohort review, and public-release licensing review remain open.

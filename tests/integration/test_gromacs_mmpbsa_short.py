@@ -711,7 +711,7 @@ def test_candidate_workflow_composes_md_qm_and_report_for_registered_form(
                     "engine": "gromacs",
                     "input_contracts": {"request": "trajectory_processing_request/1.1"},
                     "input_bindings": {"request": "$processing_request"},
-                    "output_contract": "trajectory_processing_result/1.1",
+                    "output_contract": "trajectory_processing_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": GMX,
@@ -729,7 +729,7 @@ def test_candidate_workflow_composes_md_qm_and_report_for_registered_form(
                     "needs": ["process"],
                     "input_contracts": {
                         "analysis_plan": "trajectory_analysis_plan/1.1",
-                        "preprocessing": "trajectory_processing_result/1.1",
+                        "preprocessing": "trajectory_processing_result/1.2",
                     },
                     "input_bindings": {
                         "analysis_plan": "$analysis_plan",
@@ -754,7 +754,7 @@ def test_candidate_workflow_composes_md_qm_and_report_for_registered_form(
                     "needs": ["process"],
                     "input_contracts": {
                         "plan": "binding_energy_plan/1.0",
-                        "preprocessing": "trajectory_processing_result/1.1",
+                        "preprocessing": "trajectory_processing_result/1.2",
                     },
                     "input_bindings": {
                         "plan": "$energy_plan",

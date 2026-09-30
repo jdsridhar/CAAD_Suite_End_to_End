@@ -86,7 +86,7 @@ def test_processed_binding_energy_capability_compiles_after_trajectory_processin
     capability = snapshot.capabilities.resolve("binding_energy.analyze_processed", "gmx_mmpbsa")
     assert capability is not None
     assert capability.inputs[0].contracts == ("binding_energy_plan/1.0",)
-    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.1",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.2",)
 
     workflow = WorkflowDefinition.model_validate(
         {
@@ -103,7 +103,7 @@ def test_processed_binding_energy_capability_compiles_after_trajectory_processin
                     "engine": "gromacs",
                     "input_contracts": {"request": "trajectory_processing_request/1.1"},
                     "input_bindings": {"request": "$processing_request"},
-                    "output_contract": "trajectory_processing_result/1.1",
+                    "output_contract": "trajectory_processing_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": "/engine/bin/gmx",
@@ -119,7 +119,7 @@ def test_processed_binding_energy_capability_compiles_after_trajectory_processin
                     "needs": ["process"],
                     "input_contracts": {
                         "plan": "binding_energy_plan/1.0",
-                        "preprocessing": "trajectory_processing_result/1.1",
+                        "preprocessing": "trajectory_processing_result/1.2",
                     },
                     "input_bindings": {
                         "plan": "$energy_plan",

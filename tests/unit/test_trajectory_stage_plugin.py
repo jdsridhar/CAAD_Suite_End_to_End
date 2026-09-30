@@ -29,7 +29,7 @@ def test_trajectory_analysis_capability_is_discovered_with_typed_ports() -> None
     )
     assert capability is not None
     assert capability.inputs[0].contracts == ("trajectory_analysis_request/1.2",)
-    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.1",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.2",)
     assert capability.outputs == ("trajectory_analysis_result/1.2",)
 
 
@@ -40,7 +40,7 @@ def test_trajectory_analysis_workflow_compiles_with_normalized_contracts() -> No
             "name": "Coordinate metrics",
             "inputs": {
                 "request": {"contract": "trajectory_analysis_request/1.2"},
-                "processed": {"contract": "trajectory_processing_result/1.1"},
+                "processed": {"contract": "trajectory_processing_result/1.2"},
             },
             "stages": [
                 {
@@ -49,7 +49,7 @@ def test_trajectory_analysis_workflow_compiles_with_normalized_contracts() -> No
                     "engine": "mdanalysis",
                     "input_contracts": {
                         "request": "trajectory_analysis_request/1.2",
-                        "preprocessing": "trajectory_processing_result/1.1",
+                        "preprocessing": "trajectory_processing_result/1.2",
                     },
                     "input_bindings": {
                         "request": "$request",
@@ -102,7 +102,7 @@ def test_gromacs_trajectory_capability_is_discovered_with_typed_ports() -> None:
     )
     assert capability is not None
     assert capability.inputs[0].contracts == ("trajectory_processing_request/1.1",)
-    assert capability.outputs == ("trajectory_processing_result/1.1",)
+    assert capability.outputs == ("trajectory_processing_result/1.2",)
 
 
 def test_gromacs_trajectory_preflight_reports_missing_tools() -> None:
@@ -184,7 +184,7 @@ def test_processed_analysis_stage_discovers_plan_and_compiles_after_processing()
     capability = snapshot.capabilities.resolve("trajectory.analyze_processed", "mdanalysis")
     assert capability is not None
     assert capability.inputs[0].contracts == ("trajectory_analysis_plan/1.1",)
-    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.1",)
+    assert capability.inputs[1].contracts == ("trajectory_processing_result/1.2",)
 
     workflow = WorkflowDefinition.model_validate(
         {
@@ -203,7 +203,7 @@ def test_processed_analysis_stage_discovers_plan_and_compiles_after_processing()
                         "request": "trajectory_processing_request/1.1",
                     },
                     "input_bindings": {"request": "$request"},
-                    "output_contract": "trajectory_processing_result/1.1",
+                    "output_contract": "trajectory_processing_result/1.2",
                     "params": {
                         "engine_parameters": {
                             "gmx_executable": "/engine/bin/gmx",
@@ -219,7 +219,7 @@ def test_processed_analysis_stage_discovers_plan_and_compiles_after_processing()
                     "needs": ["process"],
                     "input_contracts": {
                         "analysis_plan": "trajectory_analysis_plan/1.1",
-                        "preprocessing": "trajectory_processing_result/1.1",
+                        "preprocessing": "trajectory_processing_result/1.2",
                     },
                     "input_bindings": {
                         "analysis_plan": "$analysis_plan",

@@ -83,8 +83,8 @@ class MDAnalysisMetricsAdapter:
     adapter_id = "caddsuite.mdanalysis.metrics"
     version = "0.1.0"
     capabilities = TrajectoryAnalysisCapabilities(
-        topology_formats=("GRO",),
-        trajectory_formats=("XTC",),
+        topology_formats=("GRO", "PDB"),
+        trajectory_formats=("XTC", "DCD"),
         metrics=_MDA_METRICS,
     )
 
@@ -94,10 +94,9 @@ class MDAnalysisMetricsAdapter:
         preprocessing: TrajectoryProcessingResult,
     ) -> tuple[ValidationIssue, ...]:
         problems: list[str] = []
-        if request.topology_format.upper() not in self.capabilities.topology_formats:
-            problems.append("MDAnalysis metrics adapter currently requires a GRO topology")
-        if request.trajectory_format.upper() not in self.capabilities.trajectory_formats:
-            problems.append("MDAnalysis metrics adapter currently requires an XTC trajectory")
+        format_pair = (request.topology_format.upper(), request.trajectory_format.upper())
+        if format_pair not in {("GRO", "XTC"), ("PDB", "DCD")}:
+            problems.append("MDAnalysis metrics requires a compatible GRO/XTC or PDB/DCD pair")
         if set(request.metrics).difference(self.capabilities.metrics):
             problems.append("one or more requested metrics are unsupported by this adapter")
         if request.preprocessing_result_id != preprocessing.id:
@@ -177,7 +176,7 @@ class MDAnalysisMetricsAdapter:
                     subject=SubjectRef(kind="trajectory", id=str(request.id)),
                     message="; ".join(problems),
                     remediation=(
-                        "Use a matching GRO/XTC pair, verified named selections, and the linked "
+                        "Use a matching GRO/XTC or PDB/DCD pair, verified named selections, "
                         "processed trajectory whose recorded fit matches the requested "
                         "pose metric.",
                     ),

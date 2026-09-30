@@ -179,7 +179,7 @@ def test_discovered_binding_stage_compiles_into_trajectory_processing() -> None:
                         "request": "trajectory_processing_request/1.1",
                     },
                     "input_bindings": {"request": "bind"},
-                    "output_contract": "trajectory_processing_result/1.1",
+                    "output_contract": "trajectory_processing_result/1.2",
                 },
             ],
             "outputs": {"trajectory": "process"},
