@@ -79,3 +79,15 @@ Rebuilt wheel and source archive from `git archive HEAD` in a temporary director
 - Source archive: `caddsuite-0.1.0.dev0.tar.gz`; SHA-256 `e04f7301e52dff843f6772802cacc8c806e328c57d1c968781ed8cd977e374a4`.
 
 This verifies archive selection and metadata for this commit only. It does not test installation, dependency-license compatibility, optional-extra notices, or legal clearance. Rebuild and review the exact artifacts selected for any eventual release.
+
+
+## Current clean-commit package verification (2026-09-30, commit 6bd2006838adc2c86fca5c1c9b478bded3dd172d)
+
+Built from a Git archive in a temporary checkout. The wheel has 222 entries and the sdist 722 entries; both contain LICENSE and NOTICE and neither contains benchmark paths.
+
+- Wheel SHA-256: 08a7b1efaa224b0553d7b25ae2e32c3c7aff06154e764e732cdd2032f63a2d48.
+- Sdist SHA-256: 8de92a00dd3954b83567e6dbe03d7772655a566325cd9fc7866516533b85256e.
+- Installed the wheel and its base dependencies in a fresh Python 3.12.14 Linux x86_64 virtual environment. The CLI reports version 0.1.0.dev0 and the database migration reaches Alembic revision 0007.
+- Pip 26.2.1 dry-run resolution with all eight declared extras together selected 93 packages without dependency conflicts; the exact resolution report and metadata-only inventory are in docs/release/licenses/PYPI_ALL_EXTRAS_RESOLUTION_REPORT.json and PYPI_ALL_EXTRAS_LICENSE_INVENTORY.csv.
+
+This confirms package contents, base install behavior, migration, and one-platform resolver compatibility at this commit. It does not verify all extras by installing/executing their scientific capabilities, does not validate other operating systems, and does not clear any third-party license or legal review. Rebuild from the final release commit. Do not upload or tag until the outstanding distribution-specific human review is complete.

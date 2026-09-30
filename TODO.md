@@ -486,11 +486,12 @@ When the user says **CONTINUE**:
 - [x] 17.3 Plugin/adapter SDK guide updated to distinguish engine-port plugins, workflow stage-handler plugins, and the lower-level generic adapter shape; includes a registration example, links a working QM plugin, and documents scientific validation and safety requirements.
 - [x] 17.4 Added configuration and troubleshooting references; consolidated links to the generated OpenAPI contract, domain model, reproducibility/export/replay docs, and method-specific scientific validation records. README and architecture index link the guides. Existing config remains schema/stage-driven; engine-specific settings stay with adapters.
 
-## Phase 18 — Packaging and release `[x]`
+## Phase 18 — Packaging and release [-]
 
-- [x] 18.1 Engineering license inventory covers the 198-package exact Conda core lock and 283 npm lock entries with no missing license expressions (`docs/release/licenses/`). Reviewed project Apache-2.0/NOTICE and corrected web package metadata. Distribution-specific compatibility/notices and external engine/model licenses remain user/release gates; this is not a legal opinion.
+- [x] 18.1 Engineering license inventories cover the 198-package Conda lock, 283 npm lock entries, current clean-wheel 28-package base runtime and 93-package all-extras resolution; generated bundle inventory maps 81 frontend package roots. Project Apache-2.0/NOTICE reviewed and web metadata corrected. Metadata inventories are not compatibility clearance.
 - [x] 18.2 Apache-2.0 remains the author-approved platform license (ADR-0013); documented pre-1.0 SemVer-shaped policy in `docs/release/VERSIONING.md` and started `CHANGELOG.md`.
-- [x] 18.3 Clean-commit wheel and sdist built and verified; sdist installed in fresh Python 3.14.4 and passed CLI, Alembic 0007, and migration-resource checks. Hosted package matrix passed on Python 3.11–3.14 and hosted Quality passed (see docs/release/PACKAGING.md). Conda remains a development/engine environment, cross-OS support is outside the current claim, and no public release tag/upload was made. D3 working name remains CADD Suite.
+- [x] 18.3 Clean-commit wheel and sdist builds, archive inspection, fresh base-wheel install, CLI and Alembic 0007 migration verified. Hosted package matrix and Quality passed on the earlier recorded commit; current artifact evidence is in docs/release/PACKAGING.md. Conda remains a development/engine environment, cross-OS support is outside the current claim.
+- [-] 18.4 Human review of dependency and frontend license texts, compatibility, attributions, CSS/embedded assets, and counsel review for ambiguities before any public package/frontend release. Rebuild and review artifacts from the exact release commit.
 
 ---
 
@@ -1541,3 +1542,11 @@ When the user says **CONTINUE**:
 - [x] Recomputed all 45 raw group energies and 15 inclusion–exclusion pairs with an independent verifier. Residual mean −0.000156 kcal/mol, range −0.000912 to +0.000300; 6/15 exceed the conservative display-rounding bound.
 - [x] Hashed 1,265 external raw/derived files. Documented methods, source hashes, frame-level summary and limitations in docs/validation/G-MD-58.md; no tolerance or compatibility claim.
 - [-] Continue broader PME convention/energy diagnostics and validated sampling. Independent blind review, engine-backed production stability validation and public-release license/notice review remain open.
+
+
+### Session log — 2026-09-30, current wheel and all-extras license evidence
+
+- [x] Rebuilt wheel/sdist from a clean Git archive of 6bd2006838adc2c86fca5c1c9b478bded3dd172d. Wheel SHA-256 08a7b1efaa224b0553d7b25ae2e32c3c7aff06154e764e732cdd2032f63a2d48; sdist SHA-256 8de92a00dd3954b83567e6dbe03d7772655a566325cd9fc7866516533b85256e. Archive contents verified; fresh wheel CLI/database migration reaches revision 0007.
+- [x] Resolved all eight declared Python extras together with pip 26.2.1 on Linux x86_64 / CPython 3.12.14: 93 packages, no solver conflict. Saved pip report and package artifact hashes.
+- [x] Refreshed base runtime inventory to 28 packages; added 93-row all-extras metadata inventory and repeatable generator. Four missing report metadata fields were recovered from exact wheel/upstream release license evidence; no unresolved inventory rows remain.
+- [-] Human license/notice compatibility review remains open. Biopython's custom License Agreement, MDAnalysis LGPL-3.0-or-later, frontend CSS/embedded assets, exact notices, and intended distribution model require review; counsel review remains open for ambiguity. No package or compiled frontend release is authorized by these engineering checks.
