@@ -1456,3 +1456,10 @@ When the user says **CONTINUE**:
 - [x] Paired standard Sander and GROMACS PME energies on the same coordinates; mean total delta −0.1869 kcal/mol, almost entirely electrostatic. Explicit Sander `skinnb=0.0` was required by this smaller periodic cell; the default-skin failure was excluded.
 - [x] Documented protocols, results, hashes and limitations in `docs/validation/G-MD-47.md`; the residual differs from the 5NIU/RC8 system and no universal tolerance is inferred.
 - [-] Continue reciprocal-exclusion convention analysis, stronger sampling and validation on further chemically distinct systems; Amber-to-GROMACS compatibility remains unqualified.
+
+
+### Session log — 2026-09-30, frontend release evidence refresh
+
+- [x] Rebuilt the current committed web application with source maps; TypeScript passed and Vite transformed 1,609 modules. The build still reports the 3.515 MB Molstar JavaScript chunk.
+- [x] Re-ran the bundle license inventory and hash-verified notice generation: 81 mapped packages, 7 emitted JS/CSS assets, 81 notice texts. The generated inventory, asset manifest, and notice hashes match the prior snapshot exactly; README now records the current rebuild.
+- [ ] Human review of license compatibility/attribution, CSS and embedded asset provenance, and counsel review remain required. This refresh is engineering evidence only; public release remains gated.

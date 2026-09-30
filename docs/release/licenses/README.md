@@ -20,9 +20,11 @@ A clean wheel from commit b6ed502 was installed into a new Linux x86_64 / Python
 This is a time- and platform-specific package metadata snapshot, not a lockfile, complete notice bundle, source-license inspection, or legal compatibility determination. Several projects expose only legacy License or classifier metadata. Regenerate after dependency or release changes; inspect upstream license texts and binary wheel contents before a real distribution. The project still does not publish dependency wheels or a container.
 
 
-## Built web JavaScript bundle inventory (2026-09-29)
+## Built web JavaScript bundle inventory (refreshed 2026-09-30)
 
 To create a production build with source maps, run from apps/web: npm run build -- --sourcemap. Then run scripts/release/audit_web_bundle_licenses.py and scripts/release/build_web_notices.py from the repository root. The scanner resolves source-map package paths against package-lock.json, checks installed versions against the lock, records package license metadata and file hashes, and fingerprints emitted assets. The notice builder copies the hash-verified license and notice file text into WEB_BUNDLE_THIRD_PARTY_NOTICES.txt for review.
+
+A fresh production build of the current committed frontend (Vite 8.3.1; 1,609 modules transformed; TypeScript check passed) was generated on 2026-09-30 with source maps. Re-running the inventory found the same 81 mapped package roots and 7 emitted JS/CSS assets; all three generated file hashes match the prior snapshot, confirming that the checked-in asset and notice evidence remains byte-for-byte current for this build. This rebuild does not close the human compatibility, CSS/embedded-asset provenance, or counsel review.
 
 The current build maps 81 npm package roots into JavaScript chunks and emits 7 JavaScript/CSS assets. This is a bundle-specific metadata inventory, not license compatibility review: package declarations and filenames do not verify license text correctness, satisfy attribution obligations, or replace counsel. The source maps identify JavaScript modules; CSS provenance is not mapped here (Molstar CSS is imported directly by the viewer components), although emitted CSS files are fingerprinted. Review embedded assets and the final distribution contents separately before release. Source maps and generated dist files are build outputs and are not committed.
 
