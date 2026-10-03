@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Determine which CPU/CUDA Ewald numerical path causes the G-MD-44 PME PP difference. G-MD-69 verifies pair/exclusion/self-energy bookkeeping on synthetic PME fixtures and finds a size-scaled −3.492 kJ/mol CPU/GPU shift for a nonphysical 16,000-atom lattice, opposite in sign to G-MD-44; this is scale evidence only, not attribution. |
-| **Next task** | On the same 16,000-atom synthetic TPR/coordinates, isolate the CPU Ewald table versus analytical evaluation while holding all other settings and backend fixed; inspect how GROMACS selects those paths. Then test the hypothesis on actual G-MD-44 matched frames and broaden to independently equilibrated systems. Keep blinded review and public-release dependency/license/notice gates open. |
-| **Last completed** | G-MD-69: independent Ewald short-range pair/self-energy verification and size-scaling control through 16,000 synthetic atoms. Formula residuals are small on controlled fixtures, but the large artificial backend shift has opposite sign to the protein–ligand result; see docs/validation/G-MD-69.md. |
-| **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open. |
+| **Current task** | [-] Determine the cause of the G-MD-44 PME CPU/GPU PP discrepancy. G-MD-71/72 show CPU Ewald table-vs-analytical effects of +0.1375 kJ/mol on G-MD-44 and +0.006901 kJ/mol on independent G-MD-47 replicas, compared with the +5.759 kJ/mol CPU-PME GPU-PP vs CPU-PP effect. The mode is not explanatory. Continue fixed-GROMACS-backend Amber comparison and broader independently equilibrated, chemically varied validation. |
+| **Next task** | Reconcile Amber and GROMACS energies under a single fixed CPU backend on matched G-MD-44 frames, then extend to independently equilibrated, chemically varied configurations; continue CUDA PP-path diagnosis without asserting a tolerance. Keep blind review and public-release dependency/license/notice gates open. |
+| **Last completed** | G-MD-72: explicit CPU Ewald table/analytical contrast on the three G-MD-47 independent-system replicas; mean Coulomb-SR effect +0.006901 kJ/mol. Together with G-MD-71, this rules out CPU mode selection as the explanation for the large G-MD-44 CPU/GPU contrast; see docs/validation/G-MD-72.md. |
+| **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
 
@@ -1654,3 +1654,27 @@ When the user says **CONTINUE**:
 - [x] Scaled to 2,000 and 16,000 atoms (128,000 included and 8,000 excluded pairs within cutoff in the larger lattice). GPU−CPU Coulomb (SR) difference grew to −3.492 kJ/mol (−0.835 kcal/mol); sign is opposite to the +1.378 kcal/mol G-MD-44 PP path effect. This artificial uniform-charge system cannot identify the protein–ligand mechanism.
 - [x] Added external hash-verified capture and documented equations, controls, exact limitations, and next probe in docs/validation/G-MD-69.md. No compatibility tolerance or Amber/GROMACS qualification.
 - [-] Isolate CPU Ewald table versus analytical mode on the fixed 16,000-atom fixture, then assess relevance on matched G-MD-44 configurations and independent equilibrated systems. Blind review, production stability, adapter coverage and human/counsel public-release review remain open.
+
+
+### Session log — 2026-10-03, CPU Ewald exclusion-mode isolation (G-MD-70)
+
+- [x] Inspected the GROMACS 2026.3 SIMD setup source: `GMX_NBNXN_EWALD_TABLE` and `GMX_NBNXN_EWALD_ANALYTICAL` select the CPU SIMD exclusion correction; the generic “Initialized Ewald tables” log line is not mode-specific.
+- [x] Reran the identical 16,000-atom synthetic TPR and coordinates with CPU PP/PME, forcing one mode per run. Coulomb reciprocal was identical; table-minus-analytical Coulomb (SR) and Potential were −0.945312 kJ/mol.
+- [x] Recorded method, exact hashes and limitations in `docs/validation/G-MD-70.md`; the effect is partial evidence on an artificial lattice and does not explain G-MD-44. External capture manifest contains 17 verified artifacts.
+- [-] Reproduce the toggle on all G-MD-44 replicas with explicit environment capture; then test independent equilibrated systems. Blind review, production MD validation, adapter coverage and human/counsel public-release review remain open.
+
+
+### Session log — 2026-10-03, replicated G-MD-44 CPU Ewald-mode contrast (G-MD-71)
+
+- [x] Repeated forced table and analytical CPU SIMD modes across all three G-MD-44 replica trajectories, using identical TPR/TRR within each pair and explicit override environments. Matched 15 frames (100–500 ps); capture includes 59 hashed entries.
+- [x] Table-minus-analytical Coulomb (SR) mean is +0.1375 kJ/mol (+0.0329 kcal/mol), with per-replica means +0.09896, +0.13542, +0.14063 kJ/mol. Reciprocal mean is −0.0000163 kJ/mol. This is far below the +5.759 kJ/mol CPU-PME GPU-PP vs CPU-PP Coulomb-SR effect; CPU exclusion mode does not explain G-MD-44.
+- [x] Documented comparison and limits in `docs/validation/G-MD-71.md`.
+- [-] Cross-check the Ewald-mode effect on the three G-MD-47 independent-system replicas, then continue Amber fixed-backend and independent-equilibration validation. Blind review, production stability, adapter coverage and human/counsel release review remain open.
+
+
+### Session log — 2026-10-03, G-MD-47 CPU Ewald-mode cross-system check (G-MD-72)
+
+- [x] Repeated forced CPU Ewald table and analytical modes for each of three G-MD-47 replicas using the replica's same TPR/TRR within each pair. Compared 15 matched frames at 100–500 ps; capture contains 62 hashed entries.
+- [x] Table-minus-analytical Coulomb (SR) mean is +0.006901 kJ/mol (per-replica means +0.007812, +0.006641, +0.006250); reciprocal mean −0.00000053 kJ/mol. This is far below G-MD-44's +5.759 kJ/mol CPU/GPU PP effect. The CPU Ewald exclusion mode is not explanatory for that discrepancy.
+- [x] Documented method and limitations in `docs/validation/G-MD-72.md`.
+- [-] Continue fixed-GROMACS-backend Amber comparison and independent-equilibration/chemical-diversity validation. No tolerance or Amber/GROMACS compatibility qualification. Independent blind review, production MD stability, adapter coverage, and human/counsel release review remain open.
