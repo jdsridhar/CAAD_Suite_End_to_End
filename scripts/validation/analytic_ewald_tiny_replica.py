@@ -53,7 +53,7 @@ def ewald_pair(
     water_indices: np.ndarray,
     charges: np.ndarray,
     kmax: float,
-) -> tuple[float, float, int]:
+) -> tuple[float, float, float, float, int]:
     ligand_xyz, water_xyz = positions[ligand_indices], positions[water_indices]
     ligand_q, water_q = charges[ligand_indices], charges[water_indices]
     displacement = ligand_xyz[:, None, :] - water_xyz[None, :, :]
@@ -81,10 +81,14 @@ def ewald_pair(
             np.sum(np.exp(-k2 / (4 * ALPHA_PER_ANGSTROM**2)) / k2 * np.real(rho_l * np.conj(rho_w)))
         )
     reciprocal_base = 4 * math.pi / float(np.prod(box)) * reciprocal_sum
+    real_gmx = GMX_COULOMB_KCAL_ANGSTROM * real_base
+    reciprocal_gmx = GMX_COULOMB_KCAL_ANGSTROM * reciprocal_base
     total_base = real_base + reciprocal_base
     return (
-        GMX_COULOMB_KCAL_ANGSTROM * total_base,
+        real_gmx + reciprocal_gmx,
         AMBER_COULOMB_KCAL_ANGSTROM * total_base,
+        real_gmx,
+        reciprocal_gmx,
         len(vectors),
     )
 
@@ -158,7 +162,7 @@ def main() -> None:
             )
         if np.any(box <= 2 * REAL_CUTOFF_ANGSTROM):
             raise ValueError("Cell dimensions must exceed twice the real-space cutoff")
-        analytic_gmx, analytic_amber, n_vectors = ewald_pair(
+        analytic_gmx, analytic_amber, analytic_real_gmx, analytic_recip_gmx, n_vectors = ewald_pair(
             positions, box, ligand_indices, water_atoms, charges, args.kmax
         )
 
@@ -187,8 +191,15 @@ def main() -> None:
             "gromacs_measured_kcal_mol": float(row["gromacs_pair_kcal_mol"]),
             "amber_measured_kcal_mol": float(row["amber_pair_kcal_mol"]),
             "gromacs_minus_amber_measured_kcal_mol": float(row["residual_kcal_mol"]),
+            "gromacs_coulomb14_cross_component_kcal_mol": float(
+                comps["LW"][0] - comps["L"][0] - comps["W"][0]
+            ),
             "gromacs_real_component_kcal_mol": real_gmx,
             "gromacs_reciprocal_component_kcal_mol": reciprocal_gmx,
+            "analytic_gromacs_real_component_kcal_mol": analytic_real_gmx,
+            "analytic_gromacs_reciprocal_component_kcal_mol": analytic_recip_gmx,
+            "gromacs_real_minus_analytic_kcal_mol": real_gmx - analytic_real_gmx,
+            "gromacs_reciprocal_minus_analytic_kcal_mol": reciprocal_gmx - analytic_recip_gmx,
             "analytic_gromacs_minus_measured_kcal_mol": (
                 analytic_gmx - float(row["gromacs_pair_kcal_mol"])
             ),
@@ -214,6 +225,9 @@ def main() -> None:
         "analytic_gromacs_minus_analytic_amber_kcal_mol",
         "analytic_gromacs_minus_measured_kcal_mol",
         "analytic_amber_minus_measured_kcal_mol",
+        "gromacs_real_minus_analytic_kcal_mol",
+        "gromacs_reciprocal_minus_analytic_kcal_mol",
+        "gromacs_coulomb14_cross_component_kcal_mol",
     ):
         values = np.asarray([row[key] for row in results])
         summary[key] = {

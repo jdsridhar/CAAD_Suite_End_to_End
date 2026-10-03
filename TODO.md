@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-60 extends analytic Ewald checks to 15 nearest-water pairs in the distinct ethanol/GLY/TIP3P system. Analytic and measured GROMACS-minus-Amber mean residuals differ by 0.0000276 kcal/mol, while four frame-level residual errors exceed the ±0.0003 kcal/mol display-rounding bound. This is a local, correlated, short-run diagnostic; it does not explain the whole-system Amber/GROMACS residual or qualify compatibility. No tolerance is set.
+| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-61 decomposes the ethanol/GLY/TIP3P analytic-vs-GROMACS pair energies. The real-space component tracks within 0.0000138 kcal/mol RMSE; reciprocal component RMSE is 0.0002225. These are selected, correlated short-run frames and do not explain the whole-system Amber/GROMACS residual or qualify compatibility. No tolerance is set.
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-60: analytic Ewald comparison on 15 ethanol–water pairs across three replicas; the predicted and measured mean residuals are close, but frame-level differences and general Amber/GROMACS compatibility remain unresolved. See docs/validation/G-MD-60.md. |
+| **Last completed** | G-MD-61: direct/reciprocal component comparison for 15 analytic ethanol–water Ewald pairs; the residual is concentrated in reciprocal space for this small fixture. See docs/validation/G-MD-61.md. |
 | **Blocking questions** | Matched-coordinate residual is about −2.44 kcal/mol across short, correlated frames from three velocity-seeded replicas of one pose-derived system; minimization-path results differ. G-MD-43 excludes the small logged-alpha mismatch as the main cause; G-MD-46 bounds analytic self/background differences as negligible for this neutral system. Reciprocal-exclusion/direct-space convention differences remain unresolved. Evidence still covers few, correlated configurations; independent equilibrated and chemically distinct systems are required. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1575,3 +1575,12 @@ When the user says **CONTINUE**:
 - [x] Repeated the calculation at reciprocal cutoffs 2.5 and 3.0 Å⁻¹ on all frames; maximum analytic energy change 1.32×10⁻¹⁰ kcal/mol. Verified 66 inputs/outputs in each manifest and all 15 selection distances within 4.7×10⁻⁹ Å.
 - [x] Documented method, sign convention, results, limitations, hashes, and reproduction instructions in `docs/validation/G-MD-60.md`. Ruff and format checks pass. This is evidence for the mean neutral-pair residual in one small system, not a full-system Amber/GROMACS compatibility result.
 - [-] Continue independent PME validation across configurations and molecular systems; independent blind review and human/counsel release-license review remain open.
+
+
+### Session log — 2026-10-03, analytic/direct/reciprocal component comparison (G-MD-61)
+
+- [x] Extended `scripts/validation/analytic_ewald_tiny_replica.py` to retain analytic and measured real/reciprocal cross terms, while preserving full precision TRR, neutral-group, and selected-water identity checks.
+- [x] On the same 15 G-MD-57 frames, GROMACS-minus-analytic real-space component RMSE is 0.00001375 kcal/mol; reciprocal component RMSE is 0.00022247. Cutoff convergence remains ≤1.32×10⁻¹⁰ kcal/mol across all frames.
+- [x] Recomputed both reciprocal cutoffs with the updated runner; verified 66 input/output hashes per capture. Updated the G-MD-60 output hashes for the expanded CSV/summary schema.
+- [x] Documented decomposition and limitations in `docs/validation/G-MD-61.md`. Ruff checks pass. The reciprocal residual is a diagnostic for this pair/system only; no general Amber/GROMACS compatibility or tolerance is claimed.
+- [-] Continue additional independent PME validation; blinded cohort review and human/counsel release review remain outstanding.
