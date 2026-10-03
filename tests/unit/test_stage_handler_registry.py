@@ -146,7 +146,7 @@ def test_vina_plugin_exposes_prepared_scientific_inputs_and_normalized_result() 
         "compound": ("compound/1.0",),
         "form": ("compound_form/1.0",),
         "conformer": ("conformer/1.1",),
-        "receptor": ("prepared_receptor/1.0",),
+        "receptor": ("prepared_receptor/1.2",),
         "target_structure": ("structure/1.0",),
         "site": ("binding_site/1.0",),
     }

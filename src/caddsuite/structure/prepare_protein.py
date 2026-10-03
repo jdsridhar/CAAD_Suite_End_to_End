@@ -6,6 +6,7 @@ This module owns policy and paths; the engine-specific preparation runs in the w
 from __future__ import annotations
 
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from caddsuite.contracts.structure import (
     PreparedReceptor,
     ResidueReplacement,
     Structure,
+    StructureGeometryDiagnostics,
 )
 from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
@@ -34,6 +36,8 @@ def write_pdbfixer_request(
     ph: float,
     fill_internal_gaps: bool = True,
     keep_water: bool = False,
+    close_contact_threshold_A: float = 1.5,
+    modeling_seed: int,
 ) -> Path:
     """Write a validated worker request under the stage work directory.
 
@@ -66,6 +70,14 @@ def write_pdbfixer_request(
         raise ValueError("selected_chain_ids must be unique")
     if not 0 <= ph <= 14:
         raise ValueError("pH must be between 0 and 14")
+    if not math.isfinite(close_contact_threshold_A) or close_contact_threshold_A <= 0:
+        raise ValueError("close_contact_threshold_A must be finite and positive")
+    if (
+        isinstance(modeling_seed, bool)
+        or not isinstance(modeling_seed, int)
+        or not 1 <= modeling_seed <= 2147483647
+    ):
+        raise ValueError("modeling_seed must be an integer in [1, 2147483647]")
 
     payload: dict[str, Any] = {
         "input_mmcif": str(source),
@@ -75,6 +87,8 @@ def write_pdbfixer_request(
         "ph": ph,
         "fill_internal_gaps": fill_internal_gaps,
         "keep_water": keep_water,
+        "close_contact_threshold_A": close_contact_threshold_A,
+        "modeling_seed": modeling_seed,
     }
     request.parent.mkdir(parents=True, exist_ok=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -117,6 +131,8 @@ def normalize_pdbfixer_result(
     structure: Structure,
     selected_chain_ids: tuple[str, ...],
     ph: float,
+    modeling_seed: int,
+    close_contact_threshold_A: float,
     prepared_artifact: ArtifactRef,
     prepared_pdb_artifact: ArtifactRef,
     report_artifact: ArtifactRef,
@@ -130,12 +146,14 @@ def normalize_pdbfixer_result(
             f"{response.get('error', 'no structured error was returned')}"
         )
     result = response["result"]
-    if result.get("protocol") != "caddsuite.pdbfixer-worker/2":
+    if result.get("protocol") != "caddsuite.pdbfixer-worker/4":
         raise ProteinPreparationError("unsupported PDBFixer worker protocol")
     if sorted(selected_chain_ids) != result.get("selected_chain_ids"):
         raise ProteinPreparationError("worker selected chain IDs differ from the request")
     if float(result.get("ph", -1)) != ph:
         raise ProteinPreparationError("worker pH differs from the request")
+    if result.get("modeling_seed") != modeling_seed:
+        raise ProteinPreparationError("worker modeling seed differs from the request")
     if not structure.raw.sha256:
         raise ProteinPreparationError("source structure artifact has no digest")
     if result.get("input_sha256") != structure.raw.sha256:
@@ -193,6 +211,12 @@ def normalize_pdbfixer_result(
         missing_heavy_atom_count = int(result["missing_heavy_atom_count"])
         atom_count = int(result["output_atom_count"])
         residue_count = int(result["output_residue_count"])
+        modeling_seed = int(result["modeling_seed"])
+        geometry_diagnostics = StructureGeometryDiagnostics.model_validate(
+            result["geometry_diagnostics"]
+        )
+        if geometry_diagnostics.threshold_A != close_contact_threshold_A:
+            raise ProteinPreparationError("worker geometry threshold differs from the request")
     except (KeyError, TypeError, ValueError) as exc:
         raise ProteinPreparationError(f"malformed PDBFixer worker result: {exc}") from exc
     if (
@@ -207,6 +231,7 @@ def normalize_pdbfixer_result(
         protocol=fixer,
         supporting_software=(openmm,),
         ph=ph,
+        modeling_seed=modeling_seed,
         protonation_method="PDBFixer standard-residue templates; pH-aware hydrogen addition",
         removed=removed,
         missing_residues=gaps,
@@ -215,6 +240,7 @@ def normalize_pdbfixer_result(
         missing_heavy_atom_count=missing_heavy_atom_count,
         output_atom_count=atom_count,
         output_residue_count=residue_count,
+        geometry_diagnostics=geometry_diagnostics,
         artifacts={
             "source_structure": structure.raw,
             "prepared_structure": prepared_artifact,

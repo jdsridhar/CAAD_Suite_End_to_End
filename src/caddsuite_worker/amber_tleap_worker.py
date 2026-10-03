@@ -1036,7 +1036,12 @@ def _sander_energy_values(sander_out: Path) -> tuple[float, dict[str, float]]:
     displayed_amber_text = amber_matches[-1]
     displayed_amber_kcal = float(displayed_amber_text)
     result_row = re.search(
-        r"^\s*\d+\s+(" + _FLOAT + r")\s+(" + _FLOAT + r")\s+(" + _FLOAT
+        r"^\s*\d+\s+("
+        + _FLOAT
+        + r")\s+("
+        + _FLOAT
+        + r")\s+("
+        + _FLOAT
         + r")(?:\s+(\S+)\s+(\d+))?\s*$",
         final_results[-1],
         re.MULTILINE,

@@ -35,6 +35,82 @@
       "title": "ArtifactRef",
       "type": "object"
     },
+    "CloseHeavyAtomContact": {
+      "additionalProperties": false,
+      "description": "A pair of non-directly-bonded heavy atoms inside a screening distance.",
+      "properties": {
+        "atom_name_a": {
+          "minLength": 1,
+          "title": "Atom Name A",
+          "type": "string"
+        },
+        "atom_name_b": {
+          "minLength": 1,
+          "title": "Atom Name B",
+          "type": "string"
+        },
+        "chain_a": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain A"
+        },
+        "chain_b": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain B"
+        },
+        "distance_A": {
+          "exclusiveMinimum": 0,
+          "title": "Distance A",
+          "type": "number"
+        },
+        "residue_id_a": {
+          "minLength": 1,
+          "title": "Residue Id A",
+          "type": "string"
+        },
+        "residue_id_b": {
+          "minLength": 1,
+          "title": "Residue Id B",
+          "type": "string"
+        },
+        "residue_name_a": {
+          "minLength": 1,
+          "title": "Residue Name A",
+          "type": "string"
+        },
+        "residue_name_b": {
+          "minLength": 1,
+          "title": "Residue Name B",
+          "type": "string"
+        }
+      },
+      "required": [
+        "residue_id_a",
+        "residue_name_a",
+        "atom_name_a",
+        "residue_id_b",
+        "residue_name_b",
+        "atom_name_b",
+        "distance_A"
+      ],
+      "title": "CloseHeavyAtomContact",
+      "type": "object"
+    },
     "ComponentRecord": {
       "additionalProperties": false,
       "description": "A non-polymer component found in a structure (and what happened to it).",
@@ -248,9 +324,57 @@
       ],
       "title": "SoftwareRef",
       "type": "object"
+    },
+    "StructureGeometryDiagnostics": {
+      "additionalProperties": false,
+      "description": "Configurable, conservative close-contact screen for a prepared structure.",
+      "properties": {
+        "close_contact_count": {
+          "minimum": 0,
+          "title": "Close Contact Count",
+          "type": "integer"
+        },
+        "contacts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CloseHeavyAtomContact"
+          },
+          "title": "Contacts",
+          "type": "array"
+        },
+        "contacts_truncated": {
+          "default": false,
+          "title": "Contacts Truncated",
+          "type": "boolean"
+        },
+        "minimum_distance_A": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum Distance A"
+        },
+        "threshold_A": {
+          "exclusiveMinimum": 0,
+          "title": "Threshold A",
+          "type": "number"
+        }
+      },
+      "required": [
+        "threshold_A",
+        "close_contact_count"
+      ],
+      "title": "StructureGeometryDiagnostics",
+      "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/prepared_receptor/1.0",
+  "$id": "caddsuite://schemas/prepared_receptor/1.2",
   "additionalProperties": false,
   "properties": {
     "artifacts": {
@@ -259,6 +383,17 @@
       },
       "title": "Artifacts",
       "type": "object"
+    },
+    "geometry_diagnostics": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StructureGeometryDiagnostics"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -286,6 +421,20 @@
       },
       "title": "Missing Residues",
       "type": "array"
+    },
+    "modeling_seed": {
+      "anyOf": [
+        {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Modeling Seed"
     },
     "nonstandard_replacements": {
       "default": [],
@@ -344,7 +493,7 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "prepared_receptor/1.0",
+      "default": "prepared_receptor/1.2",
       "title": "Schema Version",
       "type": "string"
     },

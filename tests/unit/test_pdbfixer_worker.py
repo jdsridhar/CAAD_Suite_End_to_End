@@ -33,6 +33,8 @@ def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path)
                 "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
+                "modeling_seed": 20261003,
+                "close_contact_threshold_A": 1.5,
                 "fill_internal_gaps": True,
                 "keep_water": False,
             }
@@ -72,6 +74,8 @@ def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path)
         }
     ]
     assert result["output_atom_count"] > 0
+    assert result["geometry_diagnostics"]["threshold_A"] == 1.5
+    assert result["geometry_diagnostics"]["close_contact_count"] >= 0
 
 
 def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
@@ -113,6 +117,8 @@ def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
                 "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
+                "modeling_seed": 20261003,
+                "close_contact_threshold_A": 1.5,
                 "fill_internal_gaps": True,
                 "keep_water": False,
             }
@@ -154,6 +160,8 @@ def test_worker_refuses_to_overwrite_an_existing_artifact(tmp_path: Path) -> Non
                 "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
+                "modeling_seed": 20261003,
+                "close_contact_threshold_A": 1.5,
             }
         ),
         encoding="utf-8",
@@ -173,3 +181,53 @@ def test_worker_refuses_to_overwrite_an_existing_artifact(tmp_path: Path) -> Non
     assert response["ok"] is False
     assert response["error_type"] == "FileExistsError"
     assert output.read_text(encoding="utf-8") == "existing scientific artifact"
+
+
+def test_worker_replays_internal_loop_with_same_modeling_seed(tmp_path: Path) -> None:
+    import subprocess
+
+    prepared_outputs = []
+    responses = []
+    for label in ("first", "second"):
+        output = tmp_path / f"{label}.cif"
+        output_pdb = tmp_path / f"{label}.pdb"
+        request = tmp_path / f"{label}.json"
+        request.write_text(
+            json.dumps(
+                {
+                    "input_mmcif": str(FIXTURE),
+                    "output_mmcif": str(output),
+                    "output_pdb": str(output_pdb),
+                    "selected_chain_ids": ["A"],
+                    "ph": 7.4,
+                    "fill_internal_gaps": True,
+                    "keep_water": False,
+                    "close_contact_threshold_A": 1.5,
+                    "modeling_seed": 20261003,
+                }
+            ),
+            encoding="utf-8",
+        )
+        environment = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+        run = subprocess.run(
+            [str(PYFIXER_PYTHON), str(WORKER), "--request", str(request)],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        assert run.returncode == 0, run.stderr
+        response = json.loads(run.stdout)
+        responses.append(response["result"])
+        heavy_records = [
+            line
+            for line in output_pdb.read_text(encoding="utf-8").splitlines()
+            if line.startswith("ATOM  ") and line[76:78].strip().upper() not in {"H", "D"}
+        ]
+        prepared_outputs.append(heavy_records)
+
+    assert prepared_outputs[0] == prepared_outputs[1]
+    assert responses[0]["modeling_seed"] == responses[1]["modeling_seed"] == 20261003
+    assert responses[0]["geometry_diagnostics"] == responses[1]["geometry_diagnostics"]

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import math
+import secrets
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
@@ -30,7 +32,7 @@ class PDBFixerPreparationHandler:
     """Execute selected-chain protein preparation with a foreign-env PDBFixer worker."""
 
     adapter_id = "structure.prepare_protein.pdbfixer"
-    adapter_version = "1.1.0"
+    adapter_version = "1.3.0"
     software_environment: SoftwareEnvironment | None = None
 
     def __init__(
@@ -106,6 +108,29 @@ class PDBFixerPreparationHandler:
                 "STRUCTURE.PH_REQUIRED", "Set an explicit numeric protein preparation pH."
             )
         ph = float(ph_value)
+        seed_value = params.get("modeling_seed")
+        if seed_value is None:
+            seed_value = secrets.randbelow(2147483647) + 1
+        if (
+            isinstance(seed_value, bool)
+            or not isinstance(seed_value, int)
+            or not 1 <= seed_value <= 2147483647
+        ):
+            raise StageExecutionFailure(
+                "STRUCTURE.MODELING_SEED_INVALID",
+                "modeling_seed must be an integer from 1 through 2147483647.",
+            )
+        threshold_value = params.get("close_contact_threshold_A", 1.5)
+        if (
+            not isinstance(threshold_value, (int, float))
+            or isinstance(threshold_value, bool)
+            or not math.isfinite(float(threshold_value))
+            or float(threshold_value) <= 0
+        ):
+            raise StageExecutionFailure(
+                "STRUCTURE.CLOSE_CONTACT_THRESHOLD_INVALID",
+                "close_contact_threshold_A must be a finite positive distance in angstroms.",
+            )
 
         stage_dir = self.work_root / f"{invocation.task.stage_id}-{new_ulid()}"
         stage_dir.mkdir(mode=0o700)
@@ -122,6 +147,8 @@ class PDBFixerPreparationHandler:
             ph=ph,
             fill_internal_gaps=bool(params.get("fill_internal_gaps", True)),
             keep_water=bool(params.get("keep_water", False)),
+            close_contact_threshold_A=float(threshold_value),
+            modeling_seed=seed_value,
         )
         command = plan_pdbfixer_command(
             python_executable=self.python_executable,
@@ -167,6 +194,8 @@ class PDBFixerPreparationHandler:
             structure=structure,
             selected_chain_ids=tuple(chains),
             ph=ph,
+            modeling_seed=seed_value,
+            close_contact_threshold_A=float(threshold_value),
             prepared_artifact=prepared_ref,
             prepared_pdb_artifact=prepared_pdb_ref,
             report_artifact=execution.stdout,

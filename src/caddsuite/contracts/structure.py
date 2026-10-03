@@ -115,13 +115,53 @@ class ResidueReplacement(ContractModel):
     replacement_name: NonEmptyStr
 
 
+class CloseHeavyAtomContact(ContractModel):
+    """A pair of non-directly-bonded heavy atoms inside a screening distance."""
+
+    chain_a: str | None = None
+    residue_id_a: NonEmptyStr
+    residue_name_a: NonEmptyStr
+    atom_name_a: NonEmptyStr
+    chain_b: str | None = None
+    residue_id_b: NonEmptyStr
+    residue_name_b: NonEmptyStr
+    atom_name_b: NonEmptyStr
+    distance_A: PositiveFloat
+
+
+class StructureGeometryDiagnostics(ContractModel):
+    """Configurable, conservative close-contact screen for a prepared structure."""
+
+    threshold_A: PositiveFloat
+    close_contact_count: Annotated[int, Field(ge=0)]
+    minimum_distance_A: PositiveFloat | None = None
+    contacts: tuple[CloseHeavyAtomContact, ...] = ()
+    contacts_truncated: bool = False
+
+    @model_validator(mode="after")
+    def _consistent_contacts(self) -> StructureGeometryDiagnostics:
+        if len(self.contacts) > self.close_contact_count:
+            raise ValueError("reported contact count exceeds total close-contact count")
+        if self.contacts:
+            if self.minimum_distance_A is None:
+                raise ValueError("minimum distance must be present when contacts are present")
+            if min(item.distance_A for item in self.contacts) < self.minimum_distance_A:
+                raise ValueError("minimum distance is greater than a reported contact distance")
+        elif self.minimum_distance_A is not None:
+            raise ValueError("minimum distance must be absent when no contacts are present")
+        if self.contacts_truncated != (len(self.contacts) < self.close_contact_count):
+            raise ValueError("contacts_truncated does not match reported and total counts")
+        return self
+
+
 class PreparedReceptor(VersionedContract):
-    schema_version: str = "prepared_receptor/1.0"
+    schema_version: str = "prepared_receptor/1.2"
 
     id: ULIDStr
     structure_id: ULIDStr
     protocol: SoftwareRef
     ph: PHValue
+    modeling_seed: Annotated[int, Field(ge=1, le=2147483647)] | None = None
     protonation_method: NonEmptyStr
     removed: tuple[ComponentRecord, ...] = ()
     kept: tuple[ComponentRecord, ...] = ()
@@ -132,6 +172,7 @@ class PreparedReceptor(VersionedContract):
     missing_heavy_atom_count: Annotated[int, Field(ge=0)] = 0
     output_atom_count: Annotated[int, Field(ge=1)] | None = None
     output_residue_count: Annotated[int, Field(ge=1)] | None = None
+    geometry_diagnostics: StructureGeometryDiagnostics | None = None
     artifacts: dict[str, ArtifactRef] = Field(default_factory=dict)
 
 
