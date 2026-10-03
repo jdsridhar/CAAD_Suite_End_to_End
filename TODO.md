@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Select a structurally defensible, experimentally supported protein–ligand system for the next independent Amber/GROMACS validation. G-MD-94 adds a PDBFixer seed and normalized close-contact report after confirming unseeded loop reconstruction can vary by 8.86 Å. Reject the current 1M17/AQ4 modeled loop; do not repair generated coordinates silently. Re-audit candidate source structures, then run the Amber builder only after structural and component-compatibility gates pass. |
+| **Current task** | [-] Continue the independent Amber/GROMACS candidate gate using 4HLA (G-MD-95). Its complete experimental HIV protease dimer has no unsupported metal/nonstandard protein residues and passes a gross heavy-atom clash screen, but is NOT Amber-ready: explicitly validate GRL007 graph/microstate, retain or scientifically assess the six ligand-proximal crystal waters (including the reported Gly48′ bridge), resolve Asp25/Asp25′ protonation, and preserve dimer/termini before any builder run. Do not silently delete waters or select protonation states. |
 | **Next task** | Once an independent MD-ready system passes structural/parameter checks, compare matched Amber/GROMACS energies and forces, then assess production-trajectory consequences. Keep the numerical-compatibility claim bounded; G-MD-92 improved error reporting but the 1M17/AQ4 structure remains rejected. Broad adapter/workflow validation, independent review, and public-release gates remain open.
 | **Last completed** | G-MD-94: made PDBFixer gap modeling seed-controlled and recorded the seed, added a normalized configurable close-heavy-contact report, and verified same-seed 1M17 heavy-atom replay. Focused PDBFixer tests passed; one Vina integration passed on retry after the full suite first reported it as the sole failure. A complete quality-gate rerun remains open. See `docs/validation/G-MD-94-pdbfixer-reproducibility-and-geometry.md`. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open. |
@@ -1837,6 +1837,13 @@ When the user says **CONTINUE**:
 - [x] Added a regression test from the captured Sander output format. `tests/unit/test_amber_tleap_worker.py`: 16 passed.
 - [-] Select an independent, geometrically supported protein–ligand Amber validation system; the current 1M17/AQ4 coordinates are rejected for MD.
 
+
+### Session log — 2026-10-03, alternate independent Amber candidate audit (G-MD-95)
+
+- [x] Rejected immediate 3PTB use under the current builder profile because its crystallographic calcium is unsupported; retained prior rejection of 1M17/AQ4 due to modeled-loop close contacts.
+- [x] Downloaded the official 4HLA mmCIF to external scratch and recorded its SHA-256. Read-only parsing confirms two complete standard-residue 99-aa HIV protease chains, the GRL007 native inhibitor, and no metal/cofactor. Gross ligand–protein heavy-atom minimum is 2.4665 Å; no pairs are below 2.0 Å.
+- [x] Identified six ligand-proximal crystal waters within 3.5 Å and the published water-mediated Gly48′ interaction; recorded catalytic Asp25/Asp25′ protonation and dimer preservation as explicit gates.
+- [x] Added `docs/validation/G-MD-95-4hla-candidate.md`. Candidate is selected for detailed audit only; builder run, MD, and Amber/GROMACS qualification remain prohibited until water, ligand, protonation, and topology gates pass.
 
 ### Session log — 2026-10-03, seeded structure preparation and geometry diagnostics (G-MD-94)
 
