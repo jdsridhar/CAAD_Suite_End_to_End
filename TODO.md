@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-61 decomposes the ethanol/GLY/TIP3P analytic-vs-GROMACS pair energies. The real-space component tracks within 0.0000138 kcal/mol RMSE; reciprocal component RMSE is 0.0002225. These are selected, correlated short-run frames and do not explain the whole-system Amber/GROMACS residual or qualify compatibility. No tolerance is set.
+| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-62 compares analytic-predicted and measured GROMACS-minus-Amber residuals across 5NIU/RC8 and ethanol/GLY/TIP3P neutral nearest-water pairs. Mean residuals are close, but per-frame prediction RMSE remains 0.00028–0.00032 kcal/mol and correlations are weak (r=0.17/0.37). These selected, correlated short-run frames do not explain full-system residuals or qualify compatibility. No tolerance is set.
 | **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-61: direct/reciprocal component comparison for 15 analytic ethanol–water Ewald pairs; the residual is concentrated in reciprocal space for this small fixture. See docs/validation/G-MD-61.md. |
+| **Last completed** | G-MD-62: cross-system descriptive comparison of analytic and measured neutral pair residuals; similar means do not translate into reliable frame-level prediction. See docs/validation/G-MD-62.md. |
 | **Blocking questions** | Matched-coordinate residual is about −2.44 kcal/mol across short, correlated frames from three velocity-seeded replicas of one pose-derived system; minimization-path results differ. G-MD-43 excludes the small logged-alpha mismatch as the main cause; G-MD-46 bounds analytic self/background differences as negligible for this neutral system. Reciprocal-exclusion/direct-space convention differences remain unresolved. Evidence still covers few, correlated configurations; independent equilibrated and chemically distinct systems are required. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1584,3 +1584,12 @@ When the user says **CONTINUE**:
 - [x] Recomputed both reciprocal cutoffs with the updated runner; verified 66 input/output hashes per capture. Updated the G-MD-60 output hashes for the expanded CSV/summary schema.
 - [x] Documented decomposition and limitations in `docs/validation/G-MD-61.md`. Ruff checks pass. The reciprocal residual is a diagnostic for this pair/system only; no general Amber/GROMACS compatibility or tolerance is claimed.
 - [-] Continue additional independent PME validation; blinded cohort review and human/counsel release review remain outstanding.
+
+
+### Session log — 2026-10-03, cross-system analytic Ewald residual comparison (G-MD-62)
+
+- [x] Added `scripts/validation/compare_analytic_ewald_datasets.py` to verify upstream manifests, normalize the G-MD-59 and G-MD-60 sign conventions, and report descriptive means, RMSE, ranges, display-bound counts, and within-system correlations.
+- [x] Corrected a detected schema/sign mapping error before accepting results: 5NIU/RC8 measured residual is derived from the two engine energies; ethanol/GLY/TIP3P uses its explicit GROMACS-minus-Amber field. Added focused regression tests for both paths and duplicate-frame rejection (3 passed).
+- [x] Compared 15 frames per system. Analytic-minus-measured mean residual is −0.0000715 kcal/mol for 5NIU/RC8 and −0.0000276 for ethanol/GLY/TIP3P; prediction-error RMSEs are 0.0003166 and 0.0002827; descriptive correlations are 0.174 and 0.371. No inferential claim is made from these correlated selected frames.
+- [x] Verified 79 and 66 upstream artifact manifest entries and all 7 output-manifest entries. Ruff passes; documented sign convention, results, limitations, and reproduction in `docs/validation/G-MD-62.md`.
+- [-] Continue full-system and independent-configuration PME validation; independent blinded cohort review and human/counsel release review remain open.
