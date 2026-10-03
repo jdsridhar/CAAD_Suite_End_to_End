@@ -50,3 +50,7 @@ The report check verifies stage inclusion and identity, not scientific interpret
 quality. The GROMACS Amber-profile PME charge warning (`+0.001 e`) remains fail-closed and
 unresolved. Independent blinded review of the redocking cohort and public-release dependency,
 notice, and legal review remain separate gates.
+
+## Later follow-up
+
+G-MD-27 subsequently resolved the tested pose-derived input’s +0.001 e PME net-charge warning by normalizing verified Antechamber SQM print-roundoff, then passed GROMACS preprocessing and single-point energy extraction. This does not alter this report’s 0.1 ps OpenMM smoke limits and does not qualify Amber/GROMACS energy or force compatibility.
