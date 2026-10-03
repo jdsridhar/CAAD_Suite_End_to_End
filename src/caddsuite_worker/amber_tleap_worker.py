@@ -460,8 +460,10 @@ def _write_tleap_input(
         lines.append(f"bond protein.{indices[0]}.SG protein.{indices[1]}.SG")
     lines.extend(
         [
+            # Ligand MOL2 is fully hydrogenated and parameterized by Antechamber.
+            # Add template hydrogens to protein alone to avoid unparameterized ligand atoms.
+            "addH protein",
             "complex = combine { protein lig }",
-            "addH complex",
             "addions2 complex Na+ 0",
             "addions2 complex Cl- 0",
             f"solvatebox complex TIP3PBOX {padding_A:.3f}",

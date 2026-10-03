@@ -1,0 +1,43 @@
+Missing atoms or failed protonation for SER 967 A (BBN) -- please check the structure
+Group (BBN) for  4777-   N   967-SER (A) [  -8.055    1.234   65.895] N
+Expected 2 interaction atoms for acids, found:
+              4777-   N   967-SER (A) [  -8.055    1.234   65.895] N
+Expected 2 interaction atoms for bases, found:
+              4777-   N   967-SER (A) [  -8.055    1.234   65.895] N
+Missing atoms or failed protonation for THR 969 A (BBN) -- please check the structure
+Group (BBN) for  4802-   N   969-THR (A) [ -10.712   -2.725   67.221] N
+Expected 2 interaction atoms for acids, found:
+              4802-   N   969-THR (A) [ -10.712   -2.725   67.221] N
+Expected 2 interaction atoms for bases, found:
+              4802-   N   969-THR (A) [ -10.712   -2.725   67.221] N
+Missing atoms or failed protonation for ASP 970 A (BBN) -- please check the structure
+Group (BBN) for  4816-   N   970-ASP (A) [ -13.788   -4.873   68.788] N
+Expected 2 interaction atoms for acids, found:
+              4816-   N   970-ASP (A) [ -13.788   -4.873   68.788] N
+Expected 2 interaction atoms for bases, found:
+              4816-   N   970-ASP (A) [ -13.788   -4.873   68.788] N
+Missing atoms or failed protonation for ARG 975 A (ARG) -- please check the structure
+Group (ARG) for  4909-  CZ   975-ARG (A) [ -13.740    4.100   64.498] C
+Expected 8 interaction atoms for acids, found:
+              4907-  NE   975-ARG (A) [ -13.592    2.765   64.163] N
+              4910- NH1   975-ARG (A) [ -14.958    3.773   64.659] N
+              4913- NH2   975-ARG (A) [ -14.251    5.321   64.883] N
+              4918-   N   976-ALA (A) [ -12.202    4.327   64.012] N
+                 0- HH2   975-ARG (A) [ -14.228    6.305   65.109] H
+Expected 3 interaction atoms for bases, found:
+              4907-  NE   975-ARG (A) [ -13.592    2.765   64.163] N
+              4910- NH1   975-ARG (A) [ -14.958    3.773   64.659] N
+              4913- NH2   975-ARG (A) [ -14.251    5.321   64.883] N
+              4918-   N   976-ALA (A) [ -12.202    4.327   64.012] N
+Missing atoms or failed protonation for ALA 976 A (BBN) -- please check the structure
+Group (BBN) for  4918-   N   976-ALA (A) [ -12.202    4.327   64.012] N
+Expected 2 interaction atoms for acids, found:
+              4918-   N   976-ALA (A) [ -12.202    4.327   64.012] N
+Expected 2 interaction atoms for bases, found:
+              4918-   N   976-ALA (A) [ -12.202    4.327   64.012] N
+Missing atoms or failed protonation for C-  995 A (COO) -- please check the structure
+Group (COO) for  5213- OXT   995-PRO (A) [ -35.646   15.628   66.416] O
+Expected 2 interaction atoms for acids, found:
+              5213- OXT   995-PRO (A) [ -35.646   15.628   66.416] O
+Expected 2 interaction atoms for bases, found:
+              5213- OXT   995-PRO (A) [ -35.646   15.628   66.416] O
