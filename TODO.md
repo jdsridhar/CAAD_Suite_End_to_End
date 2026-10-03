@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue Amber/GROMACS PME diagnostics across chemically distinct systems and independent configurations. G-MD-62 compares analytic-predicted and measured GROMACS-minus-Amber residuals across 5NIU/RC8 and ethanol/GLY/TIP3P neutral nearest-water pairs. Mean residuals are close, but per-frame prediction RMSE remains 0.00028–0.00032 kcal/mol and correlations are weak (r=0.17/0.37). These selected, correlated short-run frames do not explain full-system residuals or qualify compatibility. No tolerance is set.
-| **Next task** | Complete the independent blinded review before the preregistered redocking cohort; finish public-release dependency/license/notice review; continue adapter-specific real-engine validation. |
-| **Last completed** | G-MD-62: cross-system descriptive comparison of analytic and measured neutral pair residuals; similar means do not translate into reliable frame-level prediction. See docs/validation/G-MD-62.md. |
+| **Current task** | [-] Broaden Amber/GROMACS PME diagnostics to independent configurations and systems. G-MD-63 established that exact source-derived Coulomb constants account arithmetically for about 91.3% of the mean G-MD-44 electrostatic energy gap, with a remaining −0.2120 kcal/mol mean residual and poor frame-level tracking. This is a one-system, correlated-snapshot diagnostic; compatibility remains unqualified and no tolerance is set.
+| **Next task** | Resolve PME/exclusion-convention residuals using independently equilibrated, chemically varied systems; in parallel, complete independent blinded review before the preregistered cohort and human/counsel release notice review. |
+| **Last completed** | G-MD-63: exact Amber/GROMACS source Coulomb-factor comparison and frame-wise factor-only prediction on G-MD-44 data. See docs/validation/G-MD-63.md. |
 | **Blocking questions** | Matched-coordinate residual is about −2.44 kcal/mol across short, correlated frames from three velocity-seeded replicas of one pose-derived system; minimization-path results differ. G-MD-43 excludes the small logged-alpha mismatch as the main cause; G-MD-46 bounds analytic self/background differences as negligible for this neutral system. Reciprocal-exclusion/direct-space convention differences remain unresolved. Evidence still covers few, correlated configurations; independent equilibrated and chemically distinct systems are required. No tolerance or Amber→GROMACS compatibility qualification is set. G-MD-26's 0.1 ps OpenMM run is execution evidence, not stability evidence. Independent blind review and public-release dependency/license/notice review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1593,3 +1593,11 @@ When the user says **CONTINUE**:
 - [x] Compared 15 frames per system. Analytic-minus-measured mean residual is −0.0000715 kcal/mol for 5NIU/RC8 and −0.0000276 for ethanol/GLY/TIP3P; prediction-error RMSEs are 0.0003166 and 0.0002827; descriptive correlations are 0.174 and 0.371. No inferential claim is made from these correlated selected frames.
 - [x] Verified 79 and 66 upstream artifact manifest entries and all 7 output-manifest entries. Ruff passes; documented sign convention, results, limitations, and reproduction in `docs/validation/G-MD-62.md`.
 - [-] Continue full-system and independent-configuration PME validation; independent blinded cohort review and human/counsel release review remain open.
+
+
+### Session log — 2026-10-03, Amber/GROMACS Coulomb factor contribution (G-MD-63)
+
+- [x] Derived Amber factor 332.05221729000004 kcal mol⁻¹ Å e⁻² from retained AmberTools source `AMBERELE=18.2223`; derived GROMACS factor 332.06371329919205 from installed GROMACS 2026.3 CODATA constants in `units.h`. Recorded source hashes.
+- [x] Added `scripts/validation/estimate_coulomb_constant_energy_shift.py` and focused tests. On 15 correlated G-MD-44 frames, factor-only mean shift −2.235931 kcal/mol versus observed −2.447904; remaining mean −0.211973 kcal/mol, residual RMSE 0.217291; correlation −0.209. Factor accounts for 91.3% of mean magnitude but does not predict frame variability.
+- [x] Captured frame table, source, code, output and summary hashes under `/home/sridhar/gmd63-coulomb-factor-shift-20261003/`; documented calculation and limitations in `docs/validation/G-MD-63.md`. Focused tests: 3 passed; Ruff check and format pass.
+- [-] Continue PME reciprocal-exclusion/direct-space convention analysis and validation on independently equilibrated, chemically distinct systems. Do not set tolerance or claim Amber→GROMACS compatibility from this result. Blinded cohort review, real-engine production validation, adapter coverage, and human/counsel public-release review remain open.
