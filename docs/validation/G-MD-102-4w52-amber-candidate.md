@@ -73,3 +73,22 @@ All inputs, platform-run database/artifacts, and minimization files are retained
 | Minimization 2 | `dabe8ff1a3acc96266bb89e553df753f2739cd83e85a1c3ef562c834837a0599` | `554f310696e269b1ae26fa1546dc7c11da2fd7aa041fcfbf0f928e6423aae864` | `b1ece9b62a9d8c08274059b97d221d594e4ce82f1a6121e8bc0b5267de0fe493` |
 | Minimization 3 | `4b0a9d2c12ce5c8cee93355e91f1605f8d0b2baa9da7eca56df08a16922b7b47` | `b495414a38c9f15bdb9d44b2c86049bd9e8550029f9a3b1634b96ac62f139bcb` | `8900e411980d27b90495430428985667808bf7649dadb85adf8793015ca24a13` |
 | Minimization 4 | `6ab33481eedd1b479fd30cb7209e668130a52d7c61cf4927e2562856fd002d10` | `9270ad91e5dc8a1811185bd035adf4021e42895c082ce3333e9c02021f16dbe8` | `ba3438aff0783aa416821c75f471655ef3ef75f9d4c51e309eeea8bce562f2b2` |
+
+## G-MD-103 — GAFF2 benzene fallback improper assessment
+
+**Disposition: remains unvalidated; no parameter override or MD-readiness claim.** The AmberTools-generated `ca-ca-ca-ha` term is used six times in the 12-atom benzene topology, once for each aromatic carbon bearing hydrogen. ParmEd inspection of the built `system.prmtop` confirmed all six records carry the same periodic improper parameters (`phi_k=1.1 kcal/mol`, periodicity 2, phase 180°).
+
+`parmchk2` reports a penalty score of 6.0 and identifies the selected form as the general `X-X-ca-ha` improper. The score comes from the installed `PARMCHK.DAT` atom-type similarity/penalty framework. Its file explicitly defines weights for wildcard placement and improper central-atom substitution. Amber documentation describes penalty scores as measuring similarity of a substitute for a missing parameter and directs users to validate generated parameters against experimental or higher-level QM data. Therefore, 6.0 is neither a calibrated error bar nor an accept/reject cutoff; the lower score relative to the 49.6 fallback previously seen in G-MD-101 does not establish accuracy.
+
+The installed GAFF2 parameter file contains no matching explicit wildcard `X-X-ca-ha` parameter, so `parmchk2`'s fallback is material rather than a duplicate of that GAFF2 entry. The fallback remains part of the generated ligand topology, and the minimization/energy evidence in this report cannot isolate its effect from all other terms. No independently validated QM scan or reference parameter was produced in this assessment. Replacing the term by an attractive literature value or an ad hoc parameter would be unjustified without checking the exact atom ordering, functional form, and target geometry against a suitable reference.
+
+| Evidence file | SHA-256 |
+|---|---|
+| Installed AmberTools `PARMCHK.DAT` | `5fc9aa69b118b58dfb377817de7ba0c2b08cd2a50542d63c83b70a62c8385a43` |
+| Installed GAFF2 `gaff2.dat` | `14ad62c8e532c47e2e400e2ca6ad8052b33bda4c4b9bc6f49b6a528e527512be` |
+| Generated `benzene-pose.frcmod` | `4e23881aa4714dc8342714d1e8746df83f53b6ed145d32ad209605e38b75f11c` |
+| Built `system.prmtop` | `70ffc2de687dcf55783de561eff8731abb963c140d74daf367cdd2d91b14f753` |
+
+**Decision:** retain the fallback only as a recorded diagnostic artifact; do not enable the Amber/GROMACS profile or run dynamics on this candidate. A future validation would need an independently supported target for the out-of-plane potential (for example, a documented QM scan with a defensible method/basis and controlled geometry, or a directly applicable validated parameter source), followed by topology-level confirmation. Even then, this one ligand term would not by itself qualify the full protein/solvent force-field profile.
+
+Amber's tutorial explicitly cautions that `parmchk2` estimates missing parameters and that generated parameters warrant validation against experimental or higher-level QM data: [Amber tutorial A26](https://ambermd.org/tutorials/basic/tutorial5/index.php). The score's similarity nature is also described in the [AmberTools manual section on Antechamber/GAFF](https://supercrispr.github.io/file/Amber/manual_18.pdf); source implementation is in [AmberClassic `parmchk2.c`](https://github.com/Amber-MD/AmberClassic/blob/main/src/antechamber/parmchk2.c).
