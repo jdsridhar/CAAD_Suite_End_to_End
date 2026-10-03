@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Characterize system-dependent CPU PP numerical sensitivity against independent reference data. G-MD-79/G-MD-81 cover 13 G-MD-44 frames; G-MD-80 covers five G-MD-47 frames; G-MD-82/83 show repeatable but system/frame-dependent MPI/OpenMP partition shifts (0.035–0.938 kJ/mol). The large G-MD-44 CPU thread shift reproduces across replicas, while G-MD-47's remains small. Exact cause and broad chemical-system scope remain unproven. |
-| **Next task** | Extend the controlled MPI/OpenMP layout comparison to more frames and independent configurations; investigate performance-safe tools or instrumentation to isolate pairlist grouping from domain decomposition. Then seek larger independently equilibrated protein–ligand systems. Keep blind review and public-release dependency/license/notice gates open. |
-| **Last completed** | G-MD-83: repeated supported partition layouts on a second G-MD-44 frame and a G-MD-47 frame. Layout outputs repeat exactly; measured span is 0.938 and 0.035 kJ/mol respectively. See docs/validation/G-MD-83.md. |
+| **Current task** | [-] Characterize system-dependent CPU PP numerical sensitivity against independent reference data. G-MD-79/G-MD-81 cover 13 G-MD-44 frames; G-MD-80 covers five G-MD-47 frames; G-MD-82/83/84 show repeatable but system/frame-dependent MPI/OpenMP partition spans: 0.719–0.938 kJ/mol on three G-MD-44 frames and 0.012–0.035 kJ/mol on two G-MD-47 frames. The large G-MD-44 CPU thread shift reproduces across replicas, while G-MD-47's remains small. Exact cause and broad chemical-system scope remain unproven. |
+| **Next task** | Instrument or build a controlled experiment that separates pairlist work grouping from MPI domain decomposition, if this is justified; source/runtime review found no separate list-count control. In parallel, advance the remaining pose-derived MD→analysis→report scientific validation and resolve its explicit PME/charge gate. Keep blind review and public-release dependency/license/notice gates open. |
+| **Last completed** | G-MD-84: added repeated 2×2/4×1 layout probes on G-MD-44 replica3/500 ps and G-MD-47 replica1/500 ps. Repeats matched exactly; spans were 0.813 and 0.012 kJ/mol. See docs/validation/G-MD-84.md. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1724,8 +1724,9 @@ When the user says **CONTINUE**:
 - [x] G-MD-80: used G-MD-47's NVE energy TPR for same-coordinate 100–500 ps references, with no box/cutoff changes and no dynamics. Across five frames, CPU1/CPU4/GPU residuals span +0.184 to +0.849 / +0.031 to +0.731 / +0.006 to +0.710 kJ/mol; CPU1−CPU4 spans +0.109 to +0.152 kJ/mol. Reconstructed exclusions and expanded TPR charge order/count were checked. All per-frame hash manifests pass. See `docs/validation/G-MD-80.md`.
 - [x] G-MD-81: added direct-reference matched CPU1/CPU4/GPU-PP/CPU-PME reruns for replica 2/3 at 200–500 ps (8 frames). Across 13 frames/3 replicas in G-MD-44, CPU1−CPU4 stays −16.969 to −18.688 kJ/mol; CPU1/CPU4/GPU residual ranges are −26.210 to −21.131 / −8.428 to −3.595 / −2.991 to +1.775 kJ/mol. Eight per-frame manifests pass. See `docs/validation/G-MD-81.md`.
 - [x] G-MD-82: varied supported MPI/OpenMP layout at fixed total worker threads and same physical inputs for G-MD-44 replica1/300ps. 1×4, 2×2, and 4×1 outputs are −294608.1875, −294608.8750, and −294608.15625 kJ/mol; altered layouts repeated exactly. Source review confirms pairlist count is tied to nonbonded OpenMP threads; no independent pairlist-count option appears in mdrun help. See `docs/validation/G-MD-82.md`.
-- [x] G-MD-83: repeated 2×2 and 4×1 layouts on G-MD-44 rep2/300 ps and G-MD-47 rep1/100 ps. Repeats are exact; partition spans are 0.938 and 0.035 kJ/mol. All six per-run manifests pass. See `docs/validation/G-MD-83.md`.
-- [-] Extend the layout comparison to more frames/configurations and isolate list grouping from domain decomposition if a defensible control exists. Interpret rank topology cautiously; do not generalize backend accuracy or set a tolerance. Blind review, production MD stability, adapter coverage, and human/counsel public-release review remain open.
+- [x] G-MD-83: repeated 2×2 and 4×1 layouts on G-MD-44 rep2/300 ps and G-MD-47 rep1/100 ps. Repeats are exact; partition spans are 0.938 and 0.035 kJ/mol. All per-run manifests pass. See `docs/validation/G-MD-83.md`.
+- [x] G-MD-84: repeated 2×2 and 4×1 layouts on G-MD-44 rep3/500 ps and G-MD-47 rep1/500 ps. Repeats are exact; partition spans are 0.813 and 0.012 kJ/mol. All per-run manifests pass. See `docs/validation/G-MD-84.md`.
+- [-] No supported runtime option separates pairlist count from nonbonded OpenMP threads; any deeper causal isolation likely needs targeted instrumentation/build. Keep causal claims bounded. Next application-level validation is the pose-derived MD→analysis→report path and its GROMACS PME/charge gate. Blind review, production MD stability, adapter coverage, and human/counsel public-release review remain open.
 
 
 ### Session log — 2026-10-03, second-system direct Ewald reference (G-MD-80)
@@ -1749,7 +1750,7 @@ When the user says **CONTINUE**:
 - [x] Reused the exact G-MD-44 replica1/300 ps rounded frame and energy TPR; held CPU PP/CPU PME, cutoff and four total worker threads fixed while comparing 1×4, 2×2 and 4×1 MPI/OpenMP layouts.
 - [x] Coulomb-SR outputs were −294608.1875, −294608.8750, and −294608.15625 kJ/mol. 2×2 and 4×1 repeats were bitwise identical in reported energy. The 0.71875 kJ/mol span is much smaller than the 17.4375 kJ/mol CPU1-vs-CPU4 contrast.
 - [x] Reviewed GROMACS 2026.3 PairlistSet allocation, static work assignment and per-list energy reduction, plus `mdrun -h`. Pairlist count follows nonbonded OpenMP threads; there is no standalone user option to vary it independently. MPI layout also alters domain/locality decomposition, so the tested factor is not pure summation order. See `docs/validation/G-MD-82.md`.
-- [-] Extend this controlled layout check to additional frames and G-MD-47; preserve fixed physical inputs and avoid causal overclaim.
+- [x] Extended the controlled layout check to additional G-MD-44/G-MD-47 frames; see G-MD-83 and G-MD-84. Preserve fixed physical inputs and avoid causal overclaim.
 
 
 ### Session log — 2026-10-03, repeated partition-layout cross-checks (G-MD-83)
@@ -1757,4 +1758,12 @@ When the user says **CONTINUE**:
 - [x] Repeated 2×2 and 4×1 layouts on G-MD-44 replica2/300 ps and G-MD-47 replica1/100 ps, holding each system's energy TPR, rounded frame, CPU PP/PME settings, and four total worker threads fixed.
 - [x] Each layout reproduced exactly. G-MD-44 replica2 partition span was 0.9375 kJ/mol; G-MD-47 span was 0.035156 kJ/mol. This is a small but system-dependent partition effect, not an explanation for the full G-MD-44 1-vs-4 thread shift.
 - [x] Verified all six per-run artifact manifests and documented evidence/limits in `docs/validation/G-MD-83.md`.
-- [-] Add frames/configurations; determine whether separate pairlist-work control/instrumentation can distinguish domain decomposition, scheduling, and reduction order.
+- [x] Added G-MD-84 frames/configurations. Separate pairlist-work control is not exposed as a supported runtime setting; further isolation requires dedicated source instrumentation or a targeted build, not an inference from MPI layout alone.
+
+
+### Session log — 2026-10-03, additional fixed-input partition frames (G-MD-84)
+
+- [x] Added G-MD-44 replica3/500 ps and G-MD-47 replica1/500 ps layout tests; kept each energy TPR, same rounded coordinates, CPU PP/PME, and four total worker threads fixed.
+- [x] Repeated 2×2 and 4×1 layouts twice each. Outputs matched exactly. G-MD-44 layout span was 0.8125 kJ/mol; G-MD-47 was 0.011719 kJ/mol.
+- [x] Verified all eight new per-run SHA-256 manifests and documented data/limits in `docs/validation/G-MD-84.md`.
+- [x] Completed the current supported MPI/OpenMP layout matrix (three G-MD-44 frames, two G-MD-47 frames). Pairlist count cannot be controlled independently through the observed CLI; exact causal isolation remains open.
