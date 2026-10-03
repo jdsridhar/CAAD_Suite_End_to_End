@@ -69,6 +69,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [G-MD-11 native Amber → OpenMM proof](../validation/G-MD-11.md)
 - [G-MD-98 single-water TIP3P template probe](../validation/G-MD-98-water-template-probe.md)
 - [G-MD-99 retained-water Amber/GROMACS integration](../validation/G-MD-99-retained-water-amber-integration.md)
+- [G-MD-100 4HLA short added-hydrogen contact investigation](../validation/G-MD-100-4hla-short-hydrogen-contact-investigation.md)
 - [Trajectory analysis input policy](TRAJECTORY_ANALYSIS.md)
 - [Trajectory metric plotting port and Matplotlib adapter](TRAJECTORY_PLOTTING.md)
 - [Pose interaction audit and migration boundary](INTERACTION_ANALYSIS_AUDIT.md)
