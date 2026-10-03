@@ -22,6 +22,14 @@ Source files are downloaded from the RCSB PDB archive into `/home/sridhar/gmd91-
 
 The corresponding PDB dataset is available under the [wwPDB CC0 1.0 data policy](https://www.rcsb.org/pages/usage-policy); attribution is encouraged. The ligand ideal SDF is the Chemical Component Dictionary record served by RCSB. Primary structure citation: [3PTB DOI](https://doi.org/10.2210/pdb3PTB/pdb), Marquart et al., *Acta Crystallographica Section B* 39 (1983), 480. Protonation evidence: [Talhout et al. (2001)](https://febs.onlinelibrary.wiley.com/doi/abs/10.1046/j.1432-1327.2001.01991.x).
 
+## Builder compatibility gate (2026-10-03)
+
+The candidate is **not currently accepted by the Amber builder profile**. The worker explicitly recognizes only Na/K/Cl/Li ions (in `src/caddsuite_worker/amber_tleap_worker.py`) and rejects other generated residues during topology classification; the audited profile explicitly excludes metals until separately configured and validated (`docs/architecture/AMBER_BUILDER_AUDIT.md`). The available Li/Merz Ca2+ TIP3P parameter file is not sufficient evidence that the system builder, ion placement, and ParmEd-to-GROMACS export preserve the intended calcium model. Calcium was not removed and no builder run was attempted.
+
+The already-prepared 3ERT/OHT alternative is also not ready for an Amber build under its current preparation: its PDBFixer output has unresolved 12-residue N-terminal and 2-residue C-terminal sequence segments, and the documented PRO A 552 endpoint has a CA–C distance of 1.644 Å and CA–OXT distance of 1.816 Å. The Meeko failure is not itself proof that Amber parameterization fails, but it establishes a real unresolved structure-preparation issue; repairing or deleting that residue without a new protocol and structural validation would be unjustified. See `docs/validation/G-DOCK-7.md` and `docs/validation/G-DOCK-8.md`.
+
+Thus neither 3PTB nor 3ERT is yet a valid immediate input to the existing Amber profile. The next selection gate is to audit a protein–ligand candidate with complete, builder-supported components, or to explicitly extend and validate metal support before using 3PTB. No source coordinates or species have been altered.
+
 ## Why this is only a candidate
 
 The complex differs chemically from the existing 5NIU/RC8 and ethanol/GLY Amber fixtures and offers a native ligand pose plus a high-quality experimental structure. However, it is not yet an independently equilibrated Amber/GROMACS system. The following remain prerequisites:
