@@ -26,6 +26,6 @@ The componentwise force-buffer RMS differences are small on these configurations
 
 ## Reproducibility and limits
 
-There were 30 original captures plus 30 repeat captures. All 30 repeated force vectors matched exactly. The captures contain complete force rows in per-run stderr, commands, environment, and JSON manifests; 303 output-file hashes and 120 input TPR/TRR hashes verified. Artifacts are under `/home/sridhar/gmd87-force-probe/matrix/`.
+There were 30 original captures plus 30 repeat captures. All 30 repeated force vectors matched exactly. The captures contain complete force rows in per-run stderr, commands, environment, and JSON manifests; 303 output-file hashes and 120 input TPR/TRR hashes verified. Artifacts are under `/home/sridhar/gmd87-force-probe/matrix/`. The exact instrumentation patch, widened-scalar patch, source archive SHA-256, modified-file hashes, compiler, and SIMD settings are recorded under `/home/sridhar/gmd87-force-probe/source-patches/`.
 
 This is fixed-coordinate single-point rerun evidence on five frames from two systems. It does not measure force error against an independent high-precision force reference, trajectory divergence, dynamical stability, or long-time statistical observables. The same force vector across the two energy-accumulator builds only shows that this local energy-scalar intervention did not change the captured force buffer under these tested conditions; it does not generalize to arbitrary modifications or engines. No tolerance or Amber↔GROMACS compatibility qualification is established.
