@@ -19,7 +19,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-PROTOCOL = "caddsuite.amber-tleap-worker/1"
+PROTOCOL = "caddsuite.amber-tleap-worker/2"
 _FLOAT = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?"
 _STANDARD_PROTEIN = frozenset(
     {
@@ -27,10 +27,12 @@ _STANDARD_PROTEIN = frozenset(
         "ARG",
         "ASN",
         "ASP",
+        "ASH",
         "CYS",
         "CYX",
         "GLN",
         "GLU",
+        "GLH",
         "GLY",
         "HID",
         "HIE",
@@ -245,6 +247,15 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
         raise WorkerFailure(
             "AMBER_WORKER.HISTIDINE_MAPPING_INVALID", "histidine mapping must be an object"
         )
+    raw_acid_states = options.get("acidic_residue_states", {})
+    if not isinstance(raw_acid_states, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str)
+        for key, value in raw_acid_states.items()
+    ):
+        raise WorkerFailure(
+            "AMBER_WORKER.ACIDIC_RESIDUE_MAPPING_INVALID",
+            "acidic-residue state mapping must be an object of residue keys to state names",
+        )
     raw_disulfide_bonds = options.get("disulfide_bonds", [])
     if not isinstance(raw_disulfide_bonds, list):
         raise WorkerFailure(
@@ -298,7 +309,27 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
             if current_chain is not None and chain != current_chain and kept and kept[-1] != "TER":
                 kept.append("TER")
             current_chain = chain
-            resname = line[17:20].strip().upper()
+            source_resname = line[17:20].strip().upper()
+            resname = source_resname
+            declared_acid_state = raw_acid_states.get(key)
+            acid_group = {
+                "ASP": {"ASP", "ASH"},
+                "ASH": {"ASP", "ASH"},
+                "GLU": {"GLU", "GLH"},
+                "GLH": {"GLU", "GLH"},
+            }
+            if declared_acid_state is not None:
+                if (
+                    source_resname not in acid_group
+                    or declared_acid_state not in acid_group[source_resname]
+                ):
+                    raise WorkerFailure(
+                        "AMBER_WORKER.ACIDIC_RESIDUE_STATE_INVALID",
+                        f"declared state {declared_acid_state!r} is incompatible with "
+                        f"source residue {source_resname!r} at {key}",
+                    )
+                line = line[:17] + declared_acid_state.rjust(3) + line[20:]
+                resname = declared_acid_state
             if resname in {"CYS", "CYX"} and key in disulfide_endpoints:
                 line = line[:17] + "CYX" + line[20:]
                 resname = "CYX"
@@ -337,6 +368,15 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
     if not kept:
         raise WorkerFailure(
             "AMBER_WORKER.PROTEIN_EMPTY", "protein PDB has no supported ATOM records"
+        )
+    recognized_acid_keys = {
+        key for key, name in residues.items() if name in {"ASP", "ASH", "GLU", "GLH"}
+    }
+    unknown_acid_keys = set(raw_acid_states) - recognized_acid_keys
+    if unknown_acid_keys:
+        raise WorkerFailure(
+            "AMBER_WORKER.ACIDIC_RESIDUE_MAPPING_INVALID",
+            f"acidic-residue mapping names absent/non-acidic residues: {sorted(unknown_acid_keys)}",
         )
     bonded_residues: set[str] = set()
     bond_distances: dict[tuple[str, str], float] = {}
@@ -424,6 +464,15 @@ def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -
         "histidine_states": {
             key: value for key, value in sorted(residues.items()) if value in {"HID", "HIE", "HIP"}
         },
+        "acidic_residue_states": {
+            key: value
+            for key, value in sorted(residues.items())
+            if value in {"ASP", "ASH", "GLU", "GLH"}
+        },
+        "acidic_residue_state_policy": (
+            "preserve source ASP/ASH/GLU/GLH names unless explicitly overridden; "
+            "protein_ph does not titrate"
+        ),
         "disulfide_bonds": disulfide_records,
         "hydrogen_policy": (
             "remove input protein hydrogens; tleap addH from explicit residue templates"

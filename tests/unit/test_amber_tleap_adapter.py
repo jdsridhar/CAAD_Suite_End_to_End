@@ -14,6 +14,7 @@ from caddsuite.adapters.system_builders.amber_tleap import (
     AmberTLeapBuildError,
     AmberTLeapBuildParameters,
     _ligand_metadata,
+    _protein_metadata,
 )
 from caddsuite.contracts.base import ArtifactRef
 from caddsuite.contracts.complex import Complex
@@ -173,6 +174,51 @@ def test_explicit_amber_parameters_reject_implicit_or_invalid_choices() -> None:
         AmberTLeapBuildParameters.model_validate({**values, "box_padding_A": 5.0})
     with pytest.raises(ValidationError):
         AmberTLeapBuildParameters.model_validate({**values, "water_model": "implicit"})
+
+
+def test_explicit_acidic_residue_states_are_validated_and_reported() -> None:
+    from caddsuite.adapters.system_builders.amber_tleap import AmberTLeapBuildError
+
+    params = AmberTLeapBuildParameters.model_validate(
+        {
+            "protein_artifact_path": "inputs/protein.pdb",
+            "ligand_artifact_path": "inputs/ligand.sdf",
+            "protein_ff": "ff14SB",
+            "ligand_method": "GAFF2",
+            "ligand_charge_model": "AM1-BCC",
+            "ligand_net_charge": 0,
+            "protein_ph": 6.0,
+            "histidine_states": {},
+            "acidic_residue_states": {"A:25:_": "ASH"},
+            "water_model": "TIP3P",
+            "ion_parameters": "Joung-Cheatham TIP3P",
+            "ion_policy": "neutralize_only",
+            "box_padding_A": 8.0,
+            "output_format": "amber",
+        }
+    )
+    pdb = "".join(
+        (
+            _pdb_atom(1, "N", "ASP", element="N", sequence=25),
+            _pdb_atom(2, "CA", "ASP", sequence=25),
+            _pdb_atom(3, "OD1", "ASP", element="O", sequence=25),
+            "TER\nEND\n",
+        )
+    ).encode("ascii")
+    result = _protein_metadata(pdb, params)
+    assert result["acidic_residue_states"] == {"A:25:_": "ASH"}
+    assert result["acidic_residue_state_policy"].startswith("preserve source")
+    assert result["residues"][0]["heavy_atoms"][0]["residue_name"] == "ASH"
+
+    wrong_residue = params.model_copy(update={"acidic_residue_states": {"A:25:_": "GLH"}})
+    with pytest.raises(AmberTLeapBuildError) as error:
+        _protein_metadata(pdb, wrong_residue)
+    assert error.value.code == "AMBER_BUILD.ACIDIC_RESIDUE_STATE_INVALID"
+
+    absent = params.model_copy(update={"acidic_residue_states": {"A:99:_": "ASH"}})
+    with pytest.raises(AmberTLeapBuildError) as error:
+        _protein_metadata(pdb, absent)
+    assert error.value.code == "AMBER_BUILD.ACIDIC_RESIDUE_MAPPING_INVALID"
 
 
 def test_adapter_validates_linked_hashes_and_plans_one_argv_worker(tmp_path: Path) -> None:
@@ -427,7 +473,7 @@ def _amber_normalization_case(
 def _valid_worker_report(request: SystemBuildRequest, complex_model: Complex) -> dict[str, object]:
     options = AmberTLeapBuildParameters.model_validate(request.parameters)
     return {
-        "protocol": "caddsuite.amber-tleap-worker/1",
+        "protocol": "caddsuite.amber-tleap-worker/2",
         "ok": True,
         "request_id": request.id,
         "complex_id": complex_model.id,

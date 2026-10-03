@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Continue the independent Amber/GROMACS candidate gate using 4HLA (G-MD-95). Its complete experimental HIV protease dimer has no unsupported metal/nonstandard protein residues and passes a gross heavy-atom clash screen, but is NOT Amber-ready: explicitly validate component-017 graph/microstate and process its distinct altloc A/B poses (0.52/0.48); inspect three/five ligand-proximal crystal waters per pose, resolve Asp25/Asp25′ protonation, and preserve dimer/termini before any builder run. Do not silently delete waters or select protonation states. |
+| **Current phase** | Post-phase audit — independent scientific validation systems |
+| **Current task** | [-] Design a typed, explicit retained-water input path through Amber builder contracts, staging, isolated worker, and provenance. G-MD-98 confirms LEaP can add TIP3P H atoms to a single WAT oxygen, but binding-site orientation and protein–ligand–water compatibility remain unvalidated. Do not build the 4HLA ligand-bound system until water and close-hydrogen geometry gates are resolved. |
 | **Next task** | Once an independent MD-ready system passes structural/parameter checks, compare matched Amber/GROMACS energies and forces, then assess production-trajectory consequences. Keep the numerical-compatibility claim bounded; G-MD-92 improved error reporting but the 1M17/AQ4 structure remains rejected. Broad adapter/workflow validation, independent review, and public-release gates remain open.
-| **Last completed** | G-MD-96: refined the 4HLA audit after discovering component 017 has two alternate ligand conformers (38 heavy atoms each, occupancies 0.52/0.48), not 76 distinct atoms. Retrieved the official CCD component and ideal SDF, verified atom-name mapping, recomputed contacts and per-altloc waters, and corrected the earlier over-specific literature attribution. See `docs/validation/G-MD-95-4hla-candidate.md`. |
+| **Last completed** | G-MD-97 explicit acidic-residue state support: Amber adapter/worker protocol v2 accepts residue-keyed ASP/ASH and GLU/GLH choices, validates and records them, and does not infer titration from `protein_ph`. Focused tests and one real protein-only ff14SB LEaP preflight pass with zero errors; eight warnings include two unresolved short hydrogen contacts. No ligand-bound or solvated 4HLA build was performed. See ADR-0064 and `docs/validation/G-MD-97-darunavir-protonation-evidence.md`. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1838,6 +1838,23 @@ When the user says **CONTINUE**:
 - [-] Select an independent, geometrically supported protein–ligand Amber validation system; the current 1M17/AQ4 coordinates are rejected for MD.
 
 
+### Session log — 2026-10-03, darunavir/Asp25 protonation evidence and adapter support (G-MD-97)
+
+- [x] Confirmed 4HLA crystallization pH 6.0 and measured O18 (darunavir hydroxyl) distances to both Asp25 dyad residues for altloc A/B.
+- [x] Audited neutron mmCIFs 5E5J and 5E5K. The same ligand is observed in triple-mutant protease at pH 6.0/4.3; side-chain deuterons identify different Asp25 states and ligand D18. Hashes, residue-site findings, and transferability limits are in `docs/validation/G-MD-97-darunavir-protonation-evidence.md`. Evidence does not uniquely assign wild-type 4HLA at pH 7.4.
+- [x] Selected an explicit four-branch sensitivity design (two ligand altlocs × either chain-A or chain-B Asp25 protonated) for later builder/MD comparison, not as equal-population or efficacy claims.
+- [x] Implemented residue-keyed ASP/ASH and GLU/GLH overrides, staged-copy application, unknown/cross-family mapping validation, normalized state metadata, adapter version 0.2.0, and worker protocol /2. `protein_ph` does not trigger titration. Added ADR-0064.
+- [x] Focused adapter/worker tests pass (62); Ruff, format, targeted mypy and `git diff --check` pass. A real ff14SB protein-only LEaP build for chain-B Asp25-ASH retained 198 residues and produced a valid topology with zero errors; eight warnings include two short added-H contacts (1.461/1.469 Å) that remain unresolved.
+- [x] Full configured repository gate after the adapter protocol update: Ruff, format (372 files), strict mypy (205 files), import-linter (4/4), schemas current, and **962 passed / 40 skipped**. Real-engine skips are listed by `scripts/check.sh`; they are not counted as executed validation.
+- [-] Water retention/rehydrogenation, reciprocal real-LEaP branch, ligand-bound 4HLA builder run, geometry resolution, and four-case sensitivity study remain open. This gate does not qualify the candidate for MD.
+
+### Session log — 2026-10-03, TIP3P single-water template probe (G-MD-98)
+
+- [x] Tested one crystallographic-style WAT oxygen with installed AmberTools LEaP and `leaprc.water.tip3p`; LEaP generated two template hydrogens, both checks passed, and topology/coordinates were written with zero errors or warnings. Input and output transcript hashes are recorded in `docs/validation/G-MD-98-water-template-probe.md`.
+- [x] Established a viable low-level preparation mechanism, not a validated binding-site orientation or complex workflow. No protein, ligand, ions, minimization, or dynamics were part of the probe.
+- [x] Added the probe procedure, hashes, result, and scientific limits in `docs/validation/G-MD-98-water-template-probe.md`.
+- [-] Add an explicit typed selected-water artifact and residue-key allowlist through core request validation, hash-bound staging, worker transformation, result/provenance, then validate on a small real protein–ligand system before returning to 4HLA. Resolve the protein-only short-H contacts independently.
+
 ### Session log — 2026-10-03, 4HLA alternate-ligand and component audit (G-MD-96)
 
 - [x] Retrieved official wwPDB CCD component 017 CIF and ideal SDF; SHA-256 values are recorded in G-MD-95. CCD identifies 38 heavy atoms, 37 H, neutral reference charge, and formula C27H37N3O7S. Native component heavy-atom labels map to CCD heavy atoms; native coordinates omit H.
@@ -1845,7 +1862,7 @@ When the user says **CONTINUE**:
 - [x] Recomputed water proximity per pose: three crystal waters within 3.5 Å of altloc A and five of altloc B. Removed an over-specific literature attribution; the linked paper concerns GRL007/GRL008 and is not used as direct proof of a component-017 contact. Updated G-MD-95 and TODO so pose alternatives and water handling are explicit gates.
 - [x] Mapped the altloc-specific water first shell and nearest protein contacts: A has D:308, D:392, E:101; B has D:302, D:308, D:355, D:388, D:392. Several contacts involve the dimer partner. Recorded distances and explicitly avoided calling these hydrogen bonds because water hydrogens are absent.
 - [x] Audited chain-specific ligand contact counts, backbone continuity, protein alternate locations, histidines, cysteines, and Asp25 contacts. Both chains contribute dozens of ligand heavy-atom contacts (<4 Å); all peptide links passed the stated distance screen, no protein altlocs occur, and neither chain has a Cys SG pair near a disulfide distance. Corrected the nearest-Asp chain labels; pose A is closest to B:Asp25 and pose B to A:Asp25.
-- [-] Continue component microstate and Asp25/Asp25′ protonation evidence; assess explicit crystallographic-water support; verify the worker/LEaP path retains both active-site chains and their termini before any builder execution.
+- [-] Complete typed Amber acidic-state overrides (ASP/ASH, GLU/GLH), then add scientifically validated retained-water input handling. Confirm both chains and termini survive the worker/LEaP path before building the 4HLA sensitivity matrix.
 
 ### Session log — 2026-10-03, alternate independent Amber candidate audit (G-MD-95)
 

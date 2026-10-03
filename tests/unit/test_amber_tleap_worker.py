@@ -66,6 +66,49 @@ def test_protein_worker_requires_histidine_state_and_removes_existing_hydrogens(
     assert result["histidine_states"] == {"A:1:_": "HID"}
 
 
+def test_protein_worker_applies_and_reports_explicit_acid_states(tmp_path: Path) -> None:
+    source = tmp_path / "protein.pdb"
+    output = tmp_path / "protein_amber.pdb"
+    source.write_text(
+        "".join(
+            (
+                _pdb_atom(1, "N", "ASP", "N", sequence=25),
+                _pdb_atom(2, "CA", "ASP", "C", sequence=25),
+                _pdb_atom(3, "OD1", "ASP", "O", sequence=25),
+                _pdb_atom(4, "N", "GLU", "N", sequence=26),
+                _pdb_atom(5, "OE1", "GLU", "O", sequence=26),
+                "TER\nEND\n",
+            )
+        ),
+        encoding="ascii",
+    )
+    result = _prepare_protein(
+        source,
+        output,
+        {
+            "histidine_states": {},
+            "acidic_residue_states": {"A:25:_": "ASH", "A:26:_": "GLH"},
+        },
+    )
+    lines = output.read_text(encoding="ascii").splitlines()
+    assert {line[17:20] for line in lines if line.startswith("ATOM")} == {"ASH", "GLH"}
+    assert result["acidic_residue_states"] == {"A:25:_": "ASH", "A:26:_": "GLH"}
+    assert "protein_ph does not titrate" in result["acidic_residue_state_policy"]
+
+    with pytest.raises(WorkerFailure, match="incompatible with source residue"):
+        _prepare_protein(
+            source,
+            output,
+            {"histidine_states": {}, "acidic_residue_states": {"A:25:_": "GLH"}},
+        )
+    with pytest.raises(WorkerFailure, match="absent/non-acidic"):
+        _prepare_protein(
+            source,
+            output,
+            {"histidine_states": {}, "acidic_residue_states": {"A:99:_": "ASH"}},
+        )
+
+
 def test_protein_worker_preserves_chain_breaks_for_tleap(tmp_path: Path) -> None:
     source = tmp_path / "protein.pdb"
     output = tmp_path / "protein_amber.pdb"
@@ -453,7 +496,7 @@ def test_worker_rejects_inputs_and_outputs_that_escape_the_stage(tmp_path: Path)
     gromacs = tmp_path / "gmx"
     gromacs.write_text("", encoding="ascii")
     request = {
-        "protocol": "caddsuite.amber-tleap-worker/1",
+        "protocol": "caddsuite.amber-tleap-worker/2",
         "stage_root": str(stage),
         "output_dir": str(stage / "amber_outputs"),
         "amber_home": str(amber),

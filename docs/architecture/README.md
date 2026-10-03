@@ -67,6 +67,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [G-MD-9 short real GROMACS run](../validation/G-MD-9.md)
 - [G-MD-10 interrupted run and checkpoint resume](../validation/G-MD-10.md)
 - [G-MD-11 native Amber → OpenMM proof](../validation/G-MD-11.md)
+- [G-MD-98 single-water TIP3P template probe](../validation/G-MD-98-water-template-probe.md)
 - [Trajectory analysis input policy](TRAJECTORY_ANALYSIS.md)
 - [Trajectory metric plotting port and Matplotlib adapter](TRAJECTORY_PLOTTING.md)
 - [Pose interaction audit and migration boundary](INTERACTION_ANALYSIS_AUDIT.md)
@@ -127,6 +128,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [ADR-0059](ADR/ADR-0059-registered-structures-in-scientific-reports.md) | Include registered Compound/Form and Conformer structure lineage in reports | Accepted
 - [ADR-0061](ADR/ADR-0061-runtime-bound-stage-plans.md) | Bind runtime-generated IDs through explicit stage plans | Accepted
 - [ADR-0062](ADR/ADR-0062-ambertools-workflow-stage.md) | Register the existing isolated AmberTools handler as a workflow stage | Accepted
+- [ADR-0064](ADR/ADR-0064-explicit-amber-acidic-residue-states.md) | Explicit Amber acidic residue states | Accepted
 
 
 ## User and developer references

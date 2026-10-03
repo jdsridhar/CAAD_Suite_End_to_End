@@ -56,6 +56,9 @@ class AmberTLeapBuildParameters(ContractModel):
     ligand_net_charge: StrictInt
     protein_ph: float = Field(ge=0, le=14)
     histidine_states: dict[str, Literal["HID", "HIE", "HIP"]] = Field(default_factory=dict)
+    acidic_residue_states: dict[str, Literal["ASP", "ASH", "GLU", "GLH"]] = Field(
+        default_factory=dict
+    )
     disulfide_bonds: tuple[tuple[str, str], ...] = ()
     water_model: Literal["TIP3P"]
     ion_parameters: Literal["Joung-Cheatham TIP3P"]
@@ -88,10 +91,12 @@ _STANDARD_RESIDUES = frozenset(
         "ARG",
         "ASN",
         "ASP",
+        "ASH",
         "CYS",
         "CYX",
         "GLN",
         "GLU",
+        "GLH",
         "GLY",
         "HIS",
         "HID",
@@ -201,13 +206,33 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
                 "Amber parameterization",
                 Severity.DECISION_REQUIRED,
             )
-        resname = line[17:20].strip().upper()
+        source_resname = line[17:20].strip().upper()
         chain = line[21:22].strip() or "_"
         sequence = line[22:26].strip()
         insertion = line[26:27].strip()
         if not sequence:
             _fail("AMBER_BUILD.PROTEIN_FORMAT", f"missing residue number at PDB line {number}")
         key = f"{chain}:{sequence}:{insertion or '_'}"
+        resname = source_resname
+        declared_acid_state = options.acidic_residue_states.get(key)
+        acid_group = {
+            "ASP": {"ASP", "ASH"},
+            "ASH": {"ASP", "ASH"},
+            "GLU": {"GLU", "GLH"},
+            "GLH": {"GLU", "GLH"},
+        }
+        if declared_acid_state is not None:
+            if (
+                source_resname not in acid_group
+                or declared_acid_state not in acid_group[source_resname]
+            ):
+                _fail(
+                    "AMBER_BUILD.ACIDIC_RESIDUE_STATE_INVALID",
+                    f"declared state {declared_acid_state!r} is incompatible with "
+                    f"source residue {source_resname!r} at {key}",
+                    Severity.DECISION_REQUIRED,
+                )
+            resname = declared_acid_state
         if current_chain is not None and chain != current_chain and last_residue_key is not None:
             terminal_residue_keys.add(last_residue_key)
         current_chain = chain
@@ -238,6 +263,7 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
         if element not in {"H", "D"}:
             heavy_atom_count += 1
             state = options.histidine_states.get(key, resname)
+            state = options.acidic_residue_states.get(key, state)
             residue_atoms[key].append(
                 {
                     "residue_name": state,
@@ -305,6 +331,16 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
         )
     for key in bonded_residues:
         residues[key] = "CYX"
+    acidic_residues = {
+        key: name for key, name in residues.items() if name in {"ASP", "ASH", "GLU", "GLH"}
+    }
+    unknown_acid_states = set(options.acidic_residue_states) - set(acidic_residues)
+    if unknown_acid_states:
+        _fail(
+            "AMBER_BUILD.ACIDIC_RESIDUE_MAPPING_INVALID",
+            "acidic-residue mapping names absent/non-acidic residues: "
+            f"{sorted(unknown_acid_states)}",
+        )
     histidines = {key: name for key, name in residues.items() if name in _HISTIDINE_NAMES}
     declared = options.histidine_states
     unknown = set(declared) - set(histidines)
@@ -380,6 +416,14 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
             for key, name in residues.items()
         ],
         "histidine_states": {key: declared.get(key, name) for key, name in histidines.items()},
+        "acidic_residue_states": {
+            key: options.acidic_residue_states.get(key, name)
+            for key, name in acidic_residues.items()
+        },
+        "acidic_residue_state_policy": (
+            "preserve source ASP/ASH/GLU/GLH names unless explicitly overridden; "
+            "protein_ph does not titrate"
+        ),
         "disulfide_bonds": disulfide_records,
     }
 
@@ -549,7 +593,7 @@ class AmberTLeapBuilderAdapter:
     """Build a GROMACS-ready AMBER-family system through isolated AmberTools/ParmEd."""
 
     adapter_id = "system_builder.amber_tleap"
-    version = "0.1.0"
+    version = "0.2.0"
 
     def __init__(
         self,
@@ -607,7 +651,7 @@ class AmberTLeapBuilderAdapter:
         output_dir = root / "amber_outputs"
         output_dir.mkdir(mode=0o700, exist_ok=False)
         payload = {
-            "protocol": "caddsuite.amber-tleap-worker/1",
+            "protocol": "caddsuite.amber-tleap-worker/2",
             "request_id": request.id,
             "complex_id": complex_model.id,
             "stage_root": str(root),
@@ -696,7 +740,7 @@ class AmberTLeapBuilderAdapter:
             _fail("AMBER_BUILD.WORKER_REPORT_INVALID", f"worker result is not valid JSON: {exc}")
         if (
             not isinstance(report, dict)
-            or report.get("protocol") != "caddsuite.amber-tleap-worker/1"
+            or report.get("protocol") != "caddsuite.amber-tleap-worker/2"
         ):
             _fail("AMBER_BUILD.WORKER_PROTOCOL", "worker result protocol is missing or unsupported")
         if not report.get("ok"):
@@ -902,6 +946,12 @@ class AmberTLeapBuilderAdapter:
                     "adapter does not titrate"
                 ),
                 "histidine_states": options.histidine_states,
+                "acidic_residue_states": report.get("protein_preparation", {}).get(
+                    "acidic_residue_states", {}
+                ),
+                "acidic_residue_state_policy": report.get("protein_preparation", {}).get(
+                    "acidic_residue_state_policy", "unknown"
+                ),
                 "ligand_formal_charge_e": options.ligand_net_charge,
                 "ion_policy": options.ion_policy,
                 "solvent_box_padding_A": options.box_padding_A,
