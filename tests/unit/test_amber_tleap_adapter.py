@@ -335,7 +335,7 @@ def test_adapter_binds_selected_water_artifact_hash_and_residue_lineage(tmp_path
     worker_request = json.loads(
         (context.working_directory / "amber_worker_request.json").read_text(encoding="utf-8")
     )
-    assert worker_request["protocol"] == "caddsuite.amber-tleap-worker/3"
+    assert worker_request["protocol"] == "caddsuite.amber-tleap-worker/4"
     assert worker_request["input_paths"]["water"] == str(water_path)
     assert worker_request["source_sha256"]["water"] == water_ref.sha256
     assert worker_request["input_metadata"]["water"]["residue_keys"] == ["B:308:A:_"]
@@ -572,7 +572,7 @@ def _amber_normalization_case(
 def _valid_worker_report(request: SystemBuildRequest, complex_model: Complex) -> dict[str, object]:
     options = AmberTLeapBuildParameters.model_validate(request.parameters)
     return {
-        "protocol": "caddsuite.amber-tleap-worker/3",
+        "protocol": "caddsuite.amber-tleap-worker/4",
         "ok": True,
         "request_id": request.id,
         "complex_id": complex_model.id,

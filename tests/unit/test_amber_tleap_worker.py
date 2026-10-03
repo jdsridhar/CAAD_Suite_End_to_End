@@ -11,6 +11,7 @@ import pytest
 from caddsuite_worker.amber_tleap_worker import (
     WorkerFailure,
     _ambertools_version,
+    _classify_parmchk_records,
     _energy_values,
     _hash_parameter_sources,
     _normalize_sqm_roundoff_charge,
@@ -542,7 +543,7 @@ def test_worker_rejects_inputs_and_outputs_that_escape_the_stage(tmp_path: Path)
     gromacs = tmp_path / "gmx"
     gromacs.write_text("", encoding="ascii")
     request = {
-        "protocol": "caddsuite.amber-tleap-worker/3",
+        "protocol": "caddsuite.amber-tleap-worker/4",
         "stage_root": str(stage),
         "output_dir": str(stage / "amber_outputs"),
         "amber_home": str(amber),
@@ -583,3 +584,32 @@ def test_worker_rejects_inputs_and_outputs_that_escape_the_stage(tmp_path: Path)
     ).hexdigest()
     with pytest.raises(WorkerFailure, match="outside the stage"):
         _validated_inputs(request)
+
+
+def test_parmchk_general_improper_matching_gaff2_is_not_reported_as_fallback() -> None:
+    frcmod = """Remark line goes here
+IMPROPER
+ca-ca-ca-ha 1.1 180.0 2.0 Using general improper torsional angle X- X-ca-ha, penalty score= 6.0)
+"""
+    gaff2 = """X -X -ca-ha 1.1 180. 2. bsd.on C6H6 nmodes
+"""
+
+    fallbacks, matches = _classify_parmchk_records(frcmod, gaff2)
+
+    assert fallbacks == []
+    assert len(matches) == 1
+    assert matches[0]["gaff2_source_record"] == "X -X -ca-ha 1.1 180. 2. bsd.on C6H6 nmodes"
+
+
+def test_parmchk_unmatched_general_improper_remains_a_fallback() -> None:
+    frcmod = """IMPROPER
+ca-ca-ca-ha 1.1 180.0 2.0 Using general improper torsional angle X- X-ca-ha, penalty score= 6.0)
+"""
+
+    fallbacks, matches = _classify_parmchk_records(frcmod, "X -X -ca-ha 1.2 180. 2. other-source\n")
+
+    assert fallbacks == [
+        "IMPROPER: ca-ca-ca-ha 1.1 180.0 2.0 Using general improper torsional angle "
+        "X- X-ca-ha, penalty score= 6.0)"
+    ]
+    assert matches == []

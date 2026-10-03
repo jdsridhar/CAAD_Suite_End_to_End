@@ -19,7 +19,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-PROTOCOL = "caddsuite.amber-tleap-worker/3"
+PROTOCOL = "caddsuite.amber-tleap-worker/4"
 _FLOAT = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?"
 _STANDARD_PROTEIN = frozenset(
     {
@@ -60,6 +60,79 @@ class WorkerFailure(RuntimeError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+def _classify_parmchk_records(
+    frcmod_text: str, gaff2_text: str
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Separate true added terms from `parmchk2` expansions of GAFF2 wildcards."""
+    sections = {"MASS", "BOND", "ANGLE", "DIHE", "IMPROPER", "NONBON"}
+    section = ""
+    unmatched: list[str] = []
+    source_matches: list[dict[str, str]] = []
+    source_lines = [line.split("#", 1)[0].strip() for line in gaff2_text.splitlines()]
+    numeric = re.compile(r"^" + _FLOAT + r"$")
+    general_improper = re.compile(
+        r"Using general improper torsional angle\s+(?P<template>.*?),\s*penalty score="
+    )
+    for raw_line in frcmod_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.lower().startswith("remark"):
+            continue
+        token = line.split()[0].upper()
+        if token in sections:
+            section = token
+            continue
+        if not section:
+            continue
+        fields = line.split()
+        matched_source: str | None = None
+        note = general_improper.search(line) if section == "IMPROPER" else None
+        if note and len(fields) >= 4:
+            template_types = note.group("template").replace(" ", "").lower().split("-")
+            concrete_types = fields[0].lower().split("-")
+            if (
+                len(template_types) == 4
+                and len(concrete_types) == 4
+                and all(
+                    expected == "x" or expected == actual
+                    for expected, actual in zip(template_types, concrete_types, strict=True)
+                )
+            ):
+                generated_values = fields[1:4]
+                for source_line in source_lines:
+                    source_fields = source_line.split()
+                    numeric_index = next(
+                        (i for i, value in enumerate(source_fields) if numeric.fullmatch(value)),
+                        None,
+                    )
+                    if numeric_index is None or numeric_index + 3 > len(source_fields):
+                        continue
+                    source_key = "".join(source_fields[:numeric_index]).lower()
+                    if source_key != "-".join(template_types):
+                        continue
+                    source_values = source_fields[numeric_index : numeric_index + 3]
+                    try:
+                        values_match = all(
+                            Decimal(actual) == Decimal(source)
+                            for actual, source in zip(generated_values, source_values, strict=True)
+                        )
+                    except InvalidOperation:
+                        values_match = False
+                    if values_match:
+                        matched_source = source_line
+                        break
+        if matched_source is None:
+            unmatched.append(f"{section}: {line}")
+        else:
+            source_matches.append(
+                {
+                    "frcmod_record": line,
+                    "gaff2_source_record": matched_source,
+                    "classification": "generated expansion matches selected GAFF2 general improper",
+                }
+            )
+    return unmatched, source_matches
 
 
 def _sha256(path: Path) -> str:
@@ -1879,18 +1952,14 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         )
 
     frcmod_text = ligand_frcmod.read_text(encoding="utf-8", errors="replace")
-    sections = {"MASS", "BOND", "ANGLE", "DIHE", "IMPROPER", "NONBON"}
-    section = ""
-    fallback_records: list[str] = []
-    for raw_line in frcmod_text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or line.lower().startswith("remark"):
-            continue
-        token = line.split()[0].upper()
-        if token in sections:
-            section = token
-        elif section:
-            fallback_records.append(f"{section}: {line}")
+    gaff2_path = amber_home / "dat/leap/parm/gaff2.dat"
+    if not gaff2_path.is_file():
+        raise WorkerFailure(
+            "AMBER_WORKER.GAFF2_SOURCE_MISSING", "selected GAFF2 parameter source is missing"
+        )
+    fallback_records, parameter_source_matches = _classify_parmchk_records(
+        frcmod_text, gaff2_path.read_text(encoding="utf-8", errors="replace")
+    )
 
     gmx_version = _run(
         argv=[str(gromacs), "--version"],
@@ -1980,6 +2049,7 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
             "parameters": energy_parameters,
         },
         "ligand_parameter_fallback_records": fallback_records,
+        "ligand_parameter_source_matches": parameter_source_matches,
         "outputs": output_files,
     }
 

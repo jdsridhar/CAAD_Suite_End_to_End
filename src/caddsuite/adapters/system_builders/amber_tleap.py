@@ -793,7 +793,7 @@ class AmberTLeapBuilderAdapter:
         output_dir = root / "amber_outputs"
         output_dir.mkdir(mode=0o700, exist_ok=False)
         payload = {
-            "protocol": "caddsuite.amber-tleap-worker/3",
+            "protocol": "caddsuite.amber-tleap-worker/4",
             "request_id": request.id,
             "complex_id": complex_model.id,
             "stage_root": str(root),
@@ -893,7 +893,7 @@ class AmberTLeapBuilderAdapter:
             _fail("AMBER_BUILD.WORKER_REPORT_INVALID", f"worker result is not valid JSON: {exc}")
         if (
             not isinstance(report, dict)
-            or report.get("protocol") != "caddsuite.amber-tleap-worker/3"
+            or report.get("protocol") != "caddsuite.amber-tleap-worker/4"
         ):
             _fail("AMBER_BUILD.WORKER_PROTOCOL", "worker result protocol is missing or unsupported")
         if not report.get("ok"):
@@ -1142,6 +1142,9 @@ class AmberTLeapBuilderAdapter:
                 "single_point_energy": energy,
                 "ligand_parameter_fallback_records": report.get(
                     "ligand_parameter_fallback_records", []
+                ),
+                "ligand_parameter_source_matches": report.get(
+                    "ligand_parameter_source_matches", []
                 ),
             },
             artifacts={
