@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — broader scientific validation planning |
-| **Current task** | [-] Determine the cause of the G-MD-44 PME CPU/GPU PP discrepancy. G-MD-71/72 show CPU Ewald table-vs-analytical effects of +0.1375 kJ/mol on G-MD-44 and +0.006901 kJ/mol on independent G-MD-47 replicas, compared with the +5.759 kJ/mol CPU-PME GPU-PP vs CPU-PP effect. The mode is not explanatory. Continue fixed-GROMACS-backend Amber comparison and broader independently equilibrated, chemically varied validation. |
-| **Next task** | Reconcile Amber and GROMACS energies under a single fixed CPU backend on matched G-MD-44 frames, then extend to independently equilibrated, chemically varied configurations; continue CUDA PP-path diagnosis without asserting a tolerance. Keep blind review and public-release dependency/license/notice gates open. |
-| **Last completed** | G-MD-72: explicit CPU Ewald table/analytical contrast on the three G-MD-47 independent-system replicas; mean Coulomb-SR effect +0.006901 kJ/mol. Together with G-MD-71, this rules out CPU mode selection as the explanation for the large G-MD-44 CPU/GPU contrast; see docs/validation/G-MD-72.md. |
+| **Current task** | [-] Explain the large G-MD-44 CPU/GPU PP numerical difference and test whether it generalizes. G-MD-73/74 show strongly system-dependent Amber/GROMACS residuals: fixed CPU is −3.8121 kcal/mol on G-MD-44 but −0.1813 on G-MD-47; PP backend contrast is +1.3775 vs about −0.0055 kcal/mol. Continue independently equilibrated, chemically varied validation; do not infer a universal correction or tolerance. |
+| **Next task** | Identify feasible additional independently equilibrated Amber/GROMACS configurations and compare under explicitly fixed PP backends; inspect the G-MD-44 CUDA/CPU pair-evaluation difference at atom/neighbor level. Keep blind review and public-release dependency/license/notice gates open. |
+| **Last completed** | G-MD-74: repeated fixed-backend Amber/GROMACS comparison for G-MD-47. CPU/CPU residual is −0.18134 kcal/mol and CPU/GPU PP effect about −0.00548 kcal/mol, unlike G-MD-44. This confirms system dependence and no universal offset; see docs/validation/G-MD-74.md. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -1678,3 +1678,19 @@ When the user says **CONTINUE**:
 - [x] Table-minus-analytical Coulomb (SR) mean is +0.006901 kJ/mol (per-replica means +0.007812, +0.006641, +0.006250); reciprocal mean −0.00000053 kJ/mol. This is far below G-MD-44's +5.759 kJ/mol CPU/GPU PP effect. The CPU Ewald exclusion mode is not explanatory for that discrepancy.
 - [x] Documented method and limitations in `docs/validation/G-MD-72.md`.
 - [-] Continue fixed-GROMACS-backend Amber comparison and independent-equilibration/chemical-diversity validation. No tolerance or Amber/GROMACS compatibility qualification. Independent blind review, production MD stability, adapter coverage, and human/counsel release review remain open.
+
+
+### Session log — 2026-10-03, fixed-backend Amber/GROMACS residual comparison (G-MD-73)
+
+- [x] Joined saved Amber Sander totals with same-coordinate GROMACS energy reruns from G-MD-65/66/71; no new Amber jobs or dynamics. Confirmed paired G-MD-44 GPU/GPU baseline reproduces mean residual −2.4383 kcal/mol.
+- [x] Mean residuals over the same 15 frames: GPU/GPU −2.4383; GPU/CPU + PP/CPU PME −2.4346; CPU/CPU −3.8121; CPU forced analytical −3.8121; CPU forced table −3.7793 kcal/mol. PP backend accounts for ~+1.3775 kcal/mol change in the residual; PME placement ~+0.0037; CPU mode toggle ~+0.0329.
+- [x] Documented scope and limitations in `docs/validation/G-MD-73.md`. This identifies backend dependence, not the scientific correctness of either implementation; no tolerance or compatibility profile is justified.
+- [-] Validate on more independently equilibrated configurations and chemically distinct systems, retaining fixed backend labels and raw Amber/GROMACS measurements. Blind review, production MD stability, adapter coverage, and human/counsel release review remain open.
+
+
+### Session log — 2026-10-03, second-system fixed-backend Amber comparison (G-MD-74)
+
+- [x] Reconciled saved G-MD-47 Amber single-point energies with same-frame CPU/CPU, GPU-PP/CPU-PME, GPU/GPU, and forced CPU-mode GROMACS results across three 500 ps replicas (15 frames); no new calculations.
+- [x] Mean residuals (kcal/mol): paired GPU/GPU −0.18688; GPU/CPU −0.18682; CPU/CPU −0.18134; forced CPU analytical −0.18144; forced table −0.17976. CPU-vs-GPU PP shift is about −0.00548 kcal/mol here, versus +1.3775 in G-MD-44.
+- [x] Documented the cross-system contrast and sampling limits in `docs/validation/G-MD-74.md`; no general backend correction, tolerance, or compatibility qualification.
+- [-] Identify independent equilibrated systems/configurations suitable for additional fixed-backend comparison and investigate G-MD-44 CUDA/CPU pair evaluation. Blind review, production MD stability, adapter coverage, and human/counsel public-release review remain open.
