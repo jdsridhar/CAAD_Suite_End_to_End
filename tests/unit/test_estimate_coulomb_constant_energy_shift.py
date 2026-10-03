@@ -58,3 +58,21 @@ def test_duplicate_frames_rejected() -> None:
 
     with pytest.raises(ValueError, match="Duplicate replica/time"):
         MODULE.analyze([row, row], 100.0, 101.0)
+
+
+def test_summary_reports_descriptive_fit_and_per_replica_means() -> None:
+    rows = [
+        {
+            "replica": "1",
+            "time_ps": str(time),
+            "amber_eel_plus_14_kcal": str(amber),
+            "electrostatic_delta_kcal": str(measured),
+        }
+        for time, amber, measured in [(100, -10.0, -2.0), (200, -20.0, -4.0)]
+    ]
+
+    _, summary = MODULE.analyze(rows, 100.0, 101.0)
+
+    assert summary["descriptive_pearson_r_measured_vs_factor_only"] == pytest.approx(1.0)
+    assert summary["fraction_of_observed_mean_magnitude_explained"] == pytest.approx(0.05)
+    assert summary["replica_means_kcal"]["1"]["error"] == pytest.approx(-2.85)

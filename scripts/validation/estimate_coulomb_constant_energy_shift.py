@@ -38,6 +38,16 @@ def describe(values: Sequence[float]) -> dict[str, float | int]:
     }
 
 
+def pearson_r(x: Sequence[float], y: Sequence[float]) -> float | None:
+    if len(x) != len(y) or not x:
+        raise ValueError("Correlation inputs must be non-empty and have equal length")
+    mean_x, mean_y = sum(x) / len(x), sum(y) / len(y)
+    dx = [value - mean_x for value in x]
+    dy = [value - mean_y for value in y]
+    norm = math.sqrt(sum(value * value for value in dx) * sum(value * value for value in dy))
+    return None if norm == 0 else sum(a * b for a, b in zip(dx, dy, strict=True)) / norm
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -81,6 +91,14 @@ def analyze(
         observed.append(measured)
         predicted.append(estimate)
         errors.append(error)
+    replica_means: dict[str, dict[str, list[float]]] = {}
+    for row in output:
+        replica = str(row["replica"])
+        bucket = replica_means.setdefault(replica, {"observed": [], "predicted": [], "error": []})
+        bucket["observed"].append(float(row["measured_gromacs_minus_amber_electrostatic_kcal"]))
+        bucket["predicted"].append(float(row["factor_only_predicted_shift_kcal"]))
+        bucket["error"].append(float(row["measured_minus_factor_only_kcal"]))
+    observed_mean, predicted_mean = sum(observed) / len(observed), sum(predicted) / len(predicted)
     summary: dict[str, object] = {
         "amber_factor_kcal_mol_angstrom_e2": amber_factor,
         "gromacs_factor_kcal_mol_angstrom_e2": gromacs_factor,
@@ -88,6 +106,14 @@ def analyze(
         "observed_electrostatic_delta_kcal": describe(observed),
         "factor_only_predicted_shift_kcal": describe(predicted),
         "measured_minus_factor_only_kcal": describe(errors),
+        "descriptive_pearson_r_measured_vs_factor_only": pearson_r(observed, predicted),
+        "fraction_of_observed_mean_magnitude_explained": abs(predicted_mean) / abs(observed_mean)
+        if observed_mean != 0
+        else None,
+        "replica_means_kcal": {
+            replica: {key: sum(values) / len(values) for key, values in measures.items()}
+            for replica, measures in sorted(replica_means.items())
+        },
         "interpretation": (
             "Unit-factor contribution estimate only; residual includes all other "
             "differences between engine energy conventions and implementations."
