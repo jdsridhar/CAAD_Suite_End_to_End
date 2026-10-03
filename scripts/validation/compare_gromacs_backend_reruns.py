@@ -100,6 +100,48 @@ def compare_pair(
     return result
 
 
+def compare_contrast(
+    system: str,
+    replica: str,
+    first_backend: str,
+    first_path: Path,
+    second_backend: str,
+    second_path: Path,
+    start_ps: float,
+    end_ps: float,
+) -> list[dict[str, str | float]]:
+    first_labels, first_rows = read_xvg(first_path)
+    second_labels, second_rows = read_xvg(second_path)
+    if first_labels != second_labels:
+        raise ValueError(f"Backend energy term mismatch for {system} replica {replica}")
+    if len(first_rows) != len(second_rows):
+        raise ValueError(f"Backend frame count mismatch for {system} replica {replica}")
+    result: list[dict[str, str | float]] = []
+    for first_row, second_row in zip(first_rows, second_rows, strict=True):
+        if first_row[0] != second_row[0]:
+            raise ValueError(f"Backend frame time mismatch for {system} replica {replica}")
+        time_ps = first_row[0]
+        if not start_ps <= time_ps <= end_ps:
+            continue
+        for index, term in enumerate(first_labels, start=1):
+            delta_kj = first_row[index] - second_row[index]
+            result.append(
+                {
+                    "system": system,
+                    "replica": replica,
+                    "time_ps": time_ps,
+                    "term": term,
+                    "first_backend": first_backend,
+                    "second_backend": second_backend,
+                    "first_minus_second_kj_mol": delta_kj,
+                    "first_minus_second_kcal_mol": delta_kj / 4.184,
+                }
+            )
+    if not result:
+        raise ValueError(f"No selected backend contrast frames for {system} replica {replica}")
+    return result
+
+
 def summarize(values: Sequence[float]) -> dict[str, float | int]:
     if not values:
         raise ValueError("Cannot summarize an empty set")
@@ -121,6 +163,14 @@ def main() -> None:
         metavar=("SYSTEM", "REPLICA", "CPU_XVG", "GPU_XVG"),
         required=True,
     )
+    parser.add_argument(
+        "--contrast",
+        action="append",
+        nargs=6,
+        metavar=("SYSTEM", "REPLICA", "FIRST", "FIRST_XVG", "SECOND", "SECOND_XVG"),
+        default=[],
+        help="Also compare arbitrary backend/configuration XVG pairs as FIRST minus SECOND.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--start-ps", type=float, default=0.0)
     parser.add_argument("--end-ps", type=float, required=True)
@@ -140,6 +190,29 @@ def main() -> None:
         cpu_path, gpu_path = Path(cpu_text), Path(gpu_text)
         inputs.update((cpu_path, gpu_path))
         rows.extend(compare_pair(system, replica, cpu_path, gpu_path, args.start_ps, args.end_ps))
+    contrast_rows: list[dict[str, str | float]] = []
+    contrast_seen: set[tuple[str, str, str, str]] = set()
+    for system, replica, first_name, first_text, second_name, second_text in args.contrast:
+        key = (system, replica, first_name, second_name)
+        if key in contrast_seen:
+            raise SystemExit(f"Duplicate backend contrast: {key}")
+        if first_name == second_name:
+            raise SystemExit("Backend contrast labels must be different")
+        contrast_seen.add(key)
+        first_path, second_path = Path(first_text), Path(second_text)
+        inputs.update((first_path, second_path))
+        contrast_rows.extend(
+            compare_contrast(
+                system,
+                replica,
+                first_name,
+                first_path,
+                second_name,
+                second_path,
+                args.start_ps,
+                args.end_ps,
+            )
+        )
     missing = [path for path in inputs if not path.is_file()]
     if missing:
         raise SystemExit(f"Missing provenance input: {missing[0]}")
@@ -164,17 +237,53 @@ def main() -> None:
             for system in sorted({key[0] for key in grouped})
         },
     }
+    if contrast_rows:
+        contrast_groups: dict[tuple[str, str, str, str], list[float]] = defaultdict(list)
+        for row in contrast_rows:
+            group = (
+                str(row["system"]),
+                str(row["first_backend"]),
+                str(row["second_backend"]),
+                str(row["term"]),
+            )
+            contrast_groups[group].append(float(row["first_minus_second_kcal_mol"]))
+        contrast_pairs = sorted({group[:3] for group in contrast_groups})
+        summary["backend_contrasts"] = {
+            system: {
+                f"{first}_minus_{second}": {
+                    term: summarize(values)
+                    for (group_system, group_first, group_second, term), values in sorted(
+                        contrast_groups.items()
+                    )
+                    if group_system == system and group_first == first and group_second == second
+                }
+                for group_system, first, second in contrast_pairs
+                if group_system == system
+            }
+            for system in sorted({group[0] for group in contrast_groups})
+        }
     args.output.mkdir(parents=True, exist_ok=True)
     csv_path = args.output / "backend-frame-deltas.csv"
     with csv_path.open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
+    output_paths = [csv_path]
+    if contrast_rows:
+        contrast_csv = args.output / "backend-contrast-deltas.csv"
+        with contrast_csv.open("w", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(contrast_rows[0]))
+            writer.writeheader()
+            writer.writerows(contrast_rows)
+        output_paths.append(contrast_csv)
     summary_path = args.output / "backend-summary.json"
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
     manifest = {str(path): {"sha256": sha256(path)} for path in sorted(inputs, key=str)}
     manifest.update(
-        {str(path): {"sha256": sha256(path)} for path in (Path(__file__), csv_path, summary_path)}
+        {
+            str(path): {"sha256": sha256(path)}
+            for path in (Path(__file__), *output_paths, summary_path)
+        }
     )
     (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(summary, indent=2))

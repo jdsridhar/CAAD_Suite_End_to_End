@@ -62,3 +62,26 @@ def test_xvg_rejects_non_finite_values_and_invalid_time_order(tmp_path: Path) ->
     path.write_text('@ s0 legend "Potential"\n0 1\n0 2\n')
     with pytest.raises(ValueError, match="strictly increasing"):
         MODULE.read_xvg(path)
+
+
+def test_named_backend_contrast_keeps_sign_and_labels(tmp_path: Path) -> None:
+    gpu_cpu_pme = tmp_path / "gpu-cpu-pme.xvg"
+    cpu_cpu_pme = tmp_path / "cpu-cpu-pme.xvg"
+    header = '@ s0 legend "Coulomb (SR)"\n'
+    gpu_cpu_pme.write_text(header + "0 0\n100 12.552\n")
+    cpu_cpu_pme.write_text(header + "0 0\n100 8.368\n")
+
+    rows = MODULE.compare_contrast(
+        "fixture",
+        "1",
+        "GPU_NB_CPU_PME",
+        gpu_cpu_pme,
+        "CPU_NB_CPU_PME",
+        cpu_cpu_pme,
+        100.0,
+        100.0,
+    )
+
+    assert rows[0]["first_backend"] == "GPU_NB_CPU_PME"
+    assert rows[0]["second_backend"] == "CPU_NB_CPU_PME"
+    assert rows[0]["first_minus_second_kcal_mol"] == pytest.approx(1.0)
