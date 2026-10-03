@@ -30,6 +30,19 @@ The already-prepared 3ERT/OHT alternative is also not ready for an Amber build u
 
 Thus neither 3PTB nor 3ERT is yet a valid immediate input to the existing Amber profile. The next selection gate is to audit a protein–ligand candidate with complete, builder-supported components, or to explicitly extend and validate metal support before using 3PTB. No source coordinates or species have been altered.
 
+## Local alternative audit: 1M17/AQ4 (2026-10-03)
+
+The pinned 1M17 receptor/ligand artifacts are a more promising next preflight candidate than 3ERT for the current Amber profile, but they are not yet approved as an MD system.
+
+- The prepared receptor PDB SHA-256 is `69712e1a7d5a8476b8bc4d90a2d9b3a55db1a9c782d29b49ce8fea09919893d8`; source mmCIF SHA-256 is `849bd2548dffb7ddcb7229a05202c1e2e41019a1fd69ec39483654cf984fc4d0`. The prepared structure has 5,213 ATOM records across 324 residues and only the standard amino-acid residue names recognized by the worker. No metal or cofactor residue appears in this protein-only prepared PDB.
+- The preparation report records six N-terminal and three C-terminal residues unresolved and a twelve-residue internal segment modeled by PDBFixer. The modeled segment is not experimental coordinates and must remain identified as modeled in any result.
+- Eight histidines remain untyped as HID/HIE/HIP in the PDB: chain A residues 749, 781, 811, 826, 846, 864, 869, and 964. The Amber builder requires an explicit state for every HIS. These states must come from a documented pH/microstate assessment or explicit user selection; they are not inferred here.
+- Six cysteines occur at A:751, 757, 773, 794, 915, and 926. Pairwise SG distances in the prepared PDB have a minimum of 8.764 Å, so none is an obvious disulfide by a conventional bond-distance criterion. This does not replace source/mmCIF connectivity review; do not declare disulfides solely from residue identity.
+- The existing coordinate-bearing AQ4 SDF is 29 heavy atoms / 52 total atoms, formal charge 0 in the stored graph, with SHA-256 `74e90b46b94c1a27a112bc917312601b2621475a751900b52be8026b933f2e1c`. This is a graph input observation, not a pH-state determination.
+- The prior docking pilot reported seven distance-inferred invalid local residue graphs in/near the modeled segment, 24.64–34.46 Å from AQ4. That docking parser finding does not establish Amber topology failure, but it remains a structural-quality flag that needs topology and local geometry checks before dynamics.
+
+No Amber topology was built and no MD was run. The next gate is to validate/record histidine microstates and protein termini/modelled-loop handling, then run only the builder’s controlled preparation and inspect its topology/logs. If these choices cannot be justified, select another candidate rather than silently accepting the modeled structure.
+
 ## Why this is only a candidate
 
 The complex differs chemically from the existing 5NIU/RC8 and ethanol/GLY Amber fixtures and offers a native ligand pose plus a high-quality experimental structure. However, it is not yet an independently equilibrated Amber/GROMACS system. The following remain prerequisites:
