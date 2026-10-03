@@ -1035,9 +1035,35 @@ def _sander_energy_values(sander_out: Path) -> tuple[float, dict[str, float]]:
         )
     displayed_amber_text = amber_matches[-1]
     displayed_amber_kcal = float(displayed_amber_text)
-    component_matches = re.findall(
+    result_row = re.search(
+        r"^\s*\d+\s+(" + _FLOAT + r")\s+(" + _FLOAT + r")\s+(" + _FLOAT
+        + r")(?:\s+(\S+)\s+(\d+))?\s*$",
+        final_results[-1],
+        re.MULTILINE,
+    )
+    component_pattern = (
         r"(?<!\S)(BOND|ANGLE|DIHED|VDWAALS|EEL|HBOND|1-4 VDW|1-4 EEL|RESTRAINT)"
-        r"\s*=\s*(" + _FLOAT + r")",
+        r"\s*=\s*"
+    )
+    overflowed_components = re.findall(component_pattern + r"(\*+)", final_results[-1])
+    if overflowed_components:
+        detail = (
+            f" ENERGY={result_row.group(1)} kcal/mol, RMS={result_row.group(2)}, "
+            f"GMAX={result_row.group(3)}"
+            if result_row
+            else ""
+        )
+        if result_row and result_row.group(4) and result_row.group(5):
+            detail += f" at atom {result_row.group(4)} index {result_row.group(5)}"
+        names = ", ".join(sorted({name for name, _value in overflowed_components}))
+        raise WorkerFailure(
+            "AMBER_WORKER.SANDER_NUMERICAL_OVERFLOW",
+            f"Sander single-point energy overflowed in {names}.{detail} "
+            "This is a structure/topology/parameterization quality failure; inspect the "
+            "input geometry and atom mapping. This stage does not minimize or repair coordinates.",
+        )
+    component_matches = re.findall(
+        component_pattern + r"(" + _FLOAT + r")",
         final_results[-1],
     )
     amber_components = {name: float(value) for name, value in component_matches}

@@ -395,6 +395,31 @@ def test_sander_energy_parser_accounts_for_scientific_notation_print_precision(
     assert sum(components.values()) == pytest.approx(energy)
 
 
+def test_sander_energy_parser_reports_component_overflow_as_actionable_failure(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "sander-overflow.out"
+    output.write_text(
+        """FINAL RESULTS
+   NSTEP       ENERGY          RMS            GMAX         NAME    NUMBER
+      1       2.2013E+08     2.0181E+07     4.7688E+09     N        4788
+ BOND    =      285.1916  ANGLE   =     4251.7626  DIHED      =     3852.5654
+ VDWAALS = *************  EEL     =  -209796.9032  HBOND      =        0.0000
+ 1-4 VDW =   299492.7969  1-4 EEL =    14399.8778  RESTRAINT  =        0.0000
+""",
+        encoding="ascii",
+    )
+
+    with pytest.raises(WorkerFailure) as error:
+        _sander_energy_values(output)
+
+    assert error.value.code == "AMBER_WORKER.SANDER_NUMERICAL_OVERFLOW"
+    assert "VDWAALS" in str(error.value)
+    assert "ENERGY=2.2013E+08 kcal/mol" in str(error.value)
+    assert "GMAX=4.7688E+09 at atom N index 4788" in str(error.value)
+    assert "does not minimize or repair coordinates" in str(error.value)
+
+
 def test_sander_energy_parser_rejects_difference_beyond_print_precision(
     tmp_path: Path,
 ) -> None:
