@@ -50,6 +50,8 @@ class AmberTLeapBuildParameters(ContractModel):
 
     protein_artifact_path: str = Field(min_length=1)
     ligand_artifact_path: str = Field(min_length=1)
+    retained_water_artifact_path: str | None = None
+    retained_water_residue_keys: tuple[str, ...] = ()
     protein_ff: Literal["ff14SB"]
     ligand_method: Literal["GAFF2"]
     ligand_charge_model: Literal["AM1-BCC"]
@@ -82,6 +84,30 @@ class AmberTLeapBuildParameters(ContractModel):
                 raise ValueError("a cysteine residue cannot occur in multiple disulfide bonds")
             pairs.add(normalized)
             used.update(pair)
+        return self
+
+    @model_validator(mode="after")
+    def _retained_water_selection_is_explicit(self) -> AmberTLeapBuildParameters:
+        if bool(self.retained_water_artifact_path) != bool(self.retained_water_residue_keys):
+            raise ValueError(
+                "retained water requires both an artifact path and at least one "
+                "selected residue key"
+            )
+        if len(set(self.retained_water_residue_keys)) != len(self.retained_water_residue_keys):
+            raise ValueError("retained water residue keys must be unique")
+        if any(not key.strip() for key in self.retained_water_residue_keys):
+            raise ValueError("retained water residue keys cannot be empty")
+        locations: set[tuple[str, str, str]] = set()
+        for key in self.retained_water_residue_keys:
+            parts = key.split(":")
+            if len(parts) != 4 or any(not part for part in parts):
+                raise ValueError("water residue keys must be chain:sequence:insertion:altloc")
+            location = (parts[0], parts[1], parts[2])
+            if location in locations:
+                raise ValueError(
+                    "mutually exclusive water alternate locations cannot both be selected"
+                )
+            locations.add(location)
         return self
 
 
@@ -164,7 +190,7 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
     except UnicodeDecodeError as exc:
         _fail("AMBER_BUILD.PROTEIN_FORMAT", f"protein PDB must be ASCII: {exc}")
     residues: dict[str, str] = {}
-    residue_atoms: dict[str, list[dict[str, str]]] = {}
+    residue_atoms: dict[str, list[dict[str, Any]]] = {}
     terminal_residue_keys: set[str] = set()
     current_chain: str | None = None
     last_residue_key: str | None = None
@@ -269,6 +295,7 @@ def _protein_metadata(payload: bytes, options: AmberTLeapBuildParameters) -> dic
                     "residue_name": state,
                     "atom_name": line[12:16].strip().upper(),
                     "element": element,
+                    "coordinates_A": list(xyz),
                 }
             )
         if resname in {"CYS", "CYX"} and line[12:16].strip().upper() == "SG":
@@ -517,6 +544,110 @@ def _ligand_metadata(
     }
 
 
+def _retained_water_metadata(payload: bytes, selected_keys: tuple[str, ...]) -> dict[str, Any]:
+    """Validate selected one-oxygen crystal waters and preserve residue identity."""
+    if not selected_keys or len(set(selected_keys)) != len(selected_keys):
+        _fail(
+            "AMBER_BUILD.WATER_SELECTION_INVALID",
+            "retained waters require a non-empty, duplicate-free residue-key selection",
+        )
+    selected_locations: set[tuple[str, str, str]] = set()
+    for key in selected_keys:
+        parts = key.split(":")
+        if len(parts) != 4 or any(not part for part in parts):
+            _fail(
+                "AMBER_BUILD.WATER_SELECTION_INVALID",
+                f"water residue key {key!r} must be chain:sequence:insertion:altloc",
+            )
+        location = (parts[0], parts[1], parts[2])
+        if location in selected_locations:
+            _fail(
+                "AMBER_BUILD.WATER_ALTLOC_CONFLICT",
+                f"mutually exclusive water alternate locations selected for {':'.join(parts[:3])}",
+                Severity.DECISION_REQUIRED,
+            )
+        selected_locations.add(location)
+    try:
+        text = payload.decode("ascii")
+    except UnicodeDecodeError as exc:
+        _fail("AMBER_BUILD.WATER_FORMAT", f"water PDB must be ASCII: {exc}")
+    observed: dict[str, dict[str, Any]] = {}
+    water_names = {"HOH", "WAT", "H2O"}
+    atom_records = 0
+    for number, line in enumerate(text.splitlines(), start=1):
+        record = line[:6].strip().upper()
+        if record not in {"ATOM", "HETATM"}:
+            continue
+        atom_records += 1
+        if len(line) < 54:
+            _fail("AMBER_BUILD.WATER_FORMAT", f"short PDB atom row at line {number}")
+        residue = line[17:20].strip().upper()
+        if residue not in water_names:
+            _fail(
+                "AMBER_BUILD.WATER_NONWATER_COMPONENT",
+                f"water artifact contains non-water residue {residue!r} at line {number}",
+            )
+        atom_name = line[12:16].strip().upper()
+        element = line[76:78].strip().upper() if len(line) >= 78 else ""
+        if not element:
+            element = next((c.upper() for c in atom_name if c.isalpha()), "")
+        if atom_name not in {"O", "OW", "OH2"} or element != "O":
+            _fail(
+                "AMBER_BUILD.WATER_ATOM_UNSUPPORTED",
+                f"only oxygen-only water records are supported (line {number}); "
+                "resolve alternate atoms and remove H/D explicitly",
+                Severity.DECISION_REQUIRED,
+            )
+        chain = line[21:22].strip() or "_"
+        sequence = line[22:26].strip()
+        insertion = line[26:27].strip() or "_"
+        altloc = line[16:17].strip() or "_"
+        if not sequence:
+            _fail("AMBER_BUILD.WATER_FORMAT", f"missing residue number at line {number}")
+        key = f"{chain}:{sequence}:{insertion}:{altloc}"
+        if key in observed:
+            _fail("AMBER_BUILD.WATER_DUPLICATE_OXYGEN", f"water {key} has multiple oxygen records")
+        try:
+            xyz = [float(line[start : start + 8]) for start in (30, 38, 46)]
+            occupancy = float(line[54:60].strip() or "1")
+            b_factor = float(line[60:66].strip() or "0")
+        except ValueError:
+            _fail("AMBER_BUILD.WATER_FORMAT", f"invalid coordinate/occupancy at line {number}")
+        if not all(math.isfinite(value) for value in (*xyz, occupancy, b_factor)):
+            _fail("AMBER_BUILD.WATER_FORMAT", f"non-finite value at line {number}")
+        if not 0 < occupancy <= 1:
+            _fail(
+                "AMBER_BUILD.WATER_OCCUPANCY_INVALID",
+                f"water {key} occupancy must be in (0, 1]",
+            )
+        observed[key] = {
+            "residue_key": key,
+            "source_residue_name": residue,
+            "source_atom_name": atom_name,
+            "coordinates_A": xyz,
+            "occupancy": occupancy,
+            "b_factor_A2": b_factor,
+        }
+    if atom_records == 0:
+        _fail("AMBER_BUILD.WATER_EMPTY", "water artifact contains no PDB atom records")
+    missing = sorted(set(selected_keys) - set(observed))
+    if missing:
+        _fail(
+            "AMBER_BUILD.WATER_SELECTION_MISSING",
+            f"selected water residue keys not found: {missing}",
+        )
+    return {
+        "selection_policy": "explicit residue-key allowlist; no automatic occupancy cutoff",
+        "residue_keys": list(selected_keys),
+        "waters": [observed[key] for key in selected_keys],
+        "count": len(selected_keys),
+        "hydrogen_policy": (
+            "selected crystal oxygen is normalized to WAT/O; LEaP TIP3P residue "
+            "template adds H atoms"
+        ),
+    }
+
+
 def _context_inputs(
     context: AdapterContext,
 ) -> tuple[
@@ -551,6 +682,14 @@ def _context_inputs(
     ligand_bytes, ligand_ref = _source_bytes(
         root=root, path=options.ligand_artifact_path, request=request
     )
+    files = {"protein": protein_bytes, "ligand": ligand_bytes}
+    water_metadata: dict[str, Any] | None = None
+    if options.retained_water_artifact_path is not None:
+        water_bytes, _water_ref = _source_bytes(
+            root=root, path=options.retained_water_artifact_path, request=request
+        )
+        files["water"] = water_bytes
+        water_metadata = _retained_water_metadata(water_bytes, options.retained_water_residue_keys)
     for label, registered, linked in (
         ("protein", protein_ref, complex_model.protein),
         ("ligand", ligand_ref, complex_model.ligand),
@@ -567,12 +706,15 @@ def _context_inputs(
             "AMBER_BUILD.PROTEIN_ATOM_COUNT",
             "protein PDB atom count differs from the linked Complex",
         )
+    metadata = {"protein": protein_info, "ligand": ligand_info}
+    if water_metadata is not None:
+        metadata["water"] = water_metadata
     return (
         request,
         complex_model,
         options,
-        {"protein": protein_bytes, "ligand": ligand_bytes},
-        {"protein": protein_info, "ligand": ligand_info},
+        files,
+        metadata,
     )
 
 
@@ -593,7 +735,7 @@ class AmberTLeapBuilderAdapter:
     """Build a GROMACS-ready AMBER-family system through isolated AmberTools/ParmEd."""
 
     adapter_id = "system_builder.amber_tleap"
-    version = "0.2.0"
+    version = "0.3.0"
 
     def __init__(
         self,
@@ -651,7 +793,7 @@ class AmberTLeapBuilderAdapter:
         output_dir = root / "amber_outputs"
         output_dir.mkdir(mode=0o700, exist_ok=False)
         payload = {
-            "protocol": "caddsuite.amber-tleap-worker/2",
+            "protocol": "caddsuite.amber-tleap-worker/3",
             "request_id": request.id,
             "complex_id": complex_model.id,
             "stage_root": str(root),
@@ -664,6 +806,17 @@ class AmberTLeapBuilderAdapter:
                 ),
                 "ligand": str(
                     (root / _safe_relative(options.ligand_artifact_path)).resolve(strict=True)
+                ),
+                **(
+                    {
+                        "water": str(
+                            (root / _safe_relative(options.retained_water_artifact_path)).resolve(
+                                strict=True
+                            )
+                        )
+                    }
+                    if options.retained_water_artifact_path is not None
+                    else {}
                 ),
             },
             "input_metadata": metadata,
@@ -740,7 +893,7 @@ class AmberTLeapBuilderAdapter:
             _fail("AMBER_BUILD.WORKER_REPORT_INVALID", f"worker result is not valid JSON: {exc}")
         if (
             not isinstance(report, dict)
-            or report.get("protocol") != "caddsuite.amber-tleap-worker/2"
+            or report.get("protocol") != "caddsuite.amber-tleap-worker/3"
         ):
             _fail("AMBER_BUILD.WORKER_PROTOCOL", "worker result protocol is missing or unsupported")
         if not report.get("ok"):
@@ -755,13 +908,38 @@ class AmberTLeapBuilderAdapter:
                 "AMBER_BUILD.WORKER_PARAMETERS",
                 "worker response parameters differ from the request",
             )
-        input_hashes = report.get("input_sha256")
-        expected_hashes = {
-            key: request.source_artifacts[path].sha256
-            for key, path in (
-                ("protein", options.protein_artifact_path),
-                ("ligand", options.ligand_artifact_path),
+        water_preparation = report.get("water_preparation")
+        water_identity = report.get("water_identity_validation")
+        if options.retained_water_artifact_path is None:
+            if water_preparation is not None or water_identity is not None:
+                _fail(
+                    "AMBER_BUILD.WORKER_WATER_UNEXPECTED",
+                    "worker reported retained waters although none were selected",
+                )
+        elif (
+            not isinstance(water_preparation, dict)
+            or water_preparation.get("residue_keys") != list(options.retained_water_residue_keys)
+            or water_preparation.get("count") != len(options.retained_water_residue_keys)
+            or not isinstance(water_identity, dict)
+            or water_identity.get("selected_water_count")
+            != len(options.retained_water_residue_keys)
+            or water_identity.get("matched_oxygen_count")
+            != len(options.retained_water_residue_keys)
+            or water_identity.get("each_selected_water_has_three_tip3p_atoms") is not True
+        ):
+            _fail(
+                "AMBER_BUILD.WORKER_WATER_IDENTITY",
+                "worker did not confirm selected water identity and TIP3P topology retention",
             )
+        input_hashes = report.get("input_sha256")
+        expected_source_items = [
+            ("protein", options.protein_artifact_path),
+            ("ligand", options.ligand_artifact_path),
+        ]
+        if options.retained_water_artifact_path is not None:
+            expected_source_items.append(("water", options.retained_water_artifact_path))
+        expected_hashes = {
+            key: request.source_artifacts[path].sha256 for key, path in expected_source_items
         }
         if input_hashes != expected_hashes:
             _fail(
@@ -819,6 +997,8 @@ class AmberTLeapBuilderAdapter:
         system_data = report.get("system")
         conversion = report.get("conversion_validation")
         protein_identity = report.get("protein_identity_validation")
+        water_preparation = report.get("water_preparation")
+        water_identity = report.get("water_identity_validation")
         energy = report.get("single_point_energy")
         if not all(
             isinstance(value, dict)
@@ -952,6 +1132,8 @@ class AmberTLeapBuilderAdapter:
                 "acidic_residue_state_policy": report.get("protein_preparation", {}).get(
                     "acidic_residue_state_policy", "unknown"
                 ),
+                "retained_water_selection": water_preparation,
+                "retained_water_identity_validation": water_identity,
                 "ligand_formal_charge_e": options.ligand_net_charge,
                 "ion_policy": options.ion_policy,
                 "solvent_box_padding_A": options.box_padding_A,
@@ -966,6 +1148,7 @@ class AmberTLeapBuilderAdapter:
                 key: value
                 for key, value in refs.items()
                 if key.startswith("amber_outputs/parameter_files/")
+                or key == "amber_outputs/retained_waters.pdb"
                 or key
                 in {
                     "amber_outputs/ligand.mol2",

@@ -58,6 +58,13 @@ def _atom_line(
     )
 
 
+def _water_line(serial: int, residue: int, x: float, y: float, z: float) -> str:
+    return (
+        f"HETATM{serial:5d} {'O':>4} HOH B{residue:4d}    "
+        f"{x:8.3f}{y:8.3f}{z:8.3f}{0.60:6.2f}{25.0:6.2f}          O  \n"
+    )
+
+
 def _tiny_ligand(path: Path) -> int:
     from rdkit import Chem
     from rdkit.Chem import AllChem
@@ -96,6 +103,7 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
     assert GROMACS is not None
     protein_path = tmp_path / "protein.pdb"
     ligand_path = tmp_path / "ethanol.sdf"
+    water_path = tmp_path / "crystal_waters.pdb"
     protein_path.write_text(
         "".join(
             (
@@ -112,6 +120,7 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
         ),
         encoding="ascii",
     )
+    water_path.write_text(_water_line(1, 308, 7.0, 7.0, 7.0) + "END\n", encoding="ascii")
     ligand_heavy_atoms = _tiny_ligand(ligand_path)
 
     database = tmp_path / "platform.sqlite"
@@ -121,6 +130,7 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
     store = ArtifactStore(tmp_path / "artifacts")
     protein_blob = store.put_file(protein_path)
     ligand_blob = store.put_file(ligand_path)
+    water_blob = store.put_file(water_path)
     assembly_blob = store.put_bytes(b"coordinate-complex-inputs\n")
     with sessions.begin() as session:
         protein_row = register_blob(
@@ -137,6 +147,13 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
             media_type="chemical/x-mdl-sdfile",
             original_name=ligand_path.name,
         )
+        water_row = register_blob(
+            session,
+            water_blob,
+            kind="retained_crystal_waters_pdb",
+            media_type="chemical/x-pdb",
+            original_name=water_path.name,
+        )
         assembly_row = register_blob(
             session,
             assembly_blob,
@@ -144,13 +161,23 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
             media_type="application/octet-stream",
             original_name="complex.input",
         )
-        protein_id, ligand_id, assembly_id = protein_row.id, ligand_row.id, assembly_row.id
+        protein_id, ligand_id, water_id, assembly_id = (
+            protein_row.id,
+            ligand_row.id,
+            water_row.id,
+            assembly_row.id,
+        )
 
     protein_ref = ArtifactRef(
         artifact_id=protein_id, role="prepared_receptor_pdb", sha256=protein_blob.sha256
     )
     ligand_ref = ArtifactRef(
         artifact_id=ligand_id, role="normalized_pose_sdf", sha256=ligand_blob.sha256
+    )
+    water_ref = ArtifactRef(
+        artifact_id=water_id,
+        role="retained_crystal_waters_pdb",
+        sha256=water_blob.sha256,
     )
     complex_id = new_ulid()
     compound_id, form_id, target_id, pose_id = (new_ulid() for _ in range(4))
@@ -182,12 +209,18 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
         form_id=form_id,
         target_id=target_id,
         pose_id=pose_id,
-        source_artifacts={"inputs/protein.pdb": protein_ref, "inputs/ligand.sdf": ligand_ref},
+        source_artifacts={
+            "inputs/protein.pdb": protein_ref,
+            "inputs/ligand.sdf": ligand_ref,
+            "inputs/waters.pdb": water_ref,
+        },
         selections={"protein": "Protein", "ligand": "LIG"},
         mode="build",
         parameters={
             "protein_artifact_path": "inputs/protein.pdb",
             "ligand_artifact_path": "inputs/ligand.sdf",
+            "retained_water_artifact_path": "inputs/waters.pdb",
+            "retained_water_residue_keys": ["B:308:_:_"],
             "protein_ff": "ff14SB",
             "ligand_method": "GAFF2",
             "ligand_charge_model": "AM1-BCC",
@@ -229,6 +262,11 @@ def test_tiny_system_runs_real_amber_parameterization_and_energy_crosscheck(
         assert report_ref.sha256 is not None
         report = json.loads(store.path_for(report_ref.sha256).read_text(encoding="utf-8"))
         assert report["conversion_validation"]["atom_order_and_residue_identity_match"] is True
+        assert report["water_preparation"]["residue_keys"] == ["B:308:_:_"]
+        assert report["water_identity_validation"]["matched_oxygen_count"] == 1
+        assert (
+            report["water_identity_validation"]["each_selected_water_has_three_tip3p_atoms"] is True
+        )
         protein_identity = report["protein_identity_validation"]
         assert protein_identity["identity_match_except_documented_terminal_atoms"] is True
         assert protein_identity["input_heavy_atom_count"] == 8

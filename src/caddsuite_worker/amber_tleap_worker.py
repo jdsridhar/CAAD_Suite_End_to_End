@@ -19,7 +19,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-PROTOCOL = "caddsuite.amber-tleap-worker/2"
+PROTOCOL = "caddsuite.amber-tleap-worker/3"
 _FLOAT = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?"
 _STANDARD_PROTEIN = frozenset(
     {
@@ -200,7 +200,7 @@ def _run(
     return result
 
 
-def _validated_inputs(request: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
+def _validated_inputs(request: dict[str, Any]) -> tuple[Path, Path, Path | None, Path, Path]:
     if request.get("protocol") != PROTOCOL:
         raise WorkerFailure("AMBER_WORKER.PROTOCOL_MISMATCH", "unsupported worker protocol")
     output_dir = Path(request["output_dir"]).resolve(strict=True)
@@ -217,8 +217,69 @@ def _validated_inputs(request: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
     input_hashes = request.get("source_sha256")
     if not isinstance(input_paths, dict) or not isinstance(input_hashes, dict):
         raise WorkerFailure("AMBER_WORKER.REQUEST_INVALID", "input paths and hashes are required")
+    options = request.get("options", {})
+    if not isinstance(options, dict):
+        raise WorkerFailure("AMBER_WORKER.REQUEST_INVALID", "options must be an object")
+    retained_path = options.get("retained_water_artifact_path")
+    selected_water_keys = options.get("retained_water_residue_keys", [])
+    if (retained_path is None) != (not selected_water_keys):
+        raise WorkerFailure(
+            "AMBER_WORKER.WATER_SELECTION_INVALID",
+            "retained water artifact path and explicit residue keys must be supplied together",
+        )
+    if (
+        not isinstance(selected_water_keys, list)
+        or any(not isinstance(key, str) or not key.strip() for key in selected_water_keys)
+        or len(set(selected_water_keys)) != len(selected_water_keys)
+    ):
+        raise WorkerFailure(
+            "AMBER_WORKER.WATER_SELECTION_INVALID",
+            "retained water residue keys must be unique non-empty strings",
+        )
+    selected_water_locations: set[tuple[str, str, str]] = set()
+    for key in selected_water_keys:
+        parts = key.split(":")
+        if len(parts) != 4 or any(not part for part in parts):
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_SELECTION_INVALID",
+                f"water residue key {key!r} must be chain:sequence:insertion:altloc",
+            )
+        location = (parts[0], parts[1], parts[2])
+        if location in selected_water_locations:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_ALTLOC_CONFLICT",
+                f"mutually exclusive water alternate locations selected for {':'.join(parts[:3])}",
+            )
+        selected_water_locations.add(location)
+    input_keys = ("protein", "ligand", *(("water",) if retained_path is not None else ()))
+    if retained_path is not None:
+        relative_water = PurePosixPath(str(retained_path))
+        if (
+            relative_water.is_absolute()
+            or "\\" in str(retained_path)
+            or any(part in {"", ".", ".."} for part in relative_water.parts)
+        ):
+            raise WorkerFailure(
+                "AMBER_WORKER.UNSAFE_PATH", "water artifact path must be stage-relative"
+            )
+        expected_water = (stage_root / Path(*relative_water.parts)).resolve(strict=True)
+        declared_water = Path(input_paths.get("water", "")).resolve(strict=True)
+        if declared_water != expected_water:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_PATH_MISMATCH",
+                "water input path differs from the selected artifact path",
+            )
+    elif "water" in input_paths or "water" in input_hashes:
+        raise WorkerFailure(
+            "AMBER_WORKER.WATER_SELECTION_INVALID",
+            "water input was provided without explicit water selection parameters",
+        )
     resolved: dict[str, Path] = {}
-    for key in ("protein", "ligand"):
+    for key in input_keys:
+        if key not in input_paths or key not in input_hashes:
+            raise WorkerFailure(
+                "AMBER_WORKER.REQUEST_INVALID", f"{key} input path and hash are required"
+            )
         path = Path(input_paths[key]).resolve(strict=True)
         if not _inside(path, stage_root):
             raise WorkerFailure(
@@ -238,7 +299,96 @@ def _validated_inputs(request: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
             )
     if not gromacs.is_file():
         raise WorkerFailure("AMBER_WORKER.ENGINE_MISSING", "GROMACS executable is missing")
-    return resolved["protein"], resolved["ligand"], amber_home, gromacs
+    return resolved["protein"], resolved["ligand"], resolved.get("water"), amber_home, gromacs
+
+
+def _prepare_waters(source: Path, destination: Path, selected_keys: list[str]) -> dict[str, Any]:
+    """Select explicit oxygen-only waters and normalize them for the LEaP TIP3P template."""
+    selected = set(selected_keys)
+    observed: dict[str, tuple[str, str, str, float, float, float, float, float]] = {}
+    water_names = {"HOH", "WAT", "H2O"}
+    for number, line in enumerate(source.read_text(encoding="ascii").splitlines(), 1):
+        record = line[:6].strip().upper()
+        if record not in {"ATOM", "HETATM"}:
+            continue
+        if len(line) < 54 or line[17:20].strip().upper() not in water_names:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_FORMAT", f"invalid/non-water atom record at line {number}"
+            )
+        atom = line[12:16].strip().upper()
+        element = line[76:78].strip().upper() if len(line) >= 78 else ""
+        if not element:
+            element = next((char.upper() for char in atom if char.isalpha()), "")
+        if atom not in {"O", "OW", "OH2"} or element != "O":
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_ATOM_UNSUPPORTED",
+                f"only oxygen-only selected waters are supported (line {number})",
+            )
+        chain = line[21:22].strip() or "_"
+        sequence = line[22:26].strip()
+        insertion = line[26:27].strip() or "_"
+        altloc = line[16:17].strip() or "_"
+        key = f"{chain}:{sequence}:{insertion}:{altloc}"
+        if key in observed:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_DUPLICATE_OXYGEN", f"water {key} has multiple oxygen records"
+            )
+        try:
+            x, y, z = (float(line[start : start + 8]) for start in (30, 38, 46))
+            occupancy = float(line[54:60].strip() or "1")
+            b_factor = float(line[60:66].strip() or "0")
+            residue_number = int(sequence)
+        except ValueError as exc:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_FORMAT", f"invalid numeric water field at line {number}"
+            ) from exc
+        if not all(math.isfinite(value) for value in (x, y, z, occupancy, b_factor)):
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_FORMAT", f"non-finite numeric water field at line {number}"
+            )
+        if not 0 < occupancy <= 1:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_OCCUPANCY_INVALID",
+                f"water {key} occupancy must be in (0, 1]",
+            )
+        observed[key] = (chain, insertion, altloc, x, y, z, occupancy, b_factor)
+        # Keep the normalized residue number separately; the source key preserves its spelling.
+        if residue_number < -999 or residue_number > 9999:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_FORMAT",
+                f"water residue number out of PDB range at line {number}",
+            )
+    if not selected:
+        raise WorkerFailure(
+            "AMBER_WORKER.WATER_SELECTION_INVALID", "no water residues were selected"
+        )
+    missing = sorted(selected - observed.keys())
+    if missing:
+        raise WorkerFailure(
+            "AMBER_WORKER.WATER_SELECTION_MISSING",
+            f"selected water residue keys not found: {missing}",
+        )
+    records: list[str] = []
+    for serial, key in enumerate(selected_keys, 1):
+        chain, insertion, _altloc, x, y, z, occupancy, b_factor = observed[key]
+        _chain, sequence_text, _insertion, _altloc_key = key.split(":", 3)
+        sequence_number = int(sequence_text)
+        pdb_chain = " " if chain == "_" else chain
+        pdb_insertion = " " if insertion == "_" else insertion
+        records.append(
+            f"HETATM{serial:5d}  O   WAT {pdb_chain}{sequence_number:4d}{pdb_insertion}   "
+            f"{x:8.3f}{y:8.3f}{z:8.3f}{occupancy:6.2f}{b_factor:6.2f}          O  "
+        )
+    _write_text(destination, "\n".join([*records, "TER", "END"]) + "\n")
+    return {
+        "residue_keys": list(selected_keys),
+        "count": len(records),
+        "oxygen_coordinates_A": [
+            [observed[key][3], observed[key][4], observed[key][5]] for key in selected_keys
+        ],
+        "hydrogen_policy": "LEaP TIP3P template added two H atoms to each oxygen-only WAT residue",
+        "prepared_pdb": destination.name,
+    }
 
 
 def _prepare_protein(source: Path, destination: Path, options: dict[str, Any]) -> dict[str, Any]:
@@ -485,6 +635,7 @@ def _write_tleap_input(
     *,
     padding_A: float,
     disulfide_bonds: list[dict[str, Any]] | None = None,
+    include_retained_waters: bool = False,
 ) -> None:
     lines = [
         "source leaprc.protein.ff14SB",
@@ -494,6 +645,8 @@ def _write_tleap_input(
         "lig = loadmol2 ligand.mol2",
         "protein = loadpdb protein_amber.pdb",
     ]
+    if include_retained_waters:
+        lines.append("waters = loadpdb retained_waters.pdb")
     for bond in disulfide_bonds or []:
         indices = bond.get("tleap_residue_indices")
         if (
@@ -512,7 +665,11 @@ def _write_tleap_input(
             # Ligand MOL2 is fully hydrogenated and parameterized by Antechamber.
             # Add template hydrogens to protein alone to avoid unparameterized ligand atoms.
             "addH protein",
-            "complex = combine { protein lig }",
+            (
+                "complex = combine { protein lig waters }"
+                if include_retained_waters
+                else "complex = combine { protein lig }"
+            ),
             "addions2 complex Na+ 0",
             "addions2 complex Cl- 0",
             f"solvatebox complex TIP3PBOX {padding_A:.3f}",
@@ -891,6 +1048,70 @@ def _classify_structure(
     return protein, ligand, composition
 
 
+def _validate_retained_water_identity(
+    structure: Any,
+    selected_coordinates_A: list[list[float]],
+    translation_A: list[float] | None,
+) -> dict[str, Any]:
+    """Confirm selected crystal-water oxygens survived LEaP with TIP3P atom counts."""
+    candidates: list[tuple[tuple[float, float, float], int]] = []
+    for residue in structure.residues:
+        if str(residue.name).strip().upper() not in _WATER_NAMES:
+            continue
+        atoms = list(residue.atoms)
+        oxygen_atoms = [
+            atom for atom in atoms if str(atom.name).strip().upper() in {"O", "OW", "OH2"}
+        ]
+        if len(oxygen_atoms) != 1:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_TOPOLOGY_INVALID",
+                f"water residue {residue.idx} does not have exactly one oxygen atom",
+            )
+        if len(atoms) != 3:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_TOPOLOGY_INVALID",
+                f"TIP3P water residue {residue.idx} has {len(atoms)} atoms, expected 3",
+            )
+        oxygen = oxygen_atoms[0]
+        candidates.append(((float(oxygen.xx), float(oxygen.xy), float(oxygen.xz)), len(atoms)))
+    translation = translation_A or [0.0, 0.0, 0.0]
+    if len(translation) != 3 or not all(math.isfinite(float(value)) for value in translation):
+        raise WorkerFailure(
+            "AMBER_WORKER.WATER_METADATA_INVALID", "protein coordinate translation is invalid"
+        )
+    maximum_deviation = 0.0
+    for expected in selected_coordinates_A:
+        if len(expected) != 3 or not all(math.isfinite(float(value)) for value in expected):
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_METADATA_INVALID", "selected water coordinates are invalid"
+            )
+        if not candidates:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_IDENTITY_MISMATCH",
+                "selected water oxygen was lost from topology",
+            )
+        translated_expected = tuple(
+            float(expected[index]) + float(translation[index]) for index in range(3)
+        )
+        distances = [math.dist(translated_expected, candidate[0]) for candidate in candidates]
+        nearest = min(range(len(distances)), key=distances.__getitem__)
+        deviation = distances[nearest]
+        if deviation > 0.002:
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_IDENTITY_MISMATCH",
+                f"selected water oxygen coordinate changed by {deviation:.6g} A",
+            )
+        maximum_deviation = max(maximum_deviation, deviation)
+        candidates.pop(nearest)
+    return {
+        "selected_water_count": len(selected_coordinates_A),
+        "matched_oxygen_count": len(selected_coordinates_A),
+        "max_oxygen_coordinate_deviation_A": maximum_deviation,
+        "applied_system_translation_A": translation,
+        "each_selected_water_has_three_tip3p_atoms": True,
+    }
+
+
 def _validate_protein_topology_identity(
     structure: Any,
     protein_indices: list[int],
@@ -904,7 +1125,7 @@ def _validate_protein_topology_identity(
             "ordered per-residue heavy-atom identities are required",
         )
     element_numbers = {"C": 6, "N": 7, "O": 8, "S": 16}
-    actual_by_residue: dict[int, tuple[Any, list[tuple[str, int]]]] = {}
+    actual_by_residue: dict[int, tuple[Any, list[tuple[str, int, Any]]]] = {}
     for one_based_index in protein_indices:
         atom = structure.atoms[one_based_index - 1]
         residue = atom.residue
@@ -914,7 +1135,7 @@ def _validate_protein_topology_identity(
         atomic_number = int(getattr(atom, "atomic_number", 0) or 0)
         if atomic_number > 1:
             actual_by_residue[residue_index][1].append(
-                (str(atom.name).strip().upper(), atomic_number)
+                (str(atom.name).strip().upper(), atomic_number, atom)
             )
 
     if len(actual_by_residue) != len(expected_rows):
@@ -927,6 +1148,7 @@ def _validate_protein_topology_identity(
     from collections import Counter
 
     additions: list[dict[str, Any]] = []
+    coordinate_translations: list[tuple[float, float, float]] = []
     for position, (expected_row, (_, (residue, actual_atoms))) in enumerate(
         zip(expected_rows, sorted(actual_by_residue.items()))  # noqa: B905 - lengths checked above
     ):
@@ -964,8 +1186,9 @@ def _validate_protein_topology_identity(
                 "AMBER_WORKER.PROTEIN_IDENTITY_METADATA",
                 f"input residue {expected_row.get('key')} has duplicate atom identities",
             )
-        missing = Counter(expected_atoms) - Counter(actual_atoms)
-        added = Counter(actual_atoms) - Counter(expected_atoms)
+        actual_identities = [(name, atomic_number) for name, atomic_number, _atom in actual_atoms]
+        missing = Counter(expected_atoms) - Counter(actual_identities)
+        added = Counter(actual_identities) - Counter(expected_atoms)
         is_terminal = expected_row.get("terminal") is True
         allowed = (
             Counter({("OXT", 8): 1}) if is_terminal and added.get(("OXT", 8)) == 1 else Counter()
@@ -976,6 +1199,46 @@ def _validate_protein_topology_identity(
                 f"ff14SB heavy atoms differ at input residue {expected_row.get('key')}; "
                 f"missing={list(missing.elements())[:8]}, unexpected={list(added.elements())[:8]}",
             )
+        actual_by_name = {name: atom for name, _atomic_number, atom in actual_atoms}
+        for atom_row in expected_row["heavy_atoms"]:
+            expected_xyz = atom_row.get("coordinates_A")
+            atom_name = str(atom_row.get("atom_name", "")).strip().upper()
+            if expected_xyz is None:
+                continue
+            if (
+                not isinstance(expected_xyz, list)
+                or len(expected_xyz) != 3
+                or atom_name not in actual_by_name
+            ):
+                raise WorkerFailure(
+                    "AMBER_WORKER.PROTEIN_COORDINATE_METADATA",
+                    f"input coordinates are invalid for {expected_row.get('key')}:{atom_name}",
+                )
+            actual_atom = actual_by_name[atom_name]
+            try:
+                expected = (
+                    float(expected_xyz[0]),
+                    float(expected_xyz[1]),
+                    float(expected_xyz[2]),
+                )
+                observed = (float(actual_atom.xx), float(actual_atom.xy), float(actual_atom.xz))
+            except (TypeError, ValueError) as exc:
+                raise WorkerFailure(
+                    "AMBER_WORKER.PROTEIN_COORDINATE_METADATA",
+                    f"input coordinates are invalid for {expected_row.get('key')}:{atom_name}",
+                ) from exc
+            if not all(math.isfinite(value) for value in (*expected, *observed)):
+                raise WorkerFailure(
+                    "AMBER_WORKER.PROTEIN_COORDINATE_METADATA",
+                    f"non-finite coordinates for {expected_row.get('key')}:{atom_name}",
+                )
+            coordinate_translations.append(
+                (
+                    observed[0] - expected[0],
+                    observed[1] - expected[1],
+                    observed[2] - expected[2],
+                )
+            )
         if allowed:
             additions.append(
                 {
@@ -984,6 +1247,21 @@ def _validate_protein_topology_identity(
                     "atom_name": "OXT",
                 }
             )
+    coordinate_transform: dict[str, Any] | None = None
+    if coordinate_translations:
+        translation = coordinate_translations[0]
+        maximum_residual = max(math.dist(value, translation) for value in coordinate_translations)
+        if maximum_residual > 0.002:
+            raise WorkerFailure(
+                "AMBER_WORKER.PROTEIN_COORDINATES_CHANGED",
+                "protein heavy-atom coordinates changed beyond one rigid translation; "
+                f"residual {maximum_residual:.6g} A",
+            )
+        coordinate_transform = {
+            "translation_A": list(translation),
+            "max_residual_from_translation_A": maximum_residual,
+            "matched_heavy_atom_count": len(coordinate_translations),
+        }
     return {
         "input_heavy_atom_count": sum(len(row["heavy_atoms"]) for row in expected_rows),
         "parameterized_heavy_atom_count": sum(
@@ -991,6 +1269,7 @@ def _validate_protein_topology_identity(
         ),
         "tleap_added_terminal_atoms": additions,
         "identity_match_except_documented_terminal_atoms": True,
+        "coordinate_transform": coordinate_transform,
     }
 
 
@@ -1254,7 +1533,7 @@ def _hash_parameter_sources(amber_home: Path) -> dict[str, dict[str, str]]:
 
 
 def build(request: dict[str, Any]) -> dict[str, Any]:
-    protein_input, ligand_input, amber_home, gromacs = _validated_inputs(request)
+    protein_input, ligand_input, water_input, amber_home, gromacs = _validated_inputs(request)
     options = request.get("options")
     metadata = request.get("input_metadata")
     if not isinstance(options, dict) or not isinstance(metadata, dict):
@@ -1271,6 +1550,26 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
     leap_input = _safe_output(output_dir, "tleap.in")
     leap_log = _safe_output(output_dir, "leap.log")
     protein_metadata = _prepare_protein(protein_input, protein_prepared, options)
+    water_metadata: dict[str, Any] | None = None
+    if water_input is not None:
+        request_water_metadata = metadata.get("water")
+        water_metadata = _prepare_waters(
+            water_input,
+            _safe_output(output_dir, "retained_waters.pdb"),
+            options["retained_water_residue_keys"],
+        )
+        if (
+            not isinstance(request_water_metadata, dict)
+            or request_water_metadata.get("residue_keys") != water_metadata["residue_keys"]
+            or request_water_metadata.get("count") != water_metadata["count"]
+            or request_water_metadata.get("waters") is None
+            or [entry.get("coordinates_A") for entry in request_water_metadata["waters"]]
+            != water_metadata["oxygen_coordinates_A"]
+        ):
+            raise WorkerFailure(
+                "AMBER_WORKER.WATER_METADATA_MISMATCH",
+                "water selection metadata differs from the staged water PDB",
+            )
     ligand_charge = int(options["ligand_net_charge"])
     padding_A = float(options["box_padding_A"])
 
@@ -1339,6 +1638,7 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         leap_input,
         padding_A=padding_A,
         disulfide_bonds=protein_metadata["disulfide_bonds"],
+        include_retained_waters=water_input is not None,
     )
     tleap_result = _run(
         argv=[tleap, "-f", str(leap_input)],
@@ -1381,6 +1681,15 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
     protein_identity_validation = _validate_protein_topology_identity(
         structure, protein_indices, metadata["protein"]
     )
+    water_identity_validation: dict[str, Any] | None = None
+    if water_metadata is not None:
+        protein_transform = protein_identity_validation.get("coordinate_transform")
+        translation = (
+            protein_transform.get("translation_A") if isinstance(protein_transform, dict) else None
+        )
+        water_identity_validation = _validate_retained_water_identity(
+            structure, water_metadata["oxygen_coordinates_A"], translation
+        )
     if len(protein_residue_ids) != int(metadata["protein"]["n_residues"]):
         raise WorkerFailure(
             "AMBER_WORKER.PROTEIN_RESIDUE_COUNT_MISMATCH",
@@ -1632,6 +1941,8 @@ def build(request: dict[str, Any]) -> dict[str, Any]:
         },
         "parameter_files": parameter_files,
         "protein_preparation": protein_metadata,
+        "water_preparation": water_metadata,
+        "water_identity_validation": water_identity_validation,
         "protein_identity_validation": protein_identity_validation,
         "ligand_identity_validation": ligand_identity,
         "ligand_charge_normalization": ligand_charge_normalization,

@@ -15,6 +15,7 @@ from caddsuite.adapters.system_builders.amber_tleap import (
     AmberTLeapBuildParameters,
     _ligand_metadata,
     _protein_metadata,
+    _retained_water_metadata,
 )
 from caddsuite.contracts.base import ArtifactRef
 from caddsuite.contracts.complex import Complex
@@ -221,6 +222,66 @@ def test_explicit_acidic_residue_states_are_validated_and_reported() -> None:
     assert error.value.code == "AMBER_BUILD.ACIDIC_RESIDUE_MAPPING_INVALID"
 
 
+def test_retained_water_selection_is_explicit_and_preserves_site_identity() -> None:
+    from caddsuite.adapters.system_builders.amber_tleap import AmberTLeapBuildError
+
+    water = (
+        "HETATM    1  O   HOH B 308A     12.345  -4.321   0.500  0.60 25.00           O  \n"
+        "HETATM    2  O   HOH B 309      13.000  -4.000   0.000  1.00 19.00           O  \n"
+        "END\n"
+    ).encode("ascii")
+    chosen = _retained_water_metadata(water, ("B:308:A:_",))
+    assert chosen["count"] == 1
+    assert chosen["residue_keys"] == ["B:308:A:_"]
+    assert chosen["waters"][0]["coordinates_A"] == [12.345, -4.321, 0.5]
+    assert "no automatic occupancy cutoff" in chosen["selection_policy"]
+
+    with pytest.raises(AmberTLeapBuildError) as error:
+        _retained_water_metadata(water, ("B:999:_:_",))
+    assert error.value.code == "AMBER_BUILD.WATER_SELECTION_MISSING"
+    with pytest.raises(AmberTLeapBuildError) as error:
+        _retained_water_metadata(water.replace(b"HOH", b"SO4"), ("B:308:A:_",))
+    assert error.value.code == "AMBER_BUILD.WATER_NONWATER_COMPONENT"
+
+
+def test_retained_water_parameters_require_an_artifact_and_unique_keys() -> None:
+    values = {
+        "protein_artifact_path": "inputs/protein.pdb",
+        "ligand_artifact_path": "inputs/ligand.sdf",
+        "protein_ff": "ff14SB",
+        "ligand_method": "GAFF2",
+        "ligand_charge_model": "AM1-BCC",
+        "ligand_net_charge": 0,
+        "protein_ph": 7.4,
+        "histidine_states": {},
+        "water_model": "TIP3P",
+        "ion_parameters": "Joung-Cheatham TIP3P",
+        "ion_policy": "neutralize_only",
+        "box_padding_A": 8.0,
+        "output_format": "amber",
+    }
+    with pytest.raises(ValidationError, match="both an artifact path"):
+        AmberTLeapBuildParameters.model_validate(
+            {**values, "retained_water_residue_keys": ["B:308:A:_"]}
+        )
+    with pytest.raises(ValidationError, match="must be unique"):
+        AmberTLeapBuildParameters.model_validate(
+            {
+                **values,
+                "retained_water_artifact_path": "inputs/waters.pdb",
+                "retained_water_residue_keys": ["B:308:A:_", "B:308:A:_"],
+            }
+        )
+    with pytest.raises(ValidationError, match="alternate locations"):
+        AmberTLeapBuildParameters.model_validate(
+            {
+                **values,
+                "retained_water_artifact_path": "inputs/waters.pdb",
+                "retained_water_residue_keys": ["B:308:A:_", "B:308:A:A"],
+            }
+        )
+
+
 def test_adapter_validates_linked_hashes_and_plans_one_argv_worker(tmp_path: Path) -> None:
     context, request, _complex_model, _protein_ref, _ligand_ref = _inputs(tmp_path)
     adapter = _adapter(tmp_path)
@@ -240,6 +301,44 @@ def test_adapter_validates_linked_hashes_and_plans_one_argv_worker(tmp_path: Pat
         == request.source_artifacts["inputs/protein.pdb"].sha256
     )
     assert (context.working_directory / "amber_outputs").is_dir()
+
+
+def test_adapter_binds_selected_water_artifact_hash_and_residue_lineage(tmp_path: Path) -> None:
+    context, request, complex_model, _protein_ref, _ligand_ref = _inputs(tmp_path)
+    water_path = context.working_directory / "inputs/waters.pdb"
+    water_bytes = (
+        "HETATM    1  O   HOH B 308A     12.345  -4.321   0.500  0.60 25.00           O  \nEND\n"
+    ).encode("ascii")
+    water_path.write_bytes(water_bytes)
+    water_ref = ArtifactRef(
+        artifact_id=new_ulid(),
+        role="retained_crystal_waters_pdb",
+        sha256=hashlib.sha256(water_bytes).hexdigest(),
+    )
+    request_data = request.model_dump(mode="python")
+    request_data["source_artifacts"]["inputs/waters.pdb"] = water_ref
+    request_data["parameters"].update(
+        {
+            "retained_water_artifact_path": "inputs/waters.pdb",
+            "retained_water_residue_keys": ["B:308:A:_"],
+        }
+    )
+    request = SystemBuildRequest.model_validate(request_data)
+    context = AdapterContext(
+        inputs={"request": request, "complex": complex_model},
+        parameters={},
+        working_directory=context.working_directory,
+    )
+    adapter = _adapter(tmp_path)
+    assert adapter.validate_input(context) == ()
+    adapter.plan(context)
+    worker_request = json.loads(
+        (context.working_directory / "amber_worker_request.json").read_text(encoding="utf-8")
+    )
+    assert worker_request["protocol"] == "caddsuite.amber-tleap-worker/3"
+    assert worker_request["input_paths"]["water"] == str(water_path)
+    assert worker_request["source_sha256"]["water"] == water_ref.sha256
+    assert worker_request["input_metadata"]["water"]["residue_keys"] == ["B:308:A:_"]
 
 
 def test_unresolved_histidine_requires_decision_before_execution(tmp_path: Path) -> None:
@@ -473,7 +572,7 @@ def _amber_normalization_case(
 def _valid_worker_report(request: SystemBuildRequest, complex_model: Complex) -> dict[str, object]:
     options = AmberTLeapBuildParameters.model_validate(request.parameters)
     return {
-        "protocol": "caddsuite.amber-tleap-worker/2",
+        "protocol": "caddsuite.amber-tleap-worker/3",
         "ok": True,
         "request_id": request.id,
         "complex_id": complex_model.id,

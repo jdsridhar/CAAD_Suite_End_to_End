@@ -15,6 +15,7 @@ from caddsuite_worker.amber_tleap_worker import (
     _hash_parameter_sources,
     _normalize_sqm_roundoff_charge,
     _prepare_protein,
+    _prepare_waters,
     _sander_energy_values,
     _validate_mol2_identity,
     _validate_protein_topology_identity,
@@ -36,6 +37,21 @@ def _pdb_atom(
     return (
         f"ATOM  {serial:5d} {name:>4} {residue:>3} {chain}{sequence:4d}    "
         f"{x:8.3f}{0.0:8.3f}{0.0:8.3f}{1.0:6.2f}{0.0:6.2f}          {element:>2}  \n"
+    )
+
+
+def _pdb_water(
+    serial: int,
+    sequence: int,
+    x: float,
+    *,
+    chain: str = "B",
+    insertion: str = " ",
+    altloc: str = " ",
+) -> str:
+    return (
+        f"HETATM{serial:5d} {'O':>4}{altloc}{'HOH':>3} {chain}{sequence:4d}{insertion}   "
+        f"{x:8.3f}{0.0:8.3f}{0.0:8.3f}{0.60:6.2f}{25.0:6.2f}          O  \n"
     )
 
 
@@ -176,6 +192,36 @@ def test_worker_applies_explicit_disulfide_mapping_as_cyx_and_tleap_bond(
         disulfide_bonds=result["disulfide_bonds"],
     )
     assert "bond protein.1.SG protein.2.SG" in leap_input.read_text(encoding="utf-8")
+
+
+def test_worker_prepares_only_selected_water_oxygen_and_tleap_loads_it(tmp_path: Path) -> None:
+    source = tmp_path / "crystal_waters.pdb"
+    prepared = tmp_path / "retained_waters.pdb"
+    source.write_text(
+        _pdb_water(1, 308, 12.345, insertion="A") + _pdb_water(2, 309, 13.0) + "END\n",
+        encoding="ascii",
+    )
+    result = _prepare_waters(source, prepared, ["B:308:A:_"])
+    rows = [
+        line
+        for line in prepared.read_text(encoding="ascii").splitlines()
+        if line.startswith("HETATM")
+    ]
+    assert result["residue_keys"] == ["B:308:A:_"]
+    assert result["oxygen_coordinates_A"] == [[12.345, 0.0, 0.0]]
+    assert len(rows) == 1
+    assert rows[0][12:16].strip() == "O"
+    assert rows[0][17:20] == "WAT"
+
+    leap_input = tmp_path / "tleap.in"
+    _write_tleap_input(leap_input, padding_A=8.0, include_retained_waters=True)
+    script = leap_input.read_text(encoding="utf-8")
+    assert "waters = loadpdb retained_waters.pdb" in script
+    assert "complex = combine { protein lig waters }" in script
+
+    with pytest.raises(WorkerFailure) as error:
+        _prepare_waters(source, prepared, ["B:999:_:_"])
+    assert error.value.code == "AMBER_WORKER.WATER_SELECTION_MISSING"
 
 
 def test_ligand_mol2_validation_checks_graph_atom_order_charge_and_coordinates(
@@ -496,7 +542,7 @@ def test_worker_rejects_inputs_and_outputs_that_escape_the_stage(tmp_path: Path)
     gromacs = tmp_path / "gmx"
     gromacs.write_text("", encoding="ascii")
     request = {
-        "protocol": "caddsuite.amber-tleap-worker/2",
+        "protocol": "caddsuite.amber-tleap-worker/3",
         "stage_root": str(stage),
         "output_dir": str(stage / "amber_outputs"),
         "amber_home": str(amber),
@@ -508,6 +554,28 @@ def test_worker_rejects_inputs_and_outputs_that_escape_the_stage(tmp_path: Path)
         },
     }
     assert _validated_inputs(request)[0] == protein
+    water = stage / "inputs/waters.pdb"
+    water.write_text(_pdb_water(1, 308, 7.0), encoding="ascii")
+    request["options"] = {
+        "retained_water_artifact_path": "inputs/waters.pdb",
+        "retained_water_residue_keys": ["B:308:_:_"],
+    }
+    request["input_paths"]["water"] = str(water)
+    request["source_sha256"]["water"] = hashlib.sha256(water.read_bytes()).hexdigest()
+    assert _validated_inputs(request)[2] == water
+    request["options"]["retained_water_residue_keys"] = ["B:308:_:_", "B:308:_:A"]
+    with pytest.raises(WorkerFailure) as error:
+        _validated_inputs(request)
+    assert error.value.code == "AMBER_WORKER.WATER_ALTLOC_CONFLICT"
+    request["options"]["retained_water_residue_keys"] = ["B:308:_:_"]
+    request["input_paths"]["water"] = str(tmp_path / "outside-water.pdb")
+    (tmp_path / "outside-water.pdb").write_bytes(water.read_bytes())
+    request["source_sha256"]["water"] = hashlib.sha256(water.read_bytes()).hexdigest()
+    with pytest.raises(WorkerFailure, match="differs from"):
+        _validated_inputs(request)
+    request["options"] = {}
+    request["input_paths"].pop("water")
+    request["source_sha256"].pop("water")
     request["input_paths"]["protein"] = str(tmp_path / "outside.pdb")
     (tmp_path / "outside.pdb").write_text("protein\n", encoding="ascii")
     request["source_sha256"]["protein"] = hashlib.sha256(
