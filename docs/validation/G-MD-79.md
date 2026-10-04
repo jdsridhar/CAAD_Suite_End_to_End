@@ -35,6 +35,10 @@ The pair reference considered approximately 3.72–3.78 million non-excluded pai
 - Pair-sum calculations, frame artifacts, CPU/GPU EDR/log/XVG captures, scripts, JSON results, and per-frame SHA-256 manifests for the 300 and 400 ps additions are retained under `/home/sridhar/gmd79-realframe-reference-probe-20261003/replica1-300ps/` and `replica1-400ps/`; both manifests verify successfully.
 - Next extend the independent reference across more frames/configurations, retain exact thread/backend labels, and inspect whether GROMACS provides a safe way to control pairlist grouping independently of thread count.
 
+## Subsequent modifier audit (G-MD-110)
+
+The archived `energy/energy.mdp` and TPR specify `coulomb-modifier=None`, while the original independent pair-sum script subtracted the included-pair Ewald cutoff shift. This is a small mismatch between the reference formula and its comparison TPR. Removing that included-pair term changes the five-frame mean reference residual by only 0.094 kJ/mol; the CPU thread-count pattern remains. The reference should not be described as an exact formula match to the archived modifier setting. Same-coordinate modifier controls and limitations are documented in [G-MD-110](G-MD-110.md). This correction does not validate GROMACS or establish a tolerance.
+
 ## Provenance
 
 The pair-sum scripts, topology/frame hashes, GROMACS CPU and GPU EDR/log/XVG captures, per-frame reference JSON, command records, and the 97-entry SHA-256 manifest are outside Git under `/home/sridhar/gmd79-realframe-reference-probe-20261003/`. The exact source topology hash is `e72cc07f2c6d92eaed3449321934d29f7e2a295f0a3abe9edb2257d0ea93f20e`; the reference coordinate frames and precise hashes are listed in `comparison-summary.json` and `full-manifest.txt`.
