@@ -32,7 +32,7 @@ class PDBFixerPreparationHandler:
     """Execute selected-chain protein preparation with a foreign-env PDBFixer worker."""
 
     adapter_id = "structure.prepare_protein.pdbfixer"
-    adapter_version = "1.3.0"
+    adapter_version = "1.4.0"
     software_environment: SoftwareEnvironment | None = None
 
     def __init__(
@@ -108,6 +108,16 @@ class PDBFixerPreparationHandler:
                 "STRUCTURE.PH_REQUIRED", "Set an explicit numeric protein preparation pH."
             )
         ph = float(ph_value)
+        occupancy_policy = params.get("occupancy_policy", "require_full_occupancy")
+        if occupancy_policy not in {
+            "require_full_occupancy",
+            "highest_occupancy_single_model",
+        }:
+            raise StageExecutionFailure(
+                "STRUCTURE.OCCUPANCY_POLICY_INVALID",
+                "occupancy_policy must be require_full_occupancy or "
+                "highest_occupancy_single_model.",
+            )
         seed_value = params.get("modeling_seed")
         if seed_value is None:
             seed_value = secrets.randbelow(2147483647) + 1
@@ -149,6 +159,7 @@ class PDBFixerPreparationHandler:
             keep_water=bool(params.get("keep_water", False)),
             close_contact_threshold_A=float(threshold_value),
             modeling_seed=seed_value,
+            occupancy_policy=occupancy_policy,
         )
         command = plan_pdbfixer_command(
             python_executable=self.python_executable,
@@ -160,8 +171,13 @@ class PDBFixerPreparationHandler:
         # LocalExecutor stores stdout/stderr as content-addressed artifacts.
         if execution.exit_code != 0:
             stderr = self._artifact_text(execution.stderr, limit=4000)
+            error_code = (
+                "STRUCTURE.OCCUPANCY_DECISION_REQUIRED"
+                if "STRUCTURE.OCCUPANCY_DECISION_REQUIRED" in stderr
+                else "STRUCTURE.PREPARATION_FAILED"
+            )
             raise StageExecutionFailure(
-                "STRUCTURE.PREPARATION_FAILED",
+                error_code,
                 f"PDBFixer exited with status {execution.exit_code}: "
                 f"{stderr or 'see task stderr artifact'}",
             )
@@ -196,6 +212,7 @@ class PDBFixerPreparationHandler:
             ph=ph,
             modeling_seed=seed_value,
             close_contact_threshold_A=float(threshold_value),
+            occupancy_policy=occupancy_policy,
             prepared_artifact=prepared_ref,
             prepared_pdb_artifact=prepared_pdb_ref,
             report_artifact=execution.stdout,

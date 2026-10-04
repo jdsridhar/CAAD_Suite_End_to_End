@@ -65,7 +65,8 @@ class PDBFixerStagePlugin:
                 [
                     str(settings.python_executable),
                     "-c",
-                    "import importlib.metadata; print(importlib.metadata.version('pdbfixer'))",
+                    "import importlib.metadata; import Bio.PDB.MMCIF2Dict; "
+                    "print(importlib.metadata.version('pdbfixer'))",
                 ],
                 capture_output=True,
                 text=True,
@@ -92,7 +93,8 @@ class PDBFixerStagePlugin:
             [
                 str(settings.python_executable),
                 "-c",
-                "import importlib.metadata; print(importlib.metadata.version('pdbfixer'))",
+                "import importlib.metadata; import Bio.PDB.MMCIF2Dict; "
+                "print(importlib.metadata.version('pdbfixer'))",
             ],
             capture_output=True,
             text=True,

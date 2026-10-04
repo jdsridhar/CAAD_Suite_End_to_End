@@ -38,7 +38,7 @@ def test_pdbfixer_stage_is_discovered_without_importing_engine_runtime() -> None
     registry = StageHandlerRegistry.discover()
     capability = registry.snapshot().capabilities.resolve("structure.prepare_protein", "pdbfixer")
     assert capability is not None
-    assert capability.outputs == ("prepared_receptor/1.2",)
+    assert capability.outputs == ("prepared_receptor/1.3",)
 
 
 def test_admet_docking_report_template_compiles_with_discovered_plugins() -> None:
@@ -57,7 +57,7 @@ def test_admet_docking_report_template_compiles_with_discovered_plugins() -> Non
         "report",
     )
     tasks = {task.stage_id: task for task in compiled.tasks}
-    assert tasks["prepare_protein"].output_contract == "prepared_receptor/1.2"
+    assert tasks["prepare_protein"].output_contract == "prepared_receptor/1.3"
     assert tasks["binding_site"].output_contract == "binding_site/1.0"
     assert tasks["dock"].output_contract == "docking_result/1.0"
     assert tasks["dock"].params["docking_parameters"]["energy_range_kcal_mol"] == 3.0

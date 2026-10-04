@@ -46,6 +46,7 @@ def test_request_records_policy_and_command_is_argv_only(tmp_path: Path) -> None
     assert payload["keep_water"] is True
     assert payload["close_contact_threshold_A"] == 1.5
     assert payload["modeling_seed"] == 20261003
+    assert payload["occupancy_policy"] == "require_full_occupancy"
     plan = plan_pdbfixer_command(
         python_executable=python,
         worker_script=worker,
@@ -101,7 +102,7 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
     response = {
         "ok": True,
         "result": {
-            "protocol": "caddsuite.pdbfixer-worker/4",
+            "protocol": "caddsuite.pdbfixer-worker/5",
             "input_sha256": input_digest,
             "output_sha256": output_digest,
             "output_pdb_sha256": "e" * 64,
@@ -110,6 +111,11 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
             "selected_chain_ids": ["A"],
             "ph": 7.4,
             "modeling_seed": 20261003,
+            "occupancy_policy": "require_full_occupancy",
+            "biopython_version": "1.88",
+            "source_nonunit_occupancy_atom_count": 0,
+            "zero_occupancy_rebuild_target_count": 0,
+            "selected_altlocs": [],
             "missing_residues": [
                 {
                     "chain_id": "A",
@@ -139,6 +145,7 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
         ph=7.4,
         modeling_seed=20261003,
         close_contact_threshold_A=1.5,
+        occupancy_policy="require_full_occupancy",
         prepared_artifact=_artifact("prepared_receptor_mmcif", output_digest),
         prepared_pdb_artifact=_artifact("prepared_receptor_pdb", "e" * 64),
         report_artifact=_artifact("worker_report", "c" * 64),
@@ -150,6 +157,8 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
     assert result.artifacts["prepared_structure"].sha256 == output_digest
     assert result.artifacts["prepared_structure_pdb"].sha256 == "e" * 64
     assert result.supporting_software[0].name == "OpenMM"
+    assert result.supporting_software[1].name == "Biopython"
+    assert result.occupancy_policy == "require_full_occupancy"
     assert result.geometry_diagnostics is not None
     assert result.geometry_diagnostics.close_contact_count == 0
 
@@ -161,6 +170,7 @@ def test_worker_result_normalizes_and_checks_artifact_hashes() -> None:
             ph=7.4,
             modeling_seed=20261003,
             close_contact_threshold_A=1.5,
+            occupancy_policy="require_full_occupancy",
             prepared_artifact=_artifact("prepared_receptor_mmcif", "d" * 64),
             prepared_pdb_artifact=_artifact("prepared_receptor_pdb", "e" * 64),
             report_artifact=_artifact("worker_report", "c" * 64),

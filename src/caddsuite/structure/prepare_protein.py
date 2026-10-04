@@ -38,6 +38,7 @@ def write_pdbfixer_request(
     keep_water: bool = False,
     close_contact_threshold_A: float = 1.5,
     modeling_seed: int,
+    occupancy_policy: str = "require_full_occupancy",
 ) -> Path:
     """Write a validated worker request under the stage work directory.
 
@@ -89,6 +90,7 @@ def write_pdbfixer_request(
         "keep_water": keep_water,
         "close_contact_threshold_A": close_contact_threshold_A,
         "modeling_seed": modeling_seed,
+        "occupancy_policy": occupancy_policy,
     }
     request.parent.mkdir(parents=True, exist_ok=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -133,6 +135,7 @@ def normalize_pdbfixer_result(
     ph: float,
     modeling_seed: int,
     close_contact_threshold_A: float,
+    occupancy_policy: str,
     prepared_artifact: ArtifactRef,
     prepared_pdb_artifact: ArtifactRef,
     report_artifact: ArtifactRef,
@@ -146,7 +149,7 @@ def normalize_pdbfixer_result(
             f"{response.get('error', 'no structured error was returned')}"
         )
     result = response["result"]
-    if result.get("protocol") != "caddsuite.pdbfixer-worker/4":
+    if result.get("protocol") != "caddsuite.pdbfixer-worker/5":
         raise ProteinPreparationError("unsupported PDBFixer worker protocol")
     if sorted(selected_chain_ids) != result.get("selected_chain_ids"):
         raise ProteinPreparationError("worker selected chain IDs differ from the request")
@@ -154,6 +157,8 @@ def normalize_pdbfixer_result(
         raise ProteinPreparationError("worker pH differs from the request")
     if result.get("modeling_seed") != modeling_seed:
         raise ProteinPreparationError("worker modeling seed differs from the request")
+    if result.get("occupancy_policy") != occupancy_policy:
+        raise ProteinPreparationError("worker occupancy policy differs from the request")
     if not structure.raw.sha256:
         raise ProteinPreparationError("source structure artifact has no digest")
     if result.get("input_sha256") != structure.raw.sha256:
@@ -208,7 +213,16 @@ def normalize_pdbfixer_result(
             kind=SoftwareKind.LIBRARY,
             license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
         )
+        biopython = SoftwareRef(
+            name="Biopython",
+            version=str(result["biopython_version"]),
+            kind=SoftwareKind.LIBRARY,
+            license_class=LicenseClass.UNKNOWN,
+        )
         missing_heavy_atom_count = int(result["missing_heavy_atom_count"])
+        source_nonunit_occupancy_atom_count = int(result["source_nonunit_occupancy_atom_count"])
+        zero_occupancy_rebuild_target_count = int(result["zero_occupancy_rebuild_target_count"])
+        selected_altloc_count = len(result["selected_altlocs"])
         atom_count = int(result["output_atom_count"])
         residue_count = int(result["output_residue_count"])
         modeling_seed = int(result["modeling_seed"])
@@ -220,7 +234,15 @@ def normalize_pdbfixer_result(
     except (KeyError, TypeError, ValueError) as exc:
         raise ProteinPreparationError(f"malformed PDBFixer worker result: {exc}") from exc
     if (
-        min(missing_heavy_atom_count, atom_count, residue_count) < 0
+        min(
+            missing_heavy_atom_count,
+            source_nonunit_occupancy_atom_count,
+            zero_occupancy_rebuild_target_count,
+            selected_altloc_count,
+            atom_count,
+            residue_count,
+        )
+        < 0
         or not atom_count
         or not residue_count
     ):
@@ -229,7 +251,7 @@ def normalize_pdbfixer_result(
         id=new_ulid(),
         structure_id=structure.id,
         protocol=fixer,
-        supporting_software=(openmm,),
+        supporting_software=(openmm, biopython),
         ph=ph,
         modeling_seed=modeling_seed,
         protonation_method="PDBFixer standard-residue templates; pH-aware hydrogen addition",
@@ -238,6 +260,10 @@ def normalize_pdbfixer_result(
         selected_chain_ids=selected_chain_ids,
         nonstandard_replacements=replacements,
         missing_heavy_atom_count=missing_heavy_atom_count,
+        occupancy_policy=occupancy_policy,
+        source_nonunit_occupancy_atom_count=source_nonunit_occupancy_atom_count,
+        zero_occupancy_rebuild_target_count=zero_occupancy_rebuild_target_count,
+        selected_altloc_count=selected_altloc_count,
         output_atom_count=atom_count,
         output_residue_count=residue_count,
         geometry_diagnostics=geometry_diagnostics,

@@ -374,7 +374,7 @@
       "type": "object"
     }
   },
-  "$id": "caddsuite://schemas/prepared_receptor/1.2",
+  "$id": "caddsuite://schemas/prepared_receptor/1.3",
   "additionalProperties": false,
   "properties": {
     "artifacts": {
@@ -444,6 +444,22 @@
       "title": "Nonstandard Replacements",
       "type": "array"
     },
+    "occupancy_policy": {
+      "anyOf": [
+        {
+          "enum": [
+            "require_full_occupancy",
+            "highest_occupancy_single_model"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Occupancy Policy"
+    },
     "output_atom_count": {
       "anyOf": [
         {
@@ -493,9 +509,15 @@
       "type": "array"
     },
     "schema_version": {
-      "default": "prepared_receptor/1.2",
+      "default": "prepared_receptor/1.3",
       "title": "Schema Version",
       "type": "string"
+    },
+    "selected_altloc_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Selected Altloc Count",
+      "type": "integer"
     },
     "selected_chain_ids": {
       "default": [],
@@ -504,6 +526,12 @@
       },
       "title": "Selected Chain Ids",
       "type": "array"
+    },
+    "source_nonunit_occupancy_atom_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Source Nonunit Occupancy Atom Count",
+      "type": "integer"
     },
     "structure_id": {
       "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
@@ -517,6 +545,12 @@
       },
       "title": "Supporting Software",
       "type": "array"
+    },
+    "zero_occupancy_rebuild_target_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Zero Occupancy Rebuild Target Count",
+      "type": "integer"
     }
   },
   "required": [

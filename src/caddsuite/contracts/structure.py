@@ -155,7 +155,7 @@ class StructureGeometryDiagnostics(ContractModel):
 
 
 class PreparedReceptor(VersionedContract):
-    schema_version: str = "prepared_receptor/1.2"
+    schema_version: str = "prepared_receptor/1.3"
 
     id: ULIDStr
     structure_id: ULIDStr
@@ -170,6 +170,12 @@ class PreparedReceptor(VersionedContract):
     nonstandard_replacements: tuple[ResidueReplacement, ...] = ()
     supporting_software: tuple[SoftwareRef, ...] = ()
     missing_heavy_atom_count: Annotated[int, Field(ge=0)] = 0
+    occupancy_policy: Literal["require_full_occupancy", "highest_occupancy_single_model"] | None = (
+        None
+    )
+    source_nonunit_occupancy_atom_count: Annotated[int, Field(ge=0)] = 0
+    zero_occupancy_rebuild_target_count: Annotated[int, Field(ge=0)] = 0
+    selected_altloc_count: Annotated[int, Field(ge=0)] = 0
     output_atom_count: Annotated[int, Field(ge=1)] | None = None
     output_residue_count: Annotated[int, Field(ge=1)] | None = None
     geometry_diagnostics: StructureGeometryDiagnostics | None = None

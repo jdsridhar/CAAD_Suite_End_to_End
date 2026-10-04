@@ -107,7 +107,14 @@ def test_execute_rejects_source_hash_that_is_not_in_the_store(handler) -> None:
         update={"raw": ArtifactRef(artifact_id=new_ulid(), role="missing", sha256="f" * 64)}
     )
     invocation = SimpleNamespace(
-        task=SimpleNamespace(stage_id="prepare", params={"selected_chain_ids": ["A"], "ph": 7.4}),
+        task=SimpleNamespace(
+            stage_id="prepare",
+            params={
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+                "occupancy_policy": "highest_occupancy_single_model",
+            },
+        ),
         inputs={"structure": (structure,)},
     )
 
@@ -167,6 +174,7 @@ def test_execute_classifies_worker_process_and_output_failures(
             request_path = Path(command.argv[3])
             request = json.loads(request_path.read_text(encoding="utf-8"))
             assert request["selected_chain_ids"] == ["A"]
+            assert request["occupancy_policy"] == "require_full_occupancy"
             assert request["ph"] == 7.4
             assert request["fill_internal_gaps"] is False
             assert request["keep_water"] is True

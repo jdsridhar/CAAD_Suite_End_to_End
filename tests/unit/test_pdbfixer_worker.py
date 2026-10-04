@@ -33,6 +33,7 @@ def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path)
                 "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
+                "occupancy_policy": "highest_occupancy_single_model",
                 "modeling_seed": 20261003,
                 "close_contact_threshold_A": 1.5,
                 "fill_internal_gaps": True,
@@ -61,7 +62,20 @@ def test_worker_prepares_selected_chain_and_reports_terminal_gap(tmp_path: Path)
     pdb_text = output_pdb.read_text(encoding="utf-8")
     assert "ATOM  " in pdb_text
     assert result["selected_chain_ids"] == ["A"]
+    assert result["occupancy_policy"] == "highest_occupancy_single_model"
+    assert result["source_nonunit_occupancy_atom_count"] == 21
+    assert result["zero_occupancy_source_atom_count"] == 9
+    assert result["zero_occupancy_rebuild_target_count"] == 0
+    assert {item["selected_altloc"] for item in result["selected_altlocs"]} == {"A", "B"}
+    from Bio.PDB import PDBParser
+    from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+
+    prepared_cif = MMCIF2Dict(str(output))
+    assert set(prepared_cif["_atom_site.occupancy"]) == {"1.0"}
+    prepared_pdb = PDBParser(QUIET=True).get_structure("prepared", str(output_pdb))
+    assert all(atom.get_occupancy() == 1.0 for atom in prepared_pdb.get_atoms())
     assert result["pdbfixer_version"]
+    assert result["biopython_version"]
     assert result["openmm_version"]
     assert result["missing_residues"] == [
         {
@@ -117,6 +131,7 @@ def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
                 "output_pdb": str(output_pdb),
                 "selected_chain_ids": ["A"],
                 "ph": 7.4,
+                "occupancy_policy": "highest_occupancy_single_model",
                 "modeling_seed": 20261003,
                 "close_contact_threshold_A": 1.5,
                 "fill_internal_gaps": True,
@@ -145,6 +160,42 @@ def test_worker_models_an_internal_sequence_gap(tmp_path: Path) -> None:
     assert internal
     assert all(gap["modelled"] for gap in internal)
     assert result["output_residue_count"] == 126
+
+
+def test_worker_requires_explicit_policy_for_partial_and_zero_occupancy(tmp_path: Path) -> None:
+    output = tmp_path / "strict.cif"
+    output_pdb = tmp_path / "strict.pdb"
+    request = tmp_path / "strict-request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "input_mmcif": str(FIXTURE),
+                "output_mmcif": str(output),
+                "output_pdb": str(output_pdb),
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+                "modeling_seed": 20261003,
+            }
+        ),
+        encoding="utf-8",
+    )
+    environment = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    run = subprocess.run(
+        [str(PYFIXER_PYTHON), str(WORKER), "--request", str(request)],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert run.returncode == 2
+    response = json.loads(run.stderr)
+    assert response["ok"] is False
+    assert "STRUCTURE.OCCUPANCY_DECISION_REQUIRED" in response["error"]
+    assert "A:40:CYS" in response["error"]
+    assert not output.exists()
+    assert not output_pdb.exists()
 
 
 def test_worker_refuses_to_overwrite_an_existing_artifact(tmp_path: Path) -> None:
@@ -200,6 +251,7 @@ def test_worker_replays_internal_loop_with_same_modeling_seed(tmp_path: Path) ->
                     "output_pdb": str(output_pdb),
                     "selected_chain_ids": ["A"],
                     "ph": 7.4,
+                    "occupancy_policy": "highest_occupancy_single_model",
                     "fill_internal_gaps": True,
                     "keep_water": False,
                     "close_contact_threshold_A": 1.5,

@@ -126,7 +126,7 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                 "compound": {"contract": "compound/1.0"},
                 "form": {"contract": "compound_form/1.0"},
                 "conformer": {"contract": "conformer/1.1"},
-                "receptor": {"contract": "prepared_receptor/1.2"},
+                "receptor": {"contract": "prepared_receptor/1.3"},
                 "target_structure": {"contract": "structure/1.0"},
                 "site": {"contract": "binding_site/1.0"},
             },
@@ -140,7 +140,7 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
                         "compound": "compound/1.0",
                         "form": "compound_form/1.0",
                         "conformer": "conformer/1.1",
-                        "receptor": "prepared_receptor/1.2",
+                        "receptor": "prepared_receptor/1.3",
                         "target_structure": "structure/1.0",
                         "site": "binding_site/1.0",
                     },
@@ -236,7 +236,12 @@ def test_vina_handler_executes_and_registers_normalized_pose_graph(tmp_path: Pat
     prepared = fixer_handler.execute(
         SimpleNamespace(
             task=SimpleNamespace(
-                stage_id="prepare_protein", params={"selected_chain_ids": ["A"], "ph": 7.4}
+                stage_id="prepare_protein",
+                params={
+                    "selected_chain_ids": ["A"],
+                    "ph": 7.4,
+                    "occupancy_policy": "highest_occupancy_single_model",
+                },
             ),
             inputs={"structure": (structure,)},
         )

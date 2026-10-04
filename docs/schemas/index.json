@@ -26,7 +26,7 @@
   "mep_render_request": "mep_render_request/1.0",
   "parameterization": "parameterization/1.0",
   "pose": "pose/1.0",
-  "prepared_receptor": "prepared_receptor/1.2",
+  "prepared_receptor": "prepared_receptor/1.3",
   "property_prediction_set": "property_prediction_set/1.0",
   "qm_calculation": "qm_calculation/1.2",
   "qm_result": "qm_result/2.1",

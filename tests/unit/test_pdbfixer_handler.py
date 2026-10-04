@@ -67,7 +67,11 @@ def test_handler_runs_worker_and_registers_normalized_artifacts(tmp_path: Path) 
     invocation = SimpleNamespace(
         task=SimpleNamespace(
             stage_id="prepare_protein",
-            params={"selected_chain_ids": ["A"], "ph": 7.4},
+            params={
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+                "occupancy_policy": "highest_occupancy_single_model",
+            },
         ),
         inputs={"structure": (structure,)},
     )
