@@ -79,6 +79,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [G-MD-115 ASP9 CG restraint/gradient probe](../validation/G-MD-115.md)
 - [G-MD-116 resolve 4W52 Sander finite-difference/GMAX discrepancy](../validation/G-MD-116.md)
 - [G-MD-117 4W52 minimizer continuations and readiness disposition](../validation/G-MD-117.md)
+- [G-MD-118 1Z6E/IK8 independent candidate preflight](../validation/G-MD-118.md)
 - [G-MD-98 single-water TIP3P template probe](../validation/G-MD-98-water-template-probe.md)
 - [G-MD-99 retained-water Amber/GROMACS integration](../validation/G-MD-99-retained-water-amber-integration.md)
 - [G-MD-100 4HLA short added-hydrogen contact investigation](../validation/G-MD-100-4hla-short-hydrogen-contact-investigation.md)
