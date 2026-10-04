@@ -160,3 +160,44 @@ Scratch files remain outside Git under `/home/sridhar/gmd102-4w52-benzene-audit/
 | Hessian step-check result | `0754327039f79183ba86c57a1abb3ae070d0152e725025bddb2773e82e395b34` |
 
 **Conclusion:** the GAFF2 source match has an explicit benzene normal-mode annotation and the lowest computed out-of-plane pair agrees closely with the selected NIST ring-deformation fundamental. The isolated-molecule comparison also exposes meaningful mismatch in upper out-of-plane frequencies. This is bounded evidence about one ligand term in one molecule. It neither independently reproduces the original GAFF2 parameter fit nor validates protein/solvent Amber–GROMACS energy/force equivalence, minimization readiness, sampling, or production MD. Keep the Amber compatibility profile disabled.
+
+## G-MD-105 - benzene out-of-plane mode correspondence
+
+**Disposition: mode identity is now checked by displacement overlap; the upper-frequency GAFF2/B3LYP discrepancy remains.** G-MD-104 compared sorted frequency lists without assigning eigenvectors. This follow-up aligns the isolated GAFF2 minimum to the CCD geometry, maps atoms by the verified C1-C6,H1-H6 order, and compares mass-weighted displacement vectors.
+
+### Method and limitations
+
+- The QM displacement vectors were parsed from the retained Psi4 1.11 output. Psi4 prints the Cartesian mode components to 0.01; those values were mass-weighted with the reported isotopic masses and individually normalized. This printed precision limits the precision of mode overlaps.
+- GAFF2/OpenMM 8.4 eigenvectors were recalculated from the G-MD-102-derived 12-atom topology and saved with the finite-difference Hessian. The same unconstrained gas-phase model and minimization used in G-MD-104 were retained.
+- The GAFF2 geometry was least-squares/Kabsch-aligned to the CCD ideal coordinates (fit RMS 0.0271 A); the source and topology atom orders agree for six carbons followed by six hydrogens.
+- Out-of-plane modes were selected by a >0.99 normal-displacement fraction. A maximum squared-overlap assignment paired individual modes. The full nine-dimensional out-of-plane subspaces agree closely (orthonormalized principal overlaps 0.9991-1.0000); because these modes span the molecule's out-of-plane vibrational space, this is principally a mapping/alignment check, not a force-field accuracy score.
+- Near-degenerate pairs may rotate within their subspace, so individual pair-member assignments should not be overinterpreted. No acceptance threshold was defined. This analysis remains a single isolated benzene model and cannot qualify the protein/solvent force field.
+
+### Overlap-assigned frequencies
+
+| QM B3LYP/6-31G* (cm-1) | GAFF2/OpenMM (cm-1) | GAFF2 - QM (cm-1) | Absolute overlap |
+|---:|---:|---:|---:|
+| 415.166 | 408.839 | -6.327 | 0.9935 |
+| 415.275 | 408.840 | -6.435 | 0.9954 |
+| 694.344 | 697.262 | +2.918 | 0.9994 |
+| 717.660 | 660.810 | -56.850 | 0.9993 |
+| 864.443 | 893.864 | +29.420 | 0.9401 |
+| 864.542 | 893.861 | +29.319 | 0.9413 |
+| 968.915 | 1122.900 | +153.985 | 0.9218 |
+| 969.030 | 1122.899 | +153.870 | 0.9212 |
+| 1010.553 | 1186.636 | +176.083 | 1.0000 |
+
+The mode-overlap assignment changes the pairing of the 694/718 cm-1 QM modes relative to simple frequency sorting: they correspond most strongly to the 697/661 cm-1 GAFF2 modes, respectively. It does not remove the high-frequency mismatch. The overlap-matched OOP frequency MAE/RMSE is 68.36/96.29 cm-1; the largest offsets remain the two upper doublets and the highest mode. The close eigenvector correspondence alongside these frequency shifts indicates a curvature/frequency discrepancy in corresponding motions, not merely an ordering ambiguity. It does not identify which force-field terms cause the shifts.
+
+### Reproduction artifacts
+
+Scratch inputs and outputs remain outside Git under /home/sridhar/gmd102-4w52-benzene-audit/.
+
+| Artifact | SHA-256 |
+|---|---|
+| GAFF2 mode calculation script gmd104_gaff2_modes.py | 52cf1648ad2408cbadfc446ed62811d5d3b43f63f15758a83d3d4ace9d193108 |
+| GAFF2 coordinates, Hessian, masses, frequencies and eigenvectors gmd104_gaff2_modes.npz | 407444d3fab9cfafc6490d8dc796c1424c4530341f7446d3e6b20a5e6657c941 |
+| Mode parser and overlap script gmd104_mode_overlap.py | 9c9b5b1aa72e5e54d1e91a7b3f9d615ec20ff5e528c373e50d3a45c779cdf575 |
+| Mode overlap result gmd104_mode_overlap.json | 0ea66fc3c57a0e5b9934a66204be7e5a6f2bd4eac188359a3cd2ddacffbc81fe |
+
+**Conclusion:** mode correspondence confirms that several sorted-list pairings were ambiguous, but the substantial 969-to-1123 and 1011-to-1187 cm-1 shifts persist for strongly overlapping motions. The GAFF2 source-matched impropers materially affect out-of-plane curvature, but this comparison does not attribute the remaining shifts to those terms alone. Keep the Amber compatibility profile disabled; matched full-system energies/forces, independent configurations, minimization readiness, and production MD consequences remain unqualified.
