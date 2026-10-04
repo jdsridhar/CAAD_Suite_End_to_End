@@ -201,3 +201,65 @@ Scratch inputs and outputs remain outside Git under /home/sridhar/gmd102-4w52-be
 | Mode overlap result gmd104_mode_overlap.json | 0ea66fc3c57a0e5b9934a66204be7e5a6f2bd4eac188359a3cd2ddacffbc81fe |
 
 **Conclusion:** mode correspondence confirms that several sorted-list pairings were ambiguous, but the substantial 969-to-1123 and 1011-to-1187 cm-1 shifts persist for strongly overlapping motions. The GAFF2 source-matched impropers materially affect out-of-plane curvature, but this comparison does not attribute the remaining shifts to those terms alone. Keep the Amber compatibility profile disabled; matched full-system energies/forces, independent configurations, minimization readiness, and production MD consequences remain unqualified.
+
+## G-MD-106 - matched Amber, OpenMM, and GROMACS force/energy probe
+
+**Disposition: one-frame force agreement is measured; the cross-engine energy residual is localized mainly to electrostatics. This does not qualify Amber/GROMACS compatibility.** This probe uses the 21,659-atom 4W52/benzene builder output and the exact GRO frame used by the retained OpenMM/GROMACS force comparison. Sander CLI force output provides an Amber reference; the Sander Python API force agrees with that CLI output at the emitted frame.
+
+### Methods and coordinate lineage
+
+- Input topology: platform Amber builder system.prmtop; the Amber topology atom count and GRO coordinate count both equal 21,659. The Amber topology was retained and the coordinates were read in GROMACS atom order from the builder's system.gro.
+- Periodic box: 60.3196 x 64.7372 x 72.4813 A, orthorhombic. Sander used Amber22 with PME, 10 A cutoff, and vdwmeth=0; GROMACS used the retained force-probe TPR with PME order 4, 1.0 nm Coulomb/LJ cutoffs and DispCorr=no. OpenMM 8.4 used the matched Amber topology and GRO coordinates with analytical LJ dispersion correction disabled.
+- Sander CLI requires a time-step force trajectory to emit -frc output. A one-step diagnostic was run with dt=0.000001 ps and zero initial velocities; the saved coordinate frame differs from the GRO frame by 9.05e-7 A RMS. This was only a force-evaluation probe, not a production or sampling MD run.
+- The Sander NetCDF force frame (kcal/mol/A) was checked against sander.energy_forces() at its saved coordinates. Component RMS difference was 0.00518 kJ/mol/A (0.0089% of the force RMS); maximum component difference was 0.04084 kJ/mol/A. This validates the API-derived force at this frame against standalone Sander output.
+- The existing GROMACS force-vector file is named with _kJ_mol_nm, but its generating comparison manifest identifies its actual unit as kJ/mol/A. The unit was cross-checked against the existing OpenMM/GROMACS comparison before calculating Amber differences. No factor-of-ten conversion was applied.
+- The Python Sander API returned the same energy as the standalone CLI with vdwmeth=1, even when the API option field was set to 0; setting that field to 1 did not change the API energy. The CLI explicitly distinguishes the no-correction vdwmeth=0 and analytical long-range-dispersion vdwmeth=1 results. Consequently, API forces are used only after CLI force cross-check; API energy is excluded from the no-dispersion energy comparison. See the Amber 2022 Reference Manual (https://ambermd.org/doc12/Amber22.pdf) for the Sander option semantics.
+
+### Force comparison at the GRO frame
+
+Force differences below use per-Cartesian-component RMS; vector RMS is also listed for direct comparison with the previous G-MD-102 measurement. GROMACS/OpenMM values are in kJ/mol/A.
+
+| Comparison | Component RMS difference | Vector RMS difference | Relative to reference component RMS | Cosine |
+|---|---:|---:|---:|---:|
+| Amber Sander API vs GROMACS | 0.62349 kJ/mol/A | 1.07992 kJ/mol/A | 1.0667% | 0.99994573 |
+| Amber Sander API vs OpenMM | 0.01928 kJ/mol/A | 0.03339 kJ/mol/A | 0.0330% | 0.99999995 |
+| OpenMM vs GROMACS | 0.62331 kJ/mol/A | 1.07961 kJ/mol/A | 1.0664% | 0.99994571 |
+
+For the six ligand heavy atoms, Amber/GROMACS component RMS is 0.00691 kJ/mol/A (0.0168% of their reference RMS; cosine 0.99999999). These are measurements on one coordinate frame. No pass threshold was specified, and close agreement for one ligand subset does not establish full-system compatibility.
+
+### Same-frame energy decomposition
+
+The GROMACS energy was read from the same one-frame force-probe EDR and converted from kJ/mol to kcal/mol. Delta is GROMACS minus Sander.
+
+| Energy term | Sander CLI (kcal/mol) | GROMACS (kcal/mol) | Delta (kcal/mol) |
+|---|---:|---:|---:|
+| Bond | 122.8282 | 122.5022 | -0.3260 |
+| Angle | 705.9641 | 705.9635 | -0.0006 |
+| Proper + improper torsions | 1845.8300 | 1845.8291 | -0.0009 |
+| 1-4 LJ | 946.3576 | 946.3577 | +0.0001 |
+| 1-4 Coulomb | 5733.2426 | 5733.4334 | +0.1908 |
+| LJ short range | 5162.3724 | 5162.3862 | +0.0138 |
+| Coulomb short range + reciprocal | -71134.4448 | -71141.4137 | -6.9689 |
+| **Potential / total** | **-56617.8500** | **-56624.9402** | **-7.0902** |
+
+Thus, in this frame, the energy difference is dominated by the PME-periodic electrostatic total. This localizes the discrepancy to the electrostatic terms but does not identify its cause; PME grid/interpolation, reciprocal-space conventions, and other engine-specific details still require matched-setting controls and independent configurations. The value differs from the G-MD-102 original-coordinate delta because this is a separate comparison at the GRO-rounded frame.
+
+A useful option control: Sander CLI vdwmeth=1 changes this frame's total by -275.6641 kcal/mol relative to vdwmeth=0, while GROMACS has DispCorr=no. This is an analytical long-range LJ correction convention, not a force disagreement; it explains why the Python API energy cannot be substituted for the explicitly configured CLI no-correction result.
+
+### Reproduction artifacts
+
+Scratch outputs are retained outside Git under /home/sridhar/gmd102-4w52-benzene-audit/sander_api_probe/. The Sander Python shared library was copied to scratch and only its GNU_STACK executable flag cleared because WSL refused to load the installed library otherwise; the installed Conda environment was not modified. Standalone CLI Sander generated the force trajectory independently.
+
+| Artifact | SHA-256 |
+|---|---|
+| GRO frame | 538ab8bbcfa3b4d29acabf2921a4188ecbfef79de0b8daf907fee8fdf652c610 |
+| Amber Sander one-step input | 5b16576698e0ac70dc9e9090923c3c8dad7359b34f3f379532a87fba43bb30df |
+| Amber Sander output log | 182d6dea143269cfbb9d3aa13bb719da31ee8c0532c4491fbebb11a1070fe5bd |
+| Sander NetCDF force frame | 465ba46958c885ad3200e402757bcd544a4c5c6877c9168ff0446e1eda5788c3 |
+| Sander NetCDF coordinate frame | 5bcc7ee718d39202a0c04056399a97549880e6282af3891ed987ca8d809f876f |
+| GROMACS energy-term extract | 2e86ea567baab419ef69d7a0390dd8e79cb85ac70873faca04a82d3773242542 |
+| Force comparison script | d5824a8daebe424cb7f582fe46d956fa3a9b0acd63a2ab37d0db56d678f64967 |
+| Force comparison JSON | db72607deb1239d3f6ea41c4de0d4163188e39a4528cb41310148840c99e3a20 |
+| Scratch copy of libsander.so with GNU_STACK flag cleared | feb1ab47063153a057a904b41043d815f2a8be29c2282df854bfd496b6edbade |
+
+**Conclusion:** a standalone Amber force frame is now available and agrees closely with the Sander API and OpenMM for this coordinate set. GROMACS differs by about 1.08 kJ/mol/A vector RMS, with a 7.09 kcal/mol same-frame energy residual dominated by the electrostatic terms. This is one frame from one builder system, not an acceptance test. Do not enable the Amber/GROMACS profile or infer production MD stability from this result.
