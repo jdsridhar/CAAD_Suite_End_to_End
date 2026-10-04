@@ -74,6 +74,7 @@ Current chemistry and structure migration notes: [CHEMISTRY_STANDARDIZATION.md](
 - [G-MD-110 Ewald potential-modifier audit](../validation/G-MD-110.md)
 - [G-MD-111 Ewald backend/sample reconciliation](../validation/G-MD-111.md)
 - [G-MD-112 full-precision CPU/GPU backend control](../validation/G-MD-112.md)
+- [G-MD-113 independent-system readiness triage](../validation/G-MD-113.md)
 - [G-MD-98 single-water TIP3P template probe](../validation/G-MD-98-water-template-probe.md)
 - [G-MD-99 retained-water Amber/GROMACS integration](../validation/G-MD-99-retained-water-amber-integration.md)
 - [G-MD-100 4HLA short added-hydrogen contact investigation](../validation/G-MD-100-4hla-short-hydrogen-contact-investigation.md)
