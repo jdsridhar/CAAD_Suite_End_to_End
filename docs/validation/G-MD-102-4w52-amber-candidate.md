@@ -61,7 +61,7 @@ Reproduction artifacts are in `/home/sridhar/gmd102-4w52-benzene-audit/gromacs_f
 
 **The 4W52/benzene system is not qualified for MD or Amber↔GROMACS compatibility.** The builder proves that a second, larger real protein–ligand system can pass through the platform Amber handler and ParmEd/GROMACS coordinate conversion. The OpenMM/Sander starting-energy discrepancy is now mostly traced to the analytical dispersion-correction setting. G-MD-103 establishes that the reported `ca-ca-ca-ha` term exactly expands a general improper in the selected GAFF2 source (annotated there `bsd.on C6H6 nmodes`); it is used six times in the ligand and is not the remaining scientific blocker. The gate remains open because (1) the Amber compatibility profile is disabled, (2) the −4.2303 kcal/mol same-coordinate GROMACS-minus-Amber residual has no accepted tolerance, (3) Sander minimizations reached cycle limits, (4) the single-frame OpenMM/GROMACS force agreement has not been repeated across independent configurations or checked against Sander forces, and (5) production-trajectory consequences are untested. OpenMM reaching its own minimizer tolerance is useful diagnostic evidence, not an MD-readiness or Amber/GROMACS qualification. No MD, equilibration, production trajectory, MM/PBSA, or candidate-prioritization conclusion was generated.
 
-Do not lower or invent an acceptance threshold to pass this case. The next scientifically useful step is to repeat matched force/energy comparisons on independent configurations, establish an Amber Sander force reference, and compare the isolated-ligand GAFF2 harmonic out-of-plane behavior with independent benzene vibrational evidence. Compatibility qualification still requires explicit, matched energy and force conventions across independent equilibrated configurations; this one builder probe is not enough.
+Do not lower or invent an acceptance threshold to pass this case. G-MD-104 now compares isolated-ligand GAFF2 harmonic out-of-plane modes with QM and experimental references; it finds a material upper-mode discrepancy and does not establish full-system readiness. The next scientifically useful step is to repeat matched force/energy comparisons on independent configurations and establish an Amber Sander force reference. Compatibility qualification still requires explicit, matched energy and force conventions across independent equilibrated configurations; this one builder probe is not enough.
 
 ## Reproduction record
 
@@ -91,6 +91,72 @@ The selected term and files were inspected directly in the installed AmberTools 
 | Generated `benzene-pose.frcmod` | `4e23881aa4714dc8342714d1e8746df83f53b6ed145d32ad209605e38b75f11c` |
 | Built `system.prmtop` | `70ffc2de687dcf55783de561eff8731abb963c140d74daf367cdd2d91b14f753` |
 
-Independent evaluation remains useful: compare computed isolated-benzene harmonic out-of-plane normal modes to experimental references and examine mode correspondence, since normal modes couple multiple bonded terms and cannot alone isolate this single improper. NIST's compilation reports experimental benzene fundamentals including the A2u C–H bend at 673 cm⁻¹, B2g ring deformation at 703 cm⁻¹, and E2u ring deformation at 410 cm⁻¹; these provide observables for a bounded comparison, not a force-field-wide acceptance criterion ([NIST Chemistry WebBook](https://webbook.nist.gov/cgi/cbook.cgi?ID=C71432&Mask=864&Units=CAL), [NIST CCCBDB comparison](https://cccbdb.nist.gov/compvibs3x.asp?basis=1&casno=71432&charge=0&method=63)). The term source is also visible in the archived GAFF2 data and [AmberClassic `parmchk2.c`](https://github.com/Amber-MD/AmberClassic/blob/main/src/antechamber/parmchk2.c).
+G-MD-104 now provides a bounded QM/experimental out-of-plane comparison. A future mode-overlap analysis would improve correspondence assignments; normal modes still couple multiple bonded terms and cannot alone isolate this improper. NIST reports benzene references including 673 cm⁻¹ (A2u C–H bend), 703 cm⁻¹ (B2g ring deformation estimated from an overtone/combination), and 410 cm⁻¹ (E2u ring deformation). These values have different phase/assignment provenance and are not force-field-wide acceptance criteria ([NIST Chemistry WebBook](https://webbook.nist.gov/cgi/cbook.cgi?ID=C71432&Mask=864&Units=CAL), [NIST CCCBDB comparison](https://cccbdb.nist.gov/compvibs3x.asp?basis=1&casno=71432&charge=0&method=63)). The term source is also visible in the archived GAFF2 data and [AmberClassic `parmchk2.c`](https://github.com/Amber-MD/AmberClassic/blob/main/src/antechamber/parmchk2.c).
 
 **Decision:** remove this specific term from the list of unresolved parameter fallbacks, but keep the Amber/GROMACS profile disabled. Energy/force equivalence, minimization convergence, independent configurations, and production-trajectory consequences remain unqualified; the source match alone does not clear this system for MD.
+
+
+## G-MD-104 — isolated benzene out-of-plane vibrational comparison
+
+**Disposition: useful ligand-level support for the GAFF2 source term, with a material high-frequency mismatch; not a force-field or MD qualification.** This follow-up checks the literal GAFF2 source annotation `bsd.on C6H6 nmodes` against an independent QM harmonic spectrum, selected experimental references, and a same-geometry term-removal sensitivity diagnostic.
+
+### Methods and inputs
+
+- Input molecule: the 12-atom benzene component from the deposited CCD ideal SDF used in G-MD-102, SHA-256 `d7f5068484a28f7cabc64fa3dc63bab3d2f5510adf6c181e6c091ec66678a97d`.
+- QM reference: Psi4 1.11; B3LYP/6-31G*; gas-phase, neutral singlet; geometry optimization followed by the Psi4 `frequency` driver. Frequencies are unscaled harmonic values. The optimized planar structure has no imaginary internal mode after rigid translations/rotations are projected out. Psi4 reported small displaced-geometry convergence notices during its finite-difference Hessian procedure and selected the better internal-coordinate geometries; the final job completed.
+- GAFF2: extracted the exact 12-atom LIG topology/coordinates from the G-MD-102 Amber `system.prmtop`/`system.inpcrd` using ParmEd, stripped protein/solvent/ions, and evaluated the isolated molecule with OpenMM 8.4, `NoCutoff`, no constraints. An unconstrained L-BFGS-B optimization converged in 28 iterations; maximum final force was 0.2241 kJ·mol⁻¹·nm⁻¹. The finite-difference force Hessian used a 1e-4 nm displacement, mass weighting, and removal of the six rigid-body modes.
+- Numerical step check: repeating the Hessian at 5e-5 and 2e-4 nm changed the 18 reported sub-1300 cm⁻¹ positive frequencies by at most 0.00056 and 0.00081 cm⁻¹, respectively. This checks numerical differencing stability, not force-field validity.
+- Improper sensitivity: zeroed the six identified GAFF2 improper torsion force constants and recomputed the Hessian at the **unchanged baseline minimized geometry**. No-improper frequencies are therefore a curvature sensitivity measurement, not a separately minimized or physically proposed force field.
+
+### Out-of-plane spectra
+
+Frequencies below are sorted within each out-of-plane subspace. The ordering is a comparison aid; it is not a symmetry or eigenvector-overlap assignment.
+
+| Sorted mode | Psi4 B3LYP/6-31G* (cm⁻¹) | GAFF2/OpenMM (cm⁻¹) | GAFF2 − QM (cm⁻¹) |
+|---:|---:|---:|---:|
+| 1 | 415.17 | 408.84 | −6.33 |
+| 2 | 415.28 | 408.84 | −6.43 |
+| 3 | 694.34 | 660.81 | −33.53 |
+| 4 | 717.66 | 697.26 | −20.40 |
+| 5 | 864.44 | 893.86 | +29.42 |
+| 6 | 864.54 | 893.86 | +29.32 |
+| 7 | 968.92 | 1122.90 | +153.98 |
+| 8 | 969.03 | 1122.90 | +153.87 |
+| 9 | 1010.55 | 1186.64 | +176.08 |
+
+All nine modes in each computed set have essentially pure out-of-plane displacement under the fitted molecular plane. Sorted-spectrum RMSE is 95.30 cm⁻¹ and MAE is 67.71 cm⁻¹; most of this discrepancy comes from the top three GAFF2 modes. Thus, the low-frequency modes compare reasonably, while the full out-of-plane spectrum does not reproduce the B3LYP harmonic spectrum closely. No mode-specific tolerance or pass criterion was set.
+
+The NIST CCCBDB table lists selected benzene fundamentals including 410 cm⁻¹ (E2u ring deformation, solution), 673 cm⁻¹ (A2u C–H bend, gas), 703 cm⁻¹ (B2g ring deformation estimated from a combination/overtone), 849 cm⁻¹ (E1g C–H bend, liquid), and 975 cm⁻¹ (E2u C–H bend, liquid). These are observed fundamentals with different phase/assignment provenance, whereas the computed values above are unscaled harmonic frequencies. They are context, not interchangeable exact targets. The 408.84 cm⁻¹ GAFF2 pair is close to the selected 410 cm⁻¹ reference; individual assignments for other modes require symmetry/eigenvector analysis before drawing mode-by-mode conclusions ([NIST CCCBDB comparison](https://cccbdb.nist.gov/compvibs3x.asp?basis=1&casno=71432&charge=0&method=63); [NIST Chemistry WebBook](https://webbook.nist.gov/cgi/cbook.cgi?ID=C71432&Mask=864&Units=CAL)).
+
+### Effect of the six GAFF2 impropers
+
+| Sorted out-of-plane mode | With source-matched impropers | Same geometry, six impropers zeroed | Curvature shift |
+|---:|---:|---:|---:|
+| 1–2 | 408.84, 408.84 | 398.45, 398.45 | +10.39, +10.39 |
+| 3 | 660.81 | 643.71 | +17.10 |
+| 4 | 697.26 | 650.52 | +46.74 |
+| 5–6 | 893.86, 893.86 | 851.78, 851.79 | +42.08, +42.07 |
+| 7–8 | 1122.90, 1122.90 | 1075.84, 1075.84 | +47.06, +47.06 |
+| 9 | 1186.64 | 1136.05 | +50.59 |
+
+This confirms that the six source-matched improper terms materially affect the molecule's out-of-plane curvature. It does not show that the improper alone causes either the agreement in the lowest modes or the high-frequency mismatch; the observed modes couple the full bonded force field. The term-removal topology remains a diagnostic only.
+
+### Reproduction artifacts and hashes
+
+Scratch files remain outside Git under `/home/sridhar/gmd102-4w52-benzene-audit/`.
+
+| Artifact | SHA-256 |
+|---|---|
+| QM driver `gmd103_qm_frequency.py` | `bd38cfbe061a75a4a326c15cb222f22824c657587fb6454c357f6b717151377f` |
+| Psi4 output `gmd103_benzene_qm.out` | `c70d838ceb0c523fc828d88dc6476cf54209234e6bd79107854c38d59eacdfcc` |
+| ParmEd topology-extraction script | `36939035c828c865538b1dab1641f4734cb2edb40298117a9a96cedc3ae81838` |
+| ParmEd improper-inventory script | `8f7884fcad8be421cc2f7cf63b7ad23d31071f40846ad35036f76be2cd6515cd` |
+| Isolated GAFF2 topology | `34b7414e5ae14c5d89f7adbb8fa51204396125a612d06d8e10e034ef18566d84` |
+| Isolated GAFF2 coordinates | `43bafaf328513826e0739e008501ad4a43a83cc23208e0a63e0345a1bb66d75c` |
+| ParmEd improper inventory | `37ce44552e86c39365d471385951962d97d3362dfbc9d543c9e3dd808ea8c327` |
+| OpenMM sensitivity script | `7a63a854e4ae443dc4ae0de56e1dd77275d91fa73c789a6161f80e3862556c71` |
+| OpenMM sensitivity result | `04f0a65f5bc67d9472a255f415539dac2039465d0123c1be807838063f670e08` |
+| Hessian step-check script | `57cbec18166962714c3fb0779801c4c814a6579377a571768ad067561981ff51` |
+| Hessian step-check result | `0754327039f79183ba86c57a1abb3ae070d0152e725025bddb2773e82e395b34` |
+
+**Conclusion:** the GAFF2 source match has an explicit benzene normal-mode annotation and the lowest computed out-of-plane pair agrees closely with the selected NIST ring-deformation fundamental. The isolated-molecule comparison also exposes meaningful mismatch in upper out-of-plane frequencies. This is bounded evidence about one ligand term in one molecule. It neither independently reproduces the original GAFF2 parameter fit nor validates protein/solvent Amber–GROMACS energy/force equivalence, minimization readiness, sampling, or production MD. Keep the Amber compatibility profile disabled.
