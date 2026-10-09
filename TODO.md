@@ -2047,5 +2047,7 @@ When the user says **CONTINUE**:
 - [x] Executed matched single-point potential energy crosschecks on the 30 ps equilibrated coordinates: Form 0 Sander Epot = -104,050.0 kcal/mol vs GROMACS Epot = -103,480.17 kcal/mol (delta = +569.83 kcal/mol, 0.55%); Form +1 Sander Epot = -103,630.0 kcal/mol vs GROMACS Epot = -103,032.98 kcal/mol (delta = +597.02 kcal/mol, 0.58%).
 - [x] Confirmed residual magnitude (~0.016 kcal/mol/atom) is consistent with macroscopic PME lattice differences across ~10,000 waters without altering existing compatibility status.
 - [x] Documented full protocol, observables, energy terms, and dispositions in docs/validation/G-MD-124.md.
+- [x] Verified full repository quality gate and coverage thresholds: core 85.07% (floor 85%), adapters 80.13% (floor 70%); added test_pdbfixer_stage_plugin.py and expanded test_ranking_scoring.py (lexicographic, pareto, z-score, validation errors); 976 passed, 41 skipped, 0 failed; strict mypy (205 modules) and 4/4 architectural contracts kept.
 - [-] Address open P0 blind redocking curation/unblinding and Phase 18 packaging/release license review. Keep 5NIU terminal HIS O-OXT warning visible and receptor unready; no Amber/GROMACS compatibility qualification claimed.
+
 
