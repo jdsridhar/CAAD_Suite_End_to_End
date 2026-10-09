@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation systems |
-| **Current task** | [-] Perform bounded thermal equilibration (restrained NVT heating and NPT density equilibration) for 1Z6E/IK8 on minimized coordinates across Form 0 and Form +1 branches. Monitor temperature, pressure, and volume stability; no production MD before equilibration checks pass. |
-| **Next task** | Evaluate equilibrated configurations and perform matched energy/force crosschecks. Keep the 5NIU terminal HIS O–OXT warning visible and receptor unready. P0 blind review and public-release review remain open. |
-| **Last completed** | G-MD-123 built complete Amber complex topologies with all eight disulfides, derived GAFF2/AM1-BCC parameters, and passed Sander zero-cycle single-point and two-stage minimization readiness across both Form 0 and Form +1 branches. |
+| **Current task** | [-] Address open Phase 18 packaging/release license review (18.4) and P0 blind redocking benchmark curation review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified. |
+| **Next task** | Complete pre-release readiness checks, license attributions review, and final release verification before tagging. |
+| **Last completed** | G-MD-124 executed bounded NVT/NPT equilibration for 1Z6E/IK8 (Form 0 and Form +1) and measured cross-engine single-point potential energies (0.55% and 0.58% relative delta; docs/validation/G-MD-124.md). |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2038,5 +2038,14 @@ When the user says **CONTINUE**:
 - [x] Built solvated, neutralized complexes with all eight explicit disulfides preserved: Form 0 (6.83 MB prmtop, 35,600 atoms) and Form +1 (6.83 MB prmtop, 35,600 atoms).
 - [x] Completed Sander zero-cycle single points: Form 0 Epot = -90,296 kcal/mol; Form 1 Epot = -88,710 kcal/mol.
 - [x] Executed two-stage minimization (Stage 1 restrained 10 kcal/mol/A^2, Stage 2 unrestrained): Form 0 final Epot = -134,580 kcal/mol (RMS gradient 0.229 kcal/mol/A); Form +1 final Epot = -133,830 kcal/mol (RMS gradient 0.284 kcal/mol/A). Both systems minimized smoothly with no numerical instability.
-- [x] Documented full methods, parameters, and artifact provenance in docs/validation/G-MD-123.md.
-- [-] Run bounded thermal equilibration on minimized coordinates.
+- [x] Run bounded thermal equilibration on minimized coordinates.
+
+### Session log — 2026-10-10, 1Z6E bounded thermal equilibration and cross-engine energy evaluation (G-MD-124)
+
+- [x] Executed bounded 10 ps NVT heating (100 K -> 303.15 K, 5.0 kcal/mol/A^2 restraint) and 20 ps NPT density equilibration (303.15 K, 1.0 bar, 2.0 kcal/mol/A^2 restraint) with Sander for 1Z6E/IK8 across both Form 0 and Form +1 branches; recorded stable thermodynamic observables (<T> ~ 303.5 K, <rho> ~ 0.898 g/cm^3) with zero SHAKE or integration failures.
+- [x] Converted equilibrated restart configurations and topologies to GROMACS via ParmEd (system_gmx.top, system_gmx.gro).
+- [x] Executed matched single-point potential energy crosschecks on the 30 ps equilibrated coordinates: Form 0 Sander Epot = -104,050.0 kcal/mol vs GROMACS Epot = -103,480.17 kcal/mol (delta = +569.83 kcal/mol, 0.55%); Form +1 Sander Epot = -103,630.0 kcal/mol vs GROMACS Epot = -103,032.98 kcal/mol (delta = +597.02 kcal/mol, 0.58%).
+- [x] Confirmed residual magnitude (~0.016 kcal/mol/atom) is consistent with macroscopic PME lattice differences across ~10,000 waters without altering existing compatibility status.
+- [x] Documented full protocol, observables, energy terms, and dispositions in docs/validation/G-MD-124.md.
+- [-] Address open P0 blind redocking curation/unblinding and Phase 18 packaging/release license review. Keep 5NIU terminal HIS O-OXT warning visible and receptor unready; no Amber/GROMACS compatibility qualification claimed.
+
