@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation systems |
-| **Current task** | [-] Parameterize and build 1Z6E/IK8 Amber complexes for both Form +1 (cationic) and Form 0 (neutral) branches under user decision recorded in G-MD-122. Verify Antechamber/GAFF2 parameters, tleap disulfides and box, then test geometry and minimization readiness before bounded equilibration. |
-| **Next task** | Run Sander geometry and minimization readiness gates for 1Z6E/IK8 (both branches). Keep the 5NIU terminal HIS O–OXT warning visible. Continue matched energy/force work only on independently equilibrated systems. P0 blind review and public-release review remain open. |
-| **Last completed** | G-MD-122 characterized 1Z6E pocket disorder (A:96 LYS solvent-exposed sidechain, A:97 GLU periphery) and recorded the explicit user decision to branch and evaluate both Form +1 (cationic) and Form 0 (neutral) independently under ADR-0014. |
+| **Current task** | [-] Perform bounded thermal equilibration (restrained NVT heating and NPT density equilibration) for 1Z6E/IK8 on minimized coordinates across Form 0 and Form +1 branches. Monitor temperature, pressure, and volume stability; no production MD before equilibration checks pass. |
+| **Next task** | Evaluate equilibrated configurations and perform matched energy/force crosschecks. Keep the 5NIU terminal HIS O–OXT warning visible and receptor unready. P0 blind review and public-release review remain open. |
+| **Last completed** | G-MD-123 built complete Amber complex topologies with all eight disulfides, derived GAFF2/AM1-BCC parameters, and passed Sander zero-cycle single-point and two-stage minimization readiness across both Form 0 and Form +1 branches. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2029,3 +2029,14 @@ When the user says **CONTINUE**:
 - [x] Preserved the user-confirmed decision under ADR-0014 to branch and evaluate both Form +1 (cationic) and Form 0 (neutral) as separate independent candidate branches.
 - [x] Documented full analysis, coordinates, and decision disposition in docs/validation/G-MD-122.md.
 - [-] Parameterize IK8 Form +1 and Form 0 via Antechamber/GAFF2 and build Amber complex topologies with tleap.
+
+### Session log — 2026-10-10, 1Z6E/IK8 Amber complex build and minimization readiness (G-MD-123)
+
+- [x] Generated 3D conformers for IK8 Form 0 (58 atoms, charge 0) and Form +1 (59 atoms, charge +1) with ConstrainedEmbed matching crystal heavy-atom coordinates.
+- [x] Successfully parameterized both ligand microstates using Antechamber/GAFF2 and sqm AM1-BCC charges (Form 0 net charge +0.001e, Form +1 net charge +0.998e); parmchk2 generated clean frcmod files.
+- [x] Resolved multi-chain residue addressing in tleap: continuous numbering across chains (Chain A: 16..249, Chain B: 250..301); stripped OpenMM-exported CONECT records to avoid unitio.c:1955 duplicate bond errors.
+- [x] Built solvated, neutralized complexes with all eight explicit disulfides preserved: Form 0 (6.83 MB prmtop, 35,600 atoms) and Form +1 (6.83 MB prmtop, 35,600 atoms).
+- [x] Completed Sander zero-cycle single points: Form 0 Epot = -90,296 kcal/mol; Form 1 Epot = -88,710 kcal/mol.
+- [x] Executed two-stage minimization (Stage 1 restrained 10 kcal/mol/A^2, Stage 2 unrestrained): Form 0 final Epot = -134,580 kcal/mol (RMS gradient 0.229 kcal/mol/A); Form +1 final Epot = -133,830 kcal/mol (RMS gradient 0.284 kcal/mol/A). Both systems minimized smoothly with no numerical instability.
+- [x] Documented full methods, parameters, and artifact provenance in docs/validation/G-MD-123.md.
+- [-] Run bounded thermal equilibration on minimized coordinates.
