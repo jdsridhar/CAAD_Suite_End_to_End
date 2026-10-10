@@ -182,6 +182,7 @@ def run_attempt(
     num_modes: int = 9,
     energy_range: float = 3.0,
     cpu_cores: int = 2,
+    timeout_seconds: int = 3600,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -389,7 +390,7 @@ def run_attempt(
         cwd=output_dir,
         capture_output=True,
         text=True,
-        timeout=1800,
+        timeout=timeout_seconds,
     )
     vina_runtime_sec = round(time.monotonic() - started, 3)
     (output_dir / "vina.stdout.log").write_text(vina_proc.stdout, encoding="utf-8")

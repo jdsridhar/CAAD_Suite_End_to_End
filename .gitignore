@@ -54,3 +54,4 @@ dist/
 # Playwright browser output
 apps/web/test-results/
 apps/web/playwright-report/
+benchmarks/**/runs/
