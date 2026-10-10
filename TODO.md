@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Current phase** | Post-phase audit — independent scientific validation systems |
-| **Current task** | [-] Execute serial preregistered redocking cohort benchmark across 30 cases (90 attempts) with cluster bootstrap and intention-to-dock denominator tracking. Address Phase 18 release license review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified. |
-| **Next task** | Complete pre-release readiness checks, license attributions review, and final release verification before tagging. |
-| **Last completed** | Completed REDOCK-001/002 3-seed evaluation; automated cohort batch runner with 10,000-replicate cluster bootstrap; cached all 26 CCD ideal SDFs; documented in docs/validation/G-DOCK-14.md. |
+| **Current phase** | Post-phase audit — independent scientific validation & pre-release readiness |
+| **Current task** | [-] Phase 18 packaging and release review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified. |
+| **Next task** | Final package verification, legal review audit, and release tagging. |
+| **Last completed** | Completed full 90-attempt preregistered redocking cohort benchmark (G-DOCK-14): 26/90 ITD successes (28.89%, 10,000-replicate cluster bootstrap 95% CI [13.33%, 45.56%]), 34/90 top-5 (37.78%), 48 completed docking runs (54.17% conditional Top-1, 70.83% conditional Top-5). 8 complexes achieved 100% success across all seeds. Documented and closed in docs/validation/G-DOCK-14.md. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2092,9 +2092,16 @@ When the user says **CONTINUE**:
   - Seed 44: Top-1 RMSD 6.0919 Å, Best RMSD 3.3752 Å, Wall clock 465.50 s (~7.76 min), Peak RSS 426.00 MiB.
   - Complex summary: Mean Top-1 RMSD 4.8999 Å, Best sampled RMSD 3.3752 Å; 0 / 3 success. Preserved in denominator.
 - [x] Documented benchmark architecture, resource metrics, and cohort status in docs/validation/G-DOCK-14.md.
-- [-] Active execution of batch runner across remaining cohort complexes (REDOCK-004 currently in progress).
-
-
-
-
+- [x] Completed full 90-attempt execution of the preregistered 30-case redocking benchmark cohort across seeds 42, 43, 44:
+  - Primary endpoint (ITD Top-1 RMSD < 2.0 Å): **26 / 90 (28.89%)**; 10,000-replicate cluster bootstrap 95% CI (seed 20260929): **[13.33%, 45.56%]**.
+  - Secondary top-5 endpoint: **34 / 90 (37.78%)**; 95% CI: **[21.11%, 54.44%]**.
+  - Completed docking runs: 48 / 90 (53.33%) across 16 complexes; conditional Top-1 success rate: **26 / 48 (54.17%)**, conditional Top-5 rate: **34 / 48 (70.83%)**.
+  - Median Top-1 RMSD (completed): **1.6297 Å**; Median best sampled RMSD: **1.0353 Å**.
+  - 8 complexes achieved 100% (3/3) success across all seeds: REDOCK-003 (7DMB, SAH), REDOCK-004 (5SVW, 6P9), REDOCK-007 (3TB0, 41J), REDOCK-014 (5UF8, 5GP), REDOCK-017 (5ZDC, AR6), REDOCK-025 (1IA9, DAN), REDOCK-026 (5HKA, AKV), REDOCK-029 (6YA3, 64N with 0.20 Å near-exact overlay).
+  - 1 complex achieved 2/3 success: REDOCK-018 (3PJU, I43, min 0.3622 Å).
+  - 14 complexes encountered Meeko receptor preparation exceptions; all 42 attempts preserved strictly in the denominator per ADR-0010 without post-hoc tuning.
+  - Resource profile: Mean peak RSS 575.25 MiB (~7.4% host RAM), Max peak RSS 1016.11 MiB (~1.02 GiB), Mean Vina wall-clock 259.60 s per completed run, Total Vina wall-clock 3.461 hours across 2 CPU threads.
+  - Master artifacts verified: `cohort_summary.json` (SHA-256 manifest `02f619ba...`) and `cohort_summary.csv`.
+  - Documented full findings and formally closed G-DOCK-14 in `docs/validation/G-DOCK-14.md`.
+- [-] Phase 18 packaging and release review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified.
 
