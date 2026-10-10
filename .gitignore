@@ -31,6 +31,14 @@ caddsuite_data/
 *.cpt
 scratch/
 
+# Benchmark raw downloads and exploratory decision logs
+benchmarks/**/candidate_decisions.jsonl
+benchmarks/**/structures/*.cif.gz
+benchmarks/**/candidate-capture-*
+benchmarks/**/cohort-*-exploratory*
+benchmarks/**/cohort-30-*/structures/
+benchmarks/**/progress.json
+
 # Editors / OS
 .idea/
 .vscode/

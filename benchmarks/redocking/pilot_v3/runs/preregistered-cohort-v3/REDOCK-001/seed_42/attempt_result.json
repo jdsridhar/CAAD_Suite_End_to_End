@@ -1,0 +1,127 @@
+{
+  "case_id": "REDOCK-001",
+  "cluster_id": "6E5D_1",
+  "entity_id": "6E5F_1",
+  "pdb_id": "6E5F",
+  "poses": [
+    {
+      "affinity_score_kcal_mol": -6.73,
+      "heavy_atom_count": 35,
+      "mode_rank": 1,
+      "symmetry_corrected_no_fit_rmsd_A": 5.5273
+    },
+    {
+      "affinity_score_kcal_mol": -6.416,
+      "heavy_atom_count": 35,
+      "mode_rank": 2,
+      "symmetry_corrected_no_fit_rmsd_A": 7.4187
+    },
+    {
+      "affinity_score_kcal_mol": -6.354,
+      "heavy_atom_count": 35,
+      "mode_rank": 3,
+      "symmetry_corrected_no_fit_rmsd_A": 9.5933
+    },
+    {
+      "affinity_score_kcal_mol": -6.304,
+      "heavy_atom_count": 35,
+      "mode_rank": 4,
+      "symmetry_corrected_no_fit_rmsd_A": 4.4902
+    },
+    {
+      "affinity_score_kcal_mol": -6.287,
+      "heavy_atom_count": 35,
+      "mode_rank": 5,
+      "symmetry_corrected_no_fit_rmsd_A": 9.6887
+    },
+    {
+      "affinity_score_kcal_mol": -6.224,
+      "heavy_atom_count": 35,
+      "mode_rank": 6,
+      "symmetry_corrected_no_fit_rmsd_A": 8.2201
+    },
+    {
+      "affinity_score_kcal_mol": -6.114,
+      "heavy_atom_count": 35,
+      "mode_rank": 7,
+      "symmetry_corrected_no_fit_rmsd_A": 3.3729
+    },
+    {
+      "affinity_score_kcal_mol": -6.068,
+      "heavy_atom_count": 35,
+      "mode_rank": 8,
+      "symmetry_corrected_no_fit_rmsd_A": 9.5171
+    },
+    {
+      "affinity_score_kcal_mol": -5.959,
+      "heavy_atom_count": 35,
+      "mode_rank": 9,
+      "symmetry_corrected_no_fit_rmsd_A": 5.1039
+    }
+  ],
+  "primary_endpoint": {
+    "top1_success_threshold_2_0A": false,
+    "top1_symmetry_corrected_no_fit_rmsd_A": 5.5273,
+    "verdict": "failure"
+  },
+  "protocol": {
+    "cpu_cores": 2,
+    "crop_rule": "retain complete residues having any atom within box expanded by 8.0 A",
+    "crop_statistics": {
+      "cropped_atom_lines": 1044,
+      "retained_residues": 139,
+      "total_target_residues": 173
+    },
+    "energy_range_kcal_mol": 3.0,
+    "exhaustiveness": 16,
+    "num_modes": 9,
+    "scoring_function": "vina",
+    "seed": 42,
+    "site_center_A": [
+      -27.342144857142856,
+      -11.454861142857142,
+      -2.0350422857142854
+    ],
+    "site_size_A": [
+      22.0,
+      22.0,
+      29.47559
+    ]
+  },
+  "provenance": {
+    "cif_gz_sha256": "0e70cb1e299178285e15e888731ed0de3f5397f32bc193a380becde1bfb6cfb4",
+    "engine_python": "/home/sridhar/miniconda3/envs/cadd/bin/python3.11",
+    "git_commit": "519844a3daa28618bd5945213b1f4595afdeeb2c",
+    "ideal_sdf_sha256": "9ad545e7e0cb541e0ae0bf9f528ec0c48186d2d5737631783b57fb818aa22f50",
+    "ligand_pdbqt_sha256": "6362c81dc02980a44a9b32b937e18d6abb08c9902a63175f8abcfa8db351a984",
+    "meeko_version": "0.7.1",
+    "native_sdf_sha256": "0d39d2ddf82f34dc4d16cc24fe39973e80183d8818555cdb92c8828513c29fa3",
+    "poses_pdbqt_sha256": "39a3912783eea313bed31bcadd4043bcf1690e91a893ec7ead24a171b5bdc085",
+    "poses_sdf_sha256": "cf88d66e7d397ffd5fa87b5436cf606f3c4bf3f5a0b601e9ee4e1cb9f01fa907",
+    "receptor_crop_sha256": "727899ce1dd580d84ee392ab27f0b1007db444c1dc0487469e78df9335d63668",
+    "receptor_pdbqt_sha256": "880485bf13a90658161c978cf4687cbada5b54e9878ec9975dcc08bb5fce0b21",
+    "vina_executable": "/home/sridhar/miniconda3/envs/cadd/bin/vina",
+    "vina_executable_sha256": "522b974a2b8c87b93facbcf8dde752220224ca82a2e4793f4afea1e28faac5c4",
+    "vina_version": "AutoDock Vina f458505-mod"
+  },
+  "resource_consumption": {
+    "cpu_percent": 197,
+    "involuntary_context_switches": 1308,
+    "peak_rss_kbytes": 612792,
+    "peak_rss_mib": 598.43,
+    "sidecar": "/usr/bin/time -v",
+    "system_time_seconds": 1.85,
+    "user_time_seconds": 1013.39,
+    "vina_runtime_seconds_monotonic": 513.989,
+    "vina_wall_clock_seconds": 513.989,
+    "voluntary_context_switches": 37
+  },
+  "schema": "caddsuite.redocking-preregistered-attempt/1",
+  "secondary_endpoints": {
+    "best_sampled_rmsd_A": 3.3729,
+    "returned_mode_count": 9,
+    "top5_success": false
+  },
+  "seed": 42,
+  "status": "completed"
+}

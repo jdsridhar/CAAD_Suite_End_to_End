@@ -1,0 +1,23 @@
+	Command being timed: "/home/sridhar/miniconda3/envs/cadd/bin/vina --receptor /home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v3/runs/preregistered-cohort-v3/REDOCK-001/seed_42/receptor.pdbqt --ligand /home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v3/runs/preregistered-cohort-v3/REDOCK-001/seed_42/ligand.pdbqt --center_x -27.342145 --center_y -11.454861 --center_z -2.0350423 --size_x 22 --size_y 22 --size_z 29.47559 --exhaustiveness 16 --num_modes 9 --energy_range 3.0 --cpu 2 --seed 42 --out /home/sridhar/CAAD_Suite_End_to_End/benchmarks/redocking/pilot_v3/runs/preregistered-cohort-v3/REDOCK-001/seed_42/poses.pdbqt"
+	User time (seconds): 1013.39
+	System time (seconds): 1.85
+	Percent of CPU this job got: 197%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 8:33.98
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 612792
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 198288
+	Voluntary context switches: 37
+	Involuntary context switches: 1308
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 96
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
