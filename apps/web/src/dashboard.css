@@ -1,1 +1,30 @@
 .evidence-card{border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0;background:#fcfcfa}.evidence-card .between>div{display:grid;gap:4px}.evidence-card pre{max-height:240px;overflow:auto;padding:12px;background:#f1f2ed;border-radius:8px;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}.evidence-card>small{display:block;margin-top:8px;color:var(--muted)}.evidence-warnings{color:#8a4b13;margin:8px 0 0;padding-left:20px;font-size:13px}
+
+.evidence-table-container{margin-top:10px;overflow-x:auto}
+.evidence-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;background:#ffffff;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.evidence-table th{background:#f6f8f5;color:#556658;font:600 9px monospace;letter-spacing:.06em;text-transform:uppercase;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+.evidence-table td{padding:8px 12px;border-bottom:1px solid #edf1eb;color:#2b3a30;vertical-align:middle}
+.evidence-table tr:last-child td{border-bottom:0}
+.evidence-table tr:hover td{background:#fbfdfa}
+.evidence-table tr.row-warning td{background:#fffaf6}
+.evidence-prop-name strong{display:block;font-size:11px;color:#26382d}
+.evidence-subtext{display:block;font:8px monospace;color:#7d8c80;margin-top:2px}
+.evidence-prop-value{font-weight:600;color:#1e3025}
+.evidence-num{font-family:monospace;font-size:11px}
+.evidence-prop-unit{color:#758378;font:10px monospace}
+.evidence-null{color:#a4aea6}
+.evidence-muted{color:#8c988f;font-style:italic}
+.evidence-badge{display:inline-block;padding:2px 7px;border-radius:4px;font:600 9px monospace;letter-spacing:.04em;text-transform:uppercase}
+.badge-pass{background:#eff6ee;color:#3f6847;border:1px solid #d4e7d2}
+.badge-fail{background:#fff0ed;color:#a04438;border:1px solid #f3d7d2}
+.kind-tag{display:inline-block;padding:2px 6px;border-radius:3px;font:8px monospace;text-transform:uppercase;background:#f1f4f0;color:#5d7161;border:1px solid #e1e7e0}
+.kind-tag.calculated_descriptor{background:#f0f5f2;color:#496d53;border-color:#d8e5dc}
+.kind-tag.rule{background:#f8f6ed;color:#796634;border-color:#ede7d1}
+.kind-tag.structural_alert{background:#fff4ed;color:#a05a2b;border-color:#f7ded0}
+.kind-tag.ml_prediction{background:#f2f2fa;color:#55528a;border-color:#dedcf0}
+.evidence-item-chip{display:inline-block;padding:1px 5px;margin:1px 3px 1px 0;background:#f1f5f1;border:1px solid #dde5dd;border-radius:3px;font:9px monospace;color:#435b49}
+.evidence-id{font:9px monospace;color:#637568}
+.evidence-json-toggle{margin-top:8px;font-size:10px;color:#768779}
+.evidence-json-toggle summary{cursor:pointer;color:#54755a;padding:3px 0}
+.evidence-json-toggle summary:hover{text-decoration:underline}
+.evidence-json-toggle pre{margin-top:6px}
