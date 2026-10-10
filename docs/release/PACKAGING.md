@@ -91,3 +91,14 @@ Built from a Git archive in a temporary checkout. The wheel has 222 entries and 
 - Pip 26.2.1 dry-run resolution with all eight declared extras together selected 93 packages without dependency conflicts; the exact resolution report and metadata-only inventory are in docs/release/licenses/PYPI_ALL_EXTRAS_RESOLUTION_REPORT.json and PYPI_ALL_EXTRAS_LICENSE_INVENTORY.csv.
 
 This confirms package contents, base install behavior, migration, and one-platform resolver compatibility at this commit. It does not verify all extras by installing/executing their scientific capabilities, does not validate other operating systems, and does not clear any third-party license or legal review. Rebuild from the final release commit. Do not upload or tag until the outstanding distribution-specific human review is complete.
+
+## Current clean-commit package verification (2026-10-10, commit 715ffff)
+
+Built from a clean Git archive of commit `715ffff` in a temporary directory using Hatchling. The wheel contains 222 entries and the sdist 796 entries; both include project `LICENSE` and `NOTICE`, and the sdist contains zero benchmark paths. The wheel entry-point metadata contains 21 registered CLI and stage-handler declarations (including `pdbfixer`, `amber_tleap`, `vina`, `md`, `qm`).
+
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 559,970 bytes; SHA-256 `1d57b4a6398191172c379d0a4ab4bfd6475d9e6ebac1a5620a9c29cc94f24931`.
+- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, 2,254,342 bytes; SHA-256 `aaabcaf5fc7878653c470597ddb3b55c16426cdfd7579b4473baf233eda199cc`.
+- Installed the wheel in an isolated Python 3.12 virtual environment (`python -m venv --system-site-packages`). `caddsuite --help` passed, `caddsuite version` reported `0.1.0.dev0`, and `caddsuite db upgrade` successfully created a fresh database reaching Alembic revision `0007`.
+
+This confirms package contents, CLI entry points, archive exclusions, and database migration from a clean commit. Dependency-license compatibility, notices for optional extras, and counsel review for distribution models remain open public-release gates.
+

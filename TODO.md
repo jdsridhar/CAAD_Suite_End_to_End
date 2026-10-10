@@ -9,7 +9,7 @@
 | **Current phase** | Post-phase audit — independent scientific validation systems |
 | **Current task** | [-] Address open Phase 18 packaging/release license review (18.4) and P0 blind redocking benchmark curation review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified. |
 | **Next task** | Complete pre-release readiness checks, license attributions review, and final release verification before tagging. |
-| **Last completed** | G-MD-124 executed bounded NVT/NPT equilibration for 1Z6E/IK8 (Form 0 and Form +1) and measured cross-engine single-point potential energies (0.55% and 0.58% relative delta; docs/validation/G-MD-124.md). |
+| **Last completed** | Phase 18 clean-commit package build, entry points, and migration verified on commit 715ffff (wheel SHA-256 1d57b4a6..., sdist SHA-256 aaabcaf5...; docs/release/PACKAGING.md). |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2049,5 +2049,15 @@ When the user says **CONTINUE**:
 - [x] Documented full protocol, observables, energy terms, and dispositions in docs/validation/G-MD-124.md.
 - [x] Verified full repository quality gate and coverage thresholds: core 85.07% (floor 85%), adapters 80.13% (floor 70%); added test_pdbfixer_stage_plugin.py and expanded test_ranking_scoring.py (lexicographic, pareto, z-score, validation errors); 976 passed, 41 skipped, 0 failed; strict mypy (205 modules) and 4/4 architectural contracts kept.
 - [-] Address open P0 blind redocking curation/unblinding and Phase 18 packaging/release license review. Keep 5NIU terminal HIS O-OXT warning visible and receptor unready; no Amber/GROMACS compatibility qualification claimed.
+
+### Session log — 2026-10-10, clean-commit package verification and release audit
+
+- [x] Built wheel and sdist from clean Git archive of commit `715ffff` with Hatchling: wheel (559,970 bytes, SHA-256 1d57b4a6398191172c379d0a4ab4bfd6475d9e6ebac1a5620a9c29cc94f24931, 222 entries) and sdist (2,254,342 bytes, SHA-256 aaabcaf5fc7878653c470597ddb3b55c16426cdfd7579b4473baf233eda199cc, 796 entries).
+- [x] Verified zero benchmark paths in sdist, and confirmed LICENSE and NOTICE in both archives.
+- [x] Verified 21 CLI and stage-handler entry points in wheel. Installed into isolated virtual environment with system site packages; verified `caddsuite --help`, `caddsuite version` (0.1.0.dev0), and clean database upgrade to Alembic revision 0007.
+- [x] Audited web bundle license inventory (81 mapped package roots, 7 emitted assets, 81 hash-verified notice texts); confirmed zero diff against committed artifacts in docs/release/licenses/.
+- [x] Documented artifact evidence in docs/release/PACKAGING.md.
+- [-] Human dependency/frontend license review and independent blind redocking review remain open public-release gates.
+
 
 
