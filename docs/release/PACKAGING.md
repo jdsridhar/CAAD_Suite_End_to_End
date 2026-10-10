@@ -92,13 +92,17 @@ Built from a Git archive in a temporary checkout. The wheel has 222 entries and 
 
 This confirms package contents, base install behavior, migration, and one-platform resolver compatibility at this commit. It does not verify all extras by installing/executing their scientific capabilities, does not validate other operating systems, and does not clear any third-party license or legal review. Rebuild from the final release commit. Do not upload or tag until the outstanding distribution-specific human review is complete.
 
-## Current clean-commit package verification (2026-10-10, commit 715ffff)
+## Current clean-commit package verification (2026-10-10, commit 1dcd35b)
 
-Built from a clean Git archive of commit `715ffff` in a temporary directory using Hatchling. The wheel contains 222 entries and the sdist 796 entries; both include project `LICENSE` and `NOTICE`, and the sdist contains zero benchmark paths. The wheel entry-point metadata contains 21 registered CLI and stage-handler declarations (including `pdbfixer`, `amber_tleap`, `vina`, `md`, `qm`).
+Built from a clean Git archive of commit `1dcd35b` in a temporary directory using Hatchling following the completion and documentation of the 90-attempt preregistered redocking cohort benchmark (G-DOCK-14). The wheel contains 222 entries and the sdist 798 entries; both include project `LICENSE` and `NOTICE`, and neither contains any files from `benchmarks/**`. The wheel entry-point metadata contains 21 registered CLI and stage-handler declarations (including `pdbfixer`, `amber_tleap`, `vina`, `md`, `qm`).
 
-- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 559,970 bytes; SHA-256 `1d57b4a6398191172c379d0a4ab4bfd6475d9e6ebac1a5620a9c29cc94f24931`.
-- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, 2,254,342 bytes; SHA-256 `aaabcaf5fc7878653c470597ddb3b55c16426cdfd7579b4473baf233eda199cc`.
-- Installed the wheel in an isolated Python 3.12 virtual environment (`python -m venv --system-site-packages`). `caddsuite --help` passed, `caddsuite version` reported `0.1.0.dev0`, and `caddsuite db upgrade` successfully created a fresh database reaching Alembic revision `0007`.
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 559,456 bytes; SHA-256 `1d57b4a6398191172c379d0a4ab4bfd6475d9e6ebac1a5620a9c29cc94f24931`.
+- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, 2,305,055 bytes; SHA-256 `b6110443b7ad26690455e35028412071d37455fca062be4c7d10b1240c840336`.
+- Installed the wheel into an isolated Python 3.12 virtual environment (`python -m venv --system-site-packages`). Smoke checks confirmed:
+  - `caddsuite --help` passed cleanly (exit code 0).
+  - `caddsuite version` reported `0.1.0.dev0`.
+  - `caddsuite db upgrade --data-root ...` successfully initialized SQLite schema and upgraded to Alembic revision `0007` (verified directly against `alembic_version` table).
+- Web frontend license inventory: `scripts/release/audit_web_bundle_licenses.py` verified 81 mapped package roots and 7 emitted bundle assets, with zero diff against committed license manifests in `docs/release/licenses/`. `scripts/release/build_web_notices.py` assembled 81 hash-verified notices with zero diff.
 
-This confirms package contents, CLI entry points, archive exclusions, and database migration from a clean commit. Dependency-license compatibility, notices for optional extras, and counsel review for distribution models remain open public-release gates.
+This confirms package contents, CLI entry points, archive exclusions, and database migration from clean commit `1dcd35b`. Dependency-license compatibility, notices for optional extras, and counsel review for distribution models remain open public-release gates.
 

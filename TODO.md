@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation & pre-release readiness |
-| **Current task** | [-] Phase 18 packaging and release review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified. |
-| **Next task** | Final package verification, legal review audit, and release tagging. |
-| **Last completed** | Completed full 90-attempt preregistered redocking cohort benchmark (G-DOCK-14): 26/90 ITD successes (28.89%, 10,000-replicate cluster bootstrap 95% CI [13.33%, 45.56%]), 34/90 top-5 (37.78%), 48 completed docking runs (54.17% conditional Top-1, 70.83% conditional Top-5). 8 complexes achieved 100% success across all seeds. Documented and closed in docs/validation/G-DOCK-14.md. |
+| **Current task** | [-] Pre-release human/counsel review of dependency licenses and distribution models. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified. |
+| **Next task** | Release tagging and publishing. |
+| **Last completed** | Clean-commit package verification (commit 1dcd35b): wheel and sdist built, 0 benchmark paths in sdist, clean install in isolated venv (CLI --help, version 0.1.0.dev0, Alembic 0007 db upgrade). Web bundle license audits verified (81 packages, 7 assets, 81 notices, 0 diff). Full quality gate passed: 976 passed, 41 skipped, 0 failed; strict mypy, import-linter 4/4; coverage core 85.07%, adapters 80.13%. G-DOCK-14 redocking cohort benchmark closed. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2103,5 +2103,11 @@ When the user says **CONTINUE**:
   - Resource profile: Mean peak RSS 575.25 MiB (~7.4% host RAM), Max peak RSS 1016.11 MiB (~1.02 GiB), Mean Vina wall-clock 259.60 s per completed run, Total Vina wall-clock 3.461 hours across 2 CPU threads.
   - Master artifacts verified: `cohort_summary.json` (SHA-256 manifest `02f619ba...`) and `cohort_summary.csv`.
   - Documented full findings and formally closed G-DOCK-14 in `docs/validation/G-DOCK-14.md`.
-- [-] Phase 18 packaging and release review. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified.
-
+- [x] Phase 18 packaging and release review:
+  - Ran full verification suite via `scripts/check.sh`: Ruff lint passed, Ruff format (375 files clean), strict mypy passed (205 source files, 0 errors), import-linter passed (4/4 layer contracts kept), schema freshness verified, pytest passed (976 passed, 41 skipped, 0 failed).
+  - Verified architectural coverage floors: core **85.07%** (floor 85.00%), adapters **80.13%** (floor 70.00%).
+  - Web frontend verification: `npm run check:api`, `npm run typecheck`, and Vite production build passed cleanly.
+  - Audited web bundle license inventory with `scripts/release/audit_web_bundle_licenses.py`: 81 mapped package roots, 7 emitted bundle assets; confirmed zero diff against committed manifests. Generated notices with `scripts/release/build_web_notices.py`: 81 hash-verified notice blocks matching committed texts.
+  - Built wheel and sdist from clean Git archive of commit `1dcd35b` with Hatchling: wheel (559,456 bytes, SHA-256 `1d57b4a6...`, 222 entries) and sdist (2,305,055 bytes, SHA-256 `b6110443...`, 798 entries). Verified zero paths from `benchmarks/**` in sdist, and confirmed `LICENSE` and `NOTICE` in both archives.
+  - Installed wheel into isolated virtual environment: verified `caddsuite --help`, `caddsuite version` (0.1.0.dev0), and database upgrade to Alembic revision `0007`. Documented in `docs/release/PACKAGING.md`.
+- [-] Pre-release human/counsel review of dependency licenses and distribution models remains an open gate. Keep 5NIU terminal HIS O–OXT contact warning visible and Amber/GROMACS compatibility qualification uncertified.
