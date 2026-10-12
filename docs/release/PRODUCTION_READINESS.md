@@ -47,3 +47,13 @@ Engine discovery and configuration hardening passed:
 - A dedicated **Scientific Engine Configuration & Readiness** panel in the Web UI allows viewing readiness status, inspecting actionable missing prerequisites, customizing engine paths, saving overrides in browser `localStorage`, and resetting to server-discovered defaults.
 - All four Playwright E2E browser tests pass (41.5s), including automated validation of readiness badges, path override saving, and reset.
 - Quality gates pass: 986 passed tests (42 opt-in skips), strict mypy on 209 source files, import-linter 4/4 contracts kept, Ruff lint/format clean, and OpenAPI schema check clean.
+
+## Third hardening checkpoint — 2026-10-12
+
+Authentication, token lifecycle, and guided onboarding usability passed:
+- API access token persistence: token is cached in `localStorage` (`caddsuite_api_token`) upon entry and connection, surviving page reloads without re-entering credentials while preserving clean initial values (`""`) in fresh browser contexts for Playwright E2E compatibility.
+- Actionable authentication feedback: when connecting without an access token or with invalid credentials, the Web UI presents specific, actionable diagnostic messages directing the user to their server's `CADDSUITE_API_TOKEN` (local default: `caddsuite-local-2026`) instead of a raw `Error: Unauthorized` exception.
+- Guided onboarding documentation: connection settings panel features inline helper text specifying the local default token (`caddsuite-local-2026`).
+- Payload integrity: removed synthetic fallback ULID creation for `compound_id` in default QM calculation payload builder (`compound?.id || null`).
+- All four Playwright E2E browser tests pass (43.6s), verifying connection, project creation, compound registration, decision handling, 3D preview, authenticated downloads, cube and trajectory viewer paths, and engine configuration panels.
+- Quality gates verified: 986 passed unit/integration tests (42 opt-in skips), strict mypy clean across 209 source files, import-linter 4/4 contracts kept, Ruff lint and formatting 100% clean, and OpenAPI schema checks clean.
