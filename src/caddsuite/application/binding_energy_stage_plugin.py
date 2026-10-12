@@ -369,9 +369,9 @@ def _resolve_executable(value: str | None) -> str:
     if value is None:
         raise ValueError("optional executable path is not configured")
     candidate = Path(value).expanduser()
-    resolved = (
-        shutil.which(value) if not candidate.is_absolute() else str(candidate.resolve(strict=True))
-    )
+    if candidate.is_absolute() and candidate.is_file() and os.access(candidate, os.X_OK):
+        return str(candidate)
+    resolved = shutil.which(value)
     if resolved is None or not Path(resolved).is_file() or not os.access(resolved, os.X_OK):
         raise ValueError(f"configured executable is unavailable: {value!r}")
     return resolved

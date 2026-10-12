@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Project Endpoint */
+        delete: operations["delete_project_endpoint_v1_projects__project_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/artifacts": {
         parameters: {
             query?: never;
@@ -115,6 +132,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/provision-demo-md-system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Provision Demo System Endpoint
+         * @description Reuse verified MD inputs from a successful project run (legacy route alias).
+         */
+        post: operations["provision_demo_system_endpoint_v1_projects__project_id__provision_demo_md_system_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/provision-demo-mmpbsa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Provision Demo Mmpbsa Endpoint
+         * @description Reuse verified binding-energy inputs from a successful project run.
+         */
+        post: operations["provision_demo_mmpbsa_endpoint_v1_projects__project_id__provision_demo_mmpbsa_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/runs": {
         parameters: {
             query?: never;
@@ -127,6 +184,23 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Run Endpoint */
+        delete: operations["delete_run_endpoint_v1_projects__project_id__runs__run_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -212,6 +286,26 @@ export interface paths {
         get: operations["get_project_run_status_v1_projects__project_id__runs__run_id__status_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/trajectories/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Trajectory Endpoint
+         * @description Load recorded workflow metrics for the exact selected input artifacts.
+         */
+        post: operations["analyze_trajectory_endpoint_v1_projects__project_id__trajectories_analyze_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -428,7 +522,7 @@ export interface components {
             /** Engine */
             engine?: string | null;
             /** For Each */
-            for_each?: ("compound" | "pose" | "selected_pose" | "target") | null;
+            for_each?: ("compound" | "compound_form" | "pose" | "selected_pose" | "target") | null;
             /** Gate */
             gate?: string | null;
             /** Id */
@@ -589,6 +683,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProjectResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_project_endpoint_v1_projects__project_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -848,6 +973,80 @@ export interface operations {
             };
         };
     };
+    provision_demo_system_endpoint_v1_projects__project_id__provision_demo_md_system_post: {
+        parameters: {
+            query?: {
+                length_ns?: number | null;
+                timestep_fs?: number | null;
+                temp_k?: number | null;
+            };
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provision_demo_mmpbsa_endpoint_v1_projects__project_id__provision_demo_mmpbsa_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_project_runs_v1_projects__project_id__runs_get: {
         parameters: {
             query?: {
@@ -873,6 +1072,38 @@ export interface operations {
                         [key: string]: components["schemas"]["JsonValue"];
                     }[];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_run_endpoint_v1_projects__project_id__runs__run_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1095,6 +1326,44 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_trajectory_endpoint_v1_projects__project_id__trajectories_analyze_post: {
+        parameters: {
+            query: {
+                topology_artifact_id: string;
+                trajectory_artifact_id: string;
+            };
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["JsonValue"];
                     };
                 };
             };

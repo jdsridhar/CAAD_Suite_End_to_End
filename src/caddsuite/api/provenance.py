@@ -16,16 +16,25 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, cast
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import Field, JsonValue
 from sqlalchemy import func, select
 
+from caddsuite.application.demo_md import (
+    PreparedInputsUnavailable,
+    provision_demo_md_system,
+    provision_demo_mmpbsa_system,
+)
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
 from caddsuite.application.runtime import LocalWorkflowRuntime
+from caddsuite.application.trajectory_analytics import (
+    RecordedAnalysisUnavailable,
+    load_recorded_trajectory_analytics,
+)
 from caddsuite.application.version_drift import version_drift
 from caddsuite.chem.standardize import (
     ChemistryDependencyError,
@@ -68,6 +77,7 @@ from caddsuite.storage.models import (
     WorkflowRunRow,
 )
 from caddsuite.storage.paths import artifacts_root, database_path, resolve_data_root
+from caddsuite.storage.projects import ProjectBusyError, delete_project, delete_run
 from caddsuite.storage.provenance_graph import (
     ProvenanceNodeNotFound,
     project_lineage,
@@ -170,7 +180,7 @@ def create_app(
         CORSMiddleware,
         allow_origins=list(allowed_origins),
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=[
             "Authorization",
             "Content-Type",
@@ -442,6 +452,91 @@ def create_app(
             "created": blob.created,
         }
 
+    @app.post(
+        "/v1/projects/{project_id}/provision-demo-md-system",
+        status_code=200,
+        description="Reuse verified MD inputs from a successful project run (legacy route alias).",
+    )
+    def provision_demo_system_endpoint(
+        project_id: str,
+        length_ns: float | None = Query(None, ge=0.0001, le=100.0),
+        timestep_fs: float | None = Query(None, ge=0.1, le=5.0),
+        temp_k: float | None = Query(None, ge=50.0, le=500.0),
+        _: None = Depends(authenticate),
+    ) -> dict[str, Any]:
+        store = ArtifactStore(artifacts_root(root))
+        try:
+            return provision_demo_md_system(
+                project_id,
+                sessions,
+                store,
+                length_ns=length_ns,
+                timestep_fs=timestep_fs,
+                temp_k=temp_k,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="project was not found") from exc
+        except PreparedInputsUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.exception("demo system provisioning failed for project %s", project_id)
+            raise HTTPException(
+                status_code=500, detail="Could not load recorded MD inputs."
+            ) from exc
+
+    @app.post(
+        "/v1/projects/{project_id}/provision-demo-mmpbsa",
+        status_code=200,
+        description="Reuse verified binding-energy inputs from a successful project run.",
+    )
+    def provision_demo_mmpbsa_endpoint(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> dict[str, Any]:
+        store = ArtifactStore(artifacts_root(root))
+        try:
+            return provision_demo_mmpbsa_system(
+                project_id,
+                sessions,
+                store,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="project was not found") from exc
+        except PreparedInputsUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.exception("demo MMPBSA provisioning failed for project %s", project_id)
+            raise HTTPException(
+                status_code=500, detail="Could not load recorded binding-energy inputs."
+            ) from exc
+
+    @app.post(
+        "/v1/projects/{project_id}/trajectories/analyze",
+        description="Load recorded workflow metrics for the exact selected input artifacts.",
+    )
+    def analyze_trajectory_endpoint(
+        project_id: str,
+        topology_artifact_id: str = Query(...),
+        trajectory_artifact_id: str = Query(...),
+        _: None = Depends(authenticate),
+    ) -> dict[str, JsonValue]:
+        try:
+            return load_recorded_trajectory_analytics(
+                project_id,
+                sessions,
+                ArtifactStore(artifacts_root(root)),
+                topology_artifact_id=topology_artifact_id,
+                trajectory_artifact_id=trajectory_artifact_id,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RecordedAnalysisUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
     @app.get("/v1/projects/{project_id}/artifacts")
     def list_project_artifacts(
         project_id: str,
@@ -689,6 +784,37 @@ def create_app(
             session.flush()
             result = ProjectResponse(id=row.id, slug=row.slug, name=row.name)
         return result
+
+    @app.delete("/v1/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_project_endpoint(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> Response:
+        with sessions.begin() as session:
+            try:
+                deleted = delete_project(session, project_id)
+            except ProjectBusyError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            if not deleted:
+                raise HTTPException(status_code=404, detail=f"project {project_id!r} not found")
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @app.delete("/v1/projects/{project_id}/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_run_endpoint(
+        project_id: str,
+        run_id: str,
+        _: None = Depends(authenticate),
+    ) -> Response:
+        with sessions.begin() as session:
+            try:
+                deleted = delete_run(session, project_id, run_id)
+            except ProjectBusyError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            if not deleted:
+                raise HTTPException(
+                    status_code=404, detail=f"run {run_id!r} not found in project {project_id!r}"
+                )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @app.get("/v1/projects/{project_id}/compounds")
     def list_compounds(
@@ -1191,7 +1317,10 @@ def _dashboard_result_summary(result: VersionedContract) -> dict[str, JsonValue]
             "values": [
                 {
                     "endpoint": item.endpoint,
-                    "value": cast(JsonValue, item.value),
+                    "value": cast(
+                        JsonValue,
+                        list(item.value) if isinstance(item.value, tuple) else item.value,
+                    ),
                     "unit": item.unit,
                     "kind": item.kind.value,
                     "model": item.model,

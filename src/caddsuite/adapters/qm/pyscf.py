@@ -42,7 +42,12 @@ class PySCFPlanError(ValueError):
 
 class PySCFAdapterParameters(ContractModel):
     python_executable: str
-    worker_source_directory: str
+    worker_source_directory: str = Field(
+        default_factory=lambda: (
+            os.environ.get("CADDSUITE_WORKER_SOURCE_DIR")
+            or str(Path(__file__).resolve().parents[3])
+        )
+    )
     memory_mb: int = Field(default=2000, ge=256, le=1_048_576)
     max_cycle: int = Field(default=100, ge=1, le=1000)
     n_threads: int = Field(default=1, ge=1, le=256)

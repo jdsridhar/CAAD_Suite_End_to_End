@@ -17,7 +17,16 @@ export default function TrajectoryViewer(p: Props) {
  viewer=await createMolstarViewer(host.current,{layoutIsExpanded:false});if(cancelled){viewer.dispose();return}
  const model = p.topologyFormat === "psf" || p.topologyFormat === "prmtop" || p.topologyFormat === "top" ? {kind:"topology-data" as const,data:topology,format:p.topologyFormat} : {kind:"model-data" as const,data:new TextDecoder().decode(topology),format:p.topologyFormat};
  await loadTrajectory(viewer,{model,modelLabel:p.topologyName,coordinates:{kind:"coordinates-data",data:coordinates,format:p.trajectoryFormat},coordinatesLabel:p.trajectoryName,preset:"all-models"});
- if(!cancelled)setLoading(false)}catch(e){if(!cancelled){setError(e instanceof Error?e.message:String(e));setLoading(false)}}}
+ if(!cancelled)setLoading(false)}catch(e){if(!cancelled){
+  const raw = e instanceof Error ? e.message : String(e);
+  if (raw.includes("Frame element count mismatch")) {
+    setError(`Atom count mismatch: ${raw}. Select topology and coordinates from the same system with the same atom ordering. The preview cannot repair a mismatch.`);
+  } else {
+    setError(raw);
+  }
+  setLoading(false);
+}}
+}
  void load();return()=>{cancelled=true;viewer?.dispose()}
  },[p.apiUrl,p.token,p.projectId,p.topologyId,p.topologyName,p.topologyFormat,p.topologySize,p.trajectoryId,p.trajectoryName,p.trajectoryFormat,p.trajectorySize]);
  return <section className="molecular-viewer" aria-label="Molecular trajectory viewer"><div className="between"><div><h3>Trajectory preview</h3><p>Topology: {p.topologyName} / Trajectory: {p.trajectoryName}</p></div><button className="link" onClick={p.onClose}>Close viewer</button></div><p className="viewer-status">Confirm both files describe the same system and atom ordering.</p>{loading&&<p className="viewer-status">Loading trajectory...</p>}{error&&<div className="alert">{error}</div>}<div className="molstar-host" ref={host}/></section>

@@ -260,6 +260,33 @@ def register_commands(app: typer.Typer) -> None:
         finally:
             engine.dispose()
 
+    @projects.command("delete")
+    def project_delete_command(
+        project_id_or_slug: Annotated[str, typer.Argument(help="Project ID or slug to delete.")],
+        data_root: RootOption = None,
+    ) -> None:
+        """Delete a local project and all its child runs, tasks, and registry entries."""
+        from caddsuite.storage.projects import ProjectBusyError, delete_project
+
+        engine, sessions = _sessions(resolve_data_root(data_root))
+        try:
+            with sessions.begin() as session:
+                project = session.get(ProjectRow, project_id_or_slug)
+                if project is None:
+                    project = session.scalar(
+                        select(ProjectRow).where(ProjectRow.slug == project_id_or_slug)
+                    )
+                if project is None:
+                    _fail(f"project {project_id_or_slug!r} not found")
+                project_id = project.id
+                try:
+                    delete_project(session, project_id)
+                except ProjectBusyError as exc:
+                    _fail(str(exc))
+            typer.echo(f"Deleted project {project_id_or_slug}")
+        finally:
+            engine.dispose()
+
     @projects.command("export")
     def project_export_command(
         project_id: Annotated[str, typer.Argument(help="Project ID to export.")],

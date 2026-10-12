@@ -87,6 +87,7 @@ class GromacsTrajectoryStageHandler:
             refs[str(self.settings.index_artifact.artifact_id)] = self.settings.index_artifact
 
         parameters = self.settings.model_dump(mode="json")
+        parameters["output_group_atom_count"] = request.expected_atom_count
         parameters["input_paths"] = {
             artifact_id: _input_relative_path(
                 artifact_id, ref, request, self.settings.index_artifact
@@ -218,6 +219,8 @@ class GromacsTrajectoryStagePlugin:
         values = dict(raw)
         # Input artifact IDs are run-specific and are derived from the normalized request.
         values.setdefault("input_paths", {"runtime-placeholder": "inputs/placeholder.dat"})
+        # Preflight placeholder only; execute replaces this from the validated request.
+        values.setdefault("output_group_atom_count", 1)
         return GromacsTrajectoryProcessorParameters.model_validate(values)
 
     @classmethod
@@ -328,9 +331,9 @@ def _input_relative_path(
 
 def _resolve_executable(value: str) -> str:
     candidate = Path(value).expanduser()
-    resolved = (
-        shutil.which(value) if not candidate.is_absolute() else str(candidate.resolve(strict=True))
-    )
+    if candidate.is_absolute() and candidate.is_file() and os.access(candidate, os.X_OK):
+        return str(candidate)
+    resolved = shutil.which(value)
     if resolved is None or not Path(resolved).is_file() or not os.access(resolved, os.X_OK):
         raise ValueError(f"configured executable is unavailable: {value!r}")
     return resolved

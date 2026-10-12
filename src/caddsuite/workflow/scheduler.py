@@ -341,6 +341,8 @@ class WorkflowScheduler:
         inputs: Mapping[str, tuple[VersionedContract, ...]],
     ) -> tuple[TaskOutcome, ProducedValue | None]:
         normalized_params = dict(task.params)
+        if subject_id is not None:
+            normalized_params["subject_id"] = str(subject_id)
         if getattr(handler, "cache_scope", "global") == "run":
             normalized_params["workflow_run_id"] = run_id
         cache_key = build_cache_key(

@@ -178,3 +178,32 @@ def test_qm_stage_rejects_pose_from_a_different_docking_run() -> None:
     with pytest.raises(StageExecutionFailure) as raised:
         handler.execute(invocation)
     assert raised.value.code == "QM.POSE_DOCKING_RUN_MISMATCH"
+
+
+def test_qm_form_scope_matches_placeholder_form_id_in_pipeline() -> None:
+    compound_id, form_id = new_ulid(), new_ulid()
+    form = CompoundForm(
+        id=form_id,
+        compound_id=compound_id,
+        kind=CompoundFormKind.PARENT_NEUTRAL,
+        smiles="CCO",
+        formal_charge=0,
+    )
+    placeholder_calc = QMCalculation(
+        id=new_ulid(),
+        accession="CMP0001_QM_001",
+        form_id="0" * 26,
+        compound_id=compound_id,
+        geometry_source=EntityRef(kind="conformer", id="0" * 26),
+        engine=_software("PySCF", SoftwareKind.ENGINE),
+        adapter=_software("caddsuite.pyscf", SoftwareKind.ADAPTER),
+        model=QMModel(method="b3lyp", basis="6-31g*"),
+        protocol=QMProtocol.SINGLE_POINT,
+        charge=0,
+        multiplicity=1,
+    )
+    other_compound_calc = placeholder_calc.model_copy(update={"compound_id": new_ulid()})
+    handler = object.__new__(QMEngineStageHandler)
+
+    assert handler.matches_subject("compound_form", form, placeholder_calc)
+    assert not handler.matches_subject("compound_form", form, other_compound_calc)

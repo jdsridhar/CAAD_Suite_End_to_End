@@ -191,7 +191,7 @@ class ReportStageHandler:
             if conformer.compound_id is not None:
                 linked_pairs.append((conformer.compound_id, conformer.form_id))
         for calculation in qm_calculations:
-            if calculation.compound_id is not None:
+            if calculation.compound_id is not None and calculation.form_id != "0" * 26:
                 linked_pairs.append((calculation.compound_id, calculation.form_id))
         for compound_id, form_id in linked_pairs:
             linked_form = forms_by_id.get(form_id)
@@ -212,7 +212,11 @@ class ReportStageHandler:
                 and qm_result.compound_id != calculation.compound_id
             ):
                 raise ValueError("QMResult compound_id does not match its QMCalculation")
-            if calculation.compound_id is not None and qm_result.form_id != calculation.form_id:
+            if (
+                calculation.compound_id is not None
+                and calculation.form_id != "0" * 26
+                and qm_result.form_id != calculation.form_id
+            ):
                 raise ValueError("QMResult form_id does not match its QMCalculation")
         for calculation in qm_calculations:
             if calculation.accession.rsplit("_", 2)[0] not in accession_prefixes:
@@ -298,10 +302,18 @@ class ReportStageHandler:
                 if isinstance(item, BindingEnergyResult)
             ]
         if qm_calculations:
+            res_by_calc_id = {r.calculation_id: r for r in qm_results}
+            resolved_calcs = []
+            for item in qm_calculations:
+                if isinstance(item, QMCalculation):
+                    if item.form_id == "0" * 26 and item.id in res_by_calc_id:
+                        resolved_calcs.append(
+                            item.model_copy(update={"form_id": res_by_calc_id[item.id].form_id})
+                        )
+                    else:
+                        resolved_calcs.append(item)
             result_sections[ReportSectionName.DFT_METHOD] = [
-                item.model_dump(mode="json")
-                for item in qm_calculations
-                if isinstance(item, QMCalculation)
+                item.model_dump(mode="json") for item in resolved_calcs
             ]
         if qm_results:
             normalized_qm = [item for item in qm_results if isinstance(item, QMResult)]

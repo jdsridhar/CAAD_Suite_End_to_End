@@ -44,6 +44,12 @@ Use `caddsuite status RUN_ID` to inspect persisted run/task state. Use `caddsuit
 
 The browser client is documented in [`apps/web/README.md`](../apps/web/README.md). It supports project/compound management, capability-driven workflow planning, run status/cancellation, human decisions, provenance traversal, text logs, project run history, and scoped static structure preview. The test workflow handler used by the browser end-to-end gate validates orchestration and UI behavior; it is not a real scientific result.
 
+Start with **Open connection settings**, enter your local API address and installation token, and create/select a project. Use **Ligand Registry** to register compounds, **Pipeline Studio** to review a workflow and its required inputs, **Run Monitor** for execution/decisions, and **Overview & Evidence** for recorded results. Preset cards support Enter/Space and visible keyboard focus. The API token starts blank and is not saved in browser storage.
+
+In **3D Molecular Studio**, choose matching topology and coordinate artifacts explicitly. **Load recorded analysis** displays only metrics from a completed workflow matching those exact input hashes. It does not calculate a new trajectory analysis. Each metric shows its units, selection/alignment definition, recorded summary and authenticated CSV download; missing calculations do not become zero or estimated values. Create a configured trajectory-analysis workflow to obtain new metrics.
+
+The preparation reuse buttons load genuine recorded inputs from successful runs in the current project. They do not inject a sample complex or attach a sample trajectory to your compounds. For a first MD/binding-energy run, provide actual preparation/request/plan contracts; the remaining guided preparation work is tracked in the production readiness checklist. Active or unreconciled jobs must be cancelled/reconciled before deletion. Project/run deletion removes records and provenance links; shared artifact files remain in storage.
+
 ## 6. Current validated scientific components
 
 - Docking: AutoDock Vina and AutoDock4 adapters have real-engine integration evidence. The pinned 3-complex redocking pilot reached Vina for only one case; the top pose did not meet the predeclared 2 Å criterion. See [G-DOCK-8](validation/G-DOCK-8.md) and [G-DOCK-9](validation/G-DOCK-9.md).

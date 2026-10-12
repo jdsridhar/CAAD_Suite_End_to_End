@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TypeVar
 
 from caddsuite.application.runtime import LocalRuntimeServices
-from caddsuite.contracts.base import ArtifactRef, VersionedContract
+from caddsuite.contracts.base import ArtifactRef, EntityRef, VersionedContract
 from caddsuite.contracts.docking import DockingRun, Pose
 from caddsuite.contracts.execution import ResourceRequest, SoftwareEnvironment
 from caddsuite.contracts.qm import QMCalculation, QMResult
@@ -82,7 +82,11 @@ class QMEngineStageHandler:
         if isinstance(candidate, CompoundForm):
             return candidate.id == anchor.id
         if isinstance(candidate, QMCalculation):
-            return candidate.form_id == anchor.id
+            if candidate.form_id == anchor.id:
+                return True
+            return candidate.form_id == "0" * 26 and (
+                candidate.compound_id is None or candidate.compound_id == anchor.compound_id
+            )
         if isinstance(candidate, Conformer):
             return candidate.form_id == anchor.id
         return False
@@ -128,6 +132,12 @@ class QMEngineStageHandler:
     def execute(self, invocation: TaskInvocation) -> QMResult:
         calculation = _one(invocation.inputs, "calculation", QMCalculation)
         form = _one(invocation.inputs, "form", CompoundForm)
+        if calculation.form_id == "0" * 26 and (
+            calculation.compound_id is None or calculation.compound_id == form.compound_id
+        ):
+            calculation = calculation.model_copy(
+                update={"form_id": form.id, "charge": form.formal_charge}
+            )
         if calculation.form_id != form.id:
             raise StageExecutionFailure(
                 "QM.CALCULATION_FORM_MISMATCH",
@@ -138,6 +148,10 @@ class QMEngineStageHandler:
         if calculation.geometry_source.kind == "conformer":
             conformer = _one(invocation.inputs, "conformer", Conformer)
             contracts["conformer"] = conformer
+            if calculation.geometry_source.id == "0" * 26:
+                calculation = calculation.model_copy(
+                    update={"geometry_source": EntityRef(kind="conformer", id=conformer.id)}
+                )
             geometry_ref = conformer.structure
         elif calculation.geometry_source.kind == "pose":
             pose = _one(invocation.inputs, "pose", Pose)

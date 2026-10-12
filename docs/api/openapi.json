@@ -229,6 +229,7 @@
               {
                 "enum": [
                   "compound",
+                  "compound_form",
                   "pose",
                   "selected_pose",
                   "target"
@@ -603,6 +604,59 @@
           }
         ],
         "summary": "Create Project"
+      }
+    },
+    "/v1/projects/{project_id}": {
+      "delete": {
+        "operationId": "delete_project_endpoint_v1_projects__project_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Project Endpoint"
       }
     },
     "/v1/projects/{project_id}/artifacts": {
@@ -1077,6 +1131,186 @@
         "summary": "Get Project Dashboard"
       }
     },
+    "/v1/projects/{project_id}/provision-demo-md-system": {
+      "post": {
+        "description": "Reuse verified MD inputs from a successful project run (legacy route alias).",
+        "operationId": "provision_demo_system_endpoint_v1_projects__project_id__provision_demo_md_system_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "length_ns",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 100.0,
+                  "minimum": 0.0001,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Length Ns"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestep_fs",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 5.0,
+                  "minimum": 0.1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Timestep Fs"
+            }
+          },
+          {
+            "in": "query",
+            "name": "temp_k",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 500.0,
+                  "minimum": 50.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Temp K"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Provision Demo System Endpoint V1 Projects  Project Id  Provision Demo Md System Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Provision Demo System Endpoint"
+      }
+    },
+    "/v1/projects/{project_id}/provision-demo-mmpbsa": {
+      "post": {
+        "description": "Reuse verified binding-energy inputs from a successful project run.",
+        "operationId": "provision_demo_mmpbsa_endpoint_v1_projects__project_id__provision_demo_mmpbsa_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Provision Demo Mmpbsa Endpoint V1 Projects  Project Id  Provision Demo Mmpbsa Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Provision Demo Mmpbsa Endpoint"
+      }
+    },
     "/v1/projects/{project_id}/runs": {
       "get": {
         "operationId": "list_project_runs_v1_projects__project_id__runs_get",
@@ -1154,6 +1388,68 @@
           }
         ],
         "summary": "List Project Runs"
+      }
+    },
+    "/v1/projects/{project_id}/runs/{run_id}": {
+      "delete": {
+        "operationId": "delete_run_endpoint_v1_projects__project_id__runs__run_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Run Endpoint"
       }
     },
     "/v1/projects/{project_id}/runs/{run_id}/cancel": {
@@ -1609,6 +1905,89 @@
           }
         ],
         "summary": "Get Project Run Status"
+      }
+    },
+    "/v1/projects/{project_id}/trajectories/analyze": {
+      "post": {
+        "description": "Load recorded workflow metrics for the exact selected input artifacts.",
+        "operationId": "analyze_trajectory_endpoint_v1_projects__project_id__trajectories_analyze_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topology_artifact_id",
+            "required": true,
+            "schema": {
+              "title": "Topology Artifact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trajectory_artifact_id",
+            "required": true,
+            "schema": {
+              "title": "Trajectory Artifact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/JsonValue"
+                  },
+                  "title": "Response Analyze Trajectory Endpoint V1 Projects  Project Id  Trajectories Analyze Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Analyze Trajectory Endpoint"
       }
     },
     "/v1/provenance/attempts/{attempt_id}": {

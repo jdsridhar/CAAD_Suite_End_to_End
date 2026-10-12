@@ -9,6 +9,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:5174",
     browserName: "chromium",
     headless: true,
+    actionTimeout: 10_000,
     trace: "retain-on-failure",
   },
   webServer: [

@@ -88,7 +88,12 @@ class Psi4AdapterParameters(ContractModel):
     """Paths and resource limits for a Psi4 engine environment."""
 
     python_executable: str
-    worker_source_directory: str
+    worker_source_directory: str = Field(
+        default_factory=lambda: (
+            os.environ.get("CADDSUITE_WORKER_SOURCE_DIR")
+            or str(Path(__file__).resolve().parents[3])
+        )
+    )
     memory_gb: int = Field(default=2, ge=1, le=256)
     n_threads: int = Field(default=1, ge=1, le=256)
     n_excited_states: int | None = Field(default=None, ge=1, le=100)
