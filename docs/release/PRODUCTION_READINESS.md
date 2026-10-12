@@ -15,10 +15,10 @@ The repair uses existing normalized workflow results for trajectory plots and ex
 | Scientific truthfulness | No fabricated metrics, no silent substitution after failure, absent outputs marked unavailable | Recorded preview regressions pass; wider scientific gates remain open |
 | Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope repaired; explicit QM template plans and broader input scoping remain open |
 | Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Guided preparation incomplete |
-| Engine configuration | Installed capabilities and availability shown; engine paths and resource choices configurable and preflighted | Machine-specific defaults need removal |
+| Engine configuration | Installed capabilities and availability shown; engine paths and resource choices configurable and preflighted | Auto-discovery implemented via /v1/system/engine-config, machine-specific defaults eliminated, UI settings panel with badges/editing/localStorage overrides verified by Playwright |
 | Results | Real normalized results, units/methods/limitations, authenticated CSV/raw downloads, bounded previews | Recorded preview and authenticated download tests pass; first-time analysis workflow controls remain open |
 | Operations | Safe cancellation/recovery, active runs protected from deletion, resource admission and actionable errors | Active-deletion regressions pass; broader concurrency/recovery acceptance remains open |
-| Accessibility | Keyboard and screen-reader controls, focus/error states, responsive layout, browser acceptance | Three browser flows, focus controls, desktop/mobile screenshots verified; full accessibility/usability assessment remains open |
+| Accessibility | Keyboard and screen-reader controls, focus/error states, responsive layout, browser acceptance | Four browser flows, focus controls, desktop/mobile screenshots verified; full accessibility/usability assessment remains open |
 | Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | Amber/GROMACS qualification and production MD validation open |
 | Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Earlier packaging evidence only |
 | Distribution | License/notice review and final artifacts from selected revision | Human/counsel review open |
@@ -37,4 +37,13 @@ Frontend API-type generation/check, TypeScript checking, and the production buil
 
 Browser execution used the already-installed local `libasound` package extraction via a process-scoped `LD_LIBRARY_PATH`; no engine environment or system package was modified. One upstream Starlette/httpx deprecation warning and the expected large lazy-loaded Mol* bundle warning remain visible. Engine-enabled scientific tests were not rerun in this checkpoint because its changes concern input reuse, presentation, and lifecycle controls.
 
-Before release, replace the inherited QM zero-ID template convention with explicit engine-independent calculation plans and per-form calculation identity, finish editable engine paths and first-time preparation forms, and validate the complete supported scientific paths. This checkpoint does not certify production readiness.
+## Second hardening checkpoint — 2026-10-12
+
+Engine discovery and configuration hardening passed:
+- Engine discovery service `caddsuite.application.engine_discovery` automatically discovers Vina, Meeko, PDBFixer, GROMACS, Psi4, and gmx_MMPBSA binaries and Python environments across system paths, environment variables (`CADDSUITE_*`), and local conda environments without hardcoding user directories.
+- Endpoint `GET /v1/system/engine-config` exposes `EngineDiscoveryReport` with typed `EnginePaths`, `EngineReadiness`, and `missing_prerequisites` over authenticated HTTP.
+- Generated OpenAPI schema and TypeScript definitions (`apps/web/src/api/schema.ts`) are synchronized.
+- Workflow presets in `apps/web/src/App.tsx` (`PRESET_DFT`, `PRESET_MD`, `PRESET_MMPBSA`, and `makeDockingWorkflow`) were converted from machine-specific static objects to parameterized generators using portable fallbacks (`DEFAULT_ENGINE_PATHS`).
+- A dedicated **Scientific Engine Configuration & Readiness** panel in the Web UI allows viewing readiness status, inspecting actionable missing prerequisites, customizing engine paths, saving overrides in browser `localStorage`, and resetting to server-discovered defaults.
+- All four Playwright E2E browser tests pass (41.5s), including automated validation of readiness badges, path override saving, and reset.
+- Quality gates pass: 986 passed tests (42 opt-in skips), strict mypy on 209 source files, import-linter 4/4 contracts kept, Ruff lint/format clean, and OpenAPI schema check clean.

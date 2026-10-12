@@ -380,6 +380,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/system/engine-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Engine Configuration */
+        get: operations["get_engine_configuration_v1_system_engine_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/workflows/capabilities": {
         parameters: {
             query?: never;
@@ -455,6 +472,79 @@ export interface components {
             rationale?: string | null;
             /** @default task */
             scope: components["schemas"]["DecisionScope"];
+        };
+        /**
+         * EngineDiscoveryReport
+         * @description Full engine discovery and readiness report.
+         */
+        EngineDiscoveryReport: {
+            /**
+             * Missing Prerequisites
+             * @default []
+             */
+            missing_prerequisites: string[];
+            paths: components["schemas"]["EnginePaths"];
+            readiness: components["schemas"]["EngineReadiness"];
+        };
+        /**
+         * EnginePaths
+         * @description Discovered or configured engine paths.
+         */
+        EnginePaths: {
+            /** Ambertools Bin */
+            ambertools_bin?: string | null;
+            /** Cadd Python */
+            cadd_python?: string | null;
+            /** Caddsuite Python */
+            caddsuite_python?: string | null;
+            /** Gmx Executable */
+            gmx_executable?: string | null;
+            /** Gmx Mmpbsa Executable */
+            gmx_mmpbsa_executable?: string | null;
+            /** Gmx Mmpbsa Python */
+            gmx_mmpbsa_python?: string | null;
+            /** Gmx Mmpbsa Worker */
+            gmx_mmpbsa_worker?: string | null;
+            /** Mk Export */
+            mk_export?: string | null;
+            /** Mk Prepare Ligand */
+            mk_prepare_ligand?: string | null;
+            /** Mk Prepare Receptor */
+            mk_prepare_receptor?: string | null;
+            /** Pdbfixer Worker */
+            pdbfixer_worker?: string | null;
+            /** Psi4 Python */
+            psi4_python?: string | null;
+            /** Vina Executable */
+            vina_executable?: string | null;
+            /** Worker Source Dir */
+            worker_source_dir?: string | null;
+        };
+        /**
+         * EngineReadiness
+         * @description Availability status of supported engine families.
+         */
+        EngineReadiness: {
+            /**
+             * Docking Ready
+             * @default false
+             */
+            docking_ready: boolean;
+            /**
+             * Gromacs Ready
+             * @default false
+             */
+            gromacs_ready: boolean;
+            /**
+             * Mmpbsa Ready
+             * @default false
+             */
+            mmpbsa_ready: boolean;
+            /**
+             * Psi4 Ready
+             * @default false
+             */
+            psi4_ready: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1505,6 +1595,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_engine_configuration_v1_system_engine_config_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngineDiscoveryReport"];
                 };
             };
             /** @description Validation Error */

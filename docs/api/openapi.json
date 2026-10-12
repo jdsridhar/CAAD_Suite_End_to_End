@@ -104,6 +104,222 @@
         "title": "DecisionSubmitRequest",
         "type": "object"
       },
+      "EngineDiscoveryReport": {
+        "additionalProperties": false,
+        "description": "Full engine discovery and readiness report.",
+        "properties": {
+          "missing_prerequisites": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Prerequisites",
+            "type": "array"
+          },
+          "paths": {
+            "$ref": "#/components/schemas/EnginePaths"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/EngineReadiness"
+          }
+        },
+        "required": [
+          "paths",
+          "readiness"
+        ],
+        "title": "EngineDiscoveryReport",
+        "type": "object"
+      },
+      "EnginePaths": {
+        "additionalProperties": false,
+        "description": "Discovered or configured engine paths.",
+        "properties": {
+          "ambertools_bin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ambertools Bin"
+          },
+          "cadd_python": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cadd Python"
+          },
+          "caddsuite_python": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caddsuite Python"
+          },
+          "gmx_executable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmx Executable"
+          },
+          "gmx_mmpbsa_executable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmx Mmpbsa Executable"
+          },
+          "gmx_mmpbsa_python": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmx Mmpbsa Python"
+          },
+          "gmx_mmpbsa_worker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmx Mmpbsa Worker"
+          },
+          "mk_export": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mk Export"
+          },
+          "mk_prepare_ligand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mk Prepare Ligand"
+          },
+          "mk_prepare_receptor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mk Prepare Receptor"
+          },
+          "pdbfixer_worker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdbfixer Worker"
+          },
+          "psi4_python": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Psi4 Python"
+          },
+          "vina_executable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vina Executable"
+          },
+          "worker_source_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Source Dir"
+          }
+        },
+        "title": "EnginePaths",
+        "type": "object"
+      },
+      "EngineReadiness": {
+        "additionalProperties": false,
+        "description": "Availability status of supported engine families.",
+        "properties": {
+          "docking_ready": {
+            "default": false,
+            "title": "Docking Ready",
+            "type": "boolean"
+          },
+          "gromacs_ready": {
+            "default": false,
+            "title": "Gromacs Ready",
+            "type": "boolean"
+          },
+          "mmpbsa_ready": {
+            "default": false,
+            "title": "Mmpbsa Ready",
+            "type": "boolean"
+          },
+          "psi4_ready": {
+            "default": false,
+            "title": "Psi4 Ready",
+            "type": "boolean"
+          }
+        },
+        "title": "EngineReadiness",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2236,6 +2452,57 @@
           }
         ],
         "summary": "Get Run Lineage"
+      }
+    },
+    "/v1/system/engine-config": {
+      "get": {
+        "operationId": "get_engine_configuration_v1_system_engine_config_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineDiscoveryReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Engine Configuration"
       }
     },
     "/v1/workflows/capabilities": {

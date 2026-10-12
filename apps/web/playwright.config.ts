@@ -14,7 +14,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "python tests/e2e/api_server.py",
+      command: "../../.venv/bin/python tests/e2e/api_server.py",
       url: "http://127.0.0.1:8100/v1/workflows/capabilities",
       reuseExistingServer: false,
       timeout: 30_000,

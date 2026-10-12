@@ -28,6 +28,10 @@ from caddsuite.application.demo_md import (
     provision_demo_md_system,
     provision_demo_mmpbsa_system,
 )
+from caddsuite.application.engine_discovery import (
+    EngineDiscoveryReport,
+    discover_engine_paths,
+)
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
 from caddsuite.application.runtime import LocalWorkflowRuntime
@@ -898,6 +902,12 @@ def create_app(
                 for _key, registration in sorted(snapshot.registrations.items())
             ],
         }
+
+    @app.get("/v1/system/engine-config", response_model=EngineDiscoveryReport)
+    def get_engine_configuration(
+        _: None = Depends(authenticate),
+    ) -> EngineDiscoveryReport:
+        return discover_engine_paths()
 
     @app.post("/v1/workflows/plan")
     def plan_workflow(

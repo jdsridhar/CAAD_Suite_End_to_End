@@ -10,6 +10,28 @@ const MolecularViewer = lazy(() => import("./MolecularViewer.js"));
 const TrajectoryViewer = lazy(() => import("./TrajectoryViewer.js"));
 const VolumeViewer = lazy(() => import("./VolumeViewer.js"));
 import TrajectoryPlots, { type TrajectoryAnalyticsResult } from "./TrajectoryPlots.js";
+import type { components } from "./api/schema.js";
+
+export type EnginePaths = components["schemas"]["EnginePaths"];
+export type EngineReadiness = components["schemas"]["EngineReadiness"];
+export type EngineDiscoveryReport = components["schemas"]["EngineDiscoveryReport"];
+
+export const DEFAULT_ENGINE_PATHS: EnginePaths = {
+  vina_executable: "vina",
+  cadd_python: "python",
+  pdbfixer_worker: "pdbfixer_worker.py",
+  mk_prepare_receptor: "mk_prepare_receptor.py",
+  mk_prepare_ligand: "mk_prepare_ligand.py",
+  mk_export: "mk_export.py",
+  gmx_executable: "gmx",
+  psi4_python: "python",
+  worker_source_dir: "src",
+  gmx_mmpbsa_executable: "gmx_MMPBSA",
+  ambertools_bin: "bin",
+  gmx_mmpbsa_python: "python",
+  gmx_mmpbsa_worker: "gmx_mmpbsa_worker.py",
+  caddsuite_python: "python",
+};
 
 type Project = { id: string; slug: string; name: string };
 type Compound = { id: string; accession: string; name: string; inchikey: string; payload: Record<string, unknown> & { parent?: { canonical_smiles?: string } } };
@@ -245,278 +267,284 @@ const PRESET_LIGAND_3D = {
   outputs: { report: "report" }
 };
 
-const PRESET_DFT = {
-  schema: "caddsuite.workflow/1",
-  name: "Ligand Quantum Chemistry / DFT (Psi4)",
-  inputs: {
-    compounds: {
-      contract: "compound/1.0",
-      description: "Registered parent compounds"
-    },
-    calculation: {
-      contract: "qm_calculation/1.2",
-      description: "DFT calculation spec (method, basis, protocol)"
-    }
-  },
-  stages: [
-    {
-      id: "admet",
-      kind: "property_prediction",
-      engine: "rdkit_rules",
-      for_each: "compound",
-      input_contracts: { compound: "compound/1.0" },
-      input_bindings: { compound: "$compounds" },
-      output_contract: "property_prediction_set/1.0",
-      params: {}
-    },
-    {
-      id: "protonate",
-      kind: "chemistry.protonate",
-      engine: "dimorphite_dl",
-      for_each: "compound",
-      input_contracts: { compound: "compound/1.0" },
-      input_bindings: { compound: "$compounds" },
-      output_contract: "compound_form/1.0",
-      params: {
-        target_ph: 7.4,
-        ambiguous_microstates: "require_decision"
+function makeDftWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
+  return {
+    schema: "caddsuite.workflow/1",
+    name: "Ligand Quantum Chemistry / DFT (Psi4)",
+    inputs: {
+      compounds: {
+        contract: "compound/1.0",
+        description: "Registered parent compounds"
+      },
+      calculation: {
+        contract: "qm_calculation/1.2",
+        description: "DFT calculation spec (method, basis, protocol)"
       }
     },
-    {
-      id: "embed",
-      kind: "chemistry.embed",
-      engine: "rdkit_etkdg",
-      for_each: "compound",
-      needs: ["protonate"],
-      input_contracts: { form: "compound_form/1.0" },
-      input_bindings: { form: "protonate" },
-      output_contract: "conformer/1.1",
-      params: {
-        policy: {
-          seed: 42,
-          optimizer: "MMFF94"
+    stages: [
+      {
+        id: "admet",
+        kind: "property_prediction",
+        engine: "rdkit_rules",
+        for_each: "compound",
+        input_contracts: { compound: "compound/1.0" },
+        input_bindings: { compound: "$compounds" },
+        output_contract: "property_prediction_set/1.0",
+        params: {}
+      },
+      {
+        id: "protonate",
+        kind: "chemistry.protonate",
+        engine: "dimorphite_dl",
+        for_each: "compound",
+        input_contracts: { compound: "compound/1.0" },
+        input_bindings: { compound: "$compounds" },
+        output_contract: "compound_form/1.0",
+        params: {
+          target_ph: 7.4,
+          ambiguous_microstates: "require_decision"
         }
-      }
-    },
-    {
-      id: "qm",
-      kind: "quantum_chemistry",
-      engine: "caddsuite.qm.psi4",
-      for_each: "compound_form",
-      needs: ["protonate", "embed"],
-      input_contracts: {
-        calculation: "qm_calculation/1.2",
-        form: "compound_form/1.0",
-        conformer: "conformer/1.1"
       },
-      input_bindings: {
-        calculation: "$calculation",
-        form: "protonate",
-        conformer: "embed"
-      },
-      output_contract: "qm_result/2.1",
-      params: {
-        engine_parameters: {
-          python_executable: "/home/sridhar/miniconda3/envs/psi4/bin/python",
-          worker_source_directory: "/home/sridhar/CAAD_Suite_End_to_End/src",
-          memory_gb: 2,
-          n_threads: 2
-        }
-      }
-    },
-    {
-      id: "report",
-      kind: "report",
-      needs: ["admet", "protonate", "qm"],
-      input_contracts: {
-        compounds: "compound/1.0",
-        compound_forms: "compound_form/1.0",
-        property_results: "property_prediction_set/1.0",
-        qm_calculations: "qm_calculation/1.2",
-        qm_results: "qm_result/2.1"
-      },
-      input_bindings: {
-        compounds: "$compounds",
-        compound_forms: "protonate",
-        property_results: "admet",
-        qm_calculations: "$calculation",
-        qm_results: "qm"
-      },
-      output_contract: "report_bundle/1.0",
-      params: {
-        formats: ["html", "json", "csv"]
-      }
-    }
-  ],
-  outputs: {
-    report: "report",
-    qm: "qm"
-  }
-};
-
-const PRESET_MD = {
-  schema: "caddsuite.workflow/1",
-  name: "Protein-Ligand Molecular Dynamics (GROMACS)",
-  inputs: {
-    compounds: {
-      contract: "compound/1.0",
-      description: "Registered parent compounds"
-    },
-    system_build: {
-      contract: "system_build_result/1.0",
-      description: "Solvated parameterized MD system with topology, coordinates, and index groups"
-    },
-    stage_input: {
-      contract: "md_stage_plan/1.0",
-      description: "MD stage execution plan (engine, stage index, topology, coordinates)"
-    }
-  },
-  stages: [
-    {
-      id: "md",
-      kind: "molecular_dynamics",
-      engine: "gromacs",
-      input_contracts: {
-        system_build: "system_build_result/1.0",
-        stage_input: "md_stage_plan/1.0"
-      },
-      input_bindings: {
-        system_build: "$system_build",
-        stage_input: "$stage_input"
-      },
-      output_contract: "md_stage_result/1.1",
-      params: {
-        engine_parameters: {
-          memory_MiB: 4096,
-          timeout_seconds: 7200,
-          gromacs: {
-            executable: "/home/sridhar/miniconda3/envs/gmx/bin/gmx",
-            stage_index: 2,
-            topology_path: "topol.top",
-            coordinates_path: "step4.1_equilibration.gro",
-            mdp_path: "step5_production.mdp",
-            index_path: "index.ndx",
-            output_prefix: "production",
-            resource_mode: "gpu",
-            cpu_threads: 4,
-            gpu_ids: [0]
+      {
+        id: "embed",
+        kind: "chemistry.embed",
+        engine: "rdkit_etkdg",
+        for_each: "compound",
+        needs: ["protonate"],
+        input_contracts: { form: "compound_form/1.0" },
+        input_bindings: { form: "protonate" },
+        output_contract: "conformer/1.1",
+        params: {
+          policy: {
+            seed: 42,
+            optimizer: "MMFF94"
           }
         }
-      }
-    },
-    {
-      id: "report",
-      kind: "report",
-      needs: ["md"],
-      input_contracts: {
-        compounds: "compound/1.0",
-        md_results: "md_stage_result/1.1"
       },
-      input_bindings: {
-        compounds: "$compounds",
-        md_results: "md"
+      {
+        id: "qm",
+        kind: "quantum_chemistry",
+        engine: "caddsuite.qm.psi4",
+        for_each: "compound_form",
+        needs: ["protonate", "embed"],
+        input_contracts: {
+          calculation: "qm_calculation/1.2",
+          form: "compound_form/1.0",
+          conformer: "conformer/1.1"
+        },
+        input_bindings: {
+          calculation: "$calculation",
+          form: "protonate",
+          conformer: "embed"
+        },
+        output_contract: "qm_result/2.1",
+        params: {
+          engine_parameters: {
+            python_executable: paths.psi4_python || "python",
+            worker_source_directory: paths.worker_source_dir || "src",
+            memory_gb: 2,
+            n_threads: 2
+          }
+        }
       },
-      output_contract: "report_bundle/1.0",
-      params: {
-        formats: ["html", "json", "csv"]
-      }
-    }
-  ],
-  outputs: {
-    md: "md",
-    report: "report"
-  }
-};
-
-const PRESET_MMPBSA = {
-  schema: "caddsuite.workflow/1",
-  name: "MM-PBSA End-State Free Energy (gmx_MMPBSA)",
-  inputs: {
-    compounds: {
-      contract: "compound/1.0",
-      description: "Registered parent compounds"
-    },
-    request: {
-      contract: "trajectory_processing_request/1.1",
-      description: "Periodic boundary condition centered trajectory and index group request"
-    },
-    energy_plan: {
-      contract: "binding_energy_plan/1.0",
-      description: "GB/PB solvation parameters, dielectric constants, and entropy options"
-    }
-  },
-  stages: [
-    {
-      id: "process",
-      kind: "trajectory.process",
-      engine: "gromacs",
-      input_contracts: {
-        request: "trajectory_processing_request/1.1"
-      },
-      input_bindings: {
-        request: "$request"
-      },
-      output_contract: "trajectory_processing_result/1.2",
-      params: {
-        engine_parameters: {
-          gmx_executable: "/home/sridhar/miniconda3/envs/gmx/bin/gmx",
-          python_executable: "/home/sridhar/CAAD_Suite_End_to_End/.venv/bin/python",
-          output_group_atom_count: 49682,
-          timeout_seconds: 3600
+      {
+        id: "report",
+        kind: "report",
+        needs: ["admet", "protonate", "qm"],
+        input_contracts: {
+          compounds: "compound/1.0",
+          compound_forms: "compound_form/1.0",
+          property_results: "property_prediction_set/1.0",
+          qm_calculations: "qm_calculation/1.2",
+          qm_results: "qm_result/2.1"
+        },
+        input_bindings: {
+          compounds: "$compounds",
+          compound_forms: "protonate",
+          property_results: "admet",
+          qm_calculations: "$calculation",
+          qm_results: "qm"
+        },
+        output_contract: "report_bundle/1.0",
+        params: {
+          formats: ["html", "json", "csv"]
         }
       }
+    ],
+    outputs: {
+      report: "report",
+      qm: "qm"
+    }
+  };
+}
+
+function makeMdWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
+  return {
+    schema: "caddsuite.workflow/1",
+    name: "Protein-Ligand Molecular Dynamics (GROMACS)",
+    inputs: {
+      compounds: {
+        contract: "compound/1.0",
+        description: "Registered parent compounds"
+      },
+      system_build: {
+        contract: "system_build_result/1.0",
+        description: "Solvated parameterized MD system with topology, coordinates, and index groups"
+      },
+      stage_input: {
+        contract: "md_stage_plan/1.0",
+        description: "MD stage execution plan (engine, stage index, topology, coordinates)"
+      }
     },
-    {
-      id: "mmgbsa",
-      kind: "binding_energy.analyze_processed",
-      engine: "gmx_mmpbsa",
-      needs: ["process"],
-      input_contracts: {
-        plan: "binding_energy_plan/1.0",
-        preprocessing: "trajectory_processing_result/1.2"
+    stages: [
+      {
+        id: "md",
+        kind: "molecular_dynamics",
+        engine: "gromacs",
+        input_contracts: {
+          system_build: "system_build_result/1.0",
+          stage_input: "md_stage_plan/1.0"
+        },
+        input_bindings: {
+          system_build: "$system_build",
+          stage_input: "$stage_input"
+        },
+        output_contract: "md_stage_result/1.1",
+        params: {
+          engine_parameters: {
+            memory_MiB: 4096,
+            timeout_seconds: 7200,
+            gromacs: {
+              executable: paths.gmx_executable || "gmx",
+              stage_index: 2,
+              topology_path: "topol.top",
+              coordinates_path: "step4.1_equilibration.gro",
+              mdp_path: "step5_production.mdp",
+              index_path: "index.ndx",
+              output_prefix: "production",
+              resource_mode: "gpu",
+              cpu_threads: 4,
+              gpu_ids: [0]
+            }
+          }
+        }
       },
-      input_bindings: {
-        plan: "$energy_plan",
-        preprocessing: "process"
-      },
-      output_contract: "binding_energy/1.3",
-      params: {
-        engine_parameters: {
-          gmx_mmpbsa_executable: "/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/gmx_MMPBSA",
-          gmx_executable: "/home/sridhar/miniconda3/envs/gmx/bin/gmx",
-          ambertools_bin: "/home/sridhar/miniconda3/envs/gmxMMPBSA/bin",
-          python_executable: "/home/sridhar/miniconda3/envs/gmxMMPBSA/bin/python",
-          worker_script: "/home/sridhar/CAAD_Suite_End_to_End/src/caddsuite_worker/gmx_mmpbsa_worker.py",
-          timeout_seconds: 3600,
-          mpi_launch_retries: 0
+      {
+        id: "report",
+        kind: "report",
+        needs: ["md"],
+        input_contracts: {
+          compounds: "compound/1.0",
+          md_results: "md_stage_result/1.1"
+        },
+        input_bindings: {
+          compounds: "$compounds",
+          md_results: "md"
+        },
+        output_contract: "report_bundle/1.0",
+        params: {
+          formats: ["html", "json", "csv"]
         }
       }
-    },
-    {
-      id: "report",
-      kind: "report",
-      needs: ["mmgbsa"],
-      input_contracts: {
-        compounds: "compound/1.0",
-        binding_energy_results: "binding_energy/1.3"
-      },
-      input_bindings: {
-        compounds: "$compounds",
-        binding_energy_results: "mmgbsa"
-      },
-      output_contract: "report_bundle/1.0",
-      params: {
-        formats: ["html", "json", "csv"]
-      }
+    ],
+    outputs: {
+      md: "md",
+      report: "report"
     }
-  ],
-  outputs: {
-    energy: "mmgbsa",
-    report: "report"
-  }
-};
+  };
+}
 
-function makeDockingWorkflow(chainId = "A", exhaustiveness = 16) {
+function makeMmpbsaWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
+  return {
+    schema: "caddsuite.workflow/1",
+    name: "MM-PBSA End-State Free Energy (gmx_MMPBSA)",
+    inputs: {
+      compounds: {
+        contract: "compound/1.0",
+        description: "Registered parent compounds"
+      },
+      request: {
+        contract: "trajectory_processing_request/1.1",
+        description: "Periodic boundary condition centered trajectory and index group request"
+      },
+      energy_plan: {
+        contract: "binding_energy_plan/1.0",
+        description: "GB/PB solvation parameters, dielectric constants, and entropy options"
+      }
+    },
+    stages: [
+      {
+        id: "process",
+        kind: "trajectory.process",
+        engine: "gromacs",
+        input_contracts: {
+          request: "trajectory_processing_request/1.1"
+        },
+        input_bindings: {
+          request: "$request"
+        },
+        output_contract: "trajectory_processing_result/1.2",
+        params: {
+          engine_parameters: {
+            gmx_executable: paths.gmx_executable || "gmx",
+            python_executable: paths.caddsuite_python || "python",
+            output_group_atom_count: 49682,
+            timeout_seconds: 3600
+          }
+        }
+      },
+      {
+        id: "mmgbsa",
+        kind: "binding_energy.analyze_processed",
+        engine: "gmx_mmpbsa",
+        needs: ["process"],
+        input_contracts: {
+          plan: "binding_energy_plan/1.0",
+          preprocessing: "trajectory_processing_result/1.2"
+        },
+        input_bindings: {
+          plan: "$energy_plan",
+          preprocessing: "process"
+        },
+        output_contract: "binding_energy/1.3",
+        params: {
+          engine_parameters: {
+            gmx_mmpbsa_executable: paths.gmx_mmpbsa_executable || "gmx_MMPBSA",
+            gmx_executable: paths.gmx_executable || "gmx",
+            ambertools_bin: paths.ambertools_bin || "bin",
+            python_executable: paths.gmx_mmpbsa_python || "python",
+            worker_script: paths.gmx_mmpbsa_worker || "gmx_mmpbsa_worker.py",
+            timeout_seconds: 3600,
+            mpi_launch_retries: 0
+          }
+        }
+      },
+      {
+        id: "report",
+        kind: "report",
+        needs: ["mmgbsa"],
+        input_contracts: {
+          compounds: "compound/1.0",
+          binding_energy_results: "binding_energy/1.3"
+        },
+        input_bindings: {
+          compounds: "$compounds",
+          binding_energy_results: "mmgbsa"
+        },
+        output_contract: "report_bundle/1.0",
+        params: {
+          formats: ["html", "json", "csv"]
+        }
+      }
+    ],
+    outputs: {
+      energy: "mmgbsa",
+      report: "report"
+    }
+  };
+}
+
+function makeDockingWorkflow(chainId = "A", exhaustiveness = 16, paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
   return {
     schema: "caddsuite.workflow/1",
     name: "ADMET, docking and report",
@@ -621,8 +649,8 @@ function makeDockingWorkflow(chainId = "A", exhaustiveness = 16) {
           ph: 7.4,
           occupancy_policy: "highest_occupancy_single_model",
           engine_parameters: {
-            python_executable: "/home/sridhar/miniconda3/envs/cadd/bin/python",
-            worker_script: "/home/sridhar/CAAD_Suite_End_to_End/src/caddsuite_worker/pdbfixer_worker.py"
+            python_executable: paths.cadd_python || "python",
+            worker_script: paths.pdbfixer_worker || "pdbfixer_worker.py"
           }
         }
       },
@@ -670,11 +698,11 @@ function makeDockingWorkflow(chainId = "A", exhaustiveness = 16) {
         output_contract: "docking_result/1.0",
         params: {
           engine_parameters: {
-            vina_executable: "/home/sridhar/miniconda3/envs/cadd/bin/vina",
-            meeko_python: "/home/sridhar/miniconda3/envs/cadd/bin/python",
-            mk_prepare_receptor: "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_receptor.py",
-            mk_prepare_ligand: "/home/sridhar/miniconda3/envs/cadd/bin/mk_prepare_ligand.py",
-            mk_export: "/home/sridhar/miniconda3/envs/cadd/bin/mk_export.py"
+            vina_executable: paths.vina_executable || "vina",
+            meeko_python: paths.cadd_python || "python",
+            mk_prepare_receptor: paths.mk_prepare_receptor || "mk_prepare_receptor.py",
+            mk_prepare_ligand: paths.mk_prepare_ligand || "mk_prepare_ligand.py",
+            mk_export: paths.mk_export || "mk_export.py"
           },
           docking_parameters: {
             exhaustiveness: exhaustiveness,
@@ -729,17 +757,20 @@ function buildTargetStructurePayload(artifact: ProjectArtifact) {
   };
 }
 
-function buildDefaultCalculationPayload(compound?: Compound) {
+function buildDefaultCalculationPayload(compound?: Compound, formId?: string, conformerId?: string) {
   const calcId = ulid();
+  const effFormId = formId || (compound?.payload?.form_id as string) || "00000000000000000000000000";
+  const effConformerId = conformerId || (compound?.payload?.conformer_id as string) || "00000000000000000000000000";
+  const accession = compound?.accession ? `${compound.accession}_QM_001` : "CMP0001_QM_001";
   return {
     schema_version: "qm_calculation/1.2",
     id: calcId,
-    accession: "CMP0001_QM_001",
-    form_id: "00000000000000000000000000",
+    accession: accession,
+    form_id: effFormId,
     compound_id: compound?.id || ulid(),
     geometry_source: {
       kind: "conformer",
-      id: "00000000000000000000000000"
+      id: effConformerId
     },
     engine: {
       name: "Psi4",
@@ -787,7 +818,17 @@ export default function App() {
   const [mdLengthNs, setMdLengthNs] = useState<number>(1.0);
   const [mdTimestepFs, setMdTimestepFs] = useState<number>(2.0);
   const [mdTempK, setMdTempK] = useState<number>(300.0);
-  const [wf, setWf] = useState(JSON.stringify(makeDockingWorkflow("A", 16), null, 2));
+  const [engineConfig, setEngineConfig] = useState<EngineDiscoveryReport | null>(null);
+  const [enginePaths, setEnginePaths] = useState<EnginePaths>(() => {
+    try {
+      const saved = localStorage.getItem("caddsuite_engine_paths");
+      if (saved) return { ...DEFAULT_ENGINE_PATHS, ...JSON.parse(saved) };
+    } catch {
+      // fallback
+    }
+    return DEFAULT_ENGINE_PATHS;
+  });
+  const [wf, setWf] = useState(JSON.stringify(makeDockingWorkflow("A", 16, DEFAULT_ENGINE_PATHS), null, 2));
   const [inputs, setInputs] = useState(JSON.stringify({ compounds: [] }, null, 2));
   const [plan, setPlan] = useState<unknown>(null);
   const [history, setHistory] = useState<HistoryRun[]>([]);
@@ -889,15 +930,64 @@ export default function App() {
   async function connect() {
     try {
       setErr("");
-      const [p, c] = await Promise.all([get(api.GET("/v1/projects")), get(api.GET("/v1/workflows/capabilities"))]);
+      const [p, c, eng] = await Promise.all([
+        get(api.GET("/v1/projects")),
+        get(api.GET("/v1/workflows/capabilities")),
+        get(api.GET("/v1/system/engine-config")).catch(() => null),
+      ]);
       setProjects(p as Project[]);
       setCaps(((c as { capabilities?: Record<string, unknown>[] }).capabilities) || []);
+      if (eng) {
+        const report = eng as EngineDiscoveryReport;
+        setEngineConfig(report);
+        const saved = localStorage.getItem("caddsuite_engine_paths");
+        let mergedPaths = { ...DEFAULT_ENGINE_PATHS, ...report.paths };
+        if (saved) {
+          try {
+            mergedPaths = { ...mergedPaths, ...JSON.parse(saved) };
+          } catch {
+            // keep mergedPaths
+          }
+        }
+        setEnginePaths(mergedPaths);
+      }
       setOk(true);
       if (!pid && (p as Project[]).length) setPid((p as Project[])[0].id);
       setMsg("Connected to CADD Suite API");
     } catch (e) {
       setOk(false);
       setErr(String(e));
+    }
+  }
+
+  function saveEnginePaths(newPaths: EnginePaths) {
+    setEnginePaths(newPaths);
+    localStorage.setItem("caddsuite_engine_paths", JSON.stringify(newPaths));
+    setMsg("Engine configuration saved to local storage.");
+    if (selectedPreset === "docking") {
+      setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, newPaths), null, 2));
+    } else if (selectedPreset === "dft") {
+      setWf(JSON.stringify(makeDftWorkflow(newPaths), null, 2));
+    } else if (selectedPreset === "md") {
+      setWf(JSON.stringify(makeMdWorkflow(newPaths), null, 2));
+    } else if (selectedPreset === "mmpbsa") {
+      setWf(JSON.stringify(makeMmpbsaWorkflow(newPaths), null, 2));
+    }
+  }
+
+  function resetEnginePaths() {
+    localStorage.removeItem("caddsuite_engine_paths");
+    const fresh = engineConfig?.paths ? { ...DEFAULT_ENGINE_PATHS, ...engineConfig.paths } : DEFAULT_ENGINE_PATHS;
+    setEnginePaths(fresh);
+    setMsg("Engine configuration reset to auto-discovered defaults.");
+    if (selectedPreset === "docking") {
+      setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, fresh), null, 2));
+    } else if (selectedPreset === "dft") {
+      setWf(JSON.stringify(makeDftWorkflow(fresh), null, 2));
+    } else if (selectedPreset === "md") {
+      setWf(JSON.stringify(makeMdWorkflow(fresh), null, 2));
+    } else if (selectedPreset === "mmpbsa") {
+      setWf(JSON.stringify(makeMmpbsaWorkflow(fresh), null, 2));
     }
   }
 
@@ -953,7 +1043,7 @@ export default function App() {
         setWf(JSON.stringify(PRESET_ADMET, null, 2));
         setInputs(JSON.stringify({ compounds: comps.map((c) => c.payload) }, null, 2));
       } else if (key === "docking") {
-        setWf(JSON.stringify(makeDockingWorkflow(chain, exh), null, 2));
+        setWf(JSON.stringify(makeDockingWorkflow(chain, exh, enginePaths), null, 2));
         const inputObj: Record<string, unknown> = {
           compounds: comps.map((c) => c.payload),
         };
@@ -965,7 +1055,7 @@ export default function App() {
         setWf(JSON.stringify(PRESET_LIGAND_3D, null, 2));
         setInputs(JSON.stringify({ compounds: comps.map((c) => c.payload) }, null, 2));
       } else if (key === "dft") {
-        setWf(JSON.stringify(PRESET_DFT, null, 2));
+        setWf(JSON.stringify(makeDftWorkflow(enginePaths), null, 2));
         setInputs(
           JSON.stringify(
             {
@@ -977,7 +1067,7 @@ export default function App() {
           )
         );
       } else if (key === "md") {
-        setWf(JSON.stringify(PRESET_MD, null, 2));
+        setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
         if (mdDemoInfo) {
           void loadDemoMdSystem();
         } else {
@@ -993,11 +1083,11 @@ export default function App() {
           );
         }
       } else if (key === "mmpbsa") {
-        setWf(JSON.stringify(PRESET_MMPBSA, null, 2));
+        setWf(JSON.stringify(makeMmpbsaWorkflow(enginePaths), null, 2));
         void loadDemoMmpbsaSystem();
       }
     },
-    [activeTargetArtifact, compounds, targetChain, exhaustiveness, mdLengthNs, mdTimestepFs, mdTempK]
+    [activeTargetArtifact, compounds, targetChain, exhaustiveness, mdLengthNs, mdTimestepFs, mdTempK, enginePaths]
   );
 
   useEffect(() => {
@@ -2727,6 +2817,160 @@ export default function App() {
                   Create project
                 </button>
               </form>
+            </section>
+            <section className="panel" style={{ gridColumn: "1 / -1" }}>
+              <div className="between">
+                <div>
+                  <h2>Scientific Engine Configuration & Readiness</h2>
+                  <p>
+                    Inspect discovered scientific toolchain paths and configure local executables.
+                    Auto-discovered paths adapt to your environment; overrides are saved locally.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    type="button"
+                    className="light"
+                    onClick={() => resetEnginePaths()}
+                  >
+                    Reset to auto-discovered
+                  </button>
+                  <button
+                    type="button"
+                    className="dark"
+                    onClick={() => saveEnginePaths(enginePaths)}
+                  >
+                    Save & Apply paths
+                  </button>
+                </div>
+              </div>
+
+              {/* Readiness Badges */}
+              <div style={{ display: "flex", gap: "12px", margin: "16px 0", flexWrap: "wrap" }}>
+                <div style={{ padding: "8px 12px", borderRadius: "6px", background: engineConfig?.readiness?.docking_ready ? "var(--c-ready-bg, #e6f4ea)" : "var(--c-missing-bg, #fef7e0)", border: "1px solid var(--c-border, #ddd)" }}>
+                  <span style={{ fontWeight: 600 }}>Docking (Vina / Meeko): </span>
+                  <span style={{ color: engineConfig?.readiness?.docking_ready ? "#137333" : "#b06000" }}>
+                    {engineConfig?.readiness?.docking_ready ? "✓ Ready" : "⚠ Prerequisites missing"}
+                  </span>
+                </div>
+                <div style={{ padding: "8px 12px", borderRadius: "6px", background: engineConfig?.readiness?.gromacs_ready ? "var(--c-ready-bg, #e6f4ea)" : "var(--c-missing-bg, #fef7e0)", border: "1px solid var(--c-border, #ddd)" }}>
+                  <span style={{ fontWeight: 600 }}>Molecular Dynamics (GROMACS): </span>
+                  <span style={{ color: engineConfig?.readiness?.gromacs_ready ? "#137333" : "#b06000" }}>
+                    {engineConfig?.readiness?.gromacs_ready ? "✓ Ready" : "⚠ Prerequisites missing"}
+                  </span>
+                </div>
+                <div style={{ padding: "8px 12px", borderRadius: "6px", background: engineConfig?.readiness?.psi4_ready ? "var(--c-ready-bg, #e6f4ea)" : "var(--c-missing-bg, #fef7e0)", border: "1px solid var(--c-border, #ddd)" }}>
+                  <span style={{ fontWeight: 600 }}>Quantum Chemistry (Psi4): </span>
+                  <span style={{ color: engineConfig?.readiness?.psi4_ready ? "#137333" : "#b06000" }}>
+                    {engineConfig?.readiness?.psi4_ready ? "✓ Ready" : "⚠ Prerequisites missing"}
+                  </span>
+                </div>
+                <div style={{ padding: "8px 12px", borderRadius: "6px", background: engineConfig?.readiness?.mmpbsa_ready ? "var(--c-ready-bg, #e6f4ea)" : "var(--c-missing-bg, #fef7e0)", border: "1px solid var(--c-border, #ddd)" }}>
+                  <span style={{ fontWeight: 600 }}>MM-PBSA (gmx_MMPBSA): </span>
+                  <span style={{ color: engineConfig?.readiness?.mmpbsa_ready ? "#137333" : "#b06000" }}>
+                    {engineConfig?.readiness?.mmpbsa_ready ? "✓ Ready" : "⚠ Prerequisites missing"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Missing Prerequisites Warning */}
+              {engineConfig && engineConfig.missing_prerequisites && engineConfig.missing_prerequisites.length > 0 && (
+                <div className="alert" style={{ marginBottom: "16px" }}>
+                  <strong>Missing system prerequisites:</strong>
+                  <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
+                    {engineConfig.missing_prerequisites.map((req, i) => (
+                      <li key={i}>{req}</li>
+                    ))}
+                  </ul>
+                  <p style={{ margin: "6px 0 0", fontSize: "12px" }}>
+                    Set the corresponding environment variable (e.g. <code>CADDSUITE_GROMACS_BIN</code>, <code>CADDSUITE_VINA_BIN</code>, <code>CADDSUITE_PSI4_PYTHON</code>) or configure paths below.
+                  </p>
+                </div>
+              )}
+
+              {/* Editable Path Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>
+                <label>
+                  <span>AutoDock Vina executable</span>
+                  <input
+                    value={enginePaths.vina_executable || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, vina_executable: e.target.value }))}
+                    placeholder="vina or /path/to/vina"
+                  />
+                </label>
+                <label>
+                  <span>CADD Python (Meeko / PDBFixer)</span>
+                  <input
+                    value={enginePaths.cadd_python || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, cadd_python: e.target.value }))}
+                    placeholder="python or /path/to/cadd/bin/python"
+                  />
+                </label>
+                <label>
+                  <span>PDBFixer worker script</span>
+                  <input
+                    value={enginePaths.pdbfixer_worker || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, pdbfixer_worker: e.target.value }))}
+                    placeholder="/path/to/pdbfixer_worker.py"
+                  />
+                </label>
+                <label>
+                  <span>GROMACS executable (gmx)</span>
+                  <input
+                    value={enginePaths.gmx_executable || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, gmx_executable: e.target.value }))}
+                    placeholder="gmx or /path/to/gmx"
+                  />
+                </label>
+                <label>
+                  <span>Psi4 Python interpreter</span>
+                  <input
+                    value={enginePaths.psi4_python || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, psi4_python: e.target.value }))}
+                    placeholder="python or /path/to/psi4/bin/python"
+                  />
+                </label>
+                <label>
+                  <span>CADD Suite worker source directory</span>
+                  <input
+                    value={enginePaths.worker_source_dir || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, worker_source_dir: e.target.value }))}
+                    placeholder="/path/to/src"
+                  />
+                </label>
+                <label>
+                  <span>gmx_MMPBSA executable</span>
+                  <input
+                    value={enginePaths.gmx_mmpbsa_executable || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, gmx_mmpbsa_executable: e.target.value }))}
+                    placeholder="gmx_MMPBSA or /path/to/gmx_MMPBSA"
+                  />
+                </label>
+                <label>
+                  <span>gmx_MMPBSA Python interpreter</span>
+                  <input
+                    value={enginePaths.gmx_mmpbsa_python || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, gmx_mmpbsa_python: e.target.value }))}
+                    placeholder="python or /path/to/gmxMMPBSA/bin/python"
+                  />
+                </label>
+                <label>
+                  <span>gmx_MMPBSA worker script</span>
+                  <input
+                    value={enginePaths.gmx_mmpbsa_worker || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, gmx_mmpbsa_worker: e.target.value }))}
+                    placeholder="/path/to/gmx_mmpbsa_worker.py"
+                  />
+                </label>
+                <label>
+                  <span>AmberTools bin directory</span>
+                  <input
+                    value={enginePaths.ambertools_bin || ""}
+                    onChange={(e) => setEnginePaths((p) => ({ ...p, ambertools_bin: e.target.value }))}
+                    placeholder="/path/to/ambertools/bin"
+                  />
+                </label>
+              </div>
             </section>
           </div>
         )}

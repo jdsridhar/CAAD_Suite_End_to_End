@@ -187,3 +187,24 @@ test("cube and compatible trajectory previews preserve their existing viewer pat
   await expect(page.locator(".molstar-host canvas").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel("Molecular trajectory viewer").locator(".alert")).not.toBeVisible();
 });
+
+test("engine configuration displays discovered readiness and supports editable path overrides", async ({ page }) => {
+  test.setTimeout(60_000);
+  await connectAndCreate(page);
+  await page.getByRole("button", { name: /Projects & API/ }).click();
+  await expect(page.getByRole("heading", { name: "Scientific Engine Configuration & Readiness" })).toBeVisible();
+  await expect(page.getByText("Docking (Vina / Meeko):")).toBeVisible();
+  await expect(page.getByText("Molecular Dynamics (GROMACS):")).toBeVisible();
+  await expect(page.getByText("Quantum Chemistry (Psi4):")).toBeVisible();
+  await expect(page.getByText("MM-PBSA (gmx_MMPBSA):")).toBeVisible();
+
+  const vinaInput = page.getByLabel("AutoDock Vina executable");
+  await expect(vinaInput).toBeVisible();
+  await vinaInput.fill("/usr/local/bin/vina");
+  await page.getByRole("button", { name: "Save & Apply paths" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Engine configuration saved to local storage." })).toBeVisible();
+
+  await page.getByRole("button", { name: "Reset to auto-discovered" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Engine configuration reset to auto-discovered defaults." })).toBeVisible();
+});
+
