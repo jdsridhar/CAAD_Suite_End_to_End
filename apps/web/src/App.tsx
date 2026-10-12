@@ -933,18 +933,23 @@ export default function App() {
     [api]
   );
 
-  async function connect() {
+  async function connect(tokenOverride?: string) {
+    const effectiveToken = tokenOverride !== undefined ? tokenOverride : token;
     try {
       setErr("");
-      if (!token.trim()) {
+      if (!effectiveToken.trim()) {
         setOk(false);
         setErr("API access token is required. For local development, enter your configured token (default: caddsuite-local-2026).");
         return;
       }
+      if (tokenOverride !== undefined) {
+        setToken(tokenOverride);
+      }
+      const client = tokenOverride !== undefined ? createApiClient(url, tokenOverride) : api;
       const [p, c, eng] = await Promise.all([
-        get(api.GET("/v1/projects")),
-        get(api.GET("/v1/workflows/capabilities")),
-        get(api.GET("/v1/system/engine-config")).catch(() => null),
+        get(client.GET("/v1/projects")),
+        get(client.GET("/v1/workflows/capabilities")),
+        get(client.GET("/v1/system/engine-config")).catch(() => null),
       ]);
       setProjects(p as Project[]);
       setCaps(((c as { capabilities?: Record<string, unknown>[] }).capabilities) || []);
@@ -964,7 +969,7 @@ export default function App() {
       }
       setOk(true);
       try {
-        localStorage.setItem("caddsuite_api_token", token);
+        localStorage.setItem("caddsuite_api_token", effectiveToken);
       } catch {
         // ignore
       }
@@ -1675,7 +1680,20 @@ export default function App() {
       </header>
 
       {/* FEEDBACK BANNERS */}
-      {err && <div role="alert" className="alert global-alert">{err}</div>}
+      {err && (
+        <div role="alert" className="alert global-alert" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <span>{err}</span>
+          {err.includes("caddsuite-local-2026") && (
+            <button
+              type="button"
+              className="outline small"
+              onClick={() => void connect("caddsuite-local-2026")}
+            >
+              Fill default token &amp; connect
+            </button>
+          )}
+        </div>
+      )}
       {msg && !msg.startsWith("{") && <div role="status" aria-live="polite" className="success global-alert">{msg}</div>}
 
       {(!ok || !pid || compounds.length === 0) && (
@@ -2824,9 +2842,18 @@ export default function App() {
                   />
                 </label>
               </div>
-              <small className="dim" style={{ display: "block", marginTop: 4 }}>
-                Local development default: <code>caddsuite-local-2026</code> (configured via <code>CADDSUITE_API_TOKEN</code>)
-              </small>
+              <div className="between" style={{ marginTop: 8, flexWrap: "wrap", gap: 8 }}>
+                <small className="dim">
+                  Local development default: <code>caddsuite-local-2026</code> (configured via <code>CADDSUITE_API_TOKEN</code>)
+                </small>
+                <button
+                  type="button"
+                  className="outline small"
+                  onClick={() => void connect("caddsuite-local-2026")}
+                >
+                  Fill default token &amp; connect
+                </button>
+              </div>
               <div className="actions" style={{ marginTop: 14 }}>
                 <button className="dark" onClick={() => void connect()}>
                   {ok ? "Re-verify connection" : "Connect to API"}
