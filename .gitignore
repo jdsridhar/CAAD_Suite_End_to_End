@@ -30,6 +30,7 @@ caddsuite_data/
 *.dcd
 *.cpt
 scratch/
+results_export/
 
 # Benchmark raw downloads and exploratory decision logs
 benchmarks/**/candidate_decisions.jsonl

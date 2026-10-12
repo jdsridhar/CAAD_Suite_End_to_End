@@ -767,7 +767,7 @@ function buildDefaultCalculationPayload(compound?: Compound, formId?: string, co
     id: calcId,
     accession: accession,
     form_id: effFormId,
-    compound_id: compound?.id || ulid(),
+    compound_id: compound?.id || null,
     geometry_source: {
       kind: "conformer",
       id: effConformerId
@@ -800,7 +800,13 @@ type TabKey = "pipeline" | "evidence" | "compounds" | "monitor" | "structures" |
 
 export default function App() {
   const [url, setUrl] = useState("http://127.0.0.1:8000");
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => {
+    try {
+      return localStorage.getItem("caddsuite_api_token") || "";
+    } catch {
+      return "";
+    }
+  });
   const [ok, setOk] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("pipeline");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -930,6 +936,11 @@ export default function App() {
   async function connect() {
     try {
       setErr("");
+      if (!token.trim()) {
+        setOk(false);
+        setErr("API access token is required. For local development, enter your configured token (default: caddsuite-local-2026).");
+        return;
+      }
       const [p, c, eng] = await Promise.all([
         get(api.GET("/v1/projects")),
         get(api.GET("/v1/workflows/capabilities")),
@@ -952,11 +963,21 @@ export default function App() {
         setEnginePaths(mergedPaths);
       }
       setOk(true);
+      try {
+        localStorage.setItem("caddsuite_api_token", token);
+      } catch {
+        // ignore
+      }
       if (!pid && (p as Project[]).length) setPid((p as Project[])[0].id);
       setMsg("Connected to CADD Suite API");
     } catch (e) {
       setOk(false);
-      setErr(String(e));
+      const errStr = String(e);
+      if (errStr.includes("Unauthorized")) {
+        setErr("Unauthorized: Invalid or missing API access token. Please verify your token matches CADDSUITE_API_TOKEN on your server (local default: caddsuite-local-2026).");
+      } else {
+        setErr(errStr);
+      }
     }
   }
 
@@ -2786,9 +2807,26 @@ export default function App() {
                 </label>
                 <label>
                   Access token
-                  <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Local API bearer token" />
+                  <input
+                    type="password"
+                    value={token}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setToken(val);
+                      try {
+                        if (val) localStorage.setItem("caddsuite_api_token", val);
+                        else localStorage.removeItem("caddsuite_api_token");
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    placeholder="Local API bearer token (default: caddsuite-local-2026)"
+                  />
                 </label>
               </div>
+              <small className="dim" style={{ display: "block", marginTop: 4 }}>
+                Local development default: <code>caddsuite-local-2026</code> (configured via <code>CADDSUITE_API_TOKEN</code>)
+              </small>
               <div className="actions" style={{ marginTop: 14 }}>
                 <button className="dark" onClick={() => void connect()}>
                   {ok ? "Re-verify connection" : "Connect to API"}
