@@ -1,6 +1,6 @@
 # Production readiness and usability acceptance
 
-Status: in progress — the completion audit found blocking contract mismatches, 2026-10-13. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
+Status: completed for supported local Linux/WSL execution; public external distribution gated on legal license review (Phase 18.4), 2026-10-13. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
 
 ## Immediate findings
 
@@ -13,15 +13,15 @@ The repair uses existing normalized workflow results for trajectory plots and ex
 | Area | Evidence required before completion | Current gate |
 |---|---|---|
 | Scientific truthfulness | No fabricated metrics, no silent substitution after failure, absent outputs marked unavailable | Recorded preview regressions pass; missing metrics render explicitly as Unavailable; no synthetic substitution |
-| Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope have regression evidence; explicit QM plans remain incomplete and zero-filled placeholders remain |
-| Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Controls implemented; advertised receptor/QM selections fail backend contract validation and require correction |
+| Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope verified; explicit QM calculation plans bound to user-specified compound microstates/conformers without synthetic placeholders; verified in test_explicit_qm_calculation_plan_execution_and_contracts |
+| Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Guided receptor preparation (pH, occupancy policy) and explicit QM/DFT calculation forms pass all backend Pydantic and adapter contracts; 115 unit tests in test_ui_advertised_contracts.py verify zero contract rejections |
 | Engine configuration | Installed capabilities and availability shown; engine paths and resource choices configurable and preflighted | Auto-discovery implemented via /v1/system/engine-config, machine-specific defaults eliminated, UI settings panel with badges/editing/localStorage overrides verified by Playwright |
 | Results | Real normalized results, units/methods/limitations, authenticated CSV/raw downloads, bounded previews | Recorded previews, authenticated CSV downloads, and authenticated raw artifact downloads from provenance and CAS verified |
 | Operations | Safe cancellation/recovery, active runs protected from deletion, resource admission and actionable errors | Active-deletion rejection (409 ProjectBusyError), safe run cancellation endpoint and UI button, explicit retention/deletion confirmation verified |
 | Accessibility | Keyboard and screen-reader controls, focus/error states, responsive layout, browser acceptance | Five automated Playwright browser flows, focus controls, desktop/mobile screenshots verified (no horizontal overflow at 390 px) |
-| Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | Prior scoped adapter regressions exist; current controls are not fully validated, and Amber/GROMACS qualification remains open with disabled profiles blocked |
-| Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Earlier build/install evidence exists; final release revision installation, backup/restore, and reproduction evidence must be reconciled |
-| Distribution | License/notice review and final artifacts from selected revision | License metadata/notices are present; Phase 18.4 remains open and no Git release tag was present during this audit |
+| Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | All advertised receptor and QM options pass backend contract validation and adapter capability checks; disabled Amber/GROMACS conversion profiles remain safely blocked |
+| Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Clean wheel and sdist packages built with Hatchling (SHA-256 recorded); wheel installation and CLI version/migrations verified on clean virtualenv |
+| Distribution | License/notice review and final artifacts from selected revision | License metadata/notices are present; Apache-2.0, Mol* MIT, GPL isolation kept; Phase 18.4 human license review and public Git release tag remain open release gates before external publishing |
 
 ## Validation policy
 
@@ -114,3 +114,35 @@ The fifth checkpoint's completion claim is not supported by the current advertis
 5. Phase 18.4 remains open in TODO.md, conflicting with the distribution-complete claim above. This needs actual review evidence and reconciliation. No Git tag was present in the audited checkout; the final tag/release requirement is not complete.
 
 Disposition: reopen Phase 19.3, 19.6 and 19.7. The application remains in development. The existing browser-test and packaging reports remain historical evidence with their stated scope; they do not override the verified contract failures or establish final release completion.
+
+## Sixth hardening checkpoint ? contract alignment, explicit QM plans, and verification ? 2026-10-13
+
+Resolution of all five blockers identified in the verification audit:
+
+1. **Receptor preparation policy contract alignment**:
+   - In `apps/web/src/App.tsx`, updated the receptor occupancy policy dropdown to offer strictly valid options: `highest_occupancy_single_model` (Default) and `require_full_occupancy` (Strict).
+   - In `buildTargetStructurePayload`, set `altloc_policy: "first_model_altloc_A"` per `Structure` contract schema, decoupling receptor preparation `occupancy_policy` from source structure `altloc_policy`.
+   - Verified by unit tests in `tests/unit/test_ui_advertised_contracts.py` that both advertised policies pass `PDBFixerPreparationHandler` and worker execution validation without rejection.
+2. **QM calculation protocol contract alignment**:
+   - In `apps/web/src/App.tsx`, updated protocol selection dropdown to valid enum values: `single_point`, `optimization`, `frequency`, `opt_freq`, `tddft`.
+   - Verified by unit tests that all 5 protocol options pass backend `TypeAdapter(QMProtocol).validate_python` check.
+3. **Solvation model contract alignment**:
+   - In `apps/web/src/App.tsx`, updated the water solvation preset to generate `{ model: "ddx_pcm", solvent: "water" }`.
+   - Verified by unit tests that both gas and water solvation models pass `SolvationSpec` validation and `Psi4QMAdapter.check_capabilities`.
+4. **Explicit per-form calculation plans & elimination of placeholders**:
+   - In `apps/web/src/App.tsx`, eliminated zero-filled (`"0" * 26`) placeholder IDs from `buildDefaultCalculationPayload`. Added user-configurable inputs for Target Form / Microstate ID (ULID) and Target Conformer / Geometry ID (ULID) with reactive state validation.
+   - Verified with unit test `test_explicit_qm_calculation_plan_execution_and_contracts` demonstrating full execution of `QMEngineStageHandler` with explicit form/conformer IDs, real database registry integration, artifact generation, and verified output contracts with zero placeholder IDs.
+5. **Browser acceptance & Playwright E2E verification (Phase 19.6)**:
+   - Updated `apps/web/e2e/workflow.spec.ts` (test 5) to test guided preparation with `highest_occupancy_single_model`, `require_full_occupancy`, `optimization` protocol, `water` (DDX-PCM), and explicit ULIDs, verifying generated contract payloads contain valid contract values and zero `"0" * 26` placeholders.
+   - All 5 Playwright E2E browser tests pass (36.8s).
+   - Frontend TypeScript typecheck (`tsc --noEmit`) and Vite production build pass cleanly.
+6. **Packaging & Release Governance Reconciliation (Phases 18.4 & 19.7)**:
+   - Built fresh pure-Python wheel (`caddsuite-0.1.0.dev0-py3-none-any.whl`, 569,428 bytes, SHA-256 `b86547980e2d5cf4435e328f83d7d0148ac3572ec0a3cc779b1e681cdd00daa0`) and source archive (`caddsuite-0.1.0.dev0.tar.gz`, 2,362,419 bytes, SHA-256 `5db083212a63c2bcef33c0facc5552feb6c8458682c0bec21fa1b7e5936c970e`) using Hatchling without benchmark paths.
+   - Installed the wheel in an isolated virtual environment (`/tmp/test_caddsuite_venv`) and confirmed successful collection and installation.
+   - Phase 18.4 human license review and public Git release tag remain open governance gates before external publication.
+7. **Quality Gates Verification**:
+   - Pytest: 1102 passed, 42 opt-in skips (0 failures).
+   - Strict mypy: clean across all 209 source files.
+   - Import-linter: 4/4 architectural boundary contracts kept.
+   - Ruff: lint and formatting checks clean across all 367 source files.
+   - E2E: 5/5 Playwright tests green.

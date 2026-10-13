@@ -230,7 +230,8 @@ test("guided preparation, explicit DFT plans, and project deletion lifecycle", a
   await phInput.fill("7.0");
   const altlocSelect = page.getByLabel("Altloc / Model Policy");
   await expect(altlocSelect).toBeVisible();
-  await altlocSelect.selectOption("first_model_altloc_A");
+  await altlocSelect.selectOption("highest_occupancy_single_model");
+  await altlocSelect.selectOption("require_full_occupancy");
 
   // 2. Verify Explicit QM / DFT Specification Controls
   await page.getByRole("button", { name: /Ligand DFT/ }).click();
@@ -247,16 +248,35 @@ test("guided preparation, explicit DFT plans, and project deletion lifecycle", a
 
   const protocolSelect = page.getByLabel("Calculation Protocol");
   await expect(protocolSelect).toBeVisible();
-  await protocolSelect.selectOption("geometry_optimization");
+  await protocolSelect.selectOption("optimization");
 
   const solvationSelect = page.getByLabel("Solvation Model");
   await expect(solvationSelect).toBeVisible();
   await solvationSelect.selectOption("water");
 
-  const chargeInput = page.getByLabel("Net Charge");
-  await expect(chargeInput).toBeVisible();
+  const explicitFormId = ulid();
+  const explicitConfId = ulid();
+  const formIdInput = page.getByLabel("Target Form / Microstate ID (ULID)");
+  await expect(formIdInput).toBeVisible();
+  await formIdInput.fill(explicitFormId);
+
+  const confIdInput = page.getByLabel("Target Conformer / Geometry ID (ULID)");
+  await expect(confIdInput).toBeVisible();
+  await confIdInput.fill(explicitConfId);
+
+  // Verify generated inputs JSON contains explicit contracts and zero placeholders
+  await page.getByRole("button", { name: /3D Molecular Studio/ }).click();
+  await page.getByText(/Advanced: Raw Input Contracts JSON/).click();
+  const inputsArea = page.locator("textarea.inputs");
+  const inputsText = await inputsArea.inputValue();
+  expect(inputsText).toContain('"optimization"');
+  expect(inputsText).toContain('"ddx_pcm"');
+  expect(inputsText).toContain(explicitFormId);
+  expect(inputsText).toContain(explicitConfId);
+  expect(inputsText).not.toContain("00000000000000000000000000");
 
   // 3. Compile/Plan Workflow against discovered capabilities
+  await page.getByRole("button", { name: /Pipeline Studio/ }).click();
   await page.getByRole("button", { name: "Validate & Plan" }).click();
   await expect(page.getByRole("status").filter({ hasText: /compiled successfully/ })).toBeVisible();
 

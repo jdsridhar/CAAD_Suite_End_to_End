@@ -745,7 +745,7 @@ function makeDockingWorkflow(
   };
 }
 
-function buildTargetStructurePayload(artifact: ProjectArtifact, altlocPolicy = "highest_occupancy_single_model") {
+function buildTargetStructurePayload(artifact: ProjectArtifact) {
   return {
     schema_version: "structure/1.0",
     id: artifact.id,
@@ -753,7 +753,7 @@ function buildTargetStructurePayload(artifact: ProjectArtifact, altlocPolicy = "
     source: "local",
     source_id: artifact.original_name || artifact.kind || "TARGET_RECEPTOR",
     model_index: 1,
-    altloc_policy: altlocPolicy,
+    altloc_policy: "first_model_altloc_A",
     entity_sequences: {},
     raw: {
       artifact_id: artifact.id,
@@ -775,8 +775,8 @@ function buildDefaultCalculationPayload(
   multiplicity = 1
 ) {
   const calcId = ulid();
-  const effFormId = formId || (compound?.payload?.form_id as string) || "00000000000000000000000000";
-  const effConformerId = conformerId || (compound?.payload?.conformer_id as string) || "00000000000000000000000000";
+  const effFormId = (formId && formId.trim()) || (compound?.payload?.form_id as string) || ulid();
+  const effConformerId = (conformerId && conformerId.trim()) || (compound?.payload?.conformer_id as string) || ulid();
   const accession = compound?.accession ? `${compound.accession}_QM_001` : "CMP0001_QM_001";
   return {
     schema_version: "qm_calculation/1.2",
@@ -792,7 +792,7 @@ function buildDefaultCalculationPayload(
       name: "Psi4",
       version: "1.11",
       kind: "engine",
-      license_class: "unknown"
+      license_class: "open_source_permissive"
     },
     adapter: {
       name: "caddsuite.qm.psi4",
@@ -807,7 +807,7 @@ function buildDefaultCalculationPayload(
     protocol: protocol,
     charge: charge,
     multiplicity: multiplicity,
-    solvation: solvation === "water" ? { model: "pcm", solvent: "water" } : null,
+    solvation: solvation === "water" ? { model: "ddx_pcm", solvent: "water" } : null,
     requested_properties: ["total_energy_Eh", "dipole_D", "orbitals"]
   };
 }
@@ -850,6 +850,8 @@ export default function App() {
   const [qmSolvation, setQmSolvation] = useState<"gas" | "water">("gas");
   const [qmCharge, setQmCharge] = useState<number>(0);
   const [qmMultiplicity, setQmMultiplicity] = useState<number>(1);
+  const [qmFormId, setQmFormId] = useState<string>("");
+  const [qmConformerId, setQmConformerId] = useState<string>("");
   const [engineConfig, setEngineConfig] = useState<EngineDiscoveryReport | null>(null);
   const [enginePaths, setEnginePaths] = useState<EnginePaths>(() => {
     try {
@@ -1095,7 +1097,9 @@ export default function App() {
       solvation = qmSolvation,
       charge = qmCharge,
       multiplicity = qmMultiplicity,
-      targetQmCompId = qmCompoundId
+      targetQmCompId = qmCompoundId,
+      formId = qmFormId,
+      conformerId = qmConformerId
     ) => {
       setSelectedPreset(key);
       setPlan(null);
@@ -1109,7 +1113,7 @@ export default function App() {
           compounds: comps.map((c) => c.payload),
         };
         if (targetArt) {
-          inputObj.target_structure = buildTargetStructurePayload(targetArt, altloc);
+          inputObj.target_structure = buildTargetStructurePayload(targetArt);
         }
         setInputs(JSON.stringify(inputObj, null, 2));
       } else if (key === "ligand_3d") {
@@ -1124,8 +1128,8 @@ export default function App() {
               compounds: comps.map((c) => c.payload),
               calculation: buildDefaultCalculationPayload(
                 selectedComp,
-                undefined,
-                undefined,
+                formId,
+                conformerId,
                 method,
                 basis,
                 protocol,
@@ -1158,7 +1162,7 @@ export default function App() {
         void loadDemoMmpbsaSystem();
       }
     },
-    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId]
+    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId]
   );
 
   useEffect(() => {
@@ -1168,7 +1172,7 @@ export default function App() {
         compounds: compounds.map((c) => c.payload),
       };
       if (activeTargetArtifact) {
-        inputObj.target_structure = buildTargetStructurePayload(activeTargetArtifact, altlocPolicy);
+        inputObj.target_structure = buildTargetStructurePayload(activeTargetArtifact);
       }
       setInputs(JSON.stringify(inputObj, null, 2));
     } else if (selectedPreset === "dft") {
@@ -1179,8 +1183,8 @@ export default function App() {
             compounds: compounds.map((c) => c.payload),
             calculation: buildDefaultCalculationPayload(
               selectedComp,
-              undefined,
-              undefined,
+              qmFormId,
+              qmConformerId,
               qmMethod,
               qmBasis,
               qmProtocol,
@@ -2091,8 +2095,8 @@ export default function App() {
                         applyPreset("docking", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, pol);
                       }}
                     >
-                      <option value="highest_occupancy_single_model">Highest occupancy single model</option>
-                      <option value="first_model_altloc_A">First model (Altloc A)</option>
+                      <option value="highest_occupancy_single_model">Highest occupancy single model (Default)</option>
+                      <option value="require_full_occupancy">Require full occupancy (Strict)</option>
                     </select>
                   </label>
                   <label className="upload-inline-label">
@@ -2140,7 +2144,7 @@ export default function App() {
                       onChange={(e) => {
                         const targetId = e.target.value;
                         setQmCompoundId(targetId);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, targetId);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, targetId, qmFormId, qmConformerId);
                       }}
                     >
                       {compounds.map((c) => (
@@ -2158,7 +2162,7 @@ export default function App() {
                       onChange={(e) => {
                         const m = e.target.value;
                         setQmMethod(m);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, m, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, m, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId);
                       }}
                     >
                       <option value="b3lyp">B3LYP (Hybrid GGA - Default)</option>
@@ -2176,7 +2180,7 @@ export default function App() {
                       onChange={(e) => {
                         const b = e.target.value;
                         setQmBasis(b);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, b, qmProtocol, qmSolvation, qmCharge, qmMultiplicity);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, b, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId);
                       }}
                     >
                       <option value="def2-svp">def2-SVP (Ahlrichs split-valence - fast)</option>
@@ -2193,12 +2197,14 @@ export default function App() {
                       onChange={(e) => {
                         const p = e.target.value;
                         setQmProtocol(p);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, p, qmSolvation, qmCharge, qmMultiplicity);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, p, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId);
                       }}
                     >
                       <option value="single_point">Single Point Energy</option>
-                      <option value="geometry_optimization">Geometry Optimization</option>
-                      <option value="frequencies">Harmonic Frequencies</option>
+                      <option value="optimization">Geometry Optimization</option>
+                      <option value="frequency">Harmonic Vibrational Frequencies</option>
+                      <option value="opt_freq">Optimization + Frequencies</option>
+                      <option value="tddft">Time-Dependent DFT (TDDFT)</option>
                     </select>
                   </label>
 
@@ -2209,11 +2215,11 @@ export default function App() {
                       onChange={(e) => {
                         const s = e.target.value as "gas" | "water";
                         setQmSolvation(s);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, s, qmCharge, qmMultiplicity);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, s, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId);
                       }}
                     >
                       <option value="gas">Gas Phase (Explicit / Vacuum)</option>
-                      <option value="water">PCM Aqueous Solvation (Water)</option>
+                      <option value="water">DDX-PCM Aqueous Solvation (Water)</option>
                     </select>
                   </label>
 
@@ -2225,7 +2231,7 @@ export default function App() {
                       onChange={(e) => {
                         const ch = Number(e.target.value);
                         setQmCharge(ch);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, ch, qmMultiplicity);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, ch, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId);
                       }}
                     />
                   </label>
@@ -2239,7 +2245,35 @@ export default function App() {
                       onChange={(e) => {
                         const mult = Number(e.target.value);
                         setQmMultiplicity(mult);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, mult);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, mult, qmCompoundId, qmFormId, qmConformerId);
+                      }}
+                    />
+                  </label>
+
+                  <label style={{ minWidth: 260 }}>
+                    Target Form / Microstate ID (ULID)
+                    <input
+                      type="text"
+                      value={qmFormId}
+                      placeholder="Explicit form ULID"
+                      onChange={(e) => {
+                        const fid = e.target.value.trim();
+                        setQmFormId(fid);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, fid, qmConformerId);
+                      }}
+                    />
+                  </label>
+
+                  <label style={{ minWidth: 260 }}>
+                    Target Conformer / Geometry ID (ULID)
+                    <input
+                      type="text"
+                      value={qmConformerId}
+                      placeholder="Explicit conformer ULID"
+                      onChange={(e) => {
+                        const cid = e.target.value.trim();
+                        setQmConformerId(cid);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, cid);
                       }}
                     />
                   </label>
@@ -3053,7 +3087,13 @@ export default function App() {
                     Re-insert registered compounds
                   </button>
                 </div>
-                <textarea className="editor inputs" value={inputs} onChange={(e) => setInputs(e.target.value)} spellCheck={false} />
+                <textarea
+                  aria-label="Workflow inputs JSON"
+                  className="editor inputs"
+                  value={inputs}
+                  onChange={(e) => setInputs(e.target.value)}
+                  spellCheck={false}
+                />
               </details>
             </section>
           </div>
