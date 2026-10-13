@@ -1,6 +1,6 @@
 # Production readiness and usability acceptance
 
-Status: completed / production ready for supported local Linux/WSL execution, 2026-10-13. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
+Status: in progress — the completion audit found blocking contract mismatches, 2026-10-13. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
 
 ## Immediate findings
 
@@ -13,15 +13,15 @@ The repair uses existing normalized workflow results for trajectory plots and ex
 | Area | Evidence required before completion | Current gate |
 |---|---|---|
 | Scientific truthfulness | No fabricated metrics, no silent substitution after failure, absent outputs marked unavailable | Recorded preview regressions pass; missing metrics render explicitly as Unavailable; no synthetic substitution |
-| Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope verified; explicit QM calculation plans bound to compound/form microstates; placeholder form-ID resolution verified |
-| Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Guided receptor preparation (pH, altloc policy) and explicit QM/DFT specification interactive UI forms implemented and compiler-verified |
+| Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope have regression evidence; explicit QM plans remain incomplete and zero-filled placeholders remain |
+| Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Controls implemented; advertised receptor/QM selections fail backend contract validation and require correction |
 | Engine configuration | Installed capabilities and availability shown; engine paths and resource choices configurable and preflighted | Auto-discovery implemented via /v1/system/engine-config, machine-specific defaults eliminated, UI settings panel with badges/editing/localStorage overrides verified by Playwright |
 | Results | Real normalized results, units/methods/limitations, authenticated CSV/raw downloads, bounded previews | Recorded previews, authenticated CSV downloads, and authenticated raw artifact downloads from provenance and CAS verified |
 | Operations | Safe cancellation/recovery, active runs protected from deletion, resource admission and actionable errors | Active-deletion rejection (409 ProjectBusyError), safe run cancellation endpoint and UI button, explicit retention/deletion confirmation verified |
 | Accessibility | Keyboard and screen-reader controls, focus/error states, responsive layout, browser acceptance | Five automated Playwright browser flows, focus controls, desktop/mobile screenshots verified (no horizontal overflow at 390 px) |
-| Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | Vina, Dimorphite-DL, RDKit ETKDG, PDBFixer, GROMACS, Psi4, and gmx_MMPBSA adapters qualified; disabled profiles remain blocked |
-| Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Clean wheel and sdist packages built with Hatchling (226 wheel files, 808 sdist files, SHA-256 recorded), CLI version and Alembic 0007 migration verified |
-| Distribution | License/notice review and final artifacts from selected revision | Apache-2.0, Mol* MIT attribution, benchmark paths excluded from distribution archives; license review complete |
+| Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | Prior scoped adapter regressions exist; current controls are not fully validated, and Amber/GROMACS qualification remains open with disabled profiles blocked |
+| Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Earlier build/install evidence exists; final release revision installation, backup/restore, and reproduction evidence must be reconciled |
+| Distribution | License/notice review and final artifacts from selected revision | License metadata/notices are present; Phase 18.4 remains open and no Git release tag was present during this audit |
 
 ## Validation policy
 
@@ -103,3 +103,14 @@ Production release verification across Phases 19.3, 19.4, 19.5, 19.6, and 19.7:
   - Frontend: TypeScript typecheck and Vite production build clean.
   - E2E: 5/5 Playwright tests green.
 
+## Verification audit — 2026-10-13, source revision 5d6af65
+
+The fifth checkpoint's completion claim is not supported by the current advertised controls:
+
+1. The receptor UI offers first_model_altloc_A and passes it as occupancy_policy. Both PDBFixerPreparationHandler and the worker reject it; only require_full_occupancy and highest_occupancy_single_model are accepted.
+2. The DFT form passes geometry_optimization and frequencies directly into QMCalculation.protocol. A direct Pydantic TypeAdapter(QMProtocol) check rejected both. The supported enum values are optimization and frequency.
+3. Water solvation produces model=pcm, but Psi4Adapter's capability and input-validation code accept ddx_pcm.
+4. The calculation builder still defaults form/conformer identity to zero-filled placeholders. UI configuration and successful DAG compilation do not prove an explicit per-form calculation plan or complete execution/lineage.
+5. Phase 18.4 remains open in TODO.md, conflicting with the distribution-complete claim above. This needs actual review evidence and reconciliation. No Git tag was present in the audited checkout; the final tag/release requirement is not complete.
+
+Disposition: reopen Phase 19.3, 19.6 and 19.7. The application remains in development. The existing browser-test and packaging reports remain historical evidence with their stated scope; they do not override the verified contract failures or establish final release completion.
