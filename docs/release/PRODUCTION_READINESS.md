@@ -1,6 +1,6 @@
 # Production readiness and usability acceptance
 
-Status: in progress, 2026-10-12. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
+Status: in progress, 2026-10-13. The application is not production ready yet. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
 
 ## Immediate findings
 
@@ -57,3 +57,11 @@ Authentication, token lifecycle, and guided onboarding usability passed:
 - Payload integrity: removed synthetic fallback ULID creation for `compound_id` in default QM calculation payload builder (`compound?.id || null`).
 - All four Playwright E2E browser tests pass (43.6s), verifying connection, project creation, compound registration, decision handling, 3D preview, authenticated downloads, cube and trajectory viewer paths, and engine configuration panels.
 - Quality gates verified: 986 passed unit/integration tests (42 opt-in skips), strict mypy clean across 209 source files, import-linter 4/4 contracts kept, Ruff lint and formatting 100% clean, and OpenAPI schema checks clean.
+
+## Fourth hardening checkpoint and tracking reconciliation — 2026-10-13
+
+Tracking reconciliation and report evidence linkage hardening:
+- Tracking reconciliation: reconciled Phase 19 status across `TODO.md` and this document. Phase 19.3 remains explicitly in progress (`[-]`), as guided receptor/ligand/complex preparation and explicit per-form QM calculation plans remain open gates. Phase 19.4 is in progress (`[-]`). Phases 19.5 (lifecycle/recovery/concurrency), 19.6 (broader UI/real workflow acceptance), and 19.7 (packaging/reproduction/license review) remain pending (`[ ]`). The application is not production ready yet.
+- Report evidence linkage repair (resolving task `01M4RDMMW7RJSB7VGFWC01CK3K` / run `01M4RDKG40ACFYVJA46MFKXWW0`): fixed `report_stage_plugin.py` where binding-energy, MD, and trajectory analysis results using unprotonated/default placeholder form IDs (`"0" * 26`) incorrectly triggered `ValueError("evidence compound/form IDs do not match a report CompoundForm")` when `compound_forms` contracts were not part of the workflow inputs. Placeholder form IDs are now correctly excluded from linked form validation, consistent with QM calculations.
+- Regression test added: `test_report_handles_default_form_id_in_binding_and_md_results` in `tests/unit/test_report_stage_plugin.py`.
+- Quality gates verified: 987 passed unit/integration tests (42 opt-in skips), strict mypy clean across 209 source files, import-linter 4/4 contracts kept, Ruff lint and formatting 100% clean, and all 4 Playwright browser E2E tests passing (41.0s).

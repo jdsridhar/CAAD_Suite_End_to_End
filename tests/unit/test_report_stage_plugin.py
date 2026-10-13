@@ -402,3 +402,67 @@ def test_report_renders_inputs_and_registers_run_scoped_artifacts(tmp_path: Path
             assert path.is_file()
             assert path.stat().st_size > 0
             assert item.artifact.artifact_id
+
+
+def test_report_handles_default_form_id_in_binding_and_md_results(tmp_path: Path) -> None:
+    project_id, run_id = new_ulid(), new_ulid()
+    compound = make_compound(
+        standardize_smiles("CCO"),
+        compound_id=new_ulid(),
+        project_id=project_id,
+        accession="CMP0001",
+        name="ethanol",
+        original_text="CCO",
+        source="manual",
+    )
+    energy = BindingEnergyResult(
+        id=new_ulid(),
+        accession="CMP0001_MMPBSA_001",
+        trajectory_id=new_ulid(),
+        compound_id=compound.id,
+        form_id="0" * 26,
+        method=BindingEnergyMethod.MM_GBSA,
+        model={"igb": 5, "pbradii": "mbondi2"},
+        tool=_software("gmx_MMPBSA"),
+        frames=FrameSelection(start_frame=1, end_frame=2, n_used=2, window_ns=(0.0, 0.001)),
+        temperature_K=300.0,
+        salt_concentration_M=0.15,
+        entropy=EntropyTreatment.NONE,
+        components_kcal_per_mol={"total": -12.5},
+        statistics=EnergyStatistics(
+            mean=-12.5, sd=1.2, sem_naive=0.8, sem_block=0.9, n_effective=1.8
+        ),
+    )
+    with LocalWorkflowRuntime.open(
+        data_root=tmp_path / "runtime",
+        handlers=lambda _services: {"unused": cast(StageHandler, _UnusedHandler())},
+    ) as runtime:
+        with runtime.sessions.begin() as session:
+            session.add(ProjectRow(id=project_id, slug="mmpbsa-report", name="MMPBSA report"))
+            session.add(
+                WorkflowRunRow(
+                    id=run_id,
+                    project_id=project_id,
+                    accession="RUN-MMPBSA-001",
+                    workflow_hash="a" * 64,
+                    config_hash="b" * 64,
+                    status="running",
+                )
+            )
+        stage = StageDefinition.model_validate(
+            {"id": "report", "kind": "report", "params": {"formats": ["json"]}}
+        )
+        bundle = ReportStageHandler(stage, runtime.services).execute(
+            cast(
+                TaskInvocation,
+                SimpleNamespace(
+                    inputs={
+                        "compounds": (compound,),
+                        "binding_energy_results": (energy,),
+                    },
+                    run_id=run_id,
+                ),
+            )
+        )
+        assert bundle.project_id == project_id
+        assert len(bundle.artifacts) == 1

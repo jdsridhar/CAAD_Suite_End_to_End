@@ -179,13 +179,25 @@ class ReportStageHandler:
             if conformer.compound_id is not None and conformer.compound_id != form.compound_id:
                 raise ValueError("report Conformer compound_id does not match its CompoundForm")
         for md_result in md_results:
-            if md_result.compound_id is not None and md_result.form_id is not None:
+            if (
+                md_result.compound_id is not None
+                and md_result.form_id is not None
+                and md_result.form_id != "0" * 26
+            ):
                 linked_pairs.append((md_result.compound_id, md_result.form_id))
         for analysis_result in trajectory_results:
-            if analysis_result.compound_id is not None and analysis_result.form_id is not None:
+            if (
+                analysis_result.compound_id is not None
+                and analysis_result.form_id is not None
+                and analysis_result.form_id != "0" * 26
+            ):
                 linked_pairs.append((analysis_result.compound_id, analysis_result.form_id))
         for energy_result in binding_results:
-            if energy_result.compound_id is not None and energy_result.form_id is not None:
+            if (
+                energy_result.compound_id is not None
+                and energy_result.form_id is not None
+                and energy_result.form_id != "0" * 26
+            ):
                 linked_pairs.append((energy_result.compound_id, energy_result.form_id))
         for conformer in conformers:
             if conformer.compound_id is not None:
