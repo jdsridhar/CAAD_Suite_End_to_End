@@ -544,7 +544,13 @@ function makeMmpbsaWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
   };
 }
 
-function makeDockingWorkflow(chainId = "A", exhaustiveness = 16, paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
+function makeDockingWorkflow(
+  chainId = "A",
+  exhaustiveness = 16,
+  paths: EnginePaths = DEFAULT_ENGINE_PATHS,
+  ph = 7.4,
+  occupancyPolicy = "highest_occupancy_single_model"
+) {
   return {
     schema: "caddsuite.workflow/1",
     name: "ADMET, docking and report",
@@ -646,8 +652,8 @@ function makeDockingWorkflow(chainId = "A", exhaustiveness = 16, paths: EnginePa
         output_contract: "prepared_receptor/1.3",
         params: {
           selected_chain_ids: [chainId],
-          ph: 7.4,
-          occupancy_policy: "highest_occupancy_single_model",
+          ph: ph,
+          occupancy_policy: occupancyPolicy,
           engine_parameters: {
             python_executable: paths.cadd_python || "python",
             worker_script: paths.pdbfixer_worker || "pdbfixer_worker.py"
@@ -739,7 +745,7 @@ function makeDockingWorkflow(chainId = "A", exhaustiveness = 16, paths: EnginePa
   };
 }
 
-function buildTargetStructurePayload(artifact: ProjectArtifact) {
+function buildTargetStructurePayload(artifact: ProjectArtifact, altlocPolicy = "highest_occupancy_single_model") {
   return {
     schema_version: "structure/1.0",
     id: artifact.id,
@@ -747,7 +753,7 @@ function buildTargetStructurePayload(artifact: ProjectArtifact) {
     source: "local",
     source_id: artifact.original_name || artifact.kind || "TARGET_RECEPTOR",
     model_index: 1,
-    altloc_policy: "first_model_altloc_A",
+    altloc_policy: altlocPolicy,
     entity_sequences: {},
     raw: {
       artifact_id: artifact.id,
@@ -757,7 +763,17 @@ function buildTargetStructurePayload(artifact: ProjectArtifact) {
   };
 }
 
-function buildDefaultCalculationPayload(compound?: Compound, formId?: string, conformerId?: string) {
+function buildDefaultCalculationPayload(
+  compound?: Compound,
+  formId?: string,
+  conformerId?: string,
+  method = "b3lyp",
+  basis = "def2-svp",
+  protocol = "single_point",
+  solvation: "gas" | "water" = "gas",
+  charge = 0,
+  multiplicity = 1
+) {
   const calcId = ulid();
   const effFormId = formId || (compound?.payload?.form_id as string) || "00000000000000000000000000";
   const effConformerId = conformerId || (compound?.payload?.conformer_id as string) || "00000000000000000000000000";
@@ -785,12 +801,13 @@ function buildDefaultCalculationPayload(compound?: Compound, formId?: string, co
       license_class: "open_source_permissive"
     },
     model: {
-      method: "b3lyp",
-      basis: "6-31g*"
+      method: method.toLowerCase(),
+      basis: basis.toLowerCase()
     },
-    protocol: "single_point",
-    charge: 0,
-    multiplicity: 1,
+    protocol: protocol,
+    charge: charge,
+    multiplicity: multiplicity,
+    solvation: solvation === "water" ? { model: "pcm", solvent: "water" } : null,
     requested_properties: ["total_energy_Eh", "dipole_D", "orbitals"]
   };
 }
@@ -824,6 +841,15 @@ export default function App() {
   const [mdLengthNs, setMdLengthNs] = useState<number>(1.0);
   const [mdTimestepFs, setMdTimestepFs] = useState<number>(2.0);
   const [mdTempK, setMdTempK] = useState<number>(300.0);
+  const [receptorPh, setReceptorPh] = useState<number>(7.4);
+  const [altlocPolicy, setAltlocPolicy] = useState<string>("highest_occupancy_single_model");
+  const [qmCompoundId, setQmCompoundId] = useState<string>("");
+  const [qmMethod, setQmMethod] = useState<string>("b3lyp");
+  const [qmBasis, setQmBasis] = useState<string>("def2-svp");
+  const [qmProtocol, setQmProtocol] = useState<string>("single_point");
+  const [qmSolvation, setQmSolvation] = useState<"gas" | "water">("gas");
+  const [qmCharge, setQmCharge] = useState<number>(0);
+  const [qmMultiplicity, setQmMultiplicity] = useState<number>(1);
   const [engineConfig, setEngineConfig] = useState<EngineDiscoveryReport | null>(null);
   const [enginePaths, setEnginePaths] = useState<EnginePaths>(() => {
     try {
@@ -991,7 +1017,7 @@ export default function App() {
     localStorage.setItem("caddsuite_engine_paths", JSON.stringify(newPaths));
     setMsg("Engine configuration saved to local storage.");
     if (selectedPreset === "docking") {
-      setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, newPaths), null, 2));
+      setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, newPaths, receptorPh, altlocPolicy), null, 2));
     } else if (selectedPreset === "dft") {
       setWf(JSON.stringify(makeDftWorkflow(newPaths), null, 2));
     } else if (selectedPreset === "md") {
@@ -1007,7 +1033,7 @@ export default function App() {
     setEnginePaths(fresh);
     setMsg("Engine configuration reset to auto-discovered defaults.");
     if (selectedPreset === "docking") {
-      setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, fresh), null, 2));
+      setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, fresh, receptorPh, altlocPolicy), null, 2));
     } else if (selectedPreset === "dft") {
       setWf(JSON.stringify(makeDftWorkflow(fresh), null, 2));
     } else if (selectedPreset === "md") {
@@ -1058,9 +1084,18 @@ export default function App() {
       comps = compounds,
       chain = targetChain,
       exh = exhaustiveness,
+      recPh = receptorPh,
+      altloc = altlocPolicy,
       simLengthNs = mdLengthNs,
       simTimestepFs = mdTimestepFs,
-      simTempK = mdTempK
+      simTempK = mdTempK,
+      method = qmMethod,
+      basis = qmBasis,
+      protocol = qmProtocol,
+      solvation = qmSolvation,
+      charge = qmCharge,
+      multiplicity = qmMultiplicity,
+      targetQmCompId = qmCompoundId
     ) => {
       setSelectedPreset(key);
       setPlan(null);
@@ -1069,12 +1104,12 @@ export default function App() {
         setWf(JSON.stringify(PRESET_ADMET, null, 2));
         setInputs(JSON.stringify({ compounds: comps.map((c) => c.payload) }, null, 2));
       } else if (key === "docking") {
-        setWf(JSON.stringify(makeDockingWorkflow(chain, exh, enginePaths), null, 2));
+        setWf(JSON.stringify(makeDockingWorkflow(chain, exh, enginePaths, recPh, altloc), null, 2));
         const inputObj: Record<string, unknown> = {
           compounds: comps.map((c) => c.payload),
         };
         if (targetArt) {
-          inputObj.target_structure = buildTargetStructurePayload(targetArt);
+          inputObj.target_structure = buildTargetStructurePayload(targetArt, altloc);
         }
         setInputs(JSON.stringify(inputObj, null, 2));
       } else if (key === "ligand_3d") {
@@ -1082,11 +1117,22 @@ export default function App() {
         setInputs(JSON.stringify({ compounds: comps.map((c) => c.payload) }, null, 2));
       } else if (key === "dft") {
         setWf(JSON.stringify(makeDftWorkflow(enginePaths), null, 2));
+        const selectedComp = comps.find((c) => c.id === targetQmCompId) || comps[0];
         setInputs(
           JSON.stringify(
             {
               compounds: comps.map((c) => c.payload),
-              calculation: buildDefaultCalculationPayload(comps[0]),
+              calculation: buildDefaultCalculationPayload(
+                selectedComp,
+                undefined,
+                undefined,
+                method,
+                basis,
+                protocol,
+                solvation,
+                charge,
+                multiplicity
+              ),
             },
             null,
             2
@@ -1097,7 +1143,6 @@ export default function App() {
         if (mdDemoInfo) {
           void loadDemoMdSystem();
         } else {
-
           setInputs(
             JSON.stringify(
               {
@@ -1113,7 +1158,7 @@ export default function App() {
         void loadDemoMmpbsaSystem();
       }
     },
-    [activeTargetArtifact, compounds, targetChain, exhaustiveness, mdLengthNs, mdTimestepFs, mdTempK, enginePaths]
+    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId]
   );
 
   useEffect(() => {
@@ -1123,15 +1168,26 @@ export default function App() {
         compounds: compounds.map((c) => c.payload),
       };
       if (activeTargetArtifact) {
-        inputObj.target_structure = buildTargetStructurePayload(activeTargetArtifact);
+        inputObj.target_structure = buildTargetStructurePayload(activeTargetArtifact, altlocPolicy);
       }
       setInputs(JSON.stringify(inputObj, null, 2));
     } else if (selectedPreset === "dft") {
+      const selectedComp = compounds.find((c) => c.id === qmCompoundId) || compounds[0];
       setInputs(
         JSON.stringify(
           {
             compounds: compounds.map((c) => c.payload),
-            calculation: buildDefaultCalculationPayload(compounds[0]),
+            calculation: buildDefaultCalculationPayload(
+              selectedComp,
+              undefined,
+              undefined,
+              qmMethod,
+              qmBasis,
+              qmProtocol,
+              qmSolvation,
+              qmCharge,
+              qmMultiplicity
+            ),
           },
           null,
           2
@@ -1622,6 +1678,27 @@ export default function App() {
     }
   }
 
+  async function downloadArtifact(artifactId: string, originalName?: string | null, kind?: string, mediaType?: string) {
+    try {
+      setErr("");
+      const r = await fetch(url.replace(/\/$/, "") + "/v1/projects/" + pid + "/artifacts/" + artifactId + "/content", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      if (!r.ok) throw Error(`Download failed (${r.status}): ${await r.text()}`);
+      const blob = await r.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const ext = mediaType === "application/json" ? ".json" : mediaType === "text/csv" ? ".csv" : mediaType === "text/plain" ? ".txt" : "";
+      link.download = originalName || `${kind || "artifact"}_${artifactId.slice(-6)}${ext}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      setMsg(`Downloaded artifact: ${link.download}`);
+    } catch (e) {
+      setErr(String(e));
+    }
+  }
+
   const currentStagesCount = useMemo(() => {
     try {
       const parsed = JSON.parse(wf);
@@ -1989,6 +2066,35 @@ export default function App() {
                       <option value={32}>32 (More sampling)</option>
                     </select>
                   </label>
+                  <label style={{ maxWidth: 110 }}>
+                    Receptor pH
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={14}
+                      value={receptorPh}
+                      onChange={(e) => {
+                        const ph = Number(e.target.value);
+                        setReceptorPh(ph);
+                        applyPreset("docking", activeTargetArtifact, compounds, targetChain, exhaustiveness, ph, altlocPolicy);
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Altloc / Model Policy
+                    <select
+                      value={altlocPolicy}
+                      onChange={(e) => {
+                        const pol = e.target.value;
+                        setAltlocPolicy(pol);
+                        applyPreset("docking", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, pol);
+                      }}
+                    >
+                      <option value="highest_occupancy_single_model">Highest occupancy single model</option>
+                      <option value="first_model_altloc_A">First model (Altloc A)</option>
+                    </select>
+                  </label>
                   <label className="upload-inline-label">
                     Upload Receptor File (.cif / .pdb)
                     <div className="upload-inline">
@@ -2006,6 +2112,136 @@ export default function App() {
                         Upload
                       </button>
                     </div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* QUANTUM CHEMISTRY / DFT SPECIFICATION CARD */}
+            {selectedPreset === "dft" && (
+              <div className="target-selector-card qm-config-card">
+                <div className="between">
+                  <div>
+                    <span className="subhead-label">EXPLICIT QM CALCULATION PLAN</span>
+                    <h4>Electronic Structure &amp; DFT Specification</h4>
+                  </div>
+                  <span className="format-badge cif">Psi4 QM Engine</span>
+                </div>
+
+                <p className="dim" style={{ marginBottom: 12 }}>
+                  Configure explicit quantum chemistry parameters. All calculations are bound to verified compound microstates and emit authoritative dipole, HOMO/LUMO, and SCF energy contracts.
+                </p>
+
+                <div className="docking-options-row" style={{ flexWrap: "wrap", gap: 12 }}>
+                  <label>
+                    Target Compound
+                    <select
+                      value={qmCompoundId || (compounds[0]?.id ?? "")}
+                      onChange={(e) => {
+                        const targetId = e.target.value;
+                        setQmCompoundId(targetId);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, targetId);
+                      }}
+                    >
+                      {compounds.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.accession}: {c.name || c.payload?.parent?.canonical_smiles || c.inchikey || c.id}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    DFT Functional / Method
+                    <select
+                      value={qmMethod}
+                      onChange={(e) => {
+                        const m = e.target.value;
+                        setQmMethod(m);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, m, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity);
+                      }}
+                    >
+                      <option value="b3lyp">B3LYP (Hybrid GGA - Default)</option>
+                      <option value="wb97x-d">ωB97X-D (Range-separated with dispersion)</option>
+                      <option value="m06-2x">M06-2X (Meta-GGA for noncovalent)</option>
+                      <option value="pbe0">PBE0 (Parameter-free hybrid)</option>
+                      <option value="hf">Hartree-Fock (Ab initio baseline)</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Basis Set
+                    <select
+                      value={qmBasis}
+                      onChange={(e) => {
+                        const b = e.target.value;
+                        setQmBasis(b);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, b, qmProtocol, qmSolvation, qmCharge, qmMultiplicity);
+                      }}
+                    >
+                      <option value="def2-svp">def2-SVP (Ahlrichs split-valence - fast)</option>
+                      <option value="6-31g*">6-31G* (Pople polarized double-zeta)</option>
+                      <option value="def2-tzvp">def2-TZVP (Triple-zeta quality)</option>
+                      <option value="cc-pvdz">cc-pVDZ (Dunning correlation-consistent)</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Calculation Protocol
+                    <select
+                      value={qmProtocol}
+                      onChange={(e) => {
+                        const p = e.target.value;
+                        setQmProtocol(p);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, p, qmSolvation, qmCharge, qmMultiplicity);
+                      }}
+                    >
+                      <option value="single_point">Single Point Energy</option>
+                      <option value="geometry_optimization">Geometry Optimization</option>
+                      <option value="frequencies">Harmonic Frequencies</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Solvation Model
+                    <select
+                      value={qmSolvation}
+                      onChange={(e) => {
+                        const s = e.target.value as "gas" | "water";
+                        setQmSolvation(s);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, s, qmCharge, qmMultiplicity);
+                      }}
+                    >
+                      <option value="gas">Gas Phase (Explicit / Vacuum)</option>
+                      <option value="water">PCM Aqueous Solvation (Water)</option>
+                    </select>
+                  </label>
+
+                  <label style={{ maxWidth: 90 }}>
+                    Net Charge
+                    <input
+                      type="number"
+                      value={qmCharge}
+                      onChange={(e) => {
+                        const ch = Number(e.target.value);
+                        setQmCharge(ch);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, ch, qmMultiplicity);
+                      }}
+                    />
+                  </label>
+
+                  <label style={{ maxWidth: 100 }}>
+                    Multiplicity
+                    <input
+                      type="number"
+                      min={1}
+                      value={qmMultiplicity}
+                      onChange={(e) => {
+                        const mult = Number(e.target.value);
+                        setQmMultiplicity(mult);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, mult);
+                      }}
+                    />
                   </label>
                 </div>
               </div>
@@ -2582,6 +2818,12 @@ export default function App() {
                             {a.kind + " / " + a.media_type + " / " + formatBytes(a.size_bytes)}
                           </span>
                           <code>{a.id}</code>
+                          <button
+                            className="link"
+                            onClick={() => void downloadArtifact(a.id, a.original_name, a.kind, a.media_type)}
+                          >
+                            Download
+                          </button>
                           {a.media_type === "text/plain" && (
                             <button className="link" onClick={() => void readLog(a.id)}>
                               Read log tail
@@ -2661,6 +2903,12 @@ export default function App() {
                         </span>
                         <button className="link" onClick={() => setViewingArtifact(a)}>
                           View in Mol*
+                        </button>
+                        <button
+                          className="link"
+                          onClick={() => void downloadArtifact(a.id, a.original_name, a.kind, a.media_type)}
+                        >
+                          Download
                         </button>
                       </div>
                     ))}

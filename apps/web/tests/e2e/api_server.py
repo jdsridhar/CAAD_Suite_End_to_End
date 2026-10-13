@@ -86,11 +86,14 @@ class DecisionPlugin:
 
 _FIXTURE_CREDENTIAL = "browser-e2e-token"
 
+_stage_registry = StageHandlerRegistry.discover()
+_stage_registry.register(DecisionPlugin())
+
 app = create_app(
     data_root=Path(tempfile.mkdtemp(prefix="caddsuite-browser-e2e-")),
     token=_FIXTURE_CREDENTIAL,
     allowed_origins=("http://127.0.0.1:5174",),
-    stage_registry=StageHandlerRegistry((DecisionPlugin(),)),
+    stage_registry=_stage_registry,
 )
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8100, log_level="warning")

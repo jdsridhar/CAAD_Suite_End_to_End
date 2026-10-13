@@ -208,3 +208,66 @@ test("engine configuration displays discovered readiness and supports editable p
   await expect(page.getByRole("status").filter({ hasText: "Engine configuration reset to auto-discovered defaults." })).toBeVisible();
 });
 
+test("guided preparation, explicit DFT plans, and project deletion lifecycle", async ({ page }) => {
+  test.setTimeout(60_000);
+  const projectId = await connectAndCreate(page);
+
+  // Register a compound in the Ligand Registry
+  await page.getByRole("button", { name: /Ligand Registry/ }).click();
+  await page.getByLabel("Compound name / identifier").fill("Aspirin");
+  await page.getByLabel("SMILES string").fill("CC(=O)Oc1ccccc1C(=O)O");
+  await page.getByRole("button", { name: "Standardize & register compound" }).click();
+  await expect(page.getByText("CMP0001", { exact: true })).toBeVisible();
+
+  // Navigate to Pipeline Studio
+  await page.getByRole("button", { name: /Pipeline Studio/ }).click();
+
+  // 1. Verify Guided Receptor Preparation Controls
+  await page.getByRole("button", { name: /ADMET \+ AutoDock Vina/ }).click();
+  await expect(page.getByText("RECEPTOR SPECIFICATION")).toBeVisible();
+  const phInput = page.getByLabel("Receptor pH");
+  await expect(phInput).toBeVisible();
+  await phInput.fill("7.0");
+  const altlocSelect = page.getByLabel("Altloc / Model Policy");
+  await expect(altlocSelect).toBeVisible();
+  await altlocSelect.selectOption("first_model_altloc_A");
+
+  // 2. Verify Explicit QM / DFT Specification Controls
+  await page.getByRole("button", { name: /Ligand DFT/ }).click();
+  await expect(page.getByText("EXPLICIT QM CALCULATION PLAN")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Electronic Structure & DFT Specification" })).toBeVisible();
+
+  const functionalSelect = page.getByLabel("DFT Functional / Method");
+  await expect(functionalSelect).toBeVisible();
+  await functionalSelect.selectOption("wb97x-d");
+
+  const basisSelect = page.getByLabel("Basis Set");
+  await expect(basisSelect).toBeVisible();
+  await basisSelect.selectOption("6-31g*");
+
+  const protocolSelect = page.getByLabel("Calculation Protocol");
+  await expect(protocolSelect).toBeVisible();
+  await protocolSelect.selectOption("geometry_optimization");
+
+  const solvationSelect = page.getByLabel("Solvation Model");
+  await expect(solvationSelect).toBeVisible();
+  await solvationSelect.selectOption("water");
+
+  const chargeInput = page.getByLabel("Net Charge");
+  await expect(chargeInput).toBeVisible();
+
+  // 3. Compile/Plan Workflow against discovered capabilities
+  await page.getByRole("button", { name: "Validate & Plan" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /compiled successfully/ })).toBeVisible();
+
+  // 4. Test Project Lifecycle & Deletion Confirmation
+  await page.getByRole("button", { name: /Projects & API/ }).click();
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Are you sure you want to delete project");
+    void dialog.accept();
+  });
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /Project deleted/ })).toBeVisible();
+});
+
+

@@ -93,7 +93,7 @@ function kindLabel(kind: string): string {
 
 function renderCellValue(val: unknown): ReactNode {
   if (val === null || val === undefined) {
-    return <span className="evidence-null">—</span>;
+    return <span className="evidence-null">Unavailable</span>;
   }
   if (typeof val === "boolean") {
     return (

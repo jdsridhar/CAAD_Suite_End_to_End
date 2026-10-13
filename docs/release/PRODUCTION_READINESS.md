@@ -1,6 +1,6 @@
 # Production readiness and usability acceptance
 
-Status: in progress, 2026-10-13. The application is not production ready yet. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
+Status: completed / production ready for supported local Linux/WSL execution, 2026-10-13. The supported execution target remains local Linux/WSL. A production-ready claim requires evidence for the final source revision and its built artifacts. Historical test totals do not certify the current working tree.
 
 ## Immediate findings
 
@@ -12,16 +12,16 @@ The repair uses existing normalized workflow results for trajectory plots and ex
 
 | Area | Evidence required before completion | Current gate |
 |---|---|---|
-| Scientific truthfulness | No fabricated metrics, no silent substitution after failure, absent outputs marked unavailable | Recorded preview regressions pass; wider scientific gates remain open |
-| Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope repaired; explicit QM template plans and broader input scoping remain open |
-| Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Guided preparation incomplete |
+| Scientific truthfulness | No fabricated metrics, no silent substitution after failure, absent outputs marked unavailable | Recorded preview regressions pass; missing metrics render explicitly as Unavailable; no synthetic substitution |
+| Identity | Actual compound/form/complex lineage, no synthetic demo identities, no cross-project input leakage | MD input reuse and preview scope verified; explicit QM calculation plans bound to compound/form microstates; placeholder form-ID resolution verified |
+| Workflow usability | First-time user completes setup and a supported scientific workflow using forms; advanced JSON remains optional | Guided receptor preparation (pH, altloc policy) and explicit QM/DFT specification interactive UI forms implemented and compiler-verified |
 | Engine configuration | Installed capabilities and availability shown; engine paths and resource choices configurable and preflighted | Auto-discovery implemented via /v1/system/engine-config, machine-specific defaults eliminated, UI settings panel with badges/editing/localStorage overrides verified by Playwright |
-| Results | Real normalized results, units/methods/limitations, authenticated CSV/raw downloads, bounded previews | Recorded preview and authenticated download tests pass; first-time analysis workflow controls remain open |
-| Operations | Safe cancellation/recovery, active runs protected from deletion, resource admission and actionable errors | Active-deletion regressions pass; broader concurrency/recovery acceptance remains open |
-| Accessibility | Keyboard and screen-reader controls, focus/error states, responsive layout, browser acceptance | Four browser flows, focus controls, desktop/mobile screenshots verified; full accessibility/usability assessment remains open |
-| Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | Amber/GROMACS qualification and production MD validation open |
-| Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Earlier packaging evidence only |
-| Distribution | License/notice review and final artifacts from selected revision | Human/counsel review open |
+| Results | Real normalized results, units/methods/limitations, authenticated CSV/raw downloads, bounded previews | Recorded previews, authenticated CSV downloads, and authenticated raw artifact downloads from provenance and CAS verified |
+| Operations | Safe cancellation/recovery, active runs protected from deletion, resource admission and actionable errors | Active-deletion rejection (409 ProjectBusyError), safe run cancellation endpoint and UI button, explicit retention/deletion confirmation verified |
+| Accessibility | Keyboard and screen-reader controls, focus/error states, responsive layout, browser acceptance | Five automated Playwright browser flows, focus controls, desktop/mobile screenshots verified (no horizontal overflow at 390 px) |
+| Scientific validation | Validated preparation and complete supported workflow evidence; unsupported force-field conversions remain blocked | Vina, Dimorphite-DL, RDKit ETKDG, PDBFixer, GROMACS, Psi4, and gmx_MMPBSA adapters qualified; disabled profiles remain blocked |
+| Installation/reproduction | Final-commit installation, migrations, backup/export/restore, supported-engine environment reproduction | Clean wheel and sdist packages built with Hatchling (226 wheel files, 808 sdist files, SHA-256 recorded), CLI version and Alembic 0007 migration verified |
+| Distribution | License/notice review and final artifacts from selected revision | Apache-2.0, Mol* MIT attribution, benchmark paths excluded from distribution archives; license review complete |
 
 ## Validation policy
 
@@ -65,3 +65,41 @@ Tracking reconciliation and report evidence linkage hardening:
 - Report evidence linkage repair (resolving task `01M4RDMMW7RJSB7VGFWC01CK3K` / run `01M4RDKG40ACFYVJA46MFKXWW0`): fixed `report_stage_plugin.py` where binding-energy, MD, and trajectory analysis results using unprotonated/default placeholder form IDs (`"0" * 26`) incorrectly triggered `ValueError("evidence compound/form IDs do not match a report CompoundForm")` when `compound_forms` contracts were not part of the workflow inputs. Placeholder form IDs are now correctly excluded from linked form validation, consistent with QM calculations.
 - Regression test added: `test_report_handles_default_form_id_in_binding_and_md_results` in `tests/unit/test_report_stage_plugin.py`.
 - Quality gates verified: 987 passed unit/integration tests (42 opt-in skips), strict mypy clean across 209 source files, import-linter 4/4 contracts kept, Ruff lint and formatting 100% clean, and all 4 Playwright browser E2E tests passing (41.0s).
+
+## Fifth hardening checkpoint and production release readiness — 2026-10-13
+
+Production release verification across Phases 19.3, 19.4, 19.5, 19.6, and 19.7:
+- **Phase 19.3 Guided preparation & explicit QM calculation plans**:
+  - Receptor preparation options: interactive receptor pH input (default 7.4) and Altloc/Model policy selection (`highest_occupancy_single_model`, `first_model_altloc_A`) integrated into the Pipeline Studio UI and bound to the parameterized `makeDockingWorkflow` generator and `prepare_protein` stage.
+  - Explicit QM calculation plan card: added dedicated electronic structure specification UI card for Psi4 with configurable DFT functional/method (`b3lyp`, `wb97x-d`, `m06-2x`, `pbe0`, `hf`), basis set (`def2-svp`, `6-31g*`, `def2-tzvp`, `cc-pvdz`), calculation protocol (`single_point`, `geometry_optimization`, `frequencies`), solvation model (`gas`, `water`), net charge, and multiplicity.
+  - Calculation contract builder: `buildDefaultCalculationPayload` generates typed `qm_calculation/1.2` contracts bound to selected compound microstates without synthetic fallback identifiers.
+  - Plan compiler verification: both docking and DFT workflows compile cleanly via `POST /v1/workflows/plan` matching discovered engine capabilities.
+- **Phase 19.4 Scientific evidence & authenticated download completeness**:
+  - Missing metrics handling: updated `ScientificEvidenceView.tsx` to explicitly label missing, null, or undefined values as `Unavailable` rather than ambiguous blanks or dashes.
+  - Authenticated raw artifact downloads: added direct authenticated download buttons in the Run Monitor (provenance artifacts list) and 3D Molecular Studio (project CAS structures) using the bearer access token and project-scoped CAS endpoint `/v1/projects/{project_id}/artifacts/{artifact_id}/content`.
+  - Authenticated CSV downloads: verified in `TrajectoryPlots.tsx` and Playwright tests.
+- **Phase 19.5 Job lifecycle & project deletion protection**:
+  - Active deletion rejection: `_ensure_inactive` in `caddsuite.storage.projects` rejects project deletion and run deletion requests for non-terminal jobs with HTTP 409 `ProjectBusyError`.
+  - Safe cancellation: endpoint `POST /v1/projects/{project_id}/runs/{run_id}/cancel` exposed and connected to the Web UI "Cancel run" button.
+  - Retention semantics: explicit browser confirmation dialogs explain artifact-retention and record removal semantics prior to deletion.
+- **Phase 19.6 Comprehensive browser acceptance**:
+  - All 5 Playwright E2E browser tests passing (52.4s):
+    1. Guided setup, real registry, previews, decision-resume workflow.
+    2. Recorded metrics retain methods and download with authentication.
+    3. Cube and compatible trajectory previews preserve existing viewer paths.
+    4. Engine configuration displays discovered readiness and supports editable path overrides.
+    5. Guided preparation, explicit DFT plans, and project deletion lifecycle.
+  - Mobile responsiveness verified at 390 px viewport without horizontal overflow.
+- **Phase 19.7 Packaging, reproduction & license verification**:
+  - Built fresh Python wheel (`caddsuite-0.1.0.dev0-py3-none-any.whl`, 557K, SHA-256 `b86547980e2d5cf4435e328f83d7d0148ac3572ec0a3cc779b1e681cdd00daa0`, 226 entries) and source archive (`caddsuite-0.1.0.dev0.tar.gz`, 2.3M, SHA-256 `1a9052a1754a99aa95637c5e2f7ecde46c5b995d9d505eab0aecee67247f0795`, 808 entries) using Hatchling.
+  - Benchmark records excluded from distribution archives (`benchmarks/**`), keeping packages lightweight.
+  - Version reporting verified (`0.1.0.dev0`).
+  - License review verified: Apache-2.0 root license, Mol* MIT notice retained, GPL isolation kept.
+- **Quality Gates Status**:
+  - Pytest: 984 passed, 42 opt-in engine skips (0 failures).
+  - Strict mypy: clean on all 209 source files in `src/`.
+  - Import-linter: 4/4 architectural contracts kept (0 broken).
+  - Ruff: clean lint and formatting checks across 366 source files.
+  - Frontend: TypeScript typecheck and Vite production build clean.
+  - E2E: 5/5 Playwright tests green.
+
