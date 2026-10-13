@@ -775,8 +775,8 @@ function buildDefaultCalculationPayload(
   multiplicity = 1
 ) {
   const calcId = ulid();
-  const effFormId = (formId && formId.trim()) || (compound?.payload?.form_id as string) || ulid();
-  const effConformerId = (conformerId && conformerId.trim()) || (compound?.payload?.conformer_id as string) || ulid();
+  const effFormId = (formId && formId.trim()) || (compound?.payload?.form_id as string) || "";
+  const effConformerId = (conformerId && conformerId.trim()) || (compound?.payload?.conformer_id as string) || "";
   const accession = compound?.accession ? `${compound.accession}_QM_001` : "CMP0001_QM_001";
   return {
     schema_version: "qm_calculation/1.2",
@@ -1435,6 +1435,28 @@ export default function App() {
       }
 
       const inputObj = JSON.parse(inputs) as Record<string, unknown>;
+
+      if (parsed.inputs && "calculation" in parsed.inputs) {
+        const calc = inputObj.calculation as Record<string, unknown> | undefined;
+        const geomSource = calc?.geometry_source as Record<string, unknown> | undefined;
+        const fId = typeof calc?.form_id === "string" ? calc.form_id.trim() : "";
+        const cId = typeof geomSource?.id === "string" ? geomSource.id.trim() : "";
+
+        if (!fId) {
+          setErr("Quantum chemistry (DFT) requires an explicit target form/microstate identity linked to a prepared structure. Please select or enter a valid Target Form ID.");
+          return;
+        }
+
+        if (!cId) {
+          setErr("Quantum chemistry (DFT) requires an explicit target conformer/geometry identity linked to a 3D structure. Please select an available prepared conformer or enter a valid Target Conformer ID.");
+          return;
+        }
+
+        if (fId === "00000000000000000000000000" || cId === "00000000000000000000000000") {
+          setErr("Quantum chemistry (DFT) rejects zero-filled placeholder identities. Please link actual prepared structure identities.");
+          return;
+        }
+      }
       for (const key of Object.keys(parsed.inputs || {})) {
         if (!(key in inputObj) || inputObj[key] == null) {
           throw new Error("Missing input: " + key + ". Upload or prepare the required input before queueing this workflow.");
@@ -2265,6 +2287,28 @@ export default function App() {
                   </label>
 
                   <label style={{ minWidth: 260 }}>
+                    Select Prepared 3D Conformer / Structure
+                    <select
+                      aria-label="Select Prepared 3D Conformer / Structure"
+                      value={qmConformerId}
+                      onChange={(e) => {
+                        const cid = e.target.value.trim();
+                        setQmConformerId(cid);
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, cid);
+                      }}
+                    >
+                      <option value="">-- Choose from project 3D artifacts or enter below --</option>
+                      {projectArtifacts
+                        .filter((a) => a.media_type.includes("chemical") || a.media_type.includes("mol") || a.media_type.includes("sdf") || a.media_type.includes("pdb") || a.kind.includes("conformer") || a.kind.includes("structure") || (a.original_name && /\.(sdf|mol|mol2|pdb)$/i.test(a.original_name)))
+                        .map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.original_name || a.kind} ({a.id})
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+
+                  <label style={{ minWidth: 260 }}>
                     Target Conformer / Geometry ID (ULID)
                     <input
                       type="text"
@@ -2277,6 +2321,12 @@ export default function App() {
                       }}
                     />
                   </label>
+
+                  {(!qmFormId || !qmConformerId) && (
+                    <div style={{ width: "100%", marginTop: 8, padding: "8px 12px", background: "rgba(237, 137, 54, 0.15)", border: "1px solid rgba(237, 137, 54, 0.4)", borderRadius: 6, color: "#fbd38d", fontSize: "0.85rem" }}>
+                      ?? <strong>Prepared Structure Identity Required:</strong> Quantum chemistry requires an explicit target form and conformer identity linked to a prepared 3D structure. Select an available 3D conformer from project artifacts above, or provide explicit ULIDs before submission.
+                    </div>
+                  )}
                 </div>
               </div>
             )}

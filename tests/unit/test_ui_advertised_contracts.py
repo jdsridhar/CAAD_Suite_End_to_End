@@ -369,3 +369,35 @@ class TestExplicitQMCalculationPlanExecution:
         with pytest.raises(StageExecutionFailure) as raised:
             handler.execute(invocation)
         assert raised.value.code == "QM.CALCULATION_FORM_MISMATCH"
+
+    def test_calculation_rejects_missing_or_empty_form_and_conformer_identity(self) -> None:
+        # Pydantic ULIDStr rejects empty strings and non-ULID identities
+        with pytest.raises(ValidationError):
+            QMCalculation(
+                id=new_ulid(),
+                accession="CMP0001_QM_001",
+                form_id="",
+                compound_id=new_ulid(),
+                geometry_source=EntityRef(kind="conformer", id=new_ulid()),
+                engine=_software("Psi4", SoftwareKind.ENGINE),
+                adapter=_software("caddsuite.qm.psi4", SoftwareKind.ADAPTER),
+                model=QMModel(method="b3lyp", basis="def2-svp"),
+                protocol=QMProtocol.SINGLE_POINT,
+                charge=0,
+                multiplicity=1,
+            )
+
+        with pytest.raises(ValidationError):
+            QMCalculation(
+                id=new_ulid(),
+                accession="CMP0001_QM_001",
+                form_id=new_ulid(),
+                compound_id=new_ulid(),
+                geometry_source=EntityRef(kind="conformer", id=""),
+                engine=_software("Psi4", SoftwareKind.ENGINE),
+                adapter=_software("caddsuite.qm.psi4", SoftwareKind.ADAPTER),
+                model=QMModel(method="b3lyp", basis="def2-svp"),
+                protocol=QMProtocol.SINGLE_POINT,
+                charge=0,
+                multiplicity=1,
+            )

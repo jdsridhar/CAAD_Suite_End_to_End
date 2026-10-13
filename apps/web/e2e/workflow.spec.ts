@@ -254,6 +254,13 @@ test("guided preparation, explicit DFT plans, and project deletion lifecycle", a
   await expect(solvationSelect).toBeVisible();
   await solvationSelect.selectOption("water");
 
+  // Verify warning badge is visible when identities are not yet set
+  await expect(page.getByText("Prepared Structure Identity Required")).toBeVisible();
+
+  // Verify submission attempt without explicit identities is rejected with actionable error
+  await page.getByRole("button", { name: /Queue Pipeline/ }).click();
+  await expect(page.getByText(/Quantum chemistry \(DFT\) requires an explicit target form/)).toBeVisible();
+
   const explicitFormId = ulid();
   const explicitConfId = ulid();
   const formIdInput = page.getByLabel("Target Form / Microstate ID (ULID)");
@@ -263,6 +270,9 @@ test("guided preparation, explicit DFT plans, and project deletion lifecycle", a
   const confIdInput = page.getByLabel("Target Conformer / Geometry ID (ULID)");
   await expect(confIdInput).toBeVisible();
   await confIdInput.fill(explicitConfId);
+
+  // Warning badge disappears once explicit identities are set
+  await expect(page.getByText("Prepared Structure Identity Required")).not.toBeVisible();
 
   // Verify generated inputs JSON contains explicit contracts and zero placeholders
   await page.getByRole("button", { name: /3D Molecular Studio/ }).click();

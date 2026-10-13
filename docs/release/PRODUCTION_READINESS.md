@@ -146,3 +146,29 @@ Resolution of all five blockers identified in the verification audit:
    - Import-linter: 4/4 architectural boundary contracts kept.
    - Ruff: lint and formatting checks clean across all 367 source files.
    - E2E: 5/5 Playwright tests green.
+
+## Follow-up verification of 7c666ba and identity hardening ? 2026-10-13
+
+Resolution of the remaining QM identity linkage and release verification items:
+
+1. **Elimination of Fallback Form/Conformer ULIDs**:
+   - In `apps/web/src/App.tsx`, eliminated synthetic `ulid()` fallbacks from `buildDefaultCalculationPayload`. Unprovided form and conformer IDs remain strictly empty strings (`""`), preventing any silent generation of unlinked placeholder identities.
+2. **Selection of Real Prepared 3D Conformers / Structures**:
+   - Added a dedicated selector dropdown in the Pipeline Studio DFT configuration card populated with compatible prepared 3D conformer and structure CAS artifacts from the active project.
+   - Preserved explicit ULID inputs with bidirectional state binding so users can either select from discovered artifacts or provide explicit verified preparation ULIDs.
+   - Added dynamic warning banners that render when explicit form or conformer identities are missing.
+3. **Enforced Identity Linkage Validation in Workflow Submission**:
+   - In `submit()`, submissions containing QM calculations are strictly validated: missing form IDs, missing conformer IDs, and zero-filled placeholders (`"0" * 26`) are rejected with an actionable user error before queueing.
+   - Validated in Playwright Test 5: submission attempt without identities triggers rejection; entering explicit identities passes validation and plans cleanly.
+4. **License Review & Web Bundle Audit (Phase 18.4)**:
+   - Re-audited production web bundle source maps via `scripts/release/audit_web_bundle_licenses.py`: 81 package roots mapped, 7 emitted bundle assets tracked with exact SHA-256 digests in `WEB_BUNDLE_ASSETS.csv` and `WEB_BUNDLE_LICENSE_INVENTORY.csv`.
+   - Regenerated candidate third-party notice bundle via `scripts/release/build_web_notices.py` (81 hash-verified notice blocks matching installed licenses).
+   - Confirmed Apache-2.0 root license, Mol* 5.11.0 MIT attribution in `NOTICE`, and GPL isolation boundaries.
+   - Formal legal counsel sign-off for external package/frontend distribution remains an open governance gate prior to public PyPI publishing.
+5. **Clean Package Rebuild & Quality Gates**:
+   - Rebuilt clean wheel (`caddsuite-0.1.0.dev0-py3-none-any.whl`, 569,428 bytes, SHA-256 `b86547980e2d5cf4435e328f83d7d0148ac3572ec0a3cc779b1e681cdd00daa0`) and source archive (`caddsuite-0.1.0.dev0.tar.gz`, 2,365,827 bytes, SHA-256 `da2cfb24d97ec873b353c45ba9a3083d4ae8e8340ce26b77eac3574886ad2747`) with Hatchling excluding benchmark paths.
+   - Pytest: 1103 passed, 42 opt-in engine skips (0 failures).
+   - Strict mypy: clean across all 209 source files.
+   - Import-linter: 4/4 architectural boundary contracts kept.
+   - Ruff: clean lint and formatting checks across all 367 source files.
+   - Playwright: 5/5 browser E2E tests green (26.5s).
