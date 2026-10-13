@@ -45,6 +45,15 @@ type Snapshot = {
 type ArtifactItem = { id: string; sha256: string; media_type: string; kind: string; size_bytes: number; original_name?: string | null };
 type Lineage = { artifacts?: ArtifactItem[] };
 type ProjectArtifact = ArtifactItem;
+type PreparedConformer = {
+  conformer_id: string;
+  form_id: string;
+  compound_id?: string | null;
+  generator?: string;
+  energy_kcal_per_mol?: number | null;
+  structure_artifact_id?: string;
+  created_at?: string;
+};
 type Dashboard = {
   project: Project;
   target: unknown;
@@ -52,6 +61,7 @@ type Dashboard = {
   counts: { compounds: number; workflow_runs: number; tasks_in_recent_runs: number; artifacts: number; artifact_bytes: number };
   workflow_statuses: Record<string, number>;
   artifact_kinds: Record<string, { count: number; size_bytes: number }>;
+  prepared_conformers?: PreparedConformer[];
   recent_runs: Array<{ run_id: string; accession: string; status: string; created_at: string; tasks: Array<{ stage_id: string; state: string; updated_at: string | null }> }>;
   scientific_results: Array<{
     schema_version: string;
@@ -921,6 +931,64 @@ export default function App() {
     }
   }, [selectedTargetId, structureArtifacts]);
 
+  const preparedConformers = useMemo(() => {
+    const list: Array<{
+      conformer_id: string;
+      form_id: string;
+      compound_id?: string | null;
+      generator?: string;
+      energy_kcal_per_mol?: number | null;
+      structure_artifact_id?: string;
+      label: string;
+    }> = [];
+    const seen = new Set<string>();
+
+    if (dashboard?.prepared_conformers) {
+      for (const pc of dashboard.prepared_conformers) {
+        if (!seen.has(pc.conformer_id)) {
+          seen.add(pc.conformer_id);
+          const comp = compounds.find((c) => c.id === pc.compound_id);
+          const compName = comp ? (comp.name || comp.accession) : (pc.compound_id ? `Compound ${pc.compound_id.slice(0, 8)}` : "");
+          const energyStr = pc.energy_kcal_per_mol != null ? ` (${pc.energy_kcal_per_mol.toFixed(1)} kcal/mol)` : "";
+          const genStr = pc.generator ? ` [${pc.generator}]` : "";
+          list.push({
+            conformer_id: pc.conformer_id,
+            form_id: pc.form_id,
+            compound_id: pc.compound_id,
+            generator: pc.generator,
+            energy_kcal_per_mol: pc.energy_kcal_per_mol,
+            structure_artifact_id: pc.structure_artifact_id,
+            label: `Conformer ${pc.conformer_id.slice(0, 8)}... (Form: ${pc.form_id.slice(0, 8)}...)${compName ? ` - ${compName}` : ""}${genStr}${energyStr}`,
+          });
+        }
+      }
+    }
+
+    for (const comp of compounds) {
+      const p = comp.payload;
+      if (p && typeof p.conformer_id === "string" && typeof p.form_id === "string") {
+        if (!seen.has(p.conformer_id)) {
+          seen.add(p.conformer_id);
+          list.push({
+            conformer_id: p.conformer_id,
+            form_id: p.form_id,
+            compound_id: comp.id,
+            generator: typeof p.generator === "string" ? p.generator : undefined,
+            energy_kcal_per_mol: typeof p.energy_kcal_per_mol === "number" ? p.energy_kcal_per_mol : undefined,
+            label: `Conformer ${p.conformer_id.slice(0, 8)}... (Form: ${p.form_id.slice(0, 8)}...) - ${comp.name || comp.accession}`,
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [dashboard?.prepared_conformers, compounds]);
+
+  const compatibleConformers = useMemo(() => {
+    if (!qmCompoundId) return preparedConformers;
+    return preparedConformers.filter((c) => !c.compound_id || c.compound_id === qmCompoundId);
+  }, [preparedConformers, qmCompoundId]);
+
   const refresh = useCallback(
     async (id: string) => {
       const r = await api.GET("/v1/projects/{project_id}/compounds", { params: { path: { project_id: id } } });
@@ -1217,7 +1285,7 @@ export default function App() {
     } else if (selectedPreset === "admet" || selectedPreset === "ligand_3d") {
       setInputs(JSON.stringify({ compounds: compounds.map((c) => c.payload) }, null, 2));
     }
-  }, [compounds, activeTargetArtifact, selectedPreset, mdLengthNs, mdTimestepFs, mdTempK, mmpbsaDemoInfo]);
+  }, [compounds, activeTargetArtifact, selectedPreset, mdLengthNs, mdTimestepFs, mdTempK, mmpbsaDemoInfo, qmCompoundId, qmFormId, qmConformerId, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity]);
 
   async function loadDemoMdSystem() {
     if (!pid) return;
@@ -1454,6 +1522,29 @@ export default function App() {
 
         if (fId === "00000000000000000000000000" || cId === "00000000000000000000000000") {
           setErr("Quantum chemistry (DFT) rejects zero-filled placeholder identities. Please link actual prepared structure identities.");
+          return;
+        }
+
+        const isFileArtifactId = projectArtifacts.some((a) => a.id === cId);
+        if (isFileArtifactId) {
+          setErr(
+            `Quantum chemistry geometry_source.id ('${cId}') is a file artifact ID, not a Conformer entity ID. Please select a prepared Conformer entity or enter its entity ULID.`
+          );
+          return;
+        }
+
+        const matchedConf = preparedConformers.find((c) => c.conformer_id === cId);
+        if (matchedConf && matchedConf.form_id !== fId) {
+          setErr(
+            `Quantum chemistry lineage mismatch: selected conformer '${cId}' belongs to form '${matchedConf.form_id}', but target form is '${fId}'.`
+          );
+          return;
+        }
+
+        if (matchedConf && matchedConf.compound_id && calc?.compound_id && matchedConf.compound_id !== calc.compound_id) {
+          setErr(
+            `Quantum chemistry lineage mismatch: selected conformer '${cId}' belongs to compound '${matchedConf.compound_id}', but target compound is '${calc.compound_id}'.`
+          );
           return;
         }
       }
@@ -2166,7 +2257,24 @@ export default function App() {
                       onChange={(e) => {
                         const targetId = e.target.value;
                         setQmCompoundId(targetId);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, targetId, qmFormId, qmConformerId);
+                        let nextConfId = qmConformerId;
+                        let nextFormId = qmFormId;
+                        const currentConf = preparedConformers.find((c) => c.conformer_id === qmConformerId);
+                        if (currentConf && currentConf.compound_id && currentConf.compound_id !== targetId) {
+                          const compat = preparedConformers.find((c) => c.compound_id === targetId);
+                          if (compat) {
+                            nextConfId = compat.conformer_id;
+                            nextFormId = compat.form_id;
+                            setQmConformerId(nextConfId);
+                            setQmFormId(nextFormId);
+                          } else {
+                            nextConfId = "";
+                            nextFormId = "";
+                            setQmConformerId("");
+                            setQmFormId("");
+                          }
+                        }
+                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, targetId, nextFormId, nextConfId);
                       }}
                     >
                       {compounds.map((c) => (
@@ -2287,24 +2395,57 @@ export default function App() {
                   </label>
 
                   <label style={{ minWidth: 260 }}>
-                    Select Prepared 3D Conformer / Structure
+                    Select Prepared Conformer Entity
                     <select
                       aria-label="Select Prepared 3D Conformer / Structure"
                       value={qmConformerId}
                       onChange={(e) => {
                         const cid = e.target.value.trim();
                         setQmConformerId(cid);
-                        applyPreset("dft", activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, cid);
+                        const conf = preparedConformers.find((c) => c.conformer_id === cid);
+                        let nextFormId = qmFormId;
+                        let nextCompId = qmCompoundId;
+                        if (conf) {
+                          nextFormId = conf.form_id;
+                          setQmFormId(conf.form_id);
+                          if (conf.compound_id) {
+                            nextCompId = conf.compound_id;
+                            setQmCompoundId(conf.compound_id);
+                          }
+                        }
+                        applyPreset(
+                          "dft",
+                          activeTargetArtifact,
+                          compounds,
+                          targetChain,
+                          exhaustiveness,
+                          receptorPh,
+                          altlocPolicy,
+                          mdLengthNs,
+                          mdTimestepFs,
+                          mdTempK,
+                          qmMethod,
+                          qmBasis,
+                          qmProtocol,
+                          qmSolvation,
+                          qmCharge,
+                          qmMultiplicity,
+                          nextCompId,
+                          nextFormId,
+                          cid
+                        );
                       }}
                     >
-                      <option value="">-- Choose from project 3D artifacts or enter below --</option>
-                      {projectArtifacts
-                        .filter((a) => a.media_type.includes("chemical") || a.media_type.includes("mol") || a.media_type.includes("sdf") || a.media_type.includes("pdb") || a.kind.includes("conformer") || a.kind.includes("structure") || (a.original_name && /\.(sdf|mol|mol2|pdb)$/i.test(a.original_name)))
-                        .map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.original_name || a.kind} ({a.id})
-                          </option>
-                        ))}
+                      <option value="">
+                        {compatibleConformers.length === 0
+                          ? "-- No prepared conformer entities available (enter ULIDs below) --"
+                          : "-- Choose prepared conformer entity or enter below --"}
+                      </option>
+                      {compatibleConformers.map((c) => (
+                        <option key={c.conformer_id} value={c.conformer_id}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
@@ -2324,7 +2465,7 @@ export default function App() {
 
                   {(!qmFormId || !qmConformerId) && (
                     <div style={{ width: "100%", marginTop: 8, padding: "8px 12px", background: "rgba(237, 137, 54, 0.15)", border: "1px solid rgba(237, 137, 54, 0.4)", borderRadius: 6, color: "#fbd38d", fontSize: "0.85rem" }}>
-                      ?? <strong>Prepared Structure Identity Required:</strong> Quantum chemistry requires an explicit target form and conformer identity linked to a prepared 3D structure. Select an available 3D conformer from project artifacts above, or provide explicit ULIDs before submission.
+                      ⚠️ <strong>Prepared Structure Identity Required:</strong> Quantum chemistry requires an explicit target form and conformer identity linked to a prepared 3D structure. Select an available conformer entity from prepared structures above, or provide explicit ULIDs before submission.
                     </div>
                   )}
                 </div>

@@ -172,3 +172,22 @@ Resolution of the remaining QM identity linkage and release verification items:
    - Import-linter: 4/4 architectural boundary contracts kept.
    - Ruff: clean lint and formatting checks across all 367 source files.
    - Playwright: 5/5 browser E2E tests green (26.5s).
+
+## Independent verification of 34362ea and resolution of conformer entity linkage (2026-10-14)
+
+1. **Conformer Entity vs File Artifact Distinction Resolved**:
+   - In `src/caddsuite/api/provenance.py`, `get_project_dashboard` now exposes typed `prepared_conformers` derived from cached `Conformer` contracts (`conformer_id`, `form_id`, `compound_id`, `generator`, `energy_kcal_per_mol`, `structure_artifact_id`). `_dashboard_result_summary` exposes typed summaries for `Conformer` and `CompoundForm` contracts.
+   - In `apps/web/src/App.tsx`, the broad file artifact selector was replaced by `Select Prepared Conformer Entity`. The UI derives `preparedConformers` and `compatibleConformers` (filtering by `qmCompoundId`).
+   - Selecting a prepared conformer entity binds genuine `Conformer.id` to `qmConformerId` and matching `Conformer.form_id` to `qmFormId` (and `qmCompoundId`), establishing guaranteed contract alignment.
+   - In `submit()`, explicit validation rejects any file artifact ID passed as `geometry_source.id` (`projectArtifacts[].id`) with actionable diagnostic error, and verifies conformer-form-compound lineage compatibility.
+2. **Automated Verification**:
+   - `tests/unit/test_ui_advertised_contracts.py`: Added `test_psi4_adapter_rejects_artifact_id_as_conformer_geometry_source` verifying `Psi4QMAdapter` rejects file artifact IDs with `QM.GEOMETRY_LINEAGE_MISMATCH` and verifies form lineage (117 tests passing).
+   - Pytest: 1104 passed, 42 skipped (0 failed).
+   - Strict mypy: clean across all 209 source files.
+   - Import-linter: 4/4 architectural boundary contracts kept.
+   - Ruff: clean across all source files.
+   - Playwright: 5/5 browser E2E tests passing (25.5s).
+3. **Open Release Gates**:
+   - Phase 19.3 is verified complete and closed.
+   - Phase 18.4 human license review (formal legal sign-off) and Phase 19.7 final release tag remain open release governance gates before external publication or public PyPI release.
+

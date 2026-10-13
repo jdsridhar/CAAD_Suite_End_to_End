@@ -401,3 +401,78 @@ class TestExplicitQMCalculationPlanExecution:
                 charge=0,
                 multiplicity=1,
             )
+
+    def test_psi4_adapter_rejects_artifact_id_as_conformer_geometry_source(self) -> None:
+        compound_id = new_ulid()
+        form_id = new_ulid()
+        conformer_id = new_ulid()
+        file_artifact_id = new_ulid()
+
+        form = CompoundForm(
+            id=form_id,
+            compound_id=compound_id,
+            kind=CompoundFormKind.PARENT_NEUTRAL,
+            smiles="CCO",
+            formal_charge=0,
+        )
+        conformer = Conformer(
+            id=conformer_id,
+            form_id=form_id,
+            compound_id=compound_id,
+            generator="rdkit_etkdg",
+            structure=ArtifactRef(
+                artifact_id=file_artifact_id, role="geometry", sha256="a" * 64
+            ),
+        )
+
+        # Calculation pointing to the file artifact ID instead of Conformer entity ID
+        calc_with_artifact_id = QMCalculation(
+            id=new_ulid(),
+            accession="CMP0001_QM_001",
+            form_id=form_id,
+            compound_id=compound_id,
+            geometry_source=EntityRef(kind="conformer", id=file_artifact_id),
+            engine=_software("Psi4", SoftwareKind.ENGINE),
+            adapter=_software("caddsuite.qm.psi4", SoftwareKind.ADAPTER),
+            model=QMModel(method="b3lyp", basis="def2-svp"),
+            protocol=QMProtocol.SINGLE_POINT,
+            solvation=SolvationSpec(model="ddx_pcm", solvent="water"),
+            charge=0,
+            multiplicity=1,
+        )
+
+        adapter = Psi4QMAdapter()
+        with pytest.raises(Psi4PlanError) as exc:
+            adapter._prepare(
+                calc_with_artifact_id,
+                {"python_executable": "/usr/bin/python3"},
+                {"form": form, "conformer": conformer},
+                {str(file_artifact_id): Path("/tmp/geometry.sdf")},
+                Path("/tmp"),
+            )
+        assert exc.value.code == "QM.GEOMETRY_LINEAGE_MISMATCH"
+
+        # Calculation with conformer belonging to a different form raises QM.FORM_LINEAGE_MISMATCH
+        other_form = CompoundForm(
+            id=new_ulid(),
+            compound_id=compound_id,
+            kind=CompoundFormKind.PARENT_NEUTRAL,
+            smiles="CCO",
+            formal_charge=0,
+        )
+        calc_with_other_form = calc_with_artifact_id.model_copy(
+            update={
+                "form_id": other_form.id,
+                "geometry_source": EntityRef(kind="conformer", id=conformer.id),
+            }
+        )
+        with pytest.raises(Psi4PlanError) as exc_form:
+            adapter._prepare(
+                calc_with_other_form,
+                {"python_executable": "/usr/bin/python3"},
+                {"form": other_form, "conformer": conformer},
+                {str(file_artifact_id): Path("/tmp/geometry.sdf")},
+                Path("/tmp"),
+            )
+        assert exc_form.value.code == "QM.FORM_LINEAGE_MISMATCH"
+

@@ -58,7 +58,7 @@ from caddsuite.contracts.docking import DockingResult
 from caddsuite.contracts.md import MDSimulation, MDStageResult
 from caddsuite.contracts.properties import PropertyPredictionSet
 from caddsuite.contracts.qm import QMResult
-from caddsuite.contracts.registry import InputRecord
+from caddsuite.contracts.registry import CompoundForm, Conformer, InputRecord
 from caddsuite.domain.enums import TaskState
 from caddsuite.domain.identity import ULIDStr, new_ulid
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
@@ -990,6 +990,8 @@ def create_app(
                 .limit(100)
             ).all()
             scientific_results: list[dict[str, JsonValue]] = []
+            prepared_conformers: list[dict[str, JsonValue]] = []
+            seen_conformer_ids: set[str] = set()
             for cache_row, task_row in cached_rows:
                 try:
                     result = load_contract(cache_row.payload)
@@ -999,6 +1001,19 @@ def create_app(
                         cache_row.cache_key,
                     )
                     continue
+                if isinstance(result, Conformer) and result.id not in seen_conformer_ids:
+                    seen_conformer_ids.add(result.id)
+                    prepared_conformers.append(
+                        {
+                            "conformer_id": result.id,
+                            "form_id": result.form_id,
+                            "compound_id": result.compound_id,
+                            "generator": result.generator,
+                            "energy_kcal_per_mol": result.energy_kcal_per_mol,
+                            "structure_artifact_id": result.structure.artifact_id,
+                            "created_at": cache_row.created_at.isoformat(),
+                        }
+                    )
                 summary = _dashboard_result_summary(result)
                 if summary is None:
                     continue
@@ -1053,6 +1068,7 @@ def create_app(
                 },
                 "workflow_statuses": cast(JsonValue, run_counts),
                 "artifact_kinds": cast(JsonValue, artifact_kinds),
+                "prepared_conformers": cast(JsonValue, prepared_conformers),
                 "scientific_results": cast(JsonValue, scientific_results[:50]),
                 "recent_runs": [
                     {
@@ -1318,6 +1334,40 @@ def create_app(
 
 def _dashboard_result_summary(result: VersionedContract) -> dict[str, JsonValue] | None:
     """Expose typed result values without collapsing evidence into a platform score."""
+    if isinstance(result, Conformer):
+        return {
+            "category": "conformer",
+            "result_id": result.id,
+            "identity": f"Conformer {result.id}",
+            "method": f"{result.generator} ({result.selected_by})",
+            "values": [
+                {
+                    "endpoint": "energy_kcal_mol",
+                    "value": result.energy_kcal_per_mol,
+                    "unit": "kcal/mol",
+                    "kind": "computed",
+                    "model": result.optimizer,
+                }
+            ],
+            "warnings": [],
+        }
+    if isinstance(result, CompoundForm):
+        return {
+            "category": "compound_form",
+            "result_id": result.id,
+            "identity": f"Form {result.id}",
+            "method": result.kind.value,
+            "values": [
+                {
+                    "endpoint": "formal_charge",
+                    "value": result.formal_charge,
+                    "unit": "e",
+                    "kind": "computed",
+                    "model": "dimorphite_dl",
+                }
+            ],
+            "warnings": [],
+        }
     if isinstance(result, PropertyPredictionSet):
         return {
             "category": "admet",

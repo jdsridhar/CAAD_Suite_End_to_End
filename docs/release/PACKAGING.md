@@ -107,11 +107,11 @@ Built from a clean Git archive of commit `1dcd35b` in a temporary directory usin
 This confirms package contents, CLI entry points, archive exclusions, and database migration from clean commit `1dcd35b`. Dependency-license compatibility, notices for optional extras, and counsel review for distribution models remain open public-release gates.
 
 
-## Current clean package verification (2026-10-13)
+## Current clean package verification (2026-10-14)
 
-Built using Hatchling following the Phase 19 hardening and UI contract alignment fixes. Wheel and sdist exclude `benchmarks/**`, and include project `LICENSE` and `NOTICE`.
+Built using Hatchling following the resolution of conformer entity linkage. Wheel and sdist exclude `benchmarks/**`, and include project `LICENSE` and `NOTICE`.
 
-- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 569,428 bytes; SHA-256 `b86547980e2d5cf4435e328f83d7d0148ac3572ec0a3cc779b1e681cdd00daa0`.
-- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, 2,362,419 bytes; SHA-256 `da2cfb24d97ec873b353c45ba9a3083d4ae8e8340ce26b77eac3574886ad2747`.
-- Installed the wheel in an isolated virtual environment (`/tmp/test_caddsuite_venv`). Smoke checks confirmed successful wheel collection and installation.
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, SHA-256 `6064d9e8b080e544a3819c38d26175ac7c6bc9f0f6b5d0499243cb20be9065a6`.
+- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, SHA-256 `e51b42e8892748d5c112a399c561b48059bbd420bdfac00a3e9bf5f28cb9690a`.
 - Dependency-license compatibility review (Phase 18.4) and public release tag creation remain the required distribution gates prior to external PyPI publication.
+
