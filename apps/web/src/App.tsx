@@ -999,6 +999,12 @@ export default function App() {
   const [isProvisioningMd, setIsProvisioningMd] = useState(false);
   const [mdCandidates, setMdCandidates] = useState<RecordedMdCandidate[]>([]);
   const [selectedMdRunId, setSelectedMdRunId] = useState("");
+  const [mdSystemSource, setMdSystemSource] = useState<"upload" | "recorded">("recorded");
+  const [uploadGroId, setUploadGroId] = useState("");
+  const [uploadTopId, setUploadTopId] = useState("");
+  const [uploadNdxId, setUploadNdxId] = useState("");
+  const [uploadMdpId, setUploadMdpId] = useState("");
+  const [uploadingMdFile, setUploadingMdFile] = useState(false);
   const [mmpbsaDemoInfo, setMmpbsaDemoInfo] = useState<Record<string, unknown> | null>(null);
   const [isProvisioningMmpbsa, setIsProvisioningMmpbsa] = useState(false);
   const [mmpbsaCandidates, setMmpbsaCandidates] = useState<RecordedMmpbsaCandidate[]>([]);
@@ -1567,6 +1573,145 @@ export default function App() {
     } finally {
       setIsProvisioningMd(false);
     }
+  }
+
+  async function uploadMdFile(fileToUpload: File) {
+    if (!pid) return;
+    setUploadingMdFile(true);
+    setErr("");
+    try {
+      const ext = fileToUpload.name.toLowerCase();
+      let role = "input";
+      if (ext.endsWith(".gro")) role = "coordinates";
+      else if (ext.endsWith(".top")) role = "topology";
+      else if (ext.endsWith(".ndx")) role = "index";
+      else if (ext.endsWith(".mdp")) role = "protocol";
+      else if (ext.endsWith(".itp")) role = "parameter";
+
+      const r = await uploadArtifact(url, token, pid, fileToUpload, role);
+      const d = (await r.json()) as { artifact?: { artifact_id?: string } };
+      setMsg(`✓ Uploaded ${fileToUpload.name} into Project CAS`);
+      await refreshArtifacts(pid);
+      if (d?.artifact?.artifact_id) {
+        const aid = d.artifact.artifact_id;
+        if (ext.endsWith(".gro")) setUploadGroId(aid);
+        else if (ext.endsWith(".top")) setUploadTopId(aid);
+        else if (ext.endsWith(".ndx")) setUploadNdxId(aid);
+        else if (ext.endsWith(".mdp")) setUploadMdpId(aid);
+      }
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setUploadingMdFile(false);
+    }
+  }
+
+  function bindUploadedMdSystem() {
+    const gro = projectArtifacts.find((a) => a.id === uploadGroId);
+    const top = projectArtifacts.find((a) => a.id === uploadTopId);
+    if (!gro || !top) {
+      setErr("Please select both a coordinates file (.gro) and a topology file (.top) before binding.");
+      return;
+    }
+    const ndx = projectArtifacts.find((a) => a.id === uploadNdxId);
+    const mdp = projectArtifacts.find((a) => a.id === uploadMdpId);
+    const sysId = ulid();
+    const buildId = ulid();
+    const boundSystemBuild = {
+      schema_version: "system_build_result/1.0",
+      id: buildId,
+      request_id: ulid(),
+      complex_id: ulid(),
+      builder: {
+        adapter_id: "system_builder.charmm_gui_gromacs_import",
+        engine: "charmm_gui_gromacs_import",
+        version: "0.1.0",
+      },
+      parameterization: {
+        id: ulid(),
+        compatibility_profile_id: "caddsuite.charmm_gui.gromacs.charmm36m_cgenff_v1",
+        protein_ff: "CHARMM36m",
+        ligand_method: "CGenFF",
+        ligand_charge_model: "CGenFF",
+        water_model: "CHARMM TIP3P",
+        ion_parameters: "CHARMM ions",
+      },
+      system: {
+        id: sysId,
+        complex_id: ulid(),
+        compound_id: compounds[0]?.id || ulid(),
+        form_id: ulid(),
+        n_atoms: 50000,
+        net_charge: 0,
+        parameterization_id: ulid(),
+        engine_inputs: {
+          gromacs: {
+            topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+            coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+            ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+            ...(mdp ? { mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 } } : {}),
+          },
+        },
+      },
+      protocol: {
+        stages: [
+          {
+            kind: "production",
+            integrator: "md",
+            n_steps: Math.max(1000, Math.round(((mdLengthNs || 1.0) * 1000000) / (mdTimestepFs || 2.0))),
+            timestep_fs: mdTimestepFs || 2.0,
+            length_ns: mdLengthNs || 1.0,
+            temperature_K: mdTempK || 300.0,
+          },
+        ],
+      },
+      raw_artifacts: {
+        coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+        topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+        ...(mdp ? { mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 } } : {}),
+      },
+      normalized_artifacts: {
+        coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+        topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+      },
+      validation_issues: [],
+    };
+    const boundStageInput = {
+      schema_version: "md_stage_plan/1.0",
+      engine: "gromacs",
+      stage_index: 0,
+      artifacts: {
+        coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+        topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+        ...(mdp ? { mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 } } : {}),
+      },
+    };
+    setMdDemoInfo({
+      is_uploaded: true,
+      system_id: sysId,
+      atoms: 50000,
+      engine: "gromacs",
+      length_ns: mdLengthNs || 1.0,
+      timestep_fs: mdTimestepFs || 2.0,
+      temperature_K: mdTempK || 300.0,
+      identity: `${gro.original_name || "coordinates.gro"} + ${top.original_name || "topol.top"}`,
+    });
+    setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
+    setInputs(
+      JSON.stringify(
+        {
+          compounds: compounds.map((c) => c.payload),
+          system_build: boundSystemBuild,
+          stage_input: boundStageInput,
+        },
+        null,
+        2
+      )
+    );
+    setMsg(`✓ Bound prepared GROMACS files: ${gro.original_name || gro.id} and ${top.original_name || top.id}`);
   }
 
   async function loadDemoMmpbsaSystem(targetRunId?: string) {
@@ -2740,92 +2885,278 @@ export default function App() {
                   <span className="format-badge cif">Engine and resources configured in workflow</span>
                 </div>
 
-                {/* 1-CLICK DEMO CAS PROVISIONING BANNER */}
-                {!mdDemoInfo ? (
-                  <div className="demo-md-cta-box">
-                    <div className="between">
-                      <div style={{ flex: 1, marginRight: 16 }}>
-                        <h4>Use a recorded prepared system</h4>
-                        <p>Reuse verified system inputs from a successful run in this project, or provide a prepared system and explicit stage plan in the advanced inputs below.</p>
-                        {mdCandidates.length > 1 && (
-                          <div style={{ marginTop: 8 }}>
-                            <label htmlFor="md-candidate-selector" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
-                              Select recorded MD run to reuse:
-                            </label>
-                            <select
-                              id="md-candidate-selector"
-                              aria-label="Select recorded MD run"
-                              value={selectedMdRunId}
-                              onChange={(e) => setSelectedMdRunId(e.target.value)}
-                              style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
-                            >
-                              {mdCandidates.map((c) => (
-                                <option key={c.run_id} value={c.run_id}>
-                                  {c.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        {mdCandidates.length === 0 && (
-                          <p className="dim" style={{ fontSize: "0.85rem", marginTop: 6, color: "#e2a03f" }}>
-                            ⚠️ No completed MD runs recorded in this project yet. Provide a prepared system and explicit stage plan in the inputs below.
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="dark provision-button"
-                        disabled={isProvisioningMd || !pid || mdCandidates.length === 0}
-                        onClick={() => void loadDemoMdSystem()}
-                      >
-                        {isProvisioningMd ? "⏳ Provisioning CAS Artifacts..." : "📥 Load recorded MD inputs"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="demo-md-loaded-box">
-                    <div className="between">
-                      <div style={{ flex: 1, marginRight: 16 }}>
-                        <span className="badge-tag green">HASH-VERIFIED PREPARED INPUTS</span>
-                        <h4>Recorded system ({String(mdDemoInfo.atoms)} atoms)</h4>
-                        <p className="dim">Original topology, coordinate, and parameter artifacts are verified by hash. The saved protocol determines the run settings.</p>
-                        {mdCandidates.length > 1 && (
-                          <div style={{ marginTop: 8 }}>
-                            <label htmlFor="md-candidate-selector-loaded" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
-                              Switch to different recorded MD run:
-                            </label>
-                            <select
-                              id="md-candidate-selector-loaded"
-                              aria-label="Switch recorded MD run"
-                              value={selectedMdRunId}
+                {/* SYSTEM PREPARATION SOURCE SELECTOR */}
+                <div style={{ display: "flex", gap: 8, margin: "6px 0 14px", borderBottom: "1px solid #e2e8e0", paddingBottom: 10 }}>
+                  <button
+                    type="button"
+                    className={"outline small" + (mdSystemSource === "upload" ? " active-source-btn" : "")}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 20,
+                      fontWeight: 600,
+                      fontSize: "11px",
+                      background: mdSystemSource === "upload" ? "#294838" : "white",
+                      color: mdSystemSource === "upload" ? "white" : "#405047",
+                      borderColor: mdSystemSource === "upload" ? "#294838" : "#dbe2d9",
+                    }}
+                    onClick={() => {
+                      setMdSystemSource("upload");
+                    }}
+                  >
+                    📁 Upload / Select GROMACS Files (CHARMM-GUI / Local)
+                  </button>
+                  <button
+                    type="button"
+                    className={"outline small" + (mdSystemSource === "recorded" ? " active-source-btn" : "")}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 20,
+                      fontWeight: 600,
+                      fontSize: "11px",
+                      background: mdSystemSource === "recorded" ? "#294838" : "white",
+                      color: mdSystemSource === "recorded" ? "white" : "#405047",
+                      borderColor: mdSystemSource === "recorded" ? "#294838" : "#dbe2d9",
+                    }}
+                    onClick={() => {
+                      setMdSystemSource("recorded");
+                      if (pid) void refreshMdCandidates(pid);
+                    }}
+                  >
+                    🔄 Reuse Recorded Run {mdCandidates.length > 0 ? `(${mdCandidates.length})` : ""}
+                  </button>
+                </div>
+
+                {/* MODE A: UPLOAD / SELECT GROMACS FILES */}
+                {mdSystemSource === "upload" && (
+                  <>
+                    {!mdDemoInfo ? (
+                      <div className="demo-md-cta-box" style={{ background: "#f8faf7", borderColor: "#d5dfd3" }}>
+                        <span className="badge-tag green" style={{ marginBottom: 6 }}>EXTERNAL SYSTEM IMPORTER</span>
+                        <h4>Upload or Select CHARMM-GUI / GROMACS Bundle Files</h4>
+                        <p style={{ color: "#364d3c", marginBottom: 12 }}>
+                          Upload exported files from CHARMM-GUI Solution Builder or select existing project artifacts to bind the topology and coordinate system.
+                        </p>
+
+                        {/* Inline File Upload */}
+                        <div style={{ background: "white", border: "1px solid #dce5da", borderRadius: 6, padding: "10px 12px", marginBottom: 12 }}>
+                          <label style={{ fontSize: "11px", fontWeight: 600, display: "block", marginBottom: 6, color: "#2d4434" }}>
+                            📤 Upload file into Project CAS (.gro, .top, .itp, .ndx, .mdp):
+                          </label>
+                          <div className="upload-inline">
+                            <input
+                              type="file"
+                              accept=".gro,.top,.itp,.ndx,.mdp,.cif,.pdb"
+                              disabled={uploadingMdFile}
                               onChange={(e) => {
-                                const newRunId = e.target.value;
-                                setSelectedMdRunId(newRunId);
-                                void loadDemoMdSystem(newRunId);
+                                const f = e.target.files?.[0];
+                                if (f) void uploadMdFile(f);
                               }}
-                              style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
-                            >
-                              {mdCandidates.map((c) => (
-                                <option key={c.run_id} value={c.run_id}>
-                                  {c.label}
-                                </option>
-                              ))}
-                            </select>
+                            />
+                            {uploadingMdFile && <span style={{ fontSize: "11px", color: "#294838" }}>⏳ Uploading...</span>}
                           </div>
-                        )}
+                        </div>
+
+                        {/* Artifact Selectors */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Coordinates (.gro) *
+                            <select
+                              value={uploadGroId}
+                              onChange={(e) => setUploadGroId(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="">Select .gro coordinates</option>
+                              {projectArtifacts
+                                .filter((a) => (a.original_name || a.kind).toLowerCase().endsWith(".gro"))
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.original_name || a.kind} ({formatBytes(a.size_bytes)})
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Topology (.top) *
+                            <select
+                              value={uploadTopId}
+                              onChange={(e) => setUploadTopId(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="">Select .top topology</option>
+                              {projectArtifacts
+                                .filter((a) => (a.original_name || a.kind).toLowerCase().endsWith(".top"))
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.original_name || a.kind} ({formatBytes(a.size_bytes)})
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Index (.ndx) - optional
+                            <select
+                              value={uploadNdxId}
+                              onChange={(e) => setUploadNdxId(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="">Default index (auto-generated)</option>
+                              {projectArtifacts
+                                .filter((a) => (a.original_name || a.kind).toLowerCase().endsWith(".ndx"))
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.original_name || a.kind} ({formatBytes(a.size_bytes)})
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Simulation Protocol (.mdp) - optional
+                            <select
+                              value={uploadMdpId}
+                              onChange={(e) => setUploadMdpId(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="">Default production MDP</option>
+                              {projectArtifacts
+                                .filter((a) => (a.original_name || a.kind).toLowerCase().endsWith(".mdp"))
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.original_name || a.kind} ({formatBytes(a.size_bytes)})
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                        </div>
+
+                        <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span className="dim" style={{ fontSize: "10px" }}>
+                            {uploadGroId && uploadTopId ? "✓ Coordinates and topology selected." : "Select both .gro and .top files to bind."}
+                          </span>
+                          <button
+                            type="button"
+                            className="dark"
+                            disabled={!uploadGroId || !uploadTopId}
+                            onClick={bindUploadedMdSystem}
+                            style={{ padding: "8px 18px", fontSize: "11px", fontWeight: 700 }}
+                          >
+                            ✓ Bind GROMACS System to Workflow
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        className="outline small"
-                        disabled={isProvisioningMd || !pid}
-                        onClick={() => void loadDemoMdSystem()}
-                        title="Re-sync MDP parameters and CAS artifact references"
-                      >
-                        {isProvisioningMd ? "⏳ Syncing..." : "🔄 Re-sync Parameters"}
-                      </button>
-                    </div>
-                  </div>
+                    ) : (
+                      <div className="demo-md-loaded-box">
+                        <div className="between">
+                          <div style={{ flex: 1, marginRight: 16 }}>
+                            <span className="badge-tag green">HASH-VERIFIED GROMACS SYSTEM</span>
+                            <h4>{String(mdDemoInfo.identity || `System (${mdDemoInfo.atoms} atoms)`)}</h4>
+                            <p className="dim">Topology and coordinate artifacts are bound with verified SHA-256 hashes.</p>
+                          </div>
+                          <button
+                            type="button"
+                            className="outline small"
+                            onClick={() => {
+                              setMdDemoInfo(null);
+                              setInputs(JSON.stringify({ compounds: compounds.map((c) => c.payload) }, null, 2));
+                            }}
+                          >
+                            🔄 Change / Re-bind Files
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* MODE B: REUSE RECORDED RUN */}
+                {mdSystemSource === "recorded" && (
+                  <>
+                    {!mdDemoInfo ? (
+                      <div className="demo-md-cta-box">
+                        <div className="between">
+                          <div style={{ flex: 1, marginRight: 16 }}>
+                            <h4>Use a recorded prepared system</h4>
+                            <p>Reuse verified system inputs from a successful run in this project, or switch to Upload mode above to provide files.</p>
+                            {mdCandidates.length > 1 && (
+                              <div style={{ marginTop: 8 }}>
+                                <label htmlFor="md-candidate-selector" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                                  Select recorded MD run to reuse:
+                                </label>
+                                <select
+                                  id="md-candidate-selector"
+                                  aria-label="Select recorded MD run"
+                                  value={selectedMdRunId}
+                                  onChange={(e) => setSelectedMdRunId(e.target.value)}
+                                  style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
+                                >
+                                  {mdCandidates.map((c) => (
+                                    <option key={c.run_id} value={c.run_id}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            {mdCandidates.length === 0 && (
+                              <p className="dim" style={{ fontSize: "0.85rem", marginTop: 6, color: "#e2a03f" }}>
+                                ⚠️ No completed MD runs recorded in this project yet. Use "Upload / Select GROMACS Files" above to supply your system files.
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="dark provision-button"
+                            disabled={isProvisioningMd || !pid || mdCandidates.length === 0}
+                            onClick={() => void loadDemoMdSystem()}
+                          >
+                            {isProvisioningMd ? "⏳ Provisioning CAS Artifacts..." : "📥 Load recorded MD inputs"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="demo-md-loaded-box">
+                        <div className="between">
+                          <div style={{ flex: 1, marginRight: 16 }}>
+                            <span className="badge-tag green">HASH-VERIFIED PREPARED INPUTS</span>
+                            <h4>Recorded system ({String(mdDemoInfo.atoms)} atoms)</h4>
+                            <p className="dim">Original topology, coordinate, and parameter artifacts are verified by hash. The saved protocol determines the run settings.</p>
+                            {mdCandidates.length > 1 && (
+                              <div style={{ marginTop: 8 }}>
+                                <label htmlFor="md-candidate-selector-loaded" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                                  Switch to different recorded MD run:
+                                </label>
+                                <select
+                                  id="md-candidate-selector-loaded"
+                                  aria-label="Switch recorded MD run"
+                                  value={selectedMdRunId}
+                                  onChange={(e) => {
+                                    const newRunId = e.target.value;
+                                    setSelectedMdRunId(newRunId);
+                                    void loadDemoMdSystem(newRunId);
+                                  }}
+                                  style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
+                                >
+                                  {mdCandidates.map((c) => (
+                                    <option key={c.run_id} value={c.run_id}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="outline small"
+                            disabled={isProvisioningMd || !pid}
+                            onClick={() => void loadDemoMdSystem()}
+                            title="Re-sync MDP parameters and CAS artifact references"
+                          >
+                            {isProvisioningMd ? "⏳ Syncing..." : "🔄 Re-sync Parameters"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <p className="dashboard-note">Simulation settings are read from the prepared protocol and parameter files. A change in duration, timestep, or temperature requires new validated parameter artifacts.</p>
@@ -2910,7 +3241,7 @@ export default function App() {
                   <div className={"readiness-pill " + (hasSystemBuild ? "ready" : "warn")}>
                     <span className="dot-indicator" />
                     <span>
-                      Prepared system: <strong>{hasSystemBuild ? "Recorded inputs loaded" : "Provide system_build"}</strong>
+                      Prepared system: <strong>{hasSystemBuild ? (mdDemoInfo?.is_uploaded ? `GROMACS bound: ${String(mdDemoInfo.identity)}` : "Recorded inputs loaded") : (mdSystemSource === "upload" ? "Select .gro & .top files" : "Provide system_build")}</strong>
                     </span>
                   </div>
                 )}
