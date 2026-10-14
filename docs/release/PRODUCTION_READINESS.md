@@ -229,3 +229,7 @@ The new guided 3D preparation/conformer-binding browser test independently passe
      2. Phase 19.7 final release verification and Git release tag.
      3. Broader independent scientific qualification (free energy convergence tolerances across diverse protein-ligand benchmarks).
 
+
+## Independent execution and UI verification of c911464 (2026-10-14)
+
+All 6 Playwright browser tests independently passed (1.4m), including test 6 executing the guided ethanol DFT workflow, verifying QM/report task success, and rendering normalized energy, dipole, and SCF convergence evidence. The earlier DFT-execution gap is resolved for this acceptance case. The focused UI-contract/QM-lineage suites passed 122 tests in 1.34s; TypeScript typecheck and targeted Ruff checks also passed. Human dependency/license review (18.4), final release verification/tag (19.7), and recorded broader independent scientific qualification remain open, and no Git tags were present. This check did not rerun the full Python suite, final package builds/install, production MD, or broader scientific benchmarks. All checklist items are not complete, and these scoped successes do not establish unrestricted production readiness.
