@@ -6,7 +6,8 @@ import os
 from pathlib import Path
 
 import pytest
-from scripts.gromacs_solution_builder import (
+
+from caddsuite.structure.gromacs_solution_builder import (
     GromacsSolutionBuilder,
     SolutionBuilderConfig,
     find_gmx_binary,

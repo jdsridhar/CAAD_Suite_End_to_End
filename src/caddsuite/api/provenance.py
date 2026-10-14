@@ -34,6 +34,7 @@ from caddsuite.application.engine_discovery import (
     EngineDiscoveryReport,
     discover_engine_paths,
 )
+from caddsuite.application.gromacs_solution_service import build_local_solution_system
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
 from caddsuite.application.runtime import LocalWorkflowRuntime
@@ -495,13 +496,63 @@ def create_app(
             ) from exc
 
     @app.post(
+        "/v1/projects/{project_id}/build-local-solution",
+        status_code=200,
+        description="Run local GROMACS solution builder (pdb2gmx, editconf, solvate, genion).",
+    )
+    def build_local_solution_endpoint(
+        project_id: str,
+        target_artifact_id: str | None = Query(
+            None, description="Specific receptor PDB artifact ID"
+        ),
+        forcefield: str = Query("amber14sb", description="GROMACS force field"),
+        water_model: str = Query("tip3p", description="Water model"),
+        box_type: str = Query("dodecahedron", description="Simulation box type"),
+        padding_nm: float = Query(1.0, ge=0.5, le=5.0, description="Box boundary padding in nm"),
+        conc_molar: float = Query(0.15, ge=0.0, le=2.0, description="Salt concentration in M"),
+        neutralize: bool = Query(True, description="Neutralize net system charge"),
+        length_ns: float | None = Query(None, ge=0.0001, le=100.0),
+        timestep_fs: float | None = Query(None, ge=0.1, le=5.0),
+        temp_k: float | None = Query(None, ge=50.0, le=500.0),
+        _: None = Depends(authenticate),
+    ) -> dict[str, Any]:
+        store = ArtifactStore(artifacts_root(root))
+        try:
+            return build_local_solution_system(
+                project_id,
+                sessions,
+                store,
+                target_artifact_id=target_artifact_id,
+                forcefield=forcefield,
+                water_model=water_model,
+                box_type=box_type,
+                padding_nm=padding_nm,
+                conc_molar=conc_molar,
+                neutralize=neutralize,
+                length_ns=length_ns or 1.0,
+                timestep_fs=timestep_fs or 2.0,
+                temp_k=temp_k or 300.0,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="project was not found") from exc
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.exception("local solution builder failed for project %s", project_id)
+            raise HTTPException(
+                status_code=500, detail=f"Local solution builder failed: {exc}"
+            ) from exc
+
+    @app.post(
         "/v1/projects/{project_id}/provision-demo-mmpbsa",
         status_code=200,
         description="Reuse verified binding-energy inputs from a successful project run.",
     )
     def provision_demo_mmpbsa_endpoint(
         project_id: str,
-        run_id: str | None = Query(None, description="Specific run ID to reuse MM-PBSA inputs from"),
+        run_id: str | None = Query(
+            None, description="Specific run ID to reuse MM-PBSA inputs from"
+        ),
         _: None = Depends(authenticate),
     ) -> dict[str, Any]:
         store = ArtifactStore(artifacts_root(root))

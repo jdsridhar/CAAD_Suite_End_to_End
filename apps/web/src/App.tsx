@@ -999,7 +999,15 @@ export default function App() {
   const [isProvisioningMd, setIsProvisioningMd] = useState(false);
   const [mdCandidates, setMdCandidates] = useState<RecordedMdCandidate[]>([]);
   const [selectedMdRunId, setSelectedMdRunId] = useState("");
-  const [mdSystemSource, setMdSystemSource] = useState<"upload" | "recorded">("recorded");
+  const [mdSystemSource, setMdSystemSource] = useState<"local_builder" | "charmm_gui" | "recorded">("recorded");
+  const [localTargetId, setLocalTargetId] = useState("");
+  const [localForcefield, setLocalForcefield] = useState("amber14sb");
+  const [localWaterModel, setLocalWaterModel] = useState("tip3p");
+  const [localBoxType, setLocalBoxType] = useState("dodecahedron");
+  const [localPaddingNm, setLocalPaddingNm] = useState(1.0);
+  const [localSaltConc, setLocalSaltConc] = useState(0.15);
+  const [localNeutralize, setLocalNeutralize] = useState(true);
+  const [isBuildingLocalSolution, setIsBuildingLocalSolution] = useState(false);
   const [uploadGroId, setUploadGroId] = useState("");
   const [uploadTopId, setUploadTopId] = useState("");
   const [uploadNdxId, setUploadNdxId] = useState("");
@@ -1575,30 +1583,89 @@ export default function App() {
     }
   }
 
-  async function uploadMdFile(fileToUpload: File) {
+  async function buildLocalSolutionSystem() {
+    if (!pid) return;
+    setIsBuildingLocalSolution(true);
+    setErr("");
+    try {
+      const effectiveTargetId = localTargetId || activeTargetArtifact?.id || "";
+      const targetParam = effectiveTargetId ? `&target_artifact_id=${encodeURIComponent(effectiveTargetId)}` : "";
+      const queryParams = `?forcefield=${encodeURIComponent(localForcefield)}&water_model=${encodeURIComponent(localWaterModel)}&box_type=${encodeURIComponent(localBoxType)}&padding_nm=${localPaddingNm}&conc_molar=${localSaltConc}&neutralize=${localNeutralize}&length_ns=${mdLengthNs || 1.0}&timestep_fs=${mdTimestepFs || 2.0}&temp_k=${mdTempK || 300.0}${targetParam}`;
+      const resp = await fetch(`${url}/v1/projects/${pid}/build-local-solution${queryParams}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!resp.ok) {
+        let errorDetail = "";
+        try {
+          const errJson = (await resp.json()) as { detail?: unknown };
+          errorDetail = typeof errJson?.detail === "string" ? errJson.detail : JSON.stringify(errJson?.detail || errJson);
+        } catch {
+          errorDetail = await resp.text();
+        }
+        throw new Error(`Local GROMACS solution builder failed: ${errorDetail}`);
+      }
+      const data = (await resp.json()) as {
+        status: string;
+        system_build: Record<string, unknown>;
+        stage_input: Record<string, unknown>;
+        info: Record<string, unknown>;
+      };
+      setMdDemoInfo({
+        ...data.info,
+        is_local_build: true,
+      });
+      setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
+      setInputs(
+        JSON.stringify(
+          {
+            compounds: compounds.map((c) => c.payload),
+            system_build: data.system_build,
+            stage_input: data.stage_input,
+          },
+          null,
+          2
+        )
+      );
+      setMsg(`✓ ${String(data.info.identity || "Local GROMACS solution system built and bound successfully")}`);
+      await refreshArtifacts(pid);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setIsBuildingLocalSolution(false);
+    }
+  }
+
+  async function uploadMdFile(filesInput: FileList | File[] | File) {
     if (!pid) return;
     setUploadingMdFile(true);
     setErr("");
     try {
-      const ext = fileToUpload.name.toLowerCase();
-      let role = "input";
-      if (ext.endsWith(".gro")) role = "coordinates";
-      else if (ext.endsWith(".top")) role = "topology";
-      else if (ext.endsWith(".ndx")) role = "index";
-      else if (ext.endsWith(".mdp")) role = "protocol";
-      else if (ext.endsWith(".itp")) role = "parameter";
+      const fileArray = filesInput instanceof File ? [filesInput] : Array.from(filesInput);
+      for (const fileToUpload of fileArray) {
+        const ext = fileToUpload.name.toLowerCase();
+        let role = "input";
+        if (ext.endsWith(".gro")) role = "coordinates";
+        else if (ext.endsWith(".top")) role = "topology";
+        else if (ext.endsWith(".ndx")) role = "index";
+        else if (ext.endsWith(".mdp")) role = "protocol";
+        else if (ext.endsWith(".itp")) role = "parameter";
 
-      const r = await uploadArtifact(url, token, pid, fileToUpload, role);
-      const d = (await r.json()) as { artifact?: { artifact_id?: string } };
-      setMsg(`✓ Uploaded ${fileToUpload.name} into Project CAS`);
-      await refreshArtifacts(pid);
-      if (d?.artifact?.artifact_id) {
-        const aid = d.artifact.artifact_id;
-        if (ext.endsWith(".gro")) setUploadGroId(aid);
-        else if (ext.endsWith(".top")) setUploadTopId(aid);
-        else if (ext.endsWith(".ndx")) setUploadNdxId(aid);
-        else if (ext.endsWith(".mdp")) setUploadMdpId(aid);
+        const r = await uploadArtifact(url, token, pid, fileToUpload, role);
+        const d = (await r.json()) as { artifact?: { artifact_id?: string } };
+        if (d?.artifact?.artifact_id) {
+          const aid = d.artifact.artifact_id;
+          if (ext.endsWith(".gro")) setUploadGroId(aid);
+          else if (ext.endsWith(".top")) setUploadTopId(aid);
+          else if (ext.endsWith(".ndx")) setUploadNdxId(aid);
+          else if (ext.endsWith(".mdp")) setUploadMdpId(aid);
+        }
       }
+      setMsg(`✓ Uploaded ${fileArray.length} file(s) into Project CAS`);
+      await refreshArtifacts(pid);
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -2885,25 +2952,39 @@ export default function App() {
                   <span className="format-badge cif">Engine and resources configured in workflow</span>
                 </div>
 
-                {/* SYSTEM PREPARATION SOURCE SELECTOR */}
-                <div style={{ display: "flex", gap: 8, margin: "6px 0 14px", borderBottom: "1px solid #e2e8e0", paddingBottom: 10 }}>
+                {/* SYSTEM PREPARATION SOURCE SELECTOR - 3 BUTTONS */}
+                <div style={{ display: "flex", gap: 8, margin: "6px 0 14px", borderBottom: "1px solid #e2e8e0", paddingBottom: 10, flexWrap: "wrap" }}>
                   <button
                     type="button"
-                    className={"outline small" + (mdSystemSource === "upload" ? " active-source-btn" : "")}
+                    className={"outline small" + (mdSystemSource === "local_builder" ? " active-source-btn" : "")}
                     style={{
                       padding: "6px 14px",
                       borderRadius: 20,
                       fontWeight: 600,
                       fontSize: "11px",
-                      background: mdSystemSource === "upload" ? "#294838" : "white",
-                      color: mdSystemSource === "upload" ? "white" : "#405047",
-                      borderColor: mdSystemSource === "upload" ? "#294838" : "#dbe2d9",
+                      background: mdSystemSource === "local_builder" ? "#294838" : "white",
+                      color: mdSystemSource === "local_builder" ? "white" : "#405047",
+                      borderColor: mdSystemSource === "local_builder" ? "#294838" : "#dbe2d9",
                     }}
-                    onClick={() => {
-                      setMdSystemSource("upload");
-                    }}
+                    onClick={() => setMdSystemSource("local_builder")}
                   >
-                    📁 Upload / Select GROMACS Files (CHARMM-GUI / Local)
+                    🧪 1. Local Solution Builder (GROMACS)
+                  </button>
+                  <button
+                    type="button"
+                    className={"outline small" + (mdSystemSource === "charmm_gui" ? " active-source-btn" : "")}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 20,
+                      fontWeight: 600,
+                      fontSize: "11px",
+                      background: mdSystemSource === "charmm_gui" ? "#294838" : "white",
+                      color: mdSystemSource === "charmm_gui" ? "white" : "#405047",
+                      borderColor: mdSystemSource === "charmm_gui" ? "#294838" : "#dbe2d9",
+                    }}
+                    onClick={() => setMdSystemSource("charmm_gui")}
+                  >
+                    📁 2. CHARMM-GUI / GROMACS Folder & Files
                   </button>
                   <button
                     type="button"
@@ -2922,12 +3003,154 @@ export default function App() {
                       if (pid) void refreshMdCandidates(pid);
                     }}
                   >
-                    🔄 Reuse Recorded Run {mdCandidates.length > 0 ? `(${mdCandidates.length})` : ""}
+                    🔄 3. Reuse / Resume Previous Runs {mdCandidates.length > 0 ? `(${mdCandidates.length})` : ""}
                   </button>
                 </div>
 
-                {/* MODE A: UPLOAD / SELECT GROMACS FILES */}
-                {mdSystemSource === "upload" && (
+                {/* MODE 1: LOCAL SOLUTION BUILDER */}
+                {mdSystemSource === "local_builder" && (
+                  <>
+                    {!mdDemoInfo ? (
+                      <div className="demo-md-cta-box" style={{ background: "#f8faf7", borderColor: "#d5dfd3" }}>
+                        <span className="badge-tag green" style={{ marginBottom: 6 }}>GROMACS BUILT-IN PIPELINE</span>
+                        <h4>Automated Local Solution Builder</h4>
+                        <p style={{ color: "#364d3c", marginBottom: 12 }}>
+                          Runs GROMACS built-in tools (<strong>pdb2gmx</strong> → <strong>editconf</strong> → <strong>solvate</strong> → <strong>genion</strong> → <strong>make_ndx</strong>) locally on your project receptor structure.
+                        </p>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: "white", padding: 12, borderRadius: 6, border: "1px solid #dce5da", marginBottom: 12 }}>
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Target Receptor Structure (.pdb)
+                            <select
+                              value={localTargetId}
+                              onChange={(e) => setLocalTargetId(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="">{activeTargetArtifact ? `Active Target (${activeTargetArtifact.original_name || activeTargetArtifact.id.slice(0, 8)})` : "Auto-detect receptor PDB"}</option>
+                              {projectArtifacts
+                                .filter((a) => (a.original_name || a.kind).toLowerCase().endsWith(".pdb"))
+                                .map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.original_name || a.kind} ({formatBytes(a.size_bytes)})
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Protein Force Field
+                            <select
+                              value={localForcefield}
+                              onChange={(e) => setLocalForcefield(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="amber14sb">Amber14SB (Recommended)</option>
+                              <option value="amber99sb-ildn">Amber99SB-ILDN</option>
+                              <option value="charmm27">CHARMM27</option>
+                              <option value="oplsaa">OPLS-AA</option>
+                            </select>
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Water Model
+                            <select
+                              value={localWaterModel}
+                              onChange={(e) => setLocalWaterModel(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="tip3p">TIP3P (3-site water)</option>
+                              <option value="spce">SPC/E</option>
+                              <option value="tip4p">TIP4P (4-site water)</option>
+                            </select>
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Simulation Box Shape
+                            <select
+                              value={localBoxType}
+                              onChange={(e) => setLocalBoxType(e.target.value)}
+                              style={{ fontSize: "11px" }}
+                            >
+                              <option value="dodecahedron">Rhombic Dodecahedron (Optimal, ~29% fewer waters)</option>
+                              <option value="cubic">Cubic</option>
+                              <option value="triclinic">Triclinic</option>
+                            </select>
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Box Boundary Padding (nm)
+                            <input
+                              type="number"
+                              min={0.5}
+                              max={3.0}
+                              step={0.05}
+                              value={localPaddingNm}
+                              onChange={(e) => setLocalPaddingNm(parseFloat(e.target.value) || 1.0)}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Salt Concentration (M NaCl)
+                            <input
+                              type="number"
+                              min={0.0}
+                              max={1.0}
+                              step={0.01}
+                              value={localSaltConc}
+                              onChange={(e) => setLocalSaltConc(parseFloat(e.target.value) || 0.15)}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </label>
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <label style={{ fontSize: "11px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={localNeutralize}
+                              onChange={(e) => setLocalNeutralize(e.target.checked)}
+                            />
+                            <span>Neutralize net system charge</span>
+                          </label>
+
+                          <button
+                            type="button"
+                            className="dark"
+                            disabled={isBuildingLocalSolution || !pid}
+                            onClick={() => void buildLocalSolutionSystem()}
+                            style={{ padding: "8px 20px", fontSize: "11px", fontWeight: 700 }}
+                          >
+                            {isBuildingLocalSolution ? "⏳ Running pdb2gmx, editconf, solvate, genion..." : "⚡ Build Solution System (Local GROMACS)"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="demo-md-loaded-box">
+                        <div className="between">
+                          <div style={{ flex: 1, marginRight: 16 }}>
+                            <span className="badge-tag green">LOCAL GROMACS SOLUTION SYSTEM</span>
+                            <h4>{String(mdDemoInfo.identity || `System (${mdDemoInfo.atoms} atoms)`)}</h4>
+                            <p className="dim">Solvated with explicit water and neutralized with NaCl. Stored as verified CAS artifacts.</p>
+                          </div>
+                          <button
+                            type="button"
+                            className="outline small"
+                            onClick={() => {
+                              setMdDemoInfo(null);
+                              setInputs(JSON.stringify({ compounds: compounds.map((c) => c.payload) }, null, 2));
+                            }}
+                          >
+                            🔄 Rebuild / Change Settings
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* MODE 2: UPLOAD / SELECT GROMACS FILES */}
+                {mdSystemSource === "charmm_gui" && (
                   <>
                     {!mdDemoInfo ? (
                       <div className="demo-md-cta-box" style={{ background: "#f8faf7", borderColor: "#d5dfd3" }}>
@@ -2940,16 +3163,17 @@ export default function App() {
                         {/* Inline File Upload */}
                         <div style={{ background: "white", border: "1px solid #dce5da", borderRadius: 6, padding: "10px 12px", marginBottom: 12 }}>
                           <label style={{ fontSize: "11px", fontWeight: 600, display: "block", marginBottom: 6, color: "#2d4434" }}>
-                            📤 Upload file into Project CAS (.gro, .top, .itp, .ndx, .mdp):
+                            📤 Upload files or folder into Project CAS (.gro, .top, .itp, .ndx, .mdp):
                           </label>
                           <div className="upload-inline">
                             <input
                               type="file"
+                              multiple
                               accept=".gro,.top,.itp,.ndx,.mdp,.cif,.pdb"
                               disabled={uploadingMdFile}
                               onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) void uploadMdFile(f);
+                                const files = e.target.files;
+                                if (files && files.length > 0) void uploadMdFile(files);
                               }}
                             />
                             {uploadingMdFile && <span style={{ fontSize: "11px", color: "#294838" }}>⏳ Uploading...</span>}
@@ -3067,7 +3291,7 @@ export default function App() {
                   </>
                 )}
 
-                {/* MODE B: REUSE RECORDED RUN */}
+                {/* MODE 3: REUSE RECORDED RUN */}
                 {mdSystemSource === "recorded" && (
                   <>
                     {!mdDemoInfo ? (
@@ -3075,7 +3299,7 @@ export default function App() {
                         <div className="between">
                           <div style={{ flex: 1, marginRight: 16 }}>
                             <h4>Use a recorded prepared system</h4>
-                            <p>Reuse verified system inputs from a successful run in this project, or switch to Upload mode above to provide files.</p>
+                            <p>Reuse verified system inputs from a successful run in this project, or choose Local Builder or CHARMM-GUI upload above.</p>
                             {mdCandidates.length > 1 && (
                               <div style={{ marginTop: 8 }}>
                                 <label htmlFor="md-candidate-selector" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
@@ -3098,7 +3322,7 @@ export default function App() {
                             )}
                             {mdCandidates.length === 0 && (
                               <p className="dim" style={{ fontSize: "0.85rem", marginTop: 6, color: "#e2a03f" }}>
-                                ⚠️ No completed MD runs recorded in this project yet. Use "Upload / Select GROMACS Files" above to supply your system files.
+                                ⚠️ No completed MD runs recorded in this project yet. Use "1. Local Solution Builder" or "2. CHARMM-GUI Upload" above to prepare your system.
                               </p>
                             )}
                           </div>
@@ -3241,7 +3465,20 @@ export default function App() {
                   <div className={"readiness-pill " + (hasSystemBuild ? "ready" : "warn")}>
                     <span className="dot-indicator" />
                     <span>
-                      Prepared system: <strong>{hasSystemBuild ? (mdDemoInfo?.is_uploaded ? `GROMACS bound: ${String(mdDemoInfo.identity)}` : "Recorded inputs loaded") : (mdSystemSource === "upload" ? "Select .gro & .top files" : "Provide system_build")}</strong>
+                      Prepared system:{" "}
+                      <strong>
+                        {hasSystemBuild
+                          ? mdDemoInfo?.is_local_build
+                            ? `Local GROMACS (${mdDemoInfo.atoms} atoms)`
+                            : mdDemoInfo?.is_uploaded
+                            ? `GROMACS bound: ${String(mdDemoInfo.identity)}`
+                            : "Recorded inputs loaded"
+                          : mdSystemSource === "local_builder"
+                          ? "Run local solution builder"
+                          : mdSystemSource === "charmm_gui"
+                          ? "Select .gro & .top files"
+                          : "Provide system_build"}
+                      </strong>
                     </span>
                   </div>
                 )}

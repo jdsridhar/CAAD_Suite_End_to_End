@@ -158,13 +158,28 @@ class GromacsSolutionBuilder:
     ) -> None:
         """Step 1: Convert PDB to GROMACS coordinates (.gro) and topology (.top)."""
         logger.info("[Step 1/6] Running gmx pdb2gmx...")
+        # Pre-filter to protein ATOM records, stripping non-standard HETATM/UNK
+        # and crystallographic waters
+        cleaned_pdb = work_dir / "00_protein_cleaned.pdb"
+        with (
+            input_pdb.open("r", encoding="utf-8", errors="replace") as fin,
+            cleaned_pdb.open("w", encoding="utf-8") as fout,
+        ):
+            for line in fin:
+                if line.startswith(("ATOM", "TER", "ENDMDL", "END")):
+                    resname = line[17:20].strip().upper() if len(line) >= 20 else ""
+                    if resname in ("HOH", "WAT", "TIP3", "SOL"):
+                        continue
+                    fout.write(line)
+
         args = [
-            "-f", str(input_pdb.resolve()),
+            "-f", str(cleaned_pdb.resolve()),
             "-o", str(output_gro.resolve()),
             "-p", str(output_top.resolve()),
             "-i", str(posre_itp.resolve()),
             "-ff", self.config.forcefield,
             "-water", self.config.water_model,
+            "-missing",
         ]
         if self.config.ignore_hydrogens:
             args.append("-ignh")
