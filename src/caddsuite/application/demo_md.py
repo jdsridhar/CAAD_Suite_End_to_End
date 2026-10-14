@@ -23,23 +23,28 @@ class PreparedInputsUnavailable(ValueError):
 
 
 def _recorded_inputs(
-    project_id: str, sessions: sessionmaker[Session]
-) -> Iterator[dict[str, VersionedContract]]:
+    project_id: str, sessions: sessionmaker[Session], *, run_id: str | None = None
+) -> Iterator[tuple[str, str, Any, dict[str, VersionedContract]]]:
     with sessions() as session:
         if session.get(ProjectRow, project_id) is None:
             raise KeyError("Project was not found.")
-        payloads = list(
-            session.scalars(
-                select(RunSubmissionRow.payload)
-                .join(WorkflowRunRow, WorkflowRunRow.id == RunSubmissionRow.run_id)
-                .where(
-                    WorkflowRunRow.project_id == project_id,
-                    WorkflowRunRow.status == "succeeded",
-                )
-                .order_by(RunSubmissionRow.submitted_at.desc())
+        stmt = (
+            select(
+                WorkflowRunRow.id,
+                WorkflowRunRow.accession,
+                RunSubmissionRow.submitted_at,
+                RunSubmissionRow.payload,
+            )
+            .join(WorkflowRunRow, WorkflowRunRow.id == RunSubmissionRow.run_id)
+            .where(
+                WorkflowRunRow.project_id == project_id,
+                WorkflowRunRow.status == "succeeded",
             )
         )
-    for payload in payloads:
+        if run_id:
+            stmt = stmt.where(WorkflowRunRow.id == run_id)
+        rows = list(session.execute(stmt.order_by(RunSubmissionRow.submitted_at.desc())).all())
+    for r_id, accession, submitted_at, payload in rows:
         parsed: dict[str, VersionedContract] = {}
         inputs = payload.get("inputs", {})
         if not isinstance(inputs, dict):
@@ -54,7 +59,7 @@ def _recorded_inputs(
                     parsed[name] = load_contract(raw)
                 except (ValueError, TypeError):
                     continue
-        yield parsed
+        yield (r_id, accession, submitted_at, parsed)
 
 
 def _verify_refs(value: Any, store: ArtifactStore) -> None:
@@ -71,18 +76,109 @@ def _verify_refs(value: Any, store: ArtifactStore) -> None:
             _verify_refs(child, store)
 
 
+def list_recorded_md_candidates(
+    project_id: str,
+    sessions: sessionmaker[Session],
+    store: ArtifactStore,
+) -> list[dict[str, Any]]:
+    """List valid recorded MD preparations that can be reused in this project."""
+    candidates: list[dict[str, Any]] = []
+    seen_runs: set[str] = set()
+    for run_id, accession, submitted_at, inputs in _recorded_inputs(project_id, sessions):
+        if run_id in seen_runs:
+            continue
+        builds = [v for v in inputs.values() if isinstance(v, SystemBuildResult)]
+        plans = [v for v in inputs.values() if isinstance(v, MDStagePlan)]
+        if len(builds) == len(plans) == 1:
+            build, plan = builds[0], plans[0]
+            if build.protocol is None:
+                continue
+            try:
+                _verify_refs(build.model_dump(mode="json"), store)
+            except Exception:
+                continue
+            stage = build.protocol.stages[plan.stage_index]
+            seen_runs.add(run_id)
+            sub_str = (
+                submitted_at.isoformat()
+                if hasattr(submitted_at, "isoformat")
+                else str(submitted_at)
+            )
+            candidates.append(
+                {
+                    "run_id": run_id,
+                    "accession": accession,
+                    "submitted_at": sub_str,
+                    "system_id": str(build.system.id),
+                    "atoms": build.system.n_atoms,
+                    "engine": plan.engine,
+                    "length_ns": stage.length_ns,
+                    "timestep_fs": stage.timestep_fs,
+                    "temperature_K": stage.temperature_K,
+                    "label": f"{accession} ({build.system.n_atoms:,} atoms, {stage.length_ns} ns, {stage.temperature_K} K)",
+                }
+            )
+    return candidates
+
+
+def list_recorded_mmpbsa_candidates(
+    project_id: str,
+    sessions: sessionmaker[Session],
+    store: ArtifactStore,
+) -> list[dict[str, Any]]:
+    """List valid recorded MM-PBSA preparations that can be reused in this project."""
+    candidates: list[dict[str, Any]] = []
+    seen_runs: set[str] = set()
+    for run_id, accession, submitted_at, inputs in _recorded_inputs(project_id, sessions):
+        if run_id in seen_runs:
+            continue
+        requests = [v for v in inputs.values() if isinstance(v, TrajectoryProcessingRequest)]
+        plans = [v for v in inputs.values() if isinstance(v, BindingEnergyPlan)]
+        if len(requests) == len(plans) == 1:
+            req, plan = requests[0], plans[0]
+            if (
+                plan.simulation.id != req.simulation_id
+                or plan.topology_artifact.sha256 != req.topology.sha256
+            ):
+                continue
+            try:
+                _verify_refs(req.model_dump(mode="json"), store)
+                _verify_refs(plan.model_dump(mode="json"), store)
+            except Exception:
+                continue
+            seen_runs.add(run_id)
+            sub_str = (
+                submitted_at.isoformat()
+                if hasattr(submitted_at, "isoformat")
+                else str(submitted_at)
+            )
+            method_str = getattr(plan.method, "value", str(plan.method))
+            candidates.append(
+                {
+                    "run_id": run_id,
+                    "accession": accession,
+                    "submitted_at": sub_str,
+                    "request_id": str(req.id),
+                    "method": method_str,
+                    "label": f"{accession} ({method_str})",
+                }
+            )
+    return candidates
+
+
 def provision_demo_md_system(
     project_id: str,
     sessions: sessionmaker[Session],
     store: ArtifactStore,
     *,
+    run_id: str | None = None,
     length_ns: float | None = None,
     timestep_fs: float | None = None,
     temp_k: float | None = None,
 ) -> dict[str, Any]:
     """Legacy endpoint: reuse genuine MD inputs from a successful project submission."""
     candidates: dict[str, tuple[SystemBuildResult, MDStagePlan]] = {}
-    for inputs in _recorded_inputs(project_id, sessions):
+    for _r_id, _acc, _sub_at, inputs in _recorded_inputs(project_id, sessions, run_id=run_id):
         builds = [v for v in inputs.values() if isinstance(v, SystemBuildResult)]
         plans = [v for v in inputs.values() if isinstance(v, MDStagePlan)]
         if len(builds) == len(plans) == 1:
@@ -91,6 +187,11 @@ def provision_demo_md_system(
             key = str(build.id) + json.dumps(plan.model_dump(mode="json"), sort_keys=True)
             candidates[key] = (build, plan)
     if len(candidates) != 1:
+        if len(candidates) > 1:
+            raise PreparedInputsUnavailable(
+                "Multiple recorded MD systems found in this project. Specify run_id to select "
+                "which recorded system to reuse. Automatic reuse requires exactly one recorded system from a successful project run."
+            )
         raise PreparedInputsUnavailable(
             "Choose a prepared system and an explicit MD stage plan in the workflow inputs. "
             "Automatic reuse requires exactly one recorded system from a successful project run."
@@ -130,11 +231,15 @@ def provision_demo_md_system(
 
 
 def provision_demo_mmpbsa_system(
-    project_id: str, sessions: sessionmaker[Session], store: ArtifactStore
+    project_id: str,
+    sessions: sessionmaker[Session],
+    store: ArtifactStore,
+    *,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     """Legacy endpoint: reuse a recorded binding-energy request and its explicit plan."""
     candidates: dict[str, tuple[TrajectoryProcessingRequest, BindingEnergyPlan]] = {}
-    for inputs in _recorded_inputs(project_id, sessions):
+    for _r_id, _acc, _sub_at, inputs in _recorded_inputs(project_id, sessions, run_id=run_id):
         requests = [v for v in inputs.values() if isinstance(v, TrajectoryProcessingRequest)]
         plans = [v for v in inputs.values() if isinstance(v, BindingEnergyPlan)]
         if len(requests) == len(plans) == 1:
@@ -147,6 +252,11 @@ def provision_demo_mmpbsa_system(
                 )
             candidates[str(requests[0].id)] = (requests[0], plans[0])
     if len(candidates) != 1:
+        if len(candidates) > 1:
+            raise PreparedInputsUnavailable(
+                "Multiple recorded MM-PBSA systems found in this project. Specify run_id to select "
+                "which recorded request to reuse. Automatic reuse requires exactly one recorded request from a successful project run."
+            )
         raise PreparedInputsUnavailable(
             "Choose a validated trajectory request and binding-energy plan in workflow inputs. "
             "Automatic reuse requires exactly one recorded request from a successful project run."

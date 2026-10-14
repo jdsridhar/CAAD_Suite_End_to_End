@@ -191,3 +191,22 @@ def test_active_work_cannot_be_deleted(tmp_path: Path, target: str) -> None:
             ).status_code
             == 200
         )
+
+
+def test_candidate_listing_endpoints(tmp_path: Path) -> None:
+    project, _, _, _, _ = _fixture(tmp_path)
+    with TestClient(create_app(data_root=tmp_path, token=TEST_TOKEN)) as client:
+        md_cands = client.get(
+            f"/v1/projects/{project}/recorded-md-candidates",
+            headers={"Authorization": f"Bearer {TEST_TOKEN}"},
+        )
+        assert md_cands.status_code == 200
+        assert md_cands.json() == []
+
+        mmpbsa_cands = client.get(
+            f"/v1/projects/{project}/recorded-mmpbsa-candidates",
+            headers={"Authorization": f"Bearer {TEST_TOKEN}"},
+        )
+        assert mmpbsa_cands.status_code == 200
+        assert mmpbsa_cands.json() == []
+

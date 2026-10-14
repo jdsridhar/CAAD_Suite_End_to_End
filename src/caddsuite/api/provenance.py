@@ -25,6 +25,8 @@ from sqlalchemy import func, select
 
 from caddsuite.application.demo_md import (
     PreparedInputsUnavailable,
+    list_recorded_md_candidates,
+    list_recorded_mmpbsa_candidates,
     provision_demo_md_system,
     provision_demo_mmpbsa_system,
 )
@@ -463,6 +465,7 @@ def create_app(
     )
     def provision_demo_system_endpoint(
         project_id: str,
+        run_id: str | None = Query(None, description="Specific run ID to reuse MD inputs from"),
         length_ns: float | None = Query(None, ge=0.0001, le=100.0),
         timestep_fs: float | None = Query(None, ge=0.1, le=5.0),
         temp_k: float | None = Query(None, ge=50.0, le=500.0),
@@ -474,6 +477,7 @@ def create_app(
                 project_id,
                 sessions,
                 store,
+                run_id=run_id,
                 length_ns=length_ns,
                 timestep_fs=timestep_fs,
                 temp_k=temp_k,
@@ -497,6 +501,7 @@ def create_app(
     )
     def provision_demo_mmpbsa_endpoint(
         project_id: str,
+        run_id: str | None = Query(None, description="Specific run ID to reuse MM-PBSA inputs from"),
         _: None = Depends(authenticate),
     ) -> dict[str, Any]:
         store = ArtifactStore(artifacts_root(root))
@@ -505,6 +510,7 @@ def create_app(
                 project_id,
                 sessions,
                 store,
+                run_id=run_id,
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="project was not found") from exc
@@ -517,6 +523,36 @@ def create_app(
             raise HTTPException(
                 status_code=500, detail="Could not load recorded binding-energy inputs."
             ) from exc
+
+    @app.get(
+        "/v1/projects/{project_id}/recorded-md-candidates",
+        status_code=200,
+        description="List recorded MD preparations available for reuse in this project.",
+    )
+    def list_recorded_md_candidates_endpoint(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> list[dict[str, Any]]:
+        store = ArtifactStore(artifacts_root(root))
+        try:
+            return list_recorded_md_candidates(project_id, sessions, store)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="project was not found") from exc
+
+    @app.get(
+        "/v1/projects/{project_id}/recorded-mmpbsa-candidates",
+        status_code=200,
+        description="List recorded MM-PBSA preparations available for reuse in this project.",
+    )
+    def list_recorded_mmpbsa_candidates_endpoint(
+        project_id: str,
+        _: None = Depends(authenticate),
+    ) -> list[dict[str, Any]]:
+        store = ArtifactStore(artifacts_root(root))
+        try:
+            return list_recorded_mmpbsa_candidates(project_id, sessions, store)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="project was not found") from exc
 
     @app.post(
         "/v1/projects/{project_id}/trajectories/analyze",

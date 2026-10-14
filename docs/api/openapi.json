@@ -109,7 +109,6 @@
         "description": "Full engine discovery and readiness report.",
         "properties": {
           "missing_prerequisites": {
-            "default": [],
             "items": {
               "type": "string"
             },
@@ -1362,6 +1361,24 @@
             }
           },
           {
+            "description": "Specific run ID to reuse MD inputs from",
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Specific run ID to reuse MD inputs from",
+              "title": "Run Id"
+            }
+          },
+          {
             "in": "query",
             "name": "length_ns",
             "required": false,
@@ -1479,6 +1496,24 @@
             }
           },
           {
+            "description": "Specific run ID to reuse MM-PBSA inputs from",
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Specific run ID to reuse MM-PBSA inputs from",
+              "title": "Run Id"
+            }
+          },
+          {
             "in": "header",
             "name": "origin",
             "required": false,
@@ -1525,6 +1560,138 @@
           }
         ],
         "summary": "Provision Demo Mmpbsa Endpoint"
+      }
+    },
+    "/v1/projects/{project_id}/recorded-md-candidates": {
+      "get": {
+        "description": "List recorded MD preparations available for reuse in this project.",
+        "operationId": "list_recorded_md_candidates_endpoint_v1_projects__project_id__recorded_md_candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Recorded Md Candidates Endpoint V1 Projects  Project Id  Recorded Md Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Recorded Md Candidates Endpoint"
+      }
+    },
+    "/v1/projects/{project_id}/recorded-mmpbsa-candidates": {
+      "get": {
+        "description": "List recorded MM-PBSA preparations available for reuse in this project.",
+        "operationId": "list_recorded_mmpbsa_candidates_endpoint_v1_projects__project_id__recorded_mmpbsa_candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Recorded Mmpbsa Candidates Endpoint V1 Projects  Project Id  Recorded Mmpbsa Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Recorded Mmpbsa Candidates Endpoint"
       }
     },
     "/v1/projects/{project_id}/runs": {

@@ -129,6 +129,26 @@ function structureFormat(a: ArtifactItem): StructureFormat | null {
 }
 
 type HistoryRun = { run_id: string; accession: string; status: string; created_at: string; started_at: string | null; finished_at: string | null };
+type RecordedMdCandidate = {
+  run_id: string;
+  accession: string;
+  submitted_at: string;
+  system_id: string;
+  atoms: number;
+  engine: string;
+  length_ns: number;
+  timestep_fs: number;
+  temperature_K: number;
+  label: string;
+};
+type RecordedMmpbsaCandidate = {
+  run_id: string;
+  accession: string;
+  submitted_at: string;
+  request_id: string;
+  method: string;
+  label: string;
+};
 type PendingDecision = {
   issue_id: string;
   task_id: string;
@@ -977,8 +997,12 @@ export default function App() {
   const [isDeletingRuns, setIsDeletingRuns] = useState(false);
   const [mdDemoInfo, setMdDemoInfo] = useState<Record<string, unknown> | null>(null);
   const [isProvisioningMd, setIsProvisioningMd] = useState(false);
+  const [mdCandidates, setMdCandidates] = useState<RecordedMdCandidate[]>([]);
+  const [selectedMdRunId, setSelectedMdRunId] = useState("");
   const [mmpbsaDemoInfo, setMmpbsaDemoInfo] = useState<Record<string, unknown> | null>(null);
   const [isProvisioningMmpbsa, setIsProvisioningMmpbsa] = useState(false);
+  const [mmpbsaCandidates, setMmpbsaCandidates] = useState<RecordedMmpbsaCandidate[]>([]);
+  const [selectedMmpbsaRunId, setSelectedMmpbsaRunId] = useState("");
   const [analyzingTrajectory, setAnalyzingTrajectory] = useState(false);
   const [trajectoryAnalytics, setTrajectoryAnalytics] = useState<TrajectoryAnalyticsResult | null>(null);
   const analyticsGeneration = useRef(0);
@@ -1132,6 +1156,50 @@ export default function App() {
     [api]
   );
 
+  const refreshMdCandidates = useCallback(
+    async (id: string) => {
+      try {
+        const resp = await fetch(`${url}/v1/projects/${id}/recorded-md-candidates`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return;
+        const list = (await resp.json()) as RecordedMdCandidate[];
+        if (currentProjectId.current !== id) return;
+        setMdCandidates(list);
+        if (list.length > 0) {
+          setSelectedMdRunId((prev) => (list.some((c) => c.run_id === prev) ? prev : list[0].run_id));
+        } else {
+          setSelectedMdRunId("");
+        }
+      } catch {
+        // ignore background fetch failures
+      }
+    },
+    [url, token]
+  );
+
+  const refreshMmpbsaCandidates = useCallback(
+    async (id: string) => {
+      try {
+        const resp = await fetch(`${url}/v1/projects/${id}/recorded-mmpbsa-candidates`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return;
+        const list = (await resp.json()) as RecordedMmpbsaCandidate[];
+        if (currentProjectId.current !== id) return;
+        setMmpbsaCandidates(list);
+        if (list.length > 0) {
+          setSelectedMmpbsaRunId((prev) => (list.some((c) => c.run_id === prev) ? prev : list[0].run_id));
+        } else {
+          setSelectedMmpbsaRunId("");
+        }
+      } catch {
+        // ignore background fetch failures
+      }
+    },
+    [url, token]
+  );
+
   async function connect(tokenOverride?: string) {
     const effectiveToken = tokenOverride !== undefined ? tokenOverride : token;
     try {
@@ -1227,6 +1295,10 @@ export default function App() {
   useEffect(() => {
     setMdDemoInfo(null);
     setMmpbsaDemoInfo(null);
+    setMdCandidates([]);
+    setSelectedMdRunId("");
+    setMmpbsaCandidates([]);
+    setSelectedMmpbsaRunId("");
     setRun(null);
     setRid("");
     setPending([]);
@@ -1238,15 +1310,26 @@ export default function App() {
 
   useEffect(() => {
     if (ok && pid) {
-      void Promise.all([refresh(pid), refreshHistory(pid), refreshArtifacts(pid), refreshDashboard(pid)]).catch((e) => setErr(String(e)));
+      void Promise.all([
+        refresh(pid),
+        refreshHistory(pid),
+        refreshArtifacts(pid),
+        refreshDashboard(pid),
+        refreshMdCandidates(pid),
+        refreshMmpbsaCandidates(pid),
+      ]).catch((e) => setErr(String(e)));
     } else {
       setCompounds([]);
       setHistory([]);
       setProjectArtifacts([]);
       setDashboard(null);
       setViewingArtifact(null);
+      setMdCandidates([]);
+      setSelectedMdRunId("");
+      setMmpbsaCandidates([]);
+      setSelectedMmpbsaRunId("");
     }
-  }, [ok, pid, refresh, refreshHistory, refreshArtifacts, refreshDashboard]);
+  }, [ok, pid, refresh, refreshHistory, refreshArtifacts, refreshDashboard, refreshMdCandidates, refreshMmpbsaCandidates]);
 
   useEffect(() => {
     if (!ok || !pid) return;
@@ -1321,6 +1404,7 @@ export default function App() {
         setInputs(JSON.stringify(dftInputs, null, 2));
       } else if (key === "md") {
         setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
+        if (pid) void refreshMdCandidates(pid);
         if (mdDemoInfo) {
           void loadDemoMdSystem();
         } else {
@@ -1336,10 +1420,23 @@ export default function App() {
         }
       } else if (key === "mmpbsa") {
         setWf(JSON.stringify(makeMmpbsaWorkflow(enginePaths), null, 2));
-        void loadDemoMmpbsaSystem();
+        if (pid) void refreshMmpbsaCandidates(pid);
+        if (mmpbsaDemoInfo) {
+          void loadDemoMmpbsaSystem();
+        } else {
+          setInputs(
+            JSON.stringify(
+              {
+                compounds: comps.map((c) => c.payload),
+              },
+              null,
+              2
+            )
+          );
+        }
       }
     },
-    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId, dashboard?.prepared_conformers, preparedConformers]
+    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId, dashboard?.prepared_conformers, preparedConformers, pid, refreshMdCandidates, refreshMmpbsaCandidates, mdDemoInfo, mmpbsaDemoInfo]
   );
 
   useEffect(() => {
@@ -1392,20 +1489,30 @@ export default function App() {
       }
     } else if (selectedPreset === "mmpbsa") {
       if (!mmpbsaDemoInfo) {
-        void loadDemoMmpbsaSystem();
+        setInputs(
+          JSON.stringify(
+            {
+              compounds: compounds.map((c) => c.payload),
+            },
+            null,
+            2
+          )
+        );
       }
     } else if (selectedPreset === "admet" || selectedPreset === "ligand_3d") {
       setInputs(JSON.stringify({ compounds: compounds.map((c) => c.payload) }, null, 2));
     }
   }, [compounds, activeTargetArtifact, selectedPreset, mdLengthNs, mdTimestepFs, mdTempK, mmpbsaDemoInfo, qmCompoundId, qmFormId, qmConformerId, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, enginePaths, dashboard?.prepared_conformers, preparedConformers]);
 
-  async function loadDemoMdSystem() {
+  async function loadDemoMdSystem(targetRunId?: string) {
     if (!pid) return;
     setIsProvisioningMd(true);
     setErr("");
     try {
+      const effectiveRunId = targetRunId || selectedMdRunId;
+      const runParam = effectiveRunId ? `?run_id=${encodeURIComponent(effectiveRunId)}` : "";
       const resp = await fetch(
-        `${url}/v1/projects/${pid}/provision-demo-md-system`,
+        `${url}/v1/projects/${pid}/provision-demo-md-system${runParam}`,
         {
           method: "POST",
           headers: {
@@ -1451,12 +1558,14 @@ export default function App() {
     }
   }
 
-  async function loadDemoMmpbsaSystem() {
+  async function loadDemoMmpbsaSystem(targetRunId?: string) {
     if (!pid) return;
     setIsProvisioningMmpbsa(true);
     setErr("");
     try {
-      const resp = await fetch(`${url}/v1/projects/${pid}/provision-demo-mmpbsa`, {
+      const effectiveRunId = targetRunId || selectedMmpbsaRunId;
+      const runParam = effectiveRunId ? `?run_id=${encodeURIComponent(effectiveRunId)}` : "";
+      const resp = await fetch(`${url}/v1/projects/${pid}/provision-demo-mmpbsa${runParam}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -2624,14 +2733,39 @@ export default function App() {
                 {!mdDemoInfo ? (
                   <div className="demo-md-cta-box">
                     <div className="between">
-                      <div>
+                      <div style={{ flex: 1, marginRight: 16 }}>
                         <h4>Use a recorded prepared system</h4>
                         <p>Reuse verified system inputs from a successful run in this project, or provide a prepared system and explicit stage plan in the advanced inputs below.</p>
+                        {mdCandidates.length > 1 && (
+                          <div style={{ marginTop: 8 }}>
+                            <label htmlFor="md-candidate-selector" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                              Select recorded MD run to reuse:
+                            </label>
+                            <select
+                              id="md-candidate-selector"
+                              aria-label="Select recorded MD run"
+                              value={selectedMdRunId}
+                              onChange={(e) => setSelectedMdRunId(e.target.value)}
+                              style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
+                            >
+                              {mdCandidates.map((c) => (
+                                <option key={c.run_id} value={c.run_id}>
+                                  {c.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {mdCandidates.length === 0 && (
+                          <p className="dim" style={{ fontSize: "0.85rem", marginTop: 6, color: "#e2a03f" }}>
+                            ⚠️ No completed MD runs recorded in this project yet. Provide a prepared system and explicit stage plan in the inputs below.
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"
                         className="dark provision-button"
-                        disabled={isProvisioningMd || !pid}
+                        disabled={isProvisioningMd || !pid || mdCandidates.length === 0}
                         onClick={() => void loadDemoMdSystem()}
                       >
                         {isProvisioningMd ? "⏳ Provisioning CAS Artifacts..." : "📥 Load recorded MD inputs"}
@@ -2641,10 +2775,34 @@ export default function App() {
                 ) : (
                   <div className="demo-md-loaded-box">
                     <div className="between">
-                      <div>
+                      <div style={{ flex: 1, marginRight: 16 }}>
                         <span className="badge-tag green">HASH-VERIFIED PREPARED INPUTS</span>
                         <h4>Recorded system ({String(mdDemoInfo.atoms)} atoms)</h4>
                         <p className="dim">Original topology, coordinate, and parameter artifacts are verified by hash. The saved protocol determines the run settings.</p>
+                        {mdCandidates.length > 1 && (
+                          <div style={{ marginTop: 8 }}>
+                            <label htmlFor="md-candidate-selector-loaded" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                              Switch to different recorded MD run:
+                            </label>
+                            <select
+                              id="md-candidate-selector-loaded"
+                              aria-label="Switch recorded MD run"
+                              value={selectedMdRunId}
+                              onChange={(e) => {
+                                const newRunId = e.target.value;
+                                setSelectedMdRunId(newRunId);
+                                void loadDemoMdSystem(newRunId);
+                              }}
+                              style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
+                            >
+                              {mdCandidates.map((c) => (
+                                <option key={c.run_id} value={c.run_id}>
+                                  {c.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -2674,8 +2832,39 @@ export default function App() {
               <section className="target-selector-card" aria-label="Binding energy inputs">
                 <h3>Binding-energy analysis inputs</h3>
                 <p>Use a validated trajectory request and an explicit MM/PBSA or MM/GBSA plan. The method, sampled frames, temperature, and uncertainty settings come from that plan.</p>
+                {mmpbsaCandidates.length > 1 && (
+                  <div style={{ marginTop: 8, marginBottom: 8 }}>
+                    <label htmlFor="mmpbsa-candidate-selector" style={{ fontSize: "0.85rem", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                      Select recorded MM-PBSA run to reuse:
+                    </label>
+                    <select
+                      id="mmpbsa-candidate-selector"
+                      aria-label="Select recorded MM-PBSA run"
+                      value={selectedMmpbsaRunId}
+                      onChange={(e) => {
+                        const newRunId = e.target.value;
+                        setSelectedMmpbsaRunId(newRunId);
+                        if (mmpbsaDemoInfo) {
+                          void loadDemoMmpbsaSystem(newRunId);
+                        }
+                      }}
+                      style={{ padding: "6px 10px", borderRadius: 4, width: "100%", maxWidth: 480, fontSize: "0.85rem" }}
+                    >
+                      {mmpbsaCandidates.map((c) => (
+                        <option key={c.run_id} value={c.run_id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {mmpbsaCandidates.length === 0 && (
+                  <p className="dim" style={{ fontSize: "0.85rem", marginBottom: 8, color: "#e2a03f" }}>
+                    ⚠️ No completed MM-PBSA runs recorded in this project yet. Provide a validated request and plan in the inputs below.
+                  </p>
+                )}
                 <button type="button" className="outline"
-                  disabled={!pid || isProvisioningMmpbsa}
+                  disabled={!pid || isProvisioningMmpbsa || mmpbsaCandidates.length === 0}
                   onClick={() => void loadDemoMmpbsaSystem()}>
                   {isProvisioningMmpbsa ? "Loading…" : "Load recorded binding-energy inputs"}
                 </button>

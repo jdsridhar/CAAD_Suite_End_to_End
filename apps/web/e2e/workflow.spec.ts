@@ -381,5 +381,108 @@ test("complete guided 3D ligand preparation workflow and explicit DFT conformer 
   await expect(qmCard.getByText("Pass")).toBeVisible();
 });
 
+test("recorded MD inputs disambiguation supports candidate selection and loads system_build", async ({ page }) => {
+  test.setTimeout(60_000);
+  const projectId = await connectAndCreate(page);
+
+  // Register compound
+  await page.getByRole("button", { name: /Ligand Registry/ }).click();
+  await page.getByLabel("Compound name / identifier").fill("Ethanol");
+  await page.getByLabel("SMILES string").fill("CCO");
+  await page.getByRole("button", { name: "Standardize & register compound" }).click();
+  await expect(page.getByText("CMP0001", { exact: true })).toBeVisible();
+
+  // Navigate to Pipeline Studio -> MD preset
+  await page.getByRole("button", { name: /Pipeline Studio/ }).click();
+  const mdBtn = page.getByRole("button", { name: /Protein-Ligand MD/ });
+  await mdBtn.click();
+  await expect(mdBtn).toHaveAttribute("aria-pressed", "true");
+
+  // Initial state in fresh project: no recorded runs
+  const provisionBtn = page.getByRole("button", { name: /Load recorded MD inputs/ });
+  await expect(provisionBtn).toBeDisabled();
+  await expect(page.getByText("No completed MD runs recorded in this project yet")).toBeVisible();
+
+  // Mock candidate runs endpoint with 2 disambiguation choices
+  const run1Id = ulid();
+  const run2Id = ulid();
+  await page.route(api + "/v1/projects/" + projectId + "/recorded-md-candidates", async (route) => {
+    await route.fulfill({
+      json: [
+        {
+          run_id: run1Id,
+          accession: "RUN-EQUIL",
+          submitted_at: "2026-10-12T09:10:22Z",
+          system_id: ulid(),
+          atoms: 49682,
+          engine: "gromacs",
+          length_ns: 0.001,
+          timestep_fs: 4.0,
+          temperature_K: 300.0,
+          label: "RUN-EQUIL (49,682 atoms, 0.001 ns, 300.0 K)",
+        },
+        {
+          run_id: run2Id,
+          accession: "RUN-PROD",
+          submitted_at: "2026-10-12T08:57:58Z",
+          system_id: ulid(),
+          atoms: 49682,
+          engine: "gromacs",
+          length_ns: 1.0,
+          timestep_fs: 4.0,
+          temperature_K: 303.15,
+          label: "RUN-PROD (49,682 atoms, 1.0 ns, 303.15 K)",
+        },
+      ],
+    });
+  });
+
+  // Re-select MD preset to refresh candidates
+  await mdBtn.click();
+
+  // Selector should appear with both candidates
+  const selector = page.getByRole("combobox", { name: "Select recorded MD run" });
+  await expect(selector).toBeVisible();
+  await expect(selector.locator("option")).toHaveCount(2);
+
+  // Mock provision response for the second run
+  await page.route(api + "/v1/projects/" + projectId + "/provision-demo-md-system?**", async (route) => {
+    const reqUrl = new URL(route.request().url());
+    expect(reqUrl.searchParams.get("run_id")).toBe(run2Id);
+    await route.fulfill({
+      json: {
+        status: "recorded",
+        system_build: {
+          schema_version: "system_build_result/1.0",
+          id: ulid(),
+          atoms: 49682,
+        },
+        stage_input: {
+          schema_version: "md_stage_plan/1.0",
+          stage_index: 0,
+        },
+        info: {
+          atoms: 49682,
+          length_ns: 1.0,
+          timestep_fs: 4.0,
+          temperature_K: 303.15,
+        },
+      },
+    });
+  });
+
+  // Select the second candidate and load
+  await selector.selectOption(run2Id);
+  await expect(provisionBtn).toBeEnabled();
+  await provisionBtn.click();
+
+  // Verify successful load of recorded system
+  await expect(page.getByText("Recorded MD inputs loaded")).toBeVisible();
+  await expect(page.getByText("Recorded system (49682 atoms)")).toBeVisible();
+  await expect(page.getByText("Prepared system: Recorded inputs loaded")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Queue Pipeline/ })).toBeEnabled();
+});
+
+
 
 

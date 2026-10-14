@@ -172,6 +172,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/recorded-md-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Recorded Md Candidates Endpoint
+         * @description List recorded MD preparations available for reuse in this project.
+         */
+        get: operations["list_recorded_md_candidates_endpoint_v1_projects__project_id__recorded_md_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/recorded-mmpbsa-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Recorded Mmpbsa Candidates Endpoint
+         * @description List recorded MM-PBSA preparations available for reuse in this project.
+         */
+        get: operations["list_recorded_mmpbsa_candidates_endpoint_v1_projects__project_id__recorded_mmpbsa_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/runs": {
         parameters: {
             query?: never;
@@ -478,11 +518,8 @@ export interface components {
          * @description Full engine discovery and readiness report.
          */
         EngineDiscoveryReport: {
-            /**
-             * Missing Prerequisites
-             * @default []
-             */
-            missing_prerequisites: string[];
+            /** Missing Prerequisites */
+            missing_prerequisites?: string[];
             paths: components["schemas"]["EnginePaths"];
             readiness: components["schemas"]["EngineReadiness"];
         };
@@ -1066,6 +1103,8 @@ export interface operations {
     provision_demo_system_endpoint_v1_projects__project_id__provision_demo_md_system_post: {
         parameters: {
             query?: {
+                /** @description Specific run ID to reuse MD inputs from */
+                run_id?: string | null;
                 length_ns?: number | null;
                 timestep_fs?: number | null;
                 temp_k?: number | null;
@@ -1104,7 +1143,10 @@ export interface operations {
     };
     provision_demo_mmpbsa_endpoint_v1_projects__project_id__provision_demo_mmpbsa_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Specific run ID to reuse MM-PBSA inputs from */
+                run_id?: string | null;
+            };
             header?: {
                 origin?: string | null;
             };
@@ -1124,6 +1166,76 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recorded_md_candidates_endpoint_v1_projects__project_id__recorded_md_candidates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recorded_mmpbsa_candidates_endpoint_v1_projects__project_id__recorded_mmpbsa_candidates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
             /** @description Validation Error */
