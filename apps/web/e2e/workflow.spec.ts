@@ -300,4 +300,70 @@ test("guided preparation, explicit DFT plans, and project deletion lifecycle", a
   await expect(page.getByRole("status").filter({ hasText: /Project deleted/ })).toBeVisible();
 });
 
+test("complete guided 3D ligand preparation workflow and explicit DFT conformer binding", async ({ page }) => {
+  test.setTimeout(90_000);
+  const projectId = await connectAndCreate(page);
+
+  // Register compound in Ligand Registry
+  await page.getByRole("button", { name: /Ligand Registry/ }).click();
+  await page.getByLabel("Compound name / identifier").fill("Ethanol");
+  await page.getByLabel("SMILES string").fill("CCO");
+  await page.getByRole("button", { name: "Standardize & register compound" }).click();
+  await expect(page.getByText("CMP0001", { exact: true })).toBeVisible();
+
+  // Navigate to Pipeline Studio and select 3D Ligand Preparation preset
+  await page.getByRole("button", { name: /Pipeline Studio/ }).click();
+  const prep3dBtn = page.getByRole("button", { name: /Ligand 3D/ });
+  await prep3dBtn.click();
+  await expect(prep3dBtn).toHaveAttribute("aria-pressed", "true");
+
+  // Compile and validate the guided 3D preparation workflow
+  await page.getByRole("button", { name: "Validate & Plan" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /compiled successfully/ })).toBeVisible();
+
+  // Queue and execute the pipeline
+  await page.getByRole("button", { name: /Queue Pipeline/ }).click();
+  const progress = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Execution progress" }) });
+  await expect(progress.locator(".pill").filter({ hasText: "succeeded" })).toBeVisible({ timeout: 30_000 });
+
+  // Navigate back to Pipeline Studio and select Ligand DFT preset
+  await page.getByRole("button", { name: /Pipeline Studio/ }).click();
+  const dftBtn = page.getByRole("button", { name: /Ligand DFT/ });
+  await dftBtn.click();
+  await expect(dftBtn).toHaveAttribute("aria-pressed", "true");
+
+  // The prepared conformer entity is now present in the selector
+  const confSelect = page.getByRole("combobox", { name: "Select Prepared 3D Conformer / Structure" });
+  await expect(confSelect).toBeVisible();
+
+  // Select the genuine prepared conformer entity
+  const options = confSelect.locator("option");
+  await expect(options).toHaveCount(2);
+  const confValue = await options.nth(1).getAttribute("value");
+  expect(confValue).toBeTruthy();
+  expect(confValue).not.toBe("");
+  await confSelect.selectOption(confValue!);
+
+  // Verify that both conformer ID and form ID inputs were auto-populated with entity ULIDs
+  const confInput = page.getByLabel("Target Conformer / Geometry ID (ULID)");
+  const formInput = page.getByLabel("Target Form / Microstate ID (ULID)");
+  await expect(confInput).toHaveValue(confValue!);
+  const formVal = await formInput.inputValue();
+  expect(formVal).toBeTruthy();
+  expect(formVal).not.toBe("00000000000000000000000000");
+
+  // Verify warning badge disappears
+  await expect(page.getByText("Prepared Structure Identity Required")).not.toBeVisible();
+
+  // Validate and plan the DFT workflow with genuine prepared conformer entity contracts
+  await page.getByRole("button", { name: "Validate & Plan" }).click();
+  await expect(page.getByRole("status").filter({ hasText: /compiled successfully/ })).toBeVisible();
+
+  // Check Overview & Evidence dashboard shows the completed run
+  await page.getByRole("button", { name: /Overview & Evidence/ }).click();
+  await expect(page.getByRole("heading", { name: "Project dashboard" })).toBeVisible();
+  await expect(page.locator(".dashboard-run").getByText("succeeded", { exact: true })).toBeVisible();
+});
+
+
 

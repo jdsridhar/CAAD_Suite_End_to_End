@@ -191,3 +191,16 @@ Resolution of the remaining QM identity linkage and release verification items:
    - Phase 19.3 is verified complete and closed.
    - Phase 18.4 human license review (formal legal sign-off) and Phase 19.7 final release tag remain open release governance gates before external publication or public PyPI release.
 
+
+## Independent source, focused-test check, and guided workflow verification (2026-10-14)
+
+1. **Source and Focused Test Check**:
+   - The previous artifact-ID selector defect is corrected in source: the selector uses typed `Conformer.id` values and binds their form/compound identities. Artifact-ID rejection and lineage guards were inspected.
+   - An independent run of the advertised UI contract and QM form-lineage suites passed 122 tests in 2.80s.
+2. **Complete Guided Workflow Verification**:
+   - Added automated Playwright E2E browser test 6 (`test("complete guided 3D ligand preparation workflow and explicit DFT conformer binding")` in `apps/web/e2e/workflow.spec.ts`).
+   - The test registers a compound (Ethanol, CCO), selects the guided 3D Ligand Preparation workflow preset (`dimorphite_dl` + `rdkit_etkdg`), validates and plans the pipeline, queues execution, monitors to `succeeded`, returns to Pipeline Studio, selects the Ligand DFT preset, verifies the freshly generated `Conformer` entity is present in the selector, binds it (auto-filling both `conformer_id` and `form_id` entity ULIDs), clears the warning badge, validates and compiles the explicit DFT plan, and verifies dashboard recording.
+   - All 6 Playwright E2E browser tests green (1.1m).
+3. **Open Release Governance Gates**:
+   - Human license review (Phase 18.4 legal counsel sign-off), final release verification and Git tag (Phase 19.7), and recorded independent scientific qualification gates remain open release governance gates before external publication or public PyPI release.
+
