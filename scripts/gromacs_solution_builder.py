@@ -1,0 +1,661 @@
+#!/usr/bin/env python3
+"""GROMACS Built-in Solution Builder Pipeline.
+
+Automates the canonical GROMACS preparation pipeline:
+    1. gmx pdb2gmx  - Generate coordinates, topology, and position restraints from PDB
+    2. gmx editconf - Define simulation box dimensions and center the solute
+    3. gmx solvate  - Solvate the simulation box with explicit water
+    4. gmx grompp   - Assemble run input parameter file for ion placement
+    5. gmx genion   - Neutralize net charge and add physiological ions (e.g., 0.15 M NaCl)
+    6. gmx make_ndx - Generate standard index groups for temperature coupling
+
+Supports both apo-protein structures and protein-ligand complexes (by merging
+parameterized ligand .gro and .itp files into the system topology).
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import os
+import shutil
+import subprocess
+import sys
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+
+logger = logging.getLogger("gromacs_solution_builder")
+
+
+@dataclass(frozen=True)
+class SolutionBuilderConfig:
+    """Configuration parameters for the GROMACS solution builder pipeline."""
+
+    forcefield: str = "amber14sb"
+    water_model: str = "tip3p"
+    box_type: str = "dodecahedron"  # dodecahedron, cubic, triclinic
+    box_padding_nm: float = 1.0     # Minimum distance between solute and box edge (nm)
+    ion_concentration_m: float = 0.15  # Salt concentration in mol/L
+    neutralize: bool = True
+    positive_ion: str = "NA"        # "NA" for Amber/CHARMM, "SOD" for some OPLS
+    negative_ion: str = "CL"        # "CL" for Amber/CHARMM, "CLA" for some OPLS
+    ignore_hydrogens: bool = True   # Pass -ignh to pdb2gmx
+    solvent_model_gro: str = "spc216.gro"  # Template solvent box in GROMACS library
+    extra_pdb2gmx_args: tuple[str, ...] = ()
+
+
+@dataclass
+class SolutionSystemSummary:
+    """Summary of built MD system properties."""
+
+    total_atoms: int = 0
+    solute_atoms: int = 0
+    water_molecules: int = 0
+    positive_ions: int = 0
+    negative_ions: int = 0
+    net_charge_estimate: int = 0
+    box_vectors_nm: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    box_volume_nm3: float = 0.0
+    output_files: dict[str, str] = field(default_factory=dict)
+
+
+class GromacsExecutionError(RuntimeError):
+    """Raised when a GROMACS command fails."""
+
+    def __init__(self, cmd: Sequence[str], returncode: int, stdout: str, stderr: str):
+        self.cmd = list(cmd)
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+        msg = (
+            f"GROMACS command '{' '.join(cmd)}' failed with exit code {returncode}.\n"
+            f"--- STDERR ---\n{stderr.strip()}\n"
+            f"--- STDOUT ---\n{stdout.strip()}"
+        )
+        super().__init__(msg)
+
+
+def find_gmx_binary(explicit_path: str | Path | None = None) -> Path:
+    """Locate the gmx or gmx_mpi executable on the system."""
+    if explicit_path:
+        p = Path(explicit_path).expanduser().resolve()
+        if p.is_file() and os.access(p, os.X_OK):
+            return p
+        msg = f"Specified GROMACS binary not found or not executable: {explicit_path}"
+        raise FileNotFoundError(msg)
+
+    env_gmx = os.environ.get("GMX_BIN") or os.environ.get("GMXBIN")
+    if env_gmx:
+        p = Path(env_gmx).expanduser().resolve()
+        if p.is_file() and os.access(p, os.X_OK):
+            return p
+
+    for name in ("gmx", "gmx_mpi", "gmx_d", "gmx_mpi_d"):
+        found = shutil.which(name)
+        if found:
+            return Path(found).resolve()
+
+    # Search common conda and local installation paths
+    candidates = [
+        Path.home() / "miniconda3" / "envs" / "gmx" / "bin" / "gmx",
+        Path.home() / "anaconda3" / "envs" / "gmx" / "bin" / "gmx",
+        Path("/usr/local/gromacs/bin/gmx"),
+        Path("/usr/bin/gmx"),
+    ]
+    for c in candidates:
+        if c.is_file() and os.access(c, os.X_OK):
+            return c.resolve()
+
+    raise FileNotFoundError(
+        "Could not find GROMACS executable ('gmx'). Ensure GROMACS is installed and in PATH, "
+        "or pass --gmx / set GMX_BIN environment variable."
+    )
+
+
+class GromacsSolutionBuilder:
+    """Executes the standard GROMACS built-in solution preparation workflow."""
+
+    def __init__(
+        self,
+        gmx_bin: str | Path | None = None,
+        config: SolutionBuilderConfig | None = None,
+    ):
+        self.gmx = find_gmx_binary(gmx_bin)
+        self.config = config or SolutionBuilderConfig()
+        logger.info("Using GROMACS binary: %s", self.gmx)
+
+    def _run_cmd(
+        self,
+        subcommand: str,
+        args: Sequence[str],
+        cwd: Path,
+        stdin_input: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        """Execute a GROMACS tool with robust logging and error handling."""
+        cmd = [str(self.gmx), subcommand, *list(args)]
+        logger.debug("Executing: %s (in %s)", " ".join(cmd), cwd)
+
+        proc = subprocess.run(  # noqa: S603
+            cmd,
+            cwd=str(cwd),
+            input=stdin_input,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise GromacsExecutionError(cmd, proc.returncode, proc.stdout, proc.stderr)
+        return proc
+
+    def step1_pdb2gmx(
+        self,
+        input_pdb: Path,
+        output_gro: Path,
+        output_top: Path,
+        posre_itp: Path,
+        work_dir: Path,
+    ) -> None:
+        """Step 1: Convert PDB to GROMACS coordinates (.gro) and topology (.top)."""
+        logger.info("[Step 1/6] Running gmx pdb2gmx...")
+        args = [
+            "-f", str(input_pdb.resolve()),
+            "-o", str(output_gro.resolve()),
+            "-p", str(output_top.resolve()),
+            "-i", str(posre_itp.resolve()),
+            "-ff", self.config.forcefield,
+            "-water", self.config.water_model,
+        ]
+        if self.config.ignore_hydrogens:
+            args.append("-ignh")
+        args.extend(self.config.extra_pdb2gmx_args)
+
+        self._run_cmd("pdb2gmx", args, cwd=work_dir)
+
+    def step2_editconf(
+        self,
+        input_gro: Path,
+        output_gro: Path,
+        work_dir: Path,
+    ) -> None:
+        """Step 2: Center solute and define periodic simulation box dimensions."""
+        logger.info(
+            "[Step 2/6] Running gmx editconf (box: %s, padding: %.2f nm)...",
+            self.config.box_type,
+            self.config.box_padding_nm,
+        )
+        args = [
+            "-f", str(input_gro.resolve()),
+            "-o", str(output_gro.resolve()),
+            "-c",
+            "-d", f"{self.config.box_padding_nm:.3f}",
+            "-bt", self.config.box_type,
+        ]
+        self._run_cmd("editconf", args, cwd=work_dir)
+
+    def step3_solvate(
+        self,
+        input_gro: Path,
+        output_gro: Path,
+        top_file: Path,
+        work_dir: Path,
+    ) -> None:
+        """Step 3: Solvate the box with explicit water and update topology."""
+        logger.info(
+            "[Step 3/6] Running gmx solvate with solvent model %s...",
+            self.config.solvent_model_gro,
+        )
+        args = [
+            "-cp", str(input_gro.resolve()),
+            "-cs", self.config.solvent_model_gro,
+            "-o", str(output_gro.resolve()),
+            "-p", str(top_file.resolve()),
+        ]
+        self._run_cmd("solvate", args, cwd=work_dir)
+
+    @staticmethod
+    def write_ions_mdp(target_path: Path) -> None:
+        """Create a minimal energy minimization MDP parameter file required by grompp for genion."""
+        content = """\
+; ions.mdp - parameter file for grompp prior to genion
+integrator              = steep
+emtol                   = 1000.0
+emstep                  = 0.01
+nsteps                  = 50000
+
+; Neighbor searching and electrostatics
+nstlist                 = 1
+cutoff-scheme           = Verlet
+ns_type                 = grid
+coulombtype             = PME
+rcoulomb                = 1.0
+rvdw                    = 1.0
+pbc                     = xyz
+"""
+        target_path.write_text(content, encoding="utf-8")
+
+    def step4_grompp_for_ions(
+        self,
+        solvated_gro: Path,
+        top_file: Path,
+        ions_mdp: Path,
+        output_tpr: Path,
+        work_dir: Path,
+    ) -> None:
+        """Step 4: Run grompp to compile atomic parameters for genion."""
+        logger.info("[Step 4/6] Running gmx grompp to compile ions.tpr...")
+        args = [
+            "-f", str(ions_mdp.resolve()),
+            "-c", str(solvated_gro.resolve()),
+            "-p", str(top_file.resolve()),
+            "-o", str(output_tpr.resolve()),
+            "-maxwarn", "2",
+        ]
+        self._run_cmd("grompp", args, cwd=work_dir)
+
+    def step5_genion(
+        self,
+        ions_tpr: Path,
+        top_file: Path,
+        output_gro: Path,
+        work_dir: Path,
+    ) -> None:
+        """Step 5: Add counter-ions and physiological salt concentration via gmx genion."""
+        logger.info(
+            "[Step 5/6] Running gmx genion (conc: %.2f M %s/%s, neutral=%s)...",
+            self.config.ion_concentration_m,
+            self.config.positive_ion,
+            self.config.negative_ion,
+            self.config.neutralize,
+        )
+        args = [
+            "-s", str(ions_tpr.resolve()),
+            "-o", str(output_gro.resolve()),
+            "-p", str(top_file.resolve()),
+            "-pname", self.config.positive_ion,
+            "-nname", self.config.negative_ion,
+        ]
+        if self.config.neutralize:
+            args.append("-neutral")
+        if self.config.ion_concentration_m > 0:
+            args.extend(["-conc", f"{self.config.ion_concentration_m:.3f}"])
+
+        # Feed "SOL\n" to genion stdin to select solvent molecules for replacement
+        self._run_cmd("genion", args, cwd=work_dir, stdin_input="SOL\n")
+
+    def step6_make_ndx(
+        self,
+        final_gro: Path,
+        output_ndx: Path,
+        work_dir: Path,
+    ) -> None:
+        """Step 6: Generate default index groups (System, Protein, Water_and_ions, etc.)."""
+        logger.info("[Step 6/6] Running gmx make_ndx to generate system index file...")
+        args = [
+            "-f", str(final_gro.resolve()),
+            "-o", str(output_ndx.resolve()),
+        ]
+        # "q\n" saves the default index groups and exits
+        self._run_cmd("make_ndx", args, cwd=work_dir, stdin_input="q\n")
+
+    def build_system(
+        self,
+        protein_pdb: Path,
+        output_dir: Path,
+        ligand_gro: Path | None = None,
+        ligand_itp: Path | None = None,
+        ligand_resname: str = "LIG",
+    ) -> SolutionSystemSummary:
+        """Execute the end-to-end solution builder pipeline.
+
+        Args:
+            protein_pdb: Cleaned receptor/protein PDB file.
+            output_dir: Destination folder where all prepared artifacts are saved.
+            ligand_gro: Optional coordinates of parameterized ligand to include.
+            ligand_itp: Optional topology ITP of parameterized ligand.
+            ligand_resname: Residue name for ligand molecule in topology.
+
+        Returns:
+            SolutionSystemSummary with atom counts, ion statistics, and output artifact paths.
+        """
+        output_dir = output_dir.resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Output artifact paths
+        protein_gro = output_dir / "01_protein.gro"
+        topol_top = output_dir / "topol.top"
+        posre_itp = output_dir / "posre.itp"
+        complex_gro = output_dir / "02_complex.gro"
+        boxed_gro = output_dir / "03_boxed.gro"
+        solvated_gro = output_dir / "04_solvated.gro"
+        ions_mdp = output_dir / "ions.mdp"
+        ions_tpr = output_dir / "ions.tpr"
+        system_gro = output_dir / "system.gro"
+        index_ndx = output_dir / "index.ndx"
+
+        # Step 1: pdb2gmx
+        self.step1_pdb2gmx(
+            input_pdb=protein_pdb,
+            output_gro=protein_gro,
+            output_top=topol_top,
+            posre_itp=posre_itp,
+            work_dir=output_dir,
+        )
+
+        # Handle optional ligand inclusion before box setup
+        solute_gro = protein_gro
+        if ligand_gro and ligand_itp:
+            logger.info("Merging parameterized ligand into system...")
+            solute_gro = complex_gro
+            self._merge_ligand(
+                protein_gro=protein_gro,
+                ligand_gro=ligand_gro,
+                output_complex_gro=complex_gro,
+                top_file=topol_top,
+                ligand_itp=ligand_itp,
+                ligand_resname=ligand_resname,
+                work_dir=output_dir,
+            )
+
+        # Step 2: editconf
+        self.step2_editconf(
+            input_gro=solute_gro,
+            output_gro=boxed_gro,
+            work_dir=output_dir,
+        )
+
+        # Step 3: solvate
+        self.step3_solvate(
+            input_gro=boxed_gro,
+            output_gro=solvated_gro,
+            top_file=topol_top,
+            work_dir=output_dir,
+        )
+
+        # Step 4: Prepare ions.mdp & run grompp
+        self.write_ions_mdp(ions_mdp)
+        self.step4_grompp_for_ions(
+            solvated_gro=solvated_gro,
+            top_file=topol_top,
+            ions_mdp=ions_mdp,
+            output_tpr=ions_tpr,
+            work_dir=output_dir,
+        )
+
+        # Step 5: genion
+        self.step5_genion(
+            ions_tpr=ions_tpr,
+            top_file=topol_top,
+            output_gro=system_gro,
+            work_dir=output_dir,
+        )
+
+        # Step 6: make_ndx
+        self.step6_make_ndx(
+            final_gro=system_gro,
+            output_ndx=index_ndx,
+            work_dir=output_dir,
+        )
+
+        # Analyze final prepared system
+        summary = self._parse_system_summary(system_gro, topol_top)
+        summary.output_files = {
+            "coordinates": str(system_gro),
+            "topology": str(topol_top),
+            "posre": str(posre_itp),
+            "index": str(index_ndx),
+            "ions_mdp": str(ions_mdp),
+        }
+        logger.info(
+            "✓ Solution system built successfully: %d atoms (%d water molecules, %d %s, %d %s)",
+            summary.total_atoms,
+            summary.water_molecules,
+            summary.positive_ions,
+            self.config.positive_ion,
+            summary.negative_ions,
+            self.config.negative_ion,
+        )
+        return summary
+
+    def _merge_ligand(
+        self,
+        protein_gro: Path,
+        ligand_gro: Path,
+        output_complex_gro: Path,
+        top_file: Path,
+        ligand_itp: Path,
+        ligand_resname: str,
+        work_dir: Path,
+    ) -> None:
+        """Combine protein and ligand .gro coordinates and link ligand .itp in topol.top."""
+        # Read protein .gro
+        p_lines = protein_gro.read_text(encoding="utf-8").splitlines()
+        p_title = p_lines[0]
+        p_natoms = int(p_lines[1].strip())
+        p_atoms = p_lines[2 : 2 + p_natoms]
+        box_line = p_lines[2 + p_natoms]
+
+        # Read ligand .gro
+        l_lines = ligand_gro.read_text(encoding="utf-8").splitlines()
+        l_natoms = int(l_lines[1].strip())
+        l_atoms = l_lines[2 : 2 + l_natoms]
+
+        total_atoms = p_natoms + l_natoms
+
+        # Write merged complex .gro
+        with open(output_complex_gro, "w", encoding="utf-8") as f:
+            f.write(f"{p_title} + Ligand\n")
+            f.write(f"{total_atoms:5d}\n")
+            for line in p_atoms:
+                f.write(f"{line}\n")
+            for line in l_atoms:
+                f.write(f"{line}\n")
+            f.write(f"{box_line}\n")
+
+        # Copy ligand itp into destination dir
+        dest_itp = work_dir / ligand_itp.name
+        if ligand_itp.resolve() != dest_itp.resolve():
+            shutil.copy2(ligand_itp, dest_itp)
+
+        # Update topol.top with #include "ligand.itp" and [ molecules ] entry
+        top_text = top_file.read_text(encoding="utf-8")
+        include_stmt = f'\n; Include ligand topology\n#include "{dest_itp.name}"\n'
+
+        # Insert before position restraints or before [ system ]
+        if "; Include Position restraint file" in top_text:
+            parts = top_text.split("; Include Position restraint file", 1)
+            new_top = parts[0] + include_stmt + "\n; Include Position restraint file" + parts[1]
+        elif "[ system ]" in top_text:
+            parts = top_text.split("[ system ]", 1)
+            new_top = parts[0] + include_stmt + "\n[ system ]" + parts[1]
+        else:
+            new_top = top_text + include_stmt
+
+        # Append ligand to [ molecules ]
+        new_top = new_top.rstrip() + f"\n{ligand_resname:<10s} 1\n"
+        top_file.write_text(new_top, encoding="utf-8")
+
+    @staticmethod
+    def _parse_system_summary(gro_file: Path, top_file: Path) -> SolutionSystemSummary:
+        """Parse coordinate and topology files to extract system atom and molecule metrics."""
+        summary = SolutionSystemSummary()
+        lines = gro_file.read_text(encoding="utf-8").splitlines()
+        if len(lines) >= 3:
+            summary.total_atoms = int(lines[1].strip())
+            box_parts = lines[-1].split()
+            if len(box_parts) >= 3:
+                try:
+                    bx, by, bz = float(box_parts[0]), float(box_parts[1]), float(box_parts[2])
+                    summary.box_vectors_nm = (bx, by, bz)
+                    summary.box_volume_nm3 = bx * by * bz
+                except ValueError:
+                    pass
+
+        # Parse [ molecules ] section from topol.top
+        top_text = top_file.read_text(encoding="utf-8")
+        if "[ molecules ]" in top_text:
+            mol_section = top_text.split("[ molecules ]", 1)[1]
+            for line in mol_section.splitlines():
+                line = line.strip()
+                if not line or line.startswith(";"):
+                    continue
+                parts = line.split()
+                if len(parts) >= 2:
+                    name, count_str = parts[0], parts[1]
+                    try:
+                        count = int(count_str)
+                        if name.upper() in ("SOL", "TIP3", "TIP3P", "SPC", "SPCE"):
+                            summary.water_molecules += count
+                        elif name.upper() in ("NA", "SOD", "NA+", "K", "POT"):
+                            summary.positive_ions += count
+                        elif name.upper() in ("CL", "CLA", "CL-"):
+                            summary.negative_ions += count
+                    except ValueError:
+                        pass
+        return summary
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry point for the GROMACS built-in solution builder."""
+    desc = "GROMACS Built-in Solution Builder (pdb2gmx, editconf, solvate, genion, make_ndx)"
+    parser = argparse.ArgumentParser(
+        description=desc,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-f", "--protein",
+        required=True,
+        type=Path,
+        help="Input protein PDB file (cleaned coordinates)",
+    )
+    parser.add_argument(
+        "-o", "--output-dir",
+        default=Path("solvated_system"),
+        type=Path,
+        help="Directory to save prepared system artifacts",
+    )
+    parser.add_argument(
+        "-ff", "--forcefield",
+        default="amber14sb",
+        help="Force field (e.g. amber14sb, amber99sb-ildn, charmm27, oplsaa)",
+    )
+    parser.add_argument(
+        "-w", "--water",
+        default="tip3p",
+        help="Water model (e.g. tip3p, spce, tip4p)",
+    )
+    parser.add_argument(
+        "-bt", "--box-type",
+        default="dodecahedron",
+        choices=["dodecahedron", "cubic", "triclinic", "octahedron"],
+        help="Unit cell simulation box geometry",
+    )
+    parser.add_argument(
+        "-d", "--padding",
+        default=1.0,
+        type=float,
+        help="Clearance distance between solute and box boundary in nm",
+    )
+    parser.add_argument(
+        "-c", "--conc",
+        default=0.15,
+        type=float,
+        help="Salt concentration in mol/L (e.g. 0.15 M NaCl)",
+    )
+    parser.add_argument(
+        "--pname",
+        default="NA",
+        help="Positive ion name (e.g. NA, SOD)",
+    )
+    parser.add_argument(
+        "--nname",
+        default="CL",
+        help="Negative ion name (e.g. CL, CLA)",
+    )
+    parser.add_argument(
+        "--no-neutral",
+        action="store_true",
+        help="Do not automatically neutralize the net charge",
+    )
+    parser.add_argument(
+        "--ligand-gro",
+        type=Path,
+        default=None,
+        help="Optional: Path to parameterized ligand .gro coordinate file",
+    )
+    parser.add_argument(
+        "--ligand-itp",
+        type=Path,
+        default=None,
+        help="Optional: Path to parameterized ligand .itp topology file",
+    )
+    parser.add_argument(
+        "--ligand-resname",
+        default="LIG",
+        help="Residue name for ligand in topology",
+    )
+    parser.add_argument(
+        "--gmx",
+        type=Path,
+        default=None,
+        help="Path to GROMACS executable (auto-discovered if omitted)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable debug logging output",
+    )
+
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    config = SolutionBuilderConfig(
+        forcefield=args.forcefield,
+        water_model=args.water,
+        box_type=args.box_type,
+        box_padding_nm=args.padding,
+        ion_concentration_m=args.conc,
+        neutralize=not args.no_neutral,
+        positive_ion=args.pname,
+        negative_ion=args.nname,
+    )
+
+    try:
+        builder = GromacsSolutionBuilder(gmx_bin=args.gmx, config=config)
+        summary = builder.build_system(
+            protein_pdb=args.protein,
+            output_dir=args.output_dir,
+            ligand_gro=args.ligand_gro,
+            ligand_itp=args.ligand_itp,
+            ligand_resname=args.ligand_resname,
+        )
+
+        print("\n" + "=" * 60)
+        print(" GROMACS SOLUTION BUILDER - SYSTEM SUMMARY")
+        print("=" * 60)
+        print(f" Total Atoms:         {summary.total_atoms:,d}")
+        print(f" Water Molecules:     {summary.water_molecules:,d}")
+        print(f" Positive Ions ({args.pname}): {summary.positive_ions}")
+        print(f" Negative Ions ({args.nname}): {summary.negative_ions}")
+        bx, by, bz = summary.box_vectors_nm
+        print(f" Box Dimensions (nm): {bx:.3f} x {by:.3f} x {bz:.3f}")
+        print(f" Box Volume (nm³):    {summary.box_volume_nm3:.2f}")
+        print("-" * 60)
+        print(" Generated Artifacts:")
+        for role, path in summary.output_files.items():
+            print(f"   [{role:<12s}] -> {path}")
+        print("=" * 60 + "\n")
+        return 0
+
+    except Exception as exc:
+        logger.error("Build failed: %s", exc)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
