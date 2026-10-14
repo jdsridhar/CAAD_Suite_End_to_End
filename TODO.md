@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation & pre-release readiness |
-| **Current task** | [-] Resolved prepare_protein and vina StageHandlerDiscoveryError / bare command name path resolution; verified with 7/7 Playwright tests, 1103 backend unit tests, and mypy/lint-imports. Human license review (18.4), final release/tag (19.7), and broader scientific qualification remain open. |
+| **Current task** | [-] Resolved PDB format structure input support in PDBFixer worker; verified with test_worker_prepares_pdb_format_input, 6/6 worker integration tests, and 7/7 Playwright tests. Human license review (18.4), final release/tag (19.7), and broader scientific qualification remain open. |
 | **Next task** | Complete remaining release governance gates: human license review sign-off, final release verification and Git release tag. |
-| **Last completed** | Resolved StageHandlerDiscoveryError: could not construct handler for stage 'prepare_protein': [Errno 2] No such file or directory: 'python' by adding robust path resolution with auto-discovery fallbacks in PDBFixerStagePlugin and VinaStagePlugin, and synchronizing web frontend workflow state with discovered engine paths on connect. All 7 Playwright tests pass (1.5m), 1103 backend unit tests pass, and mypy (191 files) + import-linter (4/4 kept) are clean. |
+| **Last completed** | Resolved PDBFixer mmCIF requirement failure on uploaded PDB files ("The input mmCIF file must begin with a 'data_' directive.") by adding transparent PDB-to-mmCIF conversion via Bio.PDB in pdbfixer_worker.py. All 6 PDBFixer worker tests pass (73.7s), 7/7 Playwright tests pass (1.7m), and mypy (191 files) + import-linter (4/4 kept) are clean. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2225,4 +2225,19 @@ When the user says **CONTINUE**:
   - Frontend typecheck (`npm run typecheck`) and build (`npm run build`) 100% clean.
   - Architecture contracts: `lint-imports` 4/4 kept, `mypy src/caddsuite` 0 errors across 191 files.
 - [-] Human dependency/license review (Phase 18.4 legal counsel sign-off), final release verification and Git release tag (Phase 19.7), and broader independent scientific qualification remain open release governance gates.
+
+### 2026-10-14 PDB format structure input support in PDBFixer worker
+
+- [x] Fixed `PDBFixer exited with status 2: {"ok": false, "error_type": "ValueError", "error": "The input mmCIF file must begin with a 'data_' directive."}` on uploaded PDB files (e.g. `3DH4_CANAGLIFLOZIN.pdb`):
+  - In `src/caddsuite_worker/pdbfixer_worker.py`, added `_is_mmcif_file` and `_ensure_mmcif_source` using `Bio.PDB.PDBParser` and `Bio.PDB.MMCIFIO`.
+  - When the input structure file is in PDB format, it is automatically converted into a temporary standard mmCIF file for occupancy analysis, single-model altloc resolution, and PDBFixer execution.
+  - Preserves the original file's input SHA-256 for core provenance verification, cleans up temporary files in `finally`, and reliably produces both `prepared_receptor_mmcif` and `prepared_receptor_pdb` artifacts.
+- [x] Verified test suite:
+  - Added `test_worker_prepares_pdb_format_input` in `tests/unit/test_pdbfixer_worker.py`.
+  - All 6 PDBFixer worker integration tests passed in 73.7s (`pytest tests/unit/test_pdbfixer_worker.py`).
+  - Direct execution against real artifact `3DH4_CANAGLIFLOZIN.pdb` succeeded with 7,713 atoms and 495 residues in chain A.
+  - Full Playwright E2E browser suite: 7/7 tests passed in 1.7m (`workflow.spec.ts`).
+  - Architecture contracts: `lint-imports` 4/4 kept, `mypy src/caddsuite` 0 errors across 191 source files.
+- [-] Human dependency/license review (Phase 18.4 legal counsel sign-off), final release verification and Git release tag (Phase 19.7), and broader independent scientific qualification remain open release governance gates.
+
 

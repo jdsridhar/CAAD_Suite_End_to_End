@@ -283,3 +283,56 @@ def test_worker_replays_internal_loop_with_same_modeling_seed(tmp_path: Path) ->
     assert prepared_outputs[0] == prepared_outputs[1]
     assert responses[0]["modeling_seed"] == responses[1]["modeling_seed"] == 20261003
     assert responses[0]["geometry_diagnostics"] == responses[1]["geometry_diagnostics"]
+
+
+def test_worker_prepares_pdb_format_input(tmp_path: Path) -> None:
+    pdb_file = tmp_path / "simple.pdb"
+    pdb_file.write_text(
+        "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 20.00           N\n"
+        "ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00 20.00           C\n"
+        "ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00 20.00           C\n"
+        "ATOM      4  O   ALA A   1       1.246   2.389   0.000  1.00 20.00           O\n"
+        "ATOM      5  CB  ALA A   1       1.996  -0.771  -1.206  1.00 20.00           C\n"
+        "TER       6      ALA A   1\n"
+        "END\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "prepared.cif"
+    output_pdb = tmp_path / "prepared.pdb"
+    request = tmp_path / "request.json"
+    request.write_text(
+        json.dumps(
+            {
+                "input_mmcif": str(pdb_file),
+                "output_mmcif": str(output),
+                "output_pdb": str(output_pdb),
+                "selected_chain_ids": ["A"],
+                "ph": 7.4,
+                "occupancy_policy": "highest_occupancy_single_model",
+                "modeling_seed": 20261003,
+                "close_contact_threshold_A": 1.5,
+                "fill_internal_gaps": True,
+                "keep_water": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    environment = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
+    run = subprocess.run(
+        [str(PYFIXER_PYTHON), str(WORKER), "--request", str(request)],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    assert run.returncode == 0, run.stderr
+    response = json.loads(run.stdout)
+    assert response["ok"] is True
+    result = response["result"]
+    assert result["input_sha256"] == hashlib.sha256(pdb_file.read_bytes()).hexdigest()
+    assert result["output_sha256"] == hashlib.sha256(output.read_bytes()).hexdigest()
+    assert output.is_file()
+    assert output_pdb.is_file()
+

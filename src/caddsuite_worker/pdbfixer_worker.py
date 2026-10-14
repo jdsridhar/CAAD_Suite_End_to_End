@@ -43,6 +43,36 @@ def _mmcif_write(dictionary: dict[str, Any], path: Path) -> None:
     writer.save(str(path))  # type: ignore[no-untyped-call]
 
 
+def _is_mmcif_file(path: Path) -> bool:
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as stream:
+            for line in stream:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                return stripped.startswith("data_")
+    except OSError:
+        pass
+    return False
+
+
+def _ensure_mmcif_source(source: Path) -> tuple[Path, Path | None]:
+    """Ensure the source structure is mmCIF, converting from PDB if necessary."""
+    if _is_mmcif_file(source):
+        return source, None
+    from Bio.PDB import MMCIFIO, PDBParser
+
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("protein", str(source))
+    io = MMCIFIO()  # type: ignore[no-untyped-call]
+    io.set_structure(structure)  # type: ignore[no-untyped-call]
+    fd, temporary_name = tempfile.mkstemp(prefix="caddsuite-converted-", suffix=".cif")
+    os.close(fd)
+    converted_source = Path(temporary_name)
+    io.save(str(converted_source))  # type: ignore[no-untyped-call]
+    return converted_source, converted_source
+
+
 def _atom_site_columns(dictionary: dict[str, Any]) -> tuple[dict[str, list[Any]], int]:
     columns = {key: value for key, value in dictionary.items() if key.startswith("_atom_site.")}
     if not columns or any(not isinstance(value, list) for value in columns.values()):
@@ -389,42 +419,48 @@ def prepare(request: dict[str, Any]) -> dict[str, Any]:
     random.seed(modeling_seed)
     if not 0 <= ph <= 14:
         raise ValueError("ph must be between 0 and 14")
-    occupancy_structure, occupancy_observations = _occupancy_inventory(source, selected)
-    if occupancy_observations and occupancy_policy == "require_full_occupancy":
-        affected_residues = sorted(
-            {
-                f"{item['label_chain_id']}:{item['residue_id']}:{item['residue_name']}"
-                for item in occupancy_observations
-            }
-        )
-        raise ValueError(
-            "STRUCTURE.OCCUPANCY_DECISION_REQUIRED: "
-            f"{len(occupancy_observations)} selected protein atoms have occupancy below "
-            f"0.999 in residues {affected_residues[:80]}; explicitly select "
-            "highest_occupancy_single_model to resolve one conformer per residue and "
-            "use those coordinates as one full-occupancy model."
-        )
-    zero_occupancy_source_count = sum(item["occupancy"] == 0.0 for item in occupancy_observations)
+    converted_source: Path | None = None
+    mmcif_source, converted_source = _ensure_mmcif_source(source)
     filtered_source: Path | None = None
-    input_path = source
-    selected_altlocs: list[dict[str, Any]] = []
-    zero_occupancy_rebuild_count = 0
-    if occupancy_observations:
-        if occupancy_policy != "highest_occupancy_single_model":
-            raise ValueError("non-unit occupancy requires an explicit occupancy policy")
-        fd, temporary_name = tempfile.mkstemp(prefix="caddsuite-occupancy-", suffix=".cif")
-        os.close(fd)
-        filtered_source = Path(temporary_name)
-        selected_altlocs, zero_occupancy_rebuild_count = _resolve_single_model_occupancies(
-            occupancy_structure, filtered_source, selected
-        )
-        input_path = filtered_source
     try:
+        occupancy_structure, occupancy_observations = _occupancy_inventory(mmcif_source, selected)
+        if occupancy_observations and occupancy_policy == "require_full_occupancy":
+            affected_residues = sorted(
+                {
+                    f"{item['label_chain_id']}:{item['residue_id']}:{item['residue_name']}"
+                    for item in occupancy_observations
+                }
+            )
+            raise ValueError(
+                "STRUCTURE.OCCUPANCY_DECISION_REQUIRED: "
+                f"{len(occupancy_observations)} selected protein atoms have occupancy below "
+                f"0.999 in residues {affected_residues[:80]}; explicitly select "
+                "highest_occupancy_single_model to resolve one conformer per residue and "
+                "use those coordinates as one full-occupancy model."
+            )
+        zero_occupancy_source_count = sum(
+            item["occupancy"] == 0.0 for item in occupancy_observations
+        )
+        input_path = mmcif_source
+        selected_altlocs: list[dict[str, Any]] = []
+        zero_occupancy_rebuild_count = 0
+        if occupancy_observations:
+            if occupancy_policy != "highest_occupancy_single_model":
+                raise ValueError("non-unit occupancy requires an explicit occupancy policy")
+            fd, temporary_name = tempfile.mkstemp(prefix="caddsuite-occupancy-", suffix=".cif")
+            os.close(fd)
+            filtered_source = Path(temporary_name)
+            selected_altlocs, zero_occupancy_rebuild_count = _resolve_single_model_occupancies(
+                occupancy_structure, filtered_source, selected
+            )
+            input_path = filtered_source
         with input_path.open("r", encoding="utf-8") as input_stream:
             fixer = PDBFixer(pdbxfile=input_stream)
     finally:
         if filtered_source is not None:
             filtered_source.unlink(missing_ok=True)
+        if converted_source is not None:
+            converted_source.unlink(missing_ok=True)
     chains = list(fixer.topology.chains())
     available = {str(chain.id) for chain in chains}
     unknown = selected - available
