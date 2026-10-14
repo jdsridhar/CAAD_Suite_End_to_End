@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation & pre-release readiness |
-| **Current task** | [-] Fixed MD & MM-PBSA recorded input reuse ambiguity (HTTP 409) via run_id candidate selection; verified with 7/7 Playwright tests. Human dependency/license review (18.4), final release/tag (19.7), and recorded broader scientific qualification remain open. |
+| **Current task** | [-] Resolved prepare_protein and vina StageHandlerDiscoveryError / bare command name path resolution; verified with 7/7 Playwright tests, 1103 backend unit tests, and mypy/lint-imports. Human license review (18.4), final release/tag (19.7), and broader scientific qualification remain open. |
 | **Next task** | Complete remaining release governance gates: human license review sign-off, final release verification and Git release tag. |
-| **Last completed** | Resolved recorded MD and MM-PBSA input reuse 409 Conflict when multiple runs exist in a project by implementing candidate listing endpoints (/v1/projects/{id}/recorded-md-candidates and /recorded-mmpbsa-candidates) and UI run selectors. Playwright test suite passes 7/7 (1.3m), API contract tests pass 141/141, and frontend build is clean. |
+| **Last completed** | Resolved StageHandlerDiscoveryError: could not construct handler for stage 'prepare_protein': [Errno 2] No such file or directory: 'python' by adding robust path resolution with auto-discovery fallbacks in PDBFixerStagePlugin and VinaStagePlugin, and synchronizing web frontend workflow state with discovered engine paths on connect. All 7 Playwright tests pass (1.5m), 1103 backend unit tests pass, and mypy (191 files) + import-linter (4/4 kept) are clean. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2210,3 +2210,19 @@ When the user says **CONTINUE**:
 - [x] Verified /tmp/caddsuite_dist wheel SHA-256 4112e20e906d95c87cb6ce89c93ee69869a39048a85003a5f2273cd7a4b683e6 and sdist SHA-256 cb74648b4855baf59d7152ce949f5e639188c2ea353d7ef18bc200b87edfaf39 match the documented build from 2542c40.
 - [x] Installed CLI in /tmp/caddsuite_test_venv passes version and help; reports 0.1.0.dev0.
 - [-] Human dependency/license review, final release verification/tag, and broader scientific qualification remain open. No Git tags were present. This check did not rerun test suites, license-text review, database migration, or scientific benchmarks.
+
+### 2026-10-14 bare command name resolution and web engine path sync
+
+- [x] Fixed `StageHandlerDiscoveryError: could not construct handler for stage 'prepare_protein': [Errno 2] No such file or directory: 'python'`:
+  - In `src/caddsuite/application/pdbfixer_stage_plugin.py`, replaced raw `Path(...).resolve(strict=True)` with `_resolve_python` and `_resolve_worker` helpers that safely detect bare command names (`"python"`, `"pdbfixer_worker.py"`) and fall back to `discover_engine_paths()` (`paths.cadd_python` and `paths.pdbfixer_worker`) or `shutil.which` before raising actionable errors. Explicit missing paths continue to report as non-existent.
+  - In `src/caddsuite/application/vina_stage_plugin.py`, applied matching `_resolve_vina_settings` and `_resolve_vina_path` helpers for `"vina"`, `"python"`, `"mk_prepare_receptor.py"`, `"mk_prepare_ligand.py"`, and `"mk_export.py"`.
+  - In `apps/web/src/App.tsx`, updated `wf` initialization to use `enginePaths` state (rather than raw defaults) and updated `connect()` so that when `/v1/system/engine-config` loads, preset workflows are immediately synchronized with the server's auto-discovered paths.
+- [x] Verified full test battery:
+  - 10 unit tests in `test_pdbfixer_stage_plugin.py` and `test_engine_preflight.py` including new tests `test_pdbfixer_stage_settings_bare_names_fallback` and `test_vina_probe_resolves_bare_command_names`.
+  - Full backend unit suite: 1103 passed, 10 skipped in 38.27s (`pytest tests/unit`).
+  - Isolated PDBFixer engine integration test passed in 22.48s (`test_pdbfixer_handler.py`).
+  - Full Playwright E2E browser suite: 7/7 tests passed in 1.5m (`workflow.spec.ts`).
+  - Frontend typecheck (`npm run typecheck`) and build (`npm run build`) 100% clean.
+  - Architecture contracts: `lint-imports` 4/4 kept, `mypy src/caddsuite` 0 errors across 191 files.
+- [-] Human dependency/license review (Phase 18.4 legal counsel sign-off), final release verification and Git release tag (Phase 19.7), and broader independent scientific qualification remain open release governance gates.
+
