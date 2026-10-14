@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -30,19 +31,25 @@ def _resolve_python(path: Path) -> Path:
     expanded = path.expanduser()
     if expanded.is_file():
         return expanded.resolve()
-    if not _is_explicit_path(path):
-        from caddsuite.application.engine_discovery import discover_engine_paths
 
-        discovered = discover_engine_paths().paths
-        if discovered.cadd_python:
-            cadd_p = Path(discovered.cadd_python).expanduser()
-            if cadd_p.is_file():
-                return cadd_p.resolve()
-        which_bin = shutil.which(str(path))
+    from caddsuite.application.engine_discovery import discover_engine_paths
+
+    discovered = discover_engine_paths().paths
+    if discovered.cadd_python:
+        cadd_p = Path(discovered.cadd_python).expanduser()
+        if cadd_p.is_file():
+            return cadd_p.resolve()
+
+    for candidate in (str(path), "python3", "python"):
+        which_bin = shutil.which(candidate)
         if which_bin:
             which_p = Path(which_bin).expanduser()
             if which_p.is_file():
                 return which_p.resolve()
+
+    if Path(sys.executable).is_file():
+        return Path(sys.executable).resolve()
+
     return expanded.resolve()
 
 
@@ -50,22 +57,22 @@ def _resolve_worker(path: Path) -> Path:
     expanded = path.expanduser()
     if expanded.is_file():
         return expanded.resolve()
-    if not _is_explicit_path(path):
-        from caddsuite.application.engine_discovery import discover_engine_paths
 
-        discovered = discover_engine_paths().paths
-        if discovered.pdbfixer_worker:
-            worker_p = Path(discovered.pdbfixer_worker).expanduser()
-            if worker_p.is_file():
-                return worker_p.resolve()
-        try:
-            import caddsuite_worker
+    from caddsuite.application.engine_discovery import discover_engine_paths
 
-            pkg_worker = Path(caddsuite_worker.__file__).resolve().parent / "pdbfixer_worker.py"
-            if pkg_worker.is_file():
-                return pkg_worker.resolve()
-        except (ImportError, AttributeError):
-            pass
+    discovered = discover_engine_paths().paths
+    if discovered.pdbfixer_worker:
+        worker_p = Path(discovered.pdbfixer_worker).expanduser()
+        if worker_p.is_file():
+            return worker_p.resolve()
+    try:
+        import caddsuite_worker
+
+        pkg_worker = Path(caddsuite_worker.__file__).resolve().parent / "pdbfixer_worker.py"
+        if pkg_worker.is_file():
+            return pkg_worker.resolve()
+    except (ImportError, AttributeError):
+        pass
     return expanded.resolve()
 
 

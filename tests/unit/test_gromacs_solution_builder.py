@@ -69,3 +69,43 @@ def test_full_pipeline_execution(tmp_path: Path) -> None:
     assert (tmp_path / "posre.itp").exists()
     assert (tmp_path / "index.ndx").exists()
     assert (tmp_path / "ions.mdp").exists()
+
+
+def test_sanitize_gro_coordinates(tmp_path: Path) -> None:
+    from caddsuite.structure.gromacs_solution_builder import sanitize_gro_coordinates
+
+    gro_file = tmp_path / "corrupt.gro"
+    gro_content = (
+        "Corrupted GRO with NaN\n"
+        "    3\n"
+        "    1LYS     CA    1   1.502  -1.441   8.587\n"
+        "    1LYS     CB    2   1.586  -1.543   8.664\n"
+        "    1LYS    HB2    3   0.000    -nan   0.000\n"
+        "   5.00000   5.00000   5.00000\n"
+    )
+    gro_file.write_text(gro_content, encoding="utf-8")
+
+    fixed = sanitize_gro_coordinates(gro_file)
+    assert fixed == 1
+
+    lines = gro_file.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 6
+    assert "-nan" not in lines[4]
+    # Check that coordinate for HB2 is now valid float
+    parts = lines[4].split()
+    assert float(parts[4]) == -1.543  # Borrowed from previous atom y
+
+
+def test_repair_missing_heavy_atoms_fallback(tmp_path: Path) -> None:
+    from caddsuite.structure.gromacs_solution_builder import repair_missing_heavy_atoms
+
+    dummy_pdb = tmp_path / "dummy.pdb"
+    dummy_pdb.write_text(
+        "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N\n",
+        encoding="utf-8",
+    )
+    out_pdb = tmp_path / "out.pdb"
+
+    # Should run or fall back safely without raising uncaught exception
+    repair_missing_heavy_atoms(dummy_pdb, out_pdb)
+    assert out_pdb.exists()

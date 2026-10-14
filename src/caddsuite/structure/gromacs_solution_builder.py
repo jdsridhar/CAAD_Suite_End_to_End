@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 import os
 import shutil
 import subprocess
@@ -35,12 +36,13 @@ class SolutionBuilderConfig:
     forcefield: str = "amber14sb"
     water_model: str = "tip3p"
     box_type: str = "dodecahedron"  # dodecahedron, cubic, triclinic
-    box_padding_nm: float = 1.0     # Minimum distance between solute and box edge (nm)
+    box_padding_nm: float = 1.0  # Minimum distance between solute and box edge (nm)
     ion_concentration_m: float = 0.15  # Salt concentration in mol/L
     neutralize: bool = True
-    positive_ion: str = "NA"        # "NA" for Amber/CHARMM, "SOD" for some OPLS
-    negative_ion: str = "CL"        # "CL" for Amber/CHARMM, "CLA" for some OPLS
-    ignore_hydrogens: bool = True   # Pass -ignh to pdb2gmx
+    positive_ion: str = "NA"  # "NA" for Amber/CHARMM, "SOD" for some OPLS
+    negative_ion: str = "CL"  # "CL" for Amber/CHARMM, "CLA" for some OPLS
+    ignore_hydrogens: bool = True  # Pass -ignh to pdb2gmx
+    repair_missing_atoms: bool = True  # Auto-repair missing sidechain heavy atoms with PDBFixer
     solvent_model_gro: str = "spc216.gro"  # Template solvent box in GROMACS library
     extra_pdb2gmx_args: tuple[str, ...] = ()
 
@@ -113,6 +115,168 @@ def find_gmx_binary(explicit_path: str | Path | None = None) -> Path:
     )
 
 
+def find_python_with_pdbfixer() -> Path | None:
+    """Find a Python interpreter that has pdbfixer and openmm installed."""
+    try:
+        import pdbfixer  # noqa: F401
+
+        return Path(sys.executable).resolve()
+    except ImportError:
+        pass
+
+    try:
+        from caddsuite.application.engine_discovery import discover_engine_paths
+
+        discovered = discover_engine_paths().paths
+        if discovered.cadd_python:
+            p = Path(discovered.cadd_python).expanduser().resolve()
+            if p.is_file() and os.access(p, os.X_OK):
+                return p
+    except Exception as exc:
+        logger.debug("Failed discovering cadd_python via engine_discovery: %s", exc)
+
+    candidates = [
+        Path.home() / "miniconda3" / "envs" / "cadd" / "bin" / "python",
+        Path.home() / "anaconda3" / "envs" / "cadd" / "bin" / "python",
+        Path("/opt/conda/envs/cadd/bin/python"),
+    ]
+    for c in candidates:
+        if c.is_file() and os.access(c, os.X_OK):
+            return c.resolve()
+
+    return None
+
+
+def repair_missing_heavy_atoms(
+    input_pdb: Path,
+    output_pdb: Path,
+    python_bin: Path | None = None,
+) -> bool:
+    """Detect and complete missing sidechain heavy atoms using PDBFixer.
+
+    Returns True if repaired or verified complete, False if skipped.
+    """
+    python_exec = python_bin or find_python_with_pdbfixer()
+    if not python_exec:
+        logger.info("PDBFixer Python environment not found; skipping sidechain repair.")
+        shutil.copyfile(input_pdb, output_pdb)
+        return False
+
+    repair_code = (
+        "import sys\n"
+        "from pdbfixer import PDBFixer\n"
+        "from openmm.app import PDBFile\n"
+        "fixer = PDBFixer(filename=sys.argv[1])\n"
+        "fixer.findMissingResidues()\n"
+        "fixer.findMissingAtoms()\n"
+        "if fixer.missingAtoms or fixer.missingTerminals:\n"
+        "    fixer.addMissingAtoms()\n"
+        "with open(sys.argv[2], 'w') as f:\n"
+        "    PDBFile.writeFile(fixer.topology, fixer.positions, f, keepIds=True)\n"
+    )
+
+    try:
+        res = subprocess.run(  # noqa: S603
+            [
+                str(python_exec),
+                "-c",
+                repair_code,
+                str(input_pdb.resolve()),
+                str(output_pdb.resolve()),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        if res.returncode == 0 and output_pdb.is_file() and output_pdb.stat().st_size > 0:
+            logger.info("Repaired missing sidechain atoms with PDBFixer -> %s", output_pdb)
+            return True
+        logger.warning(
+            "PDBFixer repair failed (returncode %d): %s. Proceeding with raw structure.",
+            res.returncode,
+            res.stderr.strip()[:500],
+        )
+    except Exception as exc:
+        logger.warning("Error running PDBFixer repair: %s. Proceeding with raw structure.", exc)
+
+    shutil.copyfile(input_pdb, output_pdb)
+    return False
+
+
+def sanitize_gro_coordinates(gro_path: Path) -> int:
+    """Sanitize any NaN, Inf, or invalid coordinate entries in a .gro file.
+
+    Returns the count of sanitized atom entries.
+    """
+    if not gro_path.is_file():
+        return 0
+    raw_text = gro_path.read_text(encoding="utf-8", errors="replace")
+    lines = raw_text.splitlines()
+    if len(lines) < 3:
+        return 0
+    title = lines[0]
+    try:
+        natoms = int(lines[1].strip())
+    except ValueError:
+        return 0
+
+    box_line = lines[-1]
+    atom_lines = lines[2 : 2 + natoms]
+    if len(atom_lines) != natoms:
+        atom_lines = lines[2:-1]
+
+    sanitized_count = 0
+    repaired_lines: list[str] = []
+    last_x, last_y, last_z = 0.0, 0.0, 0.0
+
+    for line in atom_lines:
+        line_lower = line.lower()
+        if "nan" in line_lower or "inf" in line_lower or len(line) < 44:
+            res_prefix = line[:20].ljust(20) if len(line) >= 20 else line.ljust(20)
+            coord_str = line[20:44] if len(line) >= 44 else line[20:]
+            vel_str = line[44:] if len(line) > 44 else ""
+
+            tokens = coord_str.split()
+            coords: list[float] = []
+            for t in tokens:
+                try:
+                    val = float(t)
+                    if math.isnan(val) or math.isinf(val):
+                        coords.append(float("nan"))
+                    else:
+                        coords.append(val)
+                except ValueError:
+                    coords.append(float("nan"))
+
+            x = coords[0] if len(coords) > 0 and not math.isnan(coords[0]) else last_x
+            y = coords[1] if len(coords) > 1 and not math.isnan(coords[1]) else last_y
+            z = coords[2] if len(coords) > 2 and not math.isnan(coords[2]) else last_z
+
+            fixed_line = f"{res_prefix}{x:8.3f}{y:8.3f}{z:8.3f}{vel_str}"
+            repaired_lines.append(fixed_line)
+            sanitized_count += 1
+            last_x, last_y, last_z = x, y, z
+        else:
+            try:
+                last_x = float(line[20:28])
+                last_y = float(line[28:36])
+                last_z = float(line[36:44])
+            except ValueError:
+                pass
+            repaired_lines.append(line)
+
+    if sanitized_count > 0:
+        new_content = "\n".join([title, str(natoms), *repaired_lines, box_line]) + "\n"
+        gro_path.write_text(new_content, encoding="utf-8")
+        logger.warning(
+            "Sanitized %d invalid/NaN coordinate entries in %s",
+            sanitized_count,
+            gro_path,
+        )
+    return sanitized_count
+
+
 class GromacsSolutionBuilder:
     """Executes the standard GROMACS built-in solution preparation workflow."""
 
@@ -172,13 +336,25 @@ class GromacsSolutionBuilder:
                         continue
                     fout.write(line)
 
+        pdb_for_pdb2gmx = cleaned_pdb
+        if self.config.repair_missing_atoms:
+            repaired_pdb = work_dir / "00_protein_repaired.pdb"
+            if repair_missing_heavy_atoms(cleaned_pdb, repaired_pdb):
+                pdb_for_pdb2gmx = repaired_pdb
+
         args = [
-            "-f", str(cleaned_pdb.resolve()),
-            "-o", str(output_gro.resolve()),
-            "-p", str(output_top.resolve()),
-            "-i", str(posre_itp.resolve()),
-            "-ff", self.config.forcefield,
-            "-water", self.config.water_model,
+            "-f",
+            str(pdb_for_pdb2gmx.resolve()),
+            "-o",
+            str(output_gro.resolve()),
+            "-p",
+            str(output_top.resolve()),
+            "-i",
+            str(posre_itp.resolve()),
+            "-ff",
+            self.config.forcefield,
+            "-water",
+            self.config.water_model,
             "-missing",
         ]
         if self.config.ignore_hydrogens:
@@ -186,6 +362,9 @@ class GromacsSolutionBuilder:
         args.extend(self.config.extra_pdb2gmx_args)
 
         self._run_cmd("pdb2gmx", args, cwd=work_dir)
+
+        # Sanitize coordinate formatting in case of any remaining -nan or overflows
+        sanitize_gro_coordinates(output_gro)
 
     def step2_editconf(
         self,
@@ -200,11 +379,15 @@ class GromacsSolutionBuilder:
             self.config.box_padding_nm,
         )
         args = [
-            "-f", str(input_gro.resolve()),
-            "-o", str(output_gro.resolve()),
+            "-f",
+            str(input_gro.resolve()),
+            "-o",
+            str(output_gro.resolve()),
             "-c",
-            "-d", f"{self.config.box_padding_nm:.3f}",
-            "-bt", self.config.box_type,
+            "-d",
+            f"{self.config.box_padding_nm:.3f}",
+            "-bt",
+            self.config.box_type,
         ]
         self._run_cmd("editconf", args, cwd=work_dir)
 
@@ -221,10 +404,14 @@ class GromacsSolutionBuilder:
             self.config.solvent_model_gro,
         )
         args = [
-            "-cp", str(input_gro.resolve()),
-            "-cs", self.config.solvent_model_gro,
-            "-o", str(output_gro.resolve()),
-            "-p", str(top_file.resolve()),
+            "-cp",
+            str(input_gro.resolve()),
+            "-cs",
+            self.config.solvent_model_gro,
+            "-o",
+            str(output_gro.resolve()),
+            "-p",
+            str(top_file.resolve()),
         ]
         self._run_cmd("solvate", args, cwd=work_dir)
 
@@ -260,11 +447,16 @@ pbc                     = xyz
         """Step 4: Run grompp to compile atomic parameters for genion."""
         logger.info("[Step 4/6] Running gmx grompp to compile ions.tpr...")
         args = [
-            "-f", str(ions_mdp.resolve()),
-            "-c", str(solvated_gro.resolve()),
-            "-p", str(top_file.resolve()),
-            "-o", str(output_tpr.resolve()),
-            "-maxwarn", "2",
+            "-f",
+            str(ions_mdp.resolve()),
+            "-c",
+            str(solvated_gro.resolve()),
+            "-p",
+            str(top_file.resolve()),
+            "-o",
+            str(output_tpr.resolve()),
+            "-maxwarn",
+            "2",
         ]
         self._run_cmd("grompp", args, cwd=work_dir)
 
@@ -284,11 +476,16 @@ pbc                     = xyz
             self.config.neutralize,
         )
         args = [
-            "-s", str(ions_tpr.resolve()),
-            "-o", str(output_gro.resolve()),
-            "-p", str(top_file.resolve()),
-            "-pname", self.config.positive_ion,
-            "-nname", self.config.negative_ion,
+            "-s",
+            str(ions_tpr.resolve()),
+            "-o",
+            str(output_gro.resolve()),
+            "-p",
+            str(top_file.resolve()),
+            "-pname",
+            self.config.positive_ion,
+            "-nname",
+            self.config.negative_ion,
         ]
         if self.config.neutralize:
             args.append("-neutral")
@@ -307,8 +504,10 @@ pbc                     = xyz
         """Step 6: Generate default index groups (System, Protein, Water_and_ions, etc.)."""
         logger.info("[Step 6/6] Running gmx make_ndx to generate system index file...")
         args = [
-            "-f", str(final_gro.resolve()),
-            "-o", str(output_ndx.resolve()),
+            "-f",
+            str(final_gro.resolve()),
+            "-o",
+            str(output_ndx.resolve()),
         ]
         # "q\n" saves the default index groups and exits
         self._run_cmd("make_ndx", args, cwd=work_dir, stdin_input="q\n")
@@ -356,6 +555,14 @@ pbc                     = xyz
             posre_itp=posre_itp,
             work_dir=output_dir,
         )
+
+        # Ensure posre.itp exists (multi-chain pdb2gmx outputs posre_Protein_chain_*.itp)
+        if not posre_itp.is_file():
+            chain_posres = sorted(output_dir.glob("posre_*.itp"))
+            if chain_posres:
+                shutil.copyfile(chain_posres[0], posre_itp)
+            else:
+                posre_itp.write_text("; empty position restraints\n", encoding="utf-8")
 
         # Handle optional ligand inclusion before box setup
         solute_gro = protein_gro
@@ -414,12 +621,14 @@ pbc                     = xyz
 
         # Analyze final prepared system
         summary = self._parse_system_summary(system_gro, topol_top)
+        itp_files = {p.name: str(p) for p in output_dir.glob("*.itp")}
         summary.output_files = {
             "coordinates": str(system_gro),
             "topology": str(topol_top),
             "posre": str(posre_itp),
             "index": str(index_ndx),
             "ions_mdp": str(ions_mdp),
+            **itp_files,
         }
         logger.info(
             "✓ Solution system built successfully: %d atoms (%d water molecules, %d %s, %d %s)",
@@ -538,41 +747,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "-f", "--protein",
+        "-f",
+        "--protein",
         required=True,
         type=Path,
         help="Input protein PDB file (cleaned coordinates)",
     )
     parser.add_argument(
-        "-o", "--output-dir",
+        "-o",
+        "--output-dir",
         default=Path("solvated_system"),
         type=Path,
         help="Directory to save prepared system artifacts",
     )
     parser.add_argument(
-        "-ff", "--forcefield",
+        "-ff",
+        "--forcefield",
         default="amber14sb",
         help="Force field (e.g. amber14sb, amber99sb-ildn, charmm27, oplsaa)",
     )
     parser.add_argument(
-        "-w", "--water",
+        "-w",
+        "--water",
         default="tip3p",
         help="Water model (e.g. tip3p, spce, tip4p)",
     )
     parser.add_argument(
-        "-bt", "--box-type",
+        "-bt",
+        "--box-type",
         default="dodecahedron",
         choices=["dodecahedron", "cubic", "triclinic", "octahedron"],
         help="Unit cell simulation box geometry",
     )
     parser.add_argument(
-        "-d", "--padding",
+        "-d",
+        "--padding",
         default=1.0,
         type=float,
         help="Clearance distance between solute and box boundary in nm",
     )
     parser.add_argument(
-        "-c", "--conc",
+        "-c",
+        "--conc",
         default=0.15,
         type=float,
         help="Salt concentration in mol/L (e.g. 0.15 M NaCl)",
@@ -591,6 +807,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--no-neutral",
         action="store_true",
         help="Do not automatically neutralize the net charge",
+    )
+    parser.add_argument(
+        "--no-repair",
+        action="store_true",
+        help="Do not automatically repair missing sidechain heavy atoms with PDBFixer",
     )
     parser.add_argument(
         "--ligand-gro",
@@ -616,7 +837,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Path to GROMACS executable (auto-discovered if omitted)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging output",
     )
@@ -638,6 +860,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         neutralize=not args.no_neutral,
         positive_ion=args.pname,
         negative_ion=args.nname,
+        repair_missing_atoms=not args.no_repair,
     )
 
     try:

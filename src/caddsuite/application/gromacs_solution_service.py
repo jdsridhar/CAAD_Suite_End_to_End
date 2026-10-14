@@ -108,6 +108,7 @@ def build_local_solution_system(
         )
 
         artifact_refs: dict[str, dict[str, Any]] = {}
+        registered_by_name: dict[str, dict[str, Any]] = {}
         files_to_register = [
             ("coordinates", out_dir / "system.gro", "system.gro", "chemical/x-gro"),
             ("topology", out_dir / "topol.top", "topol.top", "chemical/x-top"),
@@ -115,6 +116,9 @@ def build_local_solution_system(
             ("index", out_dir / "index.ndx", "index.ndx", "text/plain"),
             ("protocol", out_dir / "ions.mdp", "ions.mdp", "text/plain"),
         ]
+        for extra_itp in sorted(out_dir.glob("*.itp")):
+            if extra_itp.name != "posre.itp" and extra_itp.is_file():
+                files_to_register.append(("parameter", extra_itp, extra_itp.name, "text/plain"))
 
         with sessions.begin() as session:
             for role, path, orig_name, media_type in files_to_register:
@@ -137,12 +141,14 @@ def build_local_solution_system(
                             role=role,
                         )
                     )
-                artifact_refs[role] = {
+                ref_payload = {
                     "id": art.id,
                     "sha256": art.sha256,
                     "role": role,
                     "original_name": orig_name,
                 }
+                artifact_refs[role] = ref_payload
+                registered_by_name[orig_name] = ref_payload
 
     gro_ref = artifact_refs["coordinates"]
     top_ref = artifact_refs["topology"]
@@ -152,6 +158,16 @@ def build_local_solution_system(
     sys_id = new_ulid()
     build_id = new_ulid()
     n_steps = max(1000, round(((length_ns or 1.0) * 1_000_000) / (timestep_fs or 2.0)))
+
+    extra_itp_artifacts = {
+        name: {
+            "artifact_id": ref["id"],
+            "role": "parameter",
+            "sha256": ref["sha256"],
+        }
+        for name, ref in registered_by_name.items()
+        if name.endswith(".itp")
+    }
 
     system_build = {
         "schema_version": "system_build_result/1.0",
@@ -214,6 +230,7 @@ def build_local_solution_system(
                         if mdp_ref
                         else {}
                     ),
+                    **extra_itp_artifacts,
                 }
             },
         },
@@ -262,6 +279,7 @@ def build_local_solution_system(
                 if mdp_ref
                 else {}
             ),
+            **extra_itp_artifacts,
         },
         "normalized_artifacts": {
             "coordinates": {
@@ -285,6 +303,7 @@ def build_local_solution_system(
                 if ndx_ref
                 else {}
             ),
+            **extra_itp_artifacts,
         },
         "validation_issues": [],
     }
