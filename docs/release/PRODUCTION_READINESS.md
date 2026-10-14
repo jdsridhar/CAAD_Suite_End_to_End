@@ -233,3 +233,28 @@ The new guided 3D preparation/conformer-binding browser test independently passe
 ## Independent execution and UI verification of c911464 (2026-10-14)
 
 All 6 Playwright browser tests independently passed (1.4m), including test 6 executing the guided ethanol DFT workflow, verifying QM/report task success, and rendering normalized energy, dipole, and SCF convergence evidence. The earlier DFT-execution gap is resolved for this acceptance case. The focused UI-contract/QM-lineage suites passed 122 tests in 1.34s; TypeScript typecheck and targeted Ruff checks also passed. Human dependency/license review (18.4), final release verification/tag (19.7), and recorded broader independent scientific qualification remain open, and no Git tags were present. This check did not rerun the full Python suite, final package builds/install, production MD, or broader scientific benchmarks. All checklist items are not complete, and these scoped successes do not establish unrestricted production readiness.
+
+
+## Clean package rebuild, license inventory synchronization, and reproducibility verification (2026-10-14, commit 2542c40)
+
+1. **License Inventory and Asset Synchronization**:
+   - Production web build with source maps inspected with `scripts/release/audit_web_bundle_licenses.py`: confirmed 81 mapped package roots and 7 emitted assets, synchronized chunk hashes into `docs/release/licenses/WEB_BUNDLE_ASSETS.csv` and `docs/release/licenses/WEB_BUNDLE_LICENSE_INVENTORY.csv`.
+   - Candidate third-party notice bundle assembled with `scripts/release/build_web_notices.py`: 81 hash-verified license/notice texts match with zero diff.
+2. **Clean Package Rebuild & Smoke Test**:
+   - Rebuilt wheel (`caddsuite-0.1.0.dev0-py3-none-any.whl`, 570,038 bytes, SHA-256 `4112e20e906d95c87cb6ce89c93ee69869a39048a85003a5f2273cd7a4b683e6`) and source archive (`caddsuite-0.1.0.dev0.tar.gz`, 2,372,820 bytes, SHA-256 `cb74648b4855baf59d7152ce949f5e639188c2ea353d7ef18bc200b87edfaf39`) from clean Git archive via Hatchling.
+   - Zero files from `benchmarks/**` included in sdist or wheel; `LICENSE` and `NOTICE` verified in both packages.
+   - Clean wheel installed into isolated Python 3.11 virtual environment: `caddsuite --help` passed, `caddsuite version` reported `0.1.0.dev0`, and `caddsuite db upgrade` initialized SQLite schema and upgraded to Alembic revision `0007`.
+   - Project export and reproducibility preflight verified: `caddsuite project export` exported project with content-addressed manifest; `caddsuite reproduce` preflight inspected replayability and verified 18 registered stage handlers.
+3. **Repository Gates**:
+   - Full test suite: 1104 passed, 42 skipped (0 failed).
+   - Strict mypy: clean across all 191 source files.
+   - Ruff: clean lint and formatting checks across all source and test files.
+   - Import-linter: 4/4 architectural boundary contracts kept.
+   - Playwright: 6/6 browser E2E tests green (1.2m).
+4. **Open Release Governance Gates**:
+   - Technical milestones through guided 3D preparation, explicit conformer binding, and DFT execution/results display are verified green.
+   - Open governance and qualification gates remain explicitly open:
+     1. Phase 18.4 human license review (formal legal counsel sign-off on dependency closures, attributions, and distribution models).
+     2. Phase 19.7 final release verification and Git release tag.
+     3. Broader independent scientific qualification (e.g., benchmark free energy convergence tolerances across diverse protein-ligand systems).
+

@@ -107,11 +107,19 @@ Built from a clean Git archive of commit `1dcd35b` in a temporary directory usin
 This confirms package contents, CLI entry points, archive exclusions, and database migration from clean commit `1dcd35b`. Dependency-license compatibility, notices for optional extras, and counsel review for distribution models remain open public-release gates.
 
 
-## Current clean package verification (2026-10-14)
+## Current clean package verification (2026-10-14, commit 2542c40)
 
-Built using Hatchling following the resolution of conformer entity linkage. Wheel and sdist exclude `benchmarks/**`, and include project `LICENSE` and `NOTICE`.
+Built from a clean Git archive of commit `2542c40` in a temporary directory using Hatchling. The wheel contains 222 entries and the sdist contains 802 entries; both include project `LICENSE` and `NOTICE`, and neither contains any files from `benchmarks/**`.
 
-- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, SHA-256 `6064d9e8b080e544a3819c38d26175ac7c6bc9f0f6b5d0499243cb20be9065a6`.
-- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, SHA-256 `e51b42e8892748d5c112a399c561b48059bbd420bdfac00a3e9bf5f28cb9690a`.
-- Dependency-license compatibility review (Phase 18.4) and public release tag creation remain the required distribution gates prior to external PyPI publication.
+- Wheel: `caddsuite-0.1.0.dev0-py3-none-any.whl`, 570,038 bytes; SHA-256 `4112e20e906d95c87cb6ce89c93ee69869a39048a85003a5f2273cd7a4b683e6`.
+- Sdist: `caddsuite-0.1.0.dev0.tar.gz`, 2,372,820 bytes; SHA-256 `cb74648b4855baf59d7152ce949f5e639188c2ea353d7ef18bc200b87edfaf39`.
+- Installed the wheel into an isolated Python 3.11 virtual environment. Smoke checks confirmed:
+  - `caddsuite --help` passed cleanly (exit code 0).
+  - `caddsuite version` reported `0.1.0.dev0`.
+  - `caddsuite db upgrade --data-root ...` successfully initialized SQLite schema and upgraded to Alembic revision `0007`.
+- Verified export and reproducibility preflight: `caddsuite project export` exported project with content-addressed manifest; `caddsuite reproduce` preflight inspected replayability and verified 18 registered stage handlers.
+- Web frontend license inventory: `scripts/release/audit_web_bundle_licenses.py` verified 81 mapped package roots and 7 emitted bundle assets, with zero diff against committed license manifests in `docs/release/licenses/`. `scripts/release/build_web_notices.py` assembled 81 hash-verified notices with zero diff.
+- Quality gates: full pytest suite (1104 passed, 42 skipped), strict mypy clean (191 files), Ruff lint/format clean, import-linter 4/4 kept, and Playwright 6/6 browser tests green.
+- Dependency-license compatibility review (Phase 18.4 legal counsel sign-off) and public release tag creation remain the required distribution gates prior to external PyPI publication.
+
 
