@@ -973,7 +973,7 @@ export default function App() {
     }
     return DEFAULT_ENGINE_PATHS;
   });
-  const [wf, setWf] = useState(JSON.stringify(makeDockingWorkflow("A", 16, DEFAULT_ENGINE_PATHS), null, 2));
+  const [wf, setWf] = useState(() => JSON.stringify(makeDockingWorkflow("A", 16, enginePaths), null, 2));
   const [inputs, setInputs] = useState(JSON.stringify({ compounds: [] }, null, 2));
   const [plan, setPlan] = useState<unknown>(null);
   const [history, setHistory] = useState<HistoryRun[]>([]);
@@ -1233,6 +1233,17 @@ export default function App() {
           }
         }
         setEnginePaths(mergedPaths);
+        if (selectedPreset === "docking") {
+          setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, mergedPaths, receptorPh, altlocPolicy), null, 2));
+        } else if (selectedPreset === "dft") {
+          const matchedConf = dashboard?.prepared_conformers?.find((c) => c.conformer_id === qmConformerId) || preparedConformers.find((c) => c.conformer_id === qmConformerId);
+          const hasPrep = Boolean(matchedConf?.conformer_payload && matchedConf?.form_payload);
+          setWf(JSON.stringify(makeDftWorkflow(mergedPaths, hasPrep), null, 2));
+        } else if (selectedPreset === "md") {
+          setWf(JSON.stringify(makeMdWorkflow(mergedPaths), null, 2));
+        } else if (selectedPreset === "mmpbsa") {
+          setWf(JSON.stringify(makeMmpbsaWorkflow(mergedPaths), null, 2));
+        }
       }
       setOk(true);
       try {

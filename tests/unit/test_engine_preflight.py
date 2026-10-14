@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock, patch
 
 from caddsuite.application.handlers import StageHandlerRegistry
 from caddsuite.application.md_stage_plugin import MDStagePlugin
@@ -76,6 +77,51 @@ def test_vina_probe_reports_missing_executable(tmp_path: Path) -> None:
     report = StageHandlerRegistry([VinaStagePlugin()]).inspect_stage(stage, probe_engine=True)
     assert report["engine_installation"] == "unavailable"
     assert "missing" in report["reason"]
+
+
+def test_vina_probe_resolves_bare_command_names(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    import caddsuite.application.vina_stage_plugin as vina_module
+
+    monkeypatch.setattr(vina_module.subprocess, "run", _fake_probe)
+    executable = _executable(tmp_path / "vina")
+    python = _executable(tmp_path / "python")
+    scripts = [
+        _executable(tmp_path / name) for name in ("prepare-receptor", "prepare-ligand", "export")
+    ]
+    mock_report = MagicMock()
+    mock_report.paths.vina_executable = str(executable)
+    mock_report.paths.cadd_python = str(python)
+    mock_report.paths.mk_prepare_receptor = str(scripts[0])
+    mock_report.paths.mk_prepare_ligand = str(scripts[1])
+    mock_report.paths.mk_export = str(scripts[2])
+
+    stage = StageDefinition(
+        id="dock",
+        kind="docking",
+        engine="vina",
+        params={
+            "engine_parameters": {
+                "vina_executable": "vina",
+                "meeko_python": "python",
+                "mk_prepare_receptor": "mk_prepare_receptor.py",
+                "mk_prepare_ligand": "mk_prepare_ligand.py",
+                "mk_export": "mk_export.py",
+            }
+        },
+    )
+
+    with patch(
+        "caddsuite.application.engine_discovery.discover_engine_paths",
+        return_value=mock_report,
+    ):
+        report = StageHandlerRegistry([VinaStagePlugin()]).inspect_stage(stage, probe_engine=True)
+        assert report["adapter_registration"] == "plugin_registered"
+        assert report["engine_installation"] == "available"
+        assert report["engine_version"] == "Vina 1.2.5"
+        assert report["engine_details"] == {"meeko_version": "0.6.2"}
+
 
 
 def test_gromacs_probe_uses_configured_executable_and_fixed_version_argv(

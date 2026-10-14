@@ -200,3 +200,37 @@ def test_pdbfixer_stage_build(tmp_path: Path) -> None:
         )
         with pytest.raises(ValueError, match="PDBFixer version probe returned no version"):
             PDBFixerStagePlugin._build(stage, services)
+
+
+def test_pdbfixer_stage_settings_bare_names_fallback(tmp_path: Path) -> None:
+    mock_python = tmp_path / "discovered_python"
+    mock_python.write_text("#!/bin/sh\n")
+    mock_python.chmod(0o755)
+
+    mock_worker = tmp_path / "discovered_worker.py"
+    mock_worker.write_text("# worker\n")
+
+    stage = StageDefinition(
+        id="prep",
+        kind="structure.prepare_protein",
+        engine="pdbfixer",
+        params={
+            "engine_parameters": {
+                "python_executable": "python",
+                "worker_script": "pdbfixer_worker.py",
+            }
+        },
+    )
+
+    mock_report = MagicMock()
+    mock_report.paths.cadd_python = str(mock_python)
+    mock_report.paths.pdbfixer_worker = str(mock_worker)
+
+    with patch(
+        "caddsuite.application.engine_discovery.discover_engine_paths",
+        return_value=mock_report,
+    ):
+        settings = PDBFixerStagePlugin._settings(stage)
+        assert settings.python_executable == mock_python.resolve()
+        assert settings.worker_script == mock_worker.resolve()
+

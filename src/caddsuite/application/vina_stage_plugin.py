@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
@@ -20,6 +21,43 @@ from caddsuite.contracts.structure import BindingSite, PreparedReceptor, Structu
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
 from caddsuite.workflow.definition import StageDefinition
 from caddsuite.workflow.scheduler import StageHandler
+
+
+def _is_explicit_path(path: Path) -> bool:
+    raw_str = str(path)
+    return path.is_absolute() or os.sep in raw_str or "/" in raw_str or "\\" in raw_str
+
+
+def _resolve_vina_path(path: Path, fallback_key: str) -> Path:
+    expanded = path.expanduser()
+    if expanded.is_file():
+        return expanded.resolve()
+    if not _is_explicit_path(path):
+        from caddsuite.application.engine_discovery import discover_engine_paths
+
+        discovered = discover_engine_paths().paths
+        fallback_val = getattr(discovered, fallback_key, None)
+        if fallback_val:
+            fallback_p = Path(fallback_val).expanduser()
+            if fallback_p.is_file():
+                return fallback_p.resolve()
+        which_bin = shutil.which(str(path))
+        if which_bin:
+            which_p = Path(which_bin).expanduser()
+            if which_p.is_file():
+                return which_p.resolve()
+    return expanded.resolve()
+
+
+def _resolve_vina_settings(settings: VinaEngineSettings) -> dict[str, Path]:
+    mapping = {
+        "vina": ("vina_executable", settings.vina_executable),
+        "meeko_python": ("cadd_python", settings.meeko_python),
+        "prepare_receptor": ("mk_prepare_receptor", settings.mk_prepare_receptor),
+        "prepare_ligand": ("mk_prepare_ligand", settings.mk_prepare_ligand),
+        "export": ("mk_export", settings.mk_export),
+    }
+    return {name: _resolve_vina_path(path, key) for name, (key, path) in mapping.items()}
 
 
 class VinaEngineSettings(ContractModel):
@@ -76,14 +114,7 @@ class VinaStagePlugin:
             )
         try:
             settings = VinaEngineSettings.model_validate(raw)
-            configured = {
-                "vina": settings.vina_executable,
-                "meeko_python": settings.meeko_python,
-                "prepare_receptor": settings.mk_prepare_receptor,
-                "prepare_ligand": settings.mk_prepare_ligand,
-                "export": settings.mk_export,
-            }
-            resolved = {name: path.resolve(strict=True) for name, path in configured.items()}
+            resolved = _resolve_vina_settings(settings)
             missing = [name for name, path in resolved.items() if not path.is_file()]
             if missing:
                 return EnginePreflightResult(
@@ -142,17 +173,17 @@ class VinaStagePlugin:
         if not isinstance(raw, Mapping):
             raise ValueError("Vina stage requires an engine_parameters object")
         settings = VinaEngineSettings.model_validate(raw)
-        paths = (
-            settings.vina_executable,
-            settings.meeko_python,
-            settings.mk_prepare_receptor,
-            settings.mk_prepare_ligand,
-            settings.mk_export,
-        )
-        resolved = tuple(path.resolve(strict=True) for path in paths)
-        if any(not path.is_file() for path in resolved):
+        resolved = _resolve_vina_settings(settings)
+        if any(not path.is_file() for path in resolved.values()):
             raise ValueError("configured Vina/Meeko executable or script is not a regular file")
-        vina, meeko_python, prepare_receptor, prepare_ligand, export = resolved
+        for name in ("vina", "meeko_python"):
+            if not os.access(resolved[name], os.X_OK):
+                raise ValueError(f"configured {name} path is not executable")
+        vina = resolved["vina"]
+        meeko_python = resolved["meeko_python"]
+        prepare_receptor = resolved["prepare_receptor"]
+        prepare_ligand = resolved["prepare_ligand"]
+        export = resolved["export"]
         vina_probe = subprocess.run(  # noqa: S603 - fixed version argv for explicitly configured binary
             [str(vina), "--version"],
             capture_output=True,

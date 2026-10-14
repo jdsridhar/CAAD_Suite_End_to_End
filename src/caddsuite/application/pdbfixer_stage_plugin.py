@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
@@ -18,6 +19,54 @@ from caddsuite.contracts.structure import PreparedReceptor, Structure
 from caddsuite.workflow.capabilities import CapabilityInput, StageCapability
 from caddsuite.workflow.definition import StageDefinition
 from caddsuite.workflow.scheduler import StageHandler
+
+
+def _is_explicit_path(path: Path) -> bool:
+    raw_str = str(path)
+    return path.is_absolute() or os.sep in raw_str or "/" in raw_str or "\\" in raw_str
+
+
+def _resolve_python(path: Path) -> Path:
+    expanded = path.expanduser()
+    if expanded.is_file():
+        return expanded.resolve()
+    if not _is_explicit_path(path):
+        from caddsuite.application.engine_discovery import discover_engine_paths
+
+        discovered = discover_engine_paths().paths
+        if discovered.cadd_python:
+            cadd_p = Path(discovered.cadd_python).expanduser()
+            if cadd_p.is_file():
+                return cadd_p.resolve()
+        which_bin = shutil.which(str(path))
+        if which_bin:
+            which_p = Path(which_bin).expanduser()
+            if which_p.is_file():
+                return which_p.resolve()
+    return expanded.resolve()
+
+
+def _resolve_worker(path: Path) -> Path:
+    expanded = path.expanduser()
+    if expanded.is_file():
+        return expanded.resolve()
+    if not _is_explicit_path(path):
+        from caddsuite.application.engine_discovery import discover_engine_paths
+
+        discovered = discover_engine_paths().paths
+        if discovered.pdbfixer_worker:
+            worker_p = Path(discovered.pdbfixer_worker).expanduser()
+            if worker_p.is_file():
+                return worker_p.resolve()
+        try:
+            import caddsuite_worker
+
+            pkg_worker = Path(caddsuite_worker.__file__).resolve().parent / "pdbfixer_worker.py"
+            if pkg_worker.is_file():
+                return pkg_worker.resolve()
+        except (ImportError, AttributeError):
+            pass
+    return expanded.resolve()
 
 
 class PDBFixerEngineSettings(ContractModel):
@@ -49,8 +98,8 @@ class PDBFixerStagePlugin:
                 "PDBFixer stage requires engine_parameters with Python and worker paths"
             )
         settings = PDBFixerEngineSettings.model_validate(dict(raw))
-        python = settings.python_executable.resolve(strict=True)
-        worker = settings.worker_script.resolve(strict=True)
+        python = _resolve_python(settings.python_executable)
+        worker = _resolve_worker(settings.worker_script)
         if not python.is_file() or not os.access(python, os.X_OK):
             raise ValueError("configured PDBFixer Python path is not executable")
         if not worker.is_file():
