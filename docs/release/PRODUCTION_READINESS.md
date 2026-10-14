@@ -204,3 +204,7 @@ Resolution of the remaining QM identity linkage and release verification items:
 3. **Open Release Governance Gates**:
    - Human license review (Phase 18.4 legal counsel sign-off), final release verification and Git tag (Phase 19.7), and recorded independent scientific qualification gates remain open release governance gates before external publication or public PyPI release.
 
+
+## Independent browser and focused-test verification of 82323e3 (2026-10-14)
+
+The new guided 3D preparation/conformer-binding browser test independently passed (1 test, 20.2s total), and the focused UI-contract/QM-lineage tests independently passed (122 tests, 1.44s). The browser test executes 3D preparation, selects the prepared conformer, and validates/plans DFT; it never submits the DFT workflow or verifies a QMResult. It therefore does not establish complete guided DFT execution. Final human license review, release/tag, and recorded broader scientific qualification remain open. No Git tags were present. Full suites, final package verification, and real QM/MD calculations were not rerun in this check.
