@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation & pre-release readiness |
-| **Current task** | [-] Final readiness gates after independent verification of c911464 (2026-10-14): actual guided DFT execution, QM/report task success, and UI evidence rendering passed. Human dependency/license review (18.4), exact-revision release verification/tag (19.7), and recorded broader scientific qualification remain open. |
+| **Current task** | [-] Final readiness check of 8c45b07 (2026-10-14): independently verified the documented wheel/sdist hashes and installed CLI version/help. Guided DFT/UI verification is retained from the previous run. Human dependency/license review (18.4), final release/tag (19.7), and recorded broader scientific qualification remain open. |
 | **Next task** | Complete remaining release governance gates: human license review sign-off, final release verification and Git release tag. |
-| **Last completed** | Independently reran all 6 Playwright browser tests at c911464: 6 passed (1.4m), including actual prepared-conformer DFT execution/report/results through the UI. 122 focused UI-contract/QM-lineage tests passed (1.34s); frontend TypeScript typecheck and targeted provenance-module Ruff checks passed. |
+| **Last completed** | Independent package check: /tmp/caddsuite_dist wheel and sdist hashes match the documented clean build from 2542c40; /tmp/caddsuite_test_venv CLI version/help pass (0.1.0.dev0). Previous independent browser verification remains 6/6 and focused tests 122/122 at c911464; suites were not rerun for this documentation-only update. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2204,3 +2204,9 @@ When the user says **CONTINUE**:
 - [x] Full test suite (1104 passed, 42 skipped), strict mypy clean (191 files), Ruff lint/format clean, import-linter 4/4 kept, and Playwright 6/6 browser tests passing.
 - [-] Human license review (Phase 18.4 legal counsel sign-off), final release verification and Git tag (Phase 19.7), and recorded independent scientific qualification remain open release governance gates before external publication.
 
+
+### 2026-10-14 independent package evidence check at 8c45b07
+
+- [x] Verified /tmp/caddsuite_dist wheel SHA-256 4112e20e906d95c87cb6ce89c93ee69869a39048a85003a5f2273cd7a4b683e6 and sdist SHA-256 cb74648b4855baf59d7152ce949f5e639188c2ea353d7ef18bc200b87edfaf39 match the documented build from 2542c40.
+- [x] Installed CLI in /tmp/caddsuite_test_venv passes version and help; reports 0.1.0.dev0.
+- [-] Human dependency/license review, final release verification/tag, and broader scientific qualification remain open. No Git tags were present. This check did not rerun test suites, license-text review, database migration, or scientific benchmarks.

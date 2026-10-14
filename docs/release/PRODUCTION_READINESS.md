@@ -258,3 +258,7 @@ All 6 Playwright browser tests independently passed (1.4m), including test 6 exe
      2. Phase 19.7 final release verification and Git release tag.
      3. Broader independent scientific qualification (e.g., benchmark free energy convergence tolerances across diverse protein-ligand systems).
 
+
+## Independent package evidence check at 8c45b07 (2026-10-14)
+
+Verified both /tmp/caddsuite_dist package hashes against the documented clean build from 2542c40 (wheel 4112e20e906d95c87cb6ce89c93ee69869a39048a85003a5f2273cd7a4b683e6; sdist cb74648b4855baf59d7152ce949f5e639188c2ea353d7ef18bc200b87edfaf39). Installed CLI version/help in /tmp/caddsuite_test_venv passed and reports 0.1.0.dev0. These scoped checks confirm the recorded package pair and CLI smoke behavior; they do not constitute final release, human license review, or broader scientific qualification. Those gates remain open, and no Git tags were present. Test suites, migrations, and scientific benchmarks were not rerun in this documentation-only status check.

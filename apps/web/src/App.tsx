@@ -1074,6 +1074,24 @@ export default function App() {
     return preparedConformers.filter((c) => !c.compound_id || c.compound_id === qmCompoundId);
   }, [preparedConformers, qmCompoundId]);
 
+  const hasSystemBuild = useMemo(() => {
+    try {
+      const obj = JSON.parse(inputs) as Record<string, unknown>;
+      return Boolean(obj && typeof obj === "object" && obj.system_build);
+    } catch {
+      return false;
+    }
+  }, [inputs]);
+
+  const hasEnergyPlan = useMemo(() => {
+    try {
+      const obj = JSON.parse(inputs) as Record<string, unknown>;
+      return Boolean(obj && typeof obj === "object" && obj.energy_plan);
+    } catch {
+      return false;
+    }
+  }, [inputs]);
+
   const refresh = useCallback(
     async (id: string) => {
       const r = await api.GET("/v1/projects/{project_id}/compounds", { params: { path: { project_id: id } } });
@@ -1397,7 +1415,14 @@ export default function App() {
         }
       );
       if (!resp.ok) {
-        throw new Error(`Prepared MD inputs could not be loaded: ${await resp.text()}`);
+        let errorDetail = "";
+        try {
+          const errJson = (await resp.json()) as { detail?: unknown };
+          errorDetail = typeof errJson?.detail === "string" ? errJson.detail : JSON.stringify(errJson?.detail || errJson);
+        } catch {
+          errorDetail = await resp.text();
+        }
+        throw new Error(`Prepared MD inputs could not be loaded: ${errorDetail}`);
       }
       const data = (await resp.json()) as {
         status: string;
@@ -1439,7 +1464,14 @@ export default function App() {
         },
       });
       if (!resp.ok) {
-        throw new Error(`Recorded binding-energy inputs could not be loaded: ${await resp.text()}`);
+        let errorDetail = "";
+        try {
+          const errJson = (await resp.json()) as { detail?: unknown };
+          errorDetail = typeof errJson?.detail === "string" ? errJson.detail : JSON.stringify(errJson?.detail || errJson);
+        } catch {
+          errorDetail = await resp.text();
+        }
+        throw new Error(`Recorded binding-energy inputs could not be loaded: ${errorDetail}`);
       }
       const data = (await resp.json()) as {
         status: string;
@@ -1642,6 +1674,17 @@ export default function App() {
           return;
         }
       }
+
+      if (parsed.inputs && "system_build" in parsed.inputs && !inputObj.system_build) {
+        setErr("Molecular Dynamics (MD) requires a prepared, solvated system (system_build). In an existing project with a recorded MD run, click 'Load recorded MD inputs', or supply a valid system_build contract in the inputs editor.");
+        return;
+      }
+
+      if (parsed.inputs && "energy_plan" in parsed.inputs && !inputObj.energy_plan) {
+        setErr("MM-PBSA binding energy requires an explicit energy_plan and trajectory request. In an existing project with a completed binding-energy run, click 'Load recorded binding-energy inputs', or supply valid contracts in the inputs editor.");
+        return;
+      }
+
       for (const key of Object.keys(parsed.inputs || {})) {
         if (!(key in inputObj) || inputObj[key] == null) {
           throw new Error("Missing input: " + key + ". Upload or prepare the required input before queueing this workflow.");
@@ -2664,10 +2707,18 @@ export default function App() {
                   </div>
                 )}
                 {selectedPreset === "md" && (
-                  <div className={"readiness-pill " + (mdDemoInfo ? "ready" : "warn")}>
+                  <div className={"readiness-pill " + (hasSystemBuild ? "ready" : "warn")}>
                     <span className="dot-indicator" />
                     <span>
-                      Prepared system: <strong>{mdDemoInfo ? "Recorded inputs loaded" : "Provide validated inputs"}</strong>
+                      Prepared system: <strong>{hasSystemBuild ? "Recorded inputs loaded" : "Provide system_build"}</strong>
+                    </span>
+                  </div>
+                )}
+                {selectedPreset === "mmpbsa" && (
+                  <div className={"readiness-pill " + (hasEnergyPlan ? "ready" : "warn")}>
+                    <span className="dot-indicator" />
+                    <span>
+                      Energy plan: <strong>{hasEnergyPlan ? "Recorded inputs loaded" : "Provide energy_plan"}</strong>
                     </span>
                   </div>
                 )}
@@ -2686,7 +2737,21 @@ export default function App() {
                 <button
                   type="button"
                   className="dark run-button"
-                  disabled={!ok || !pid || compounds.length === 0 || (selectedPreset === "docking" && !activeTargetArtifact)}
+                  disabled={
+                    !ok ||
+                    !pid ||
+                    compounds.length === 0 ||
+                    (selectedPreset === "docking" && !activeTargetArtifact) ||
+                    (selectedPreset === "md" && !hasSystemBuild) ||
+                    (selectedPreset === "mmpbsa" && !hasEnergyPlan)
+                  }
+                  title={
+                    selectedPreset === "md" && !hasSystemBuild
+                      ? "Molecular Dynamics requires a prepared, solvated system (system_build). Load recorded MD inputs or supply an explicit system_build contract."
+                      : selectedPreset === "mmpbsa" && !hasEnergyPlan
+                      ? "MM-PBSA requires an explicit energy plan and trajectory request. Load recorded binding-energy inputs or supply explicit contracts."
+                      : undefined
+                  }
                   onClick={() => void submit()}
                 >
                   🚀 Queue Pipeline
