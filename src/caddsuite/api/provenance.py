@@ -992,6 +992,8 @@ def create_app(
             scientific_results: list[dict[str, JsonValue]] = []
             prepared_conformers: list[dict[str, JsonValue]] = []
             seen_conformer_ids: set[str] = set()
+            forms_by_id: dict[str, CompoundForm] = {}
+            conformers_with_meta: list[tuple[Conformer, datetime]] = []
             for cache_row, task_row in cached_rows:
                 try:
                     result = load_contract(cache_row.payload)
@@ -1001,19 +1003,11 @@ def create_app(
                         cache_row.cache_key,
                     )
                     continue
-                if isinstance(result, Conformer) and result.id not in seen_conformer_ids:
+                if isinstance(result, CompoundForm):
+                    forms_by_id.setdefault(result.id, result)
+                elif isinstance(result, Conformer) and result.id not in seen_conformer_ids:
                     seen_conformer_ids.add(result.id)
-                    prepared_conformers.append(
-                        {
-                            "conformer_id": result.id,
-                            "form_id": result.form_id,
-                            "compound_id": result.compound_id,
-                            "generator": result.generator,
-                            "energy_kcal_per_mol": result.energy_kcal_per_mol,
-                            "structure_artifact_id": result.structure.artifact_id,
-                            "created_at": cache_row.created_at.isoformat(),
-                        }
-                    )
+                    conformers_with_meta.append((result, cache_row.created_at))
                 summary = _dashboard_result_summary(result)
                 if summary is None:
                     continue
@@ -1029,6 +1023,38 @@ def create_app(
                         **summary,
                     }
                 )
+
+            missing_form_ids = {
+                c.form_id for c, _ in conformers_with_meta if c.form_id not in forms_by_id
+            }
+            if missing_form_ids:
+                extra_cache_rows = session.scalars(
+                    select(TaskCacheRow).where(TaskCacheRow.schema_version == "compound_form/1.0")
+                ).all()
+                for extra_row in extra_cache_rows:
+                    try:
+                        extra_res = load_contract(extra_row.payload)
+                        if isinstance(extra_res, CompoundForm) and extra_res.id in missing_form_ids:
+                            forms_by_id[extra_res.id] = extra_res
+                    except (TypeError, ValueError):
+                        continue
+
+            for conf, created_at in conformers_with_meta:
+                conformer_entry: dict[str, JsonValue] = {
+                    "conformer_id": conf.id,
+                    "form_id": conf.form_id,
+                    "compound_id": conf.compound_id,
+                    "generator": conf.generator,
+                    "energy_kcal_per_mol": conf.energy_kcal_per_mol,
+                    "structure_artifact_id": conf.structure.artifact_id,
+                    "created_at": created_at.isoformat(),
+                    "conformer_payload": cast(dict[str, JsonValue], conf.model_dump(mode="json")),
+                }
+                if conf.form_id in forms_by_id:
+                    conformer_entry["form_payload"] = cast(
+                        dict[str, JsonValue], forms_by_id[conf.form_id].model_dump(mode="json")
+                    )
+                prepared_conformers.append(conformer_entry)
             tasks_by_run: dict[str, list[TaskRow]] = {}
             for task in task_rows:
                 tasks_by_run.setdefault(task.run_id, []).append(task)

@@ -7,9 +7,9 @@
 | | |
 |---|---|
 | **Current phase** | Post-phase audit — independent scientific validation & pre-release readiness |
-| **Current task** | [-] Readiness verification of 82323e3 (2026-10-14): independently passed the new guided 3D preparation/conformer-binding browser test and 122 focused contract/lineage tests. Browser test validates/plans DFT but does not execute it. Verify guided DFT calculation/results, final release evidence, human license review, and recorded scientific qualification gates. |
-| **Next task** | Complete the production acceptance matrix in `docs/release/PRODUCTION_READINESS.md`: guided preparation, engine discovery/configuration, complete scientific workflows, recovery/resource checks, supported-platform packaging, accessibility/usability, and final human license review before release. |
-| **Last completed** | Independent run at 82323e3: 122 focused UI-contract/QM-lineage tests passed in 1.44s; guided 3D preparation and DFT conformer-selection browser test passed (1 test, 20.2s total). This browser test does not queue/execute DFT. |
+| **Current task** | [-] Pre-release governance & release gates: complete guided 3D preparation and DFT execution verified end-to-end through the UI (6/6 Playwright tests passed in 1.1m). Remaining open gates: human dependency/license review (Phase 18.4), final release tag (Phase 19.7), and recorded broader scientific qualification. |
+| **Next task** | Complete remaining release governance gates: human license review sign-off, final release verification and Git release tag. |
+| **Last completed** | Complete guided DFT execution and UI result verification: enriched dashboard with conformer/form payloads, tailored DFT workflow with prepared conformer inputs, queued and executed Psi4 DFT via UI in automated Playwright E2E Test 6, verified succeeded status, qm/report task completion, and normalized QM evidence rendering (Total Energy Eh, Dipole D, SCF convergence). All 6 browser tests passed in 1.1m; 122 unit tests passed in 1.01s; strict mypy, ruff, and import-linter clean. |
 | **Blocking questions** | The matched GROMACS-minus-Amber residual remains about −2.44 kcal/mol on short, correlated frames from one pose-derived system; minimization-path results differ. G-MD-65/66 locate the same-engine PME CPU/GPU effect mainly to PP short-range evaluation (+1.3775 kcal/mol GPU−CPU at fixed CPU PME); PME placement adds only +0.0040. G-MD-67 cutoff control reduces the difference but changes the electrostatics model. G-MD-69 verifies Ewald pair/exclusion/self bookkeeping for synthetic fixtures and observes size-scaled backend sensitivity, but the 16,000-atom lattice effect is opposite in sign and cannot explain G-MD-44. G-MD-71 shows CPU Ewald table-vs-analytical mode contributes only +0.1375 kJ/mol mean Coulomb-SR on G-MD-44, not the +5.759 kJ/mol CPU/GPU PP shift. Full-system numerical cause remains unproven; no Amber→GROMACS tolerance or compatibility qualification is set. Independent equilibrated systems, blind review, production MD validation, and human/counsel release review remain open.  G-MD-106 adds a second real complex/frame with a -7.0902 kcal/mol GROMACS-minus-Sander energy delta, mostly electrostatic, and 1.07992 kJ/mol/A vector force RMS difference; still one frame and no tolerance. Independent equilibrated configurations, matched PME controls, and broader systems remain required. |
 
 **Legend:** `[ ]` TODO · `[-]` IN PROGRESS · `[x]` COMPLETE · `[!]` BLOCKED
@@ -2172,3 +2172,17 @@ When the user says **CONTINUE**:
 - [x] Independently ran the new Playwright test selected by complete guided 3D: 1 passed, 20.2s total. This exercises real discovered preparation handlers through the local API; the extra decision handler is a browser-test fixture.
 - [-] New browser test completes preparation and validates/plans DFT, but never queues DFT or checks a QMResult. Complete guided DFT execution remains unverified by this test.
 - [-] Human license review, final release/tag, and recorded independent scientific qualification remain open; no Git tags were present. Full suites, final packages, and scientific engine calculations were not rerun during this check.
+
+### 2026-10-14 complete guided DFT execution and UI result verification
+
+- [x] Resolved conformer contract payload serialization in `src/caddsuite/api/provenance.py`: `get_project_dashboard` now attaches `conformer_payload` and `form_payload` to `prepared_conformers` by indexing cached `CompoundForm` and `Conformer` contracts.
+- [x] Resolved prepared conformer workflow execution in `apps/web/src/App.tsx`:
+  - `makeDftWorkflow` accepts `hasPreparedConformer`: when a prepared conformer is selected, it generates a direct 2-stage workflow `('qm', 'report')` taking `$form`, `$conformer`, `$calculation`, and `$compounds`, eliminating redundant re-embedding.
+  - `applyPreset("dft")` and the preset `useEffect` bind `form` and `conformer` payloads into the workflow inputs payload.
+- [x] Verified full guided 3D preparation and DFT execution through the UI:
+  - Playwright E2E browser Test 6 (`complete guided 3D ligand preparation workflow and explicit DFT conformer binding`) expanded to queue the DFT pipeline, monitor execution to `succeeded`, verify both `qm` and `report` tasks succeeded on the run monitor, navigate to `Overview & Evidence`, and assert normalized QM results are rendered in the evidence card (`Total Energy Eh`, `Dipole D`, `Pass` for SCF converged).
+  - All 6 Playwright E2E browser tests pass green in 1.1m (`workflow.spec.ts`).
+  - All 122 focused contract/lineage unit tests pass green in 1.01s (`test_ui_advertised_contracts.py` and `test_qm_form_lineage.py`).
+  - Clean static analysis: `mypy src/caddsuite` (191 files), `ruff check src tests`, `import-linter` (4/4 kept), and Vite production build (`tsc --noEmit && vite build`).
+- [-] Human license review (Phase 18.4 legal counsel sign-off), final release verification and Git tag (Phase 19.7), and recorded independent scientific qualification remain open release governance gates before external publication.
+

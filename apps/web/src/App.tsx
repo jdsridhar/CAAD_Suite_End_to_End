@@ -53,6 +53,8 @@ type PreparedConformer = {
   energy_kcal_per_mol?: number | null;
   structure_artifact_id?: string;
   created_at?: string;
+  conformer_payload?: Record<string, unknown>;
+  form_payload?: Record<string, unknown>;
 };
 type Dashboard = {
   project: Project;
@@ -277,7 +279,86 @@ const PRESET_LIGAND_3D = {
   outputs: { report: "report" }
 };
 
-function makeDftWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
+function makeDftWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS, hasPreparedConformer = false) {
+  if (hasPreparedConformer) {
+    return {
+      schema: "caddsuite.workflow/1",
+      name: "Ligand Quantum Chemistry / DFT (Psi4)",
+      inputs: {
+        compounds: {
+          contract: "compound/1.0",
+          description: "Registered parent compounds"
+        },
+        form: {
+          contract: "compound_form/1.0",
+          description: "Prepared ligand form / microstate"
+        },
+        conformer: {
+          contract: "conformer/1.1",
+          description: "Prepared ligand 3D conformer / geometry"
+        },
+        calculation: {
+          contract: "qm_calculation/1.2",
+          description: "DFT calculation spec (method, basis, protocol)"
+        }
+      },
+      stages: [
+        {
+          id: "qm",
+          kind: "quantum_chemistry",
+          engine: "caddsuite.qm.psi4",
+          for_each: "compound_form",
+          input_contracts: {
+            calculation: "qm_calculation/1.2",
+            form: "compound_form/1.0",
+            conformer: "conformer/1.1"
+          },
+          input_bindings: {
+            calculation: "$calculation",
+            form: "$form",
+            conformer: "$conformer"
+          },
+          output_contract: "qm_result/2.1",
+          params: {
+            engine_parameters: {
+              python_executable: paths.psi4_python || "python",
+              worker_source_directory: paths.worker_source_dir || "src",
+              memory_gb: 2,
+              n_threads: 2
+            }
+          }
+        },
+        {
+          id: "report",
+          kind: "report",
+          needs: ["qm"],
+          input_contracts: {
+            compounds: "compound/1.0",
+            compound_forms: "compound_form/1.0",
+            conformers: "conformer/1.1",
+            qm_calculations: "qm_calculation/1.2",
+            qm_results: "qm_result/2.1"
+          },
+          input_bindings: {
+            compounds: "$compounds",
+            compound_forms: "$form",
+            conformers: "$conformer",
+            qm_calculations: "$calculation",
+            qm_results: "qm"
+          },
+          output_contract: "report_bundle/1.0",
+          params: {
+            formats: ["html", "json", "csv"]
+          }
+        }
+      ],
+      outputs: {
+        report: "report",
+        qm: "qm"
+      }
+    };
+  }
+
   return {
     schema: "caddsuite.workflow/1",
     name: "Ligand Quantum Chemistry / DFT (Psi4)",
@@ -940,6 +1021,8 @@ export default function App() {
       energy_kcal_per_mol?: number | null;
       structure_artifact_id?: string;
       label: string;
+      conformer_payload?: Record<string, unknown>;
+      form_payload?: Record<string, unknown>;
     }> = [];
     const seen = new Set<string>();
 
@@ -959,6 +1042,8 @@ export default function App() {
             energy_kcal_per_mol: pc.energy_kcal_per_mol,
             structure_artifact_id: pc.structure_artifact_id,
             label: `Conformer ${pc.conformer_id.slice(0, 8)}... (Form: ${pc.form_id.slice(0, 8)}...)${compName ? ` - ${compName}` : ""}${genStr}${energyStr}`,
+            conformer_payload: pc.conformer_payload,
+            form_payload: pc.form_payload,
           });
         }
       }
@@ -1089,7 +1174,9 @@ export default function App() {
     if (selectedPreset === "docking") {
       setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, newPaths, receptorPh, altlocPolicy), null, 2));
     } else if (selectedPreset === "dft") {
-      setWf(JSON.stringify(makeDftWorkflow(newPaths), null, 2));
+      const matchedConf = dashboard?.prepared_conformers?.find((c) => c.conformer_id === qmConformerId) || preparedConformers.find((c) => c.conformer_id === qmConformerId);
+      const hasPrep = Boolean(matchedConf?.conformer_payload && matchedConf?.form_payload);
+      setWf(JSON.stringify(makeDftWorkflow(newPaths, hasPrep), null, 2));
     } else if (selectedPreset === "md") {
       setWf(JSON.stringify(makeMdWorkflow(newPaths), null, 2));
     } else if (selectedPreset === "mmpbsa") {
@@ -1105,7 +1192,9 @@ export default function App() {
     if (selectedPreset === "docking") {
       setWf(JSON.stringify(makeDockingWorkflow(targetChain, exhaustiveness, fresh, receptorPh, altlocPolicy), null, 2));
     } else if (selectedPreset === "dft") {
-      setWf(JSON.stringify(makeDftWorkflow(fresh), null, 2));
+      const matchedConf = dashboard?.prepared_conformers?.find((c) => c.conformer_id === qmConformerId) || preparedConformers.find((c) => c.conformer_id === qmConformerId);
+      const hasPrep = Boolean(matchedConf?.conformer_payload && matchedConf?.form_payload);
+      setWf(JSON.stringify(makeDftWorkflow(fresh, hasPrep), null, 2));
     } else if (selectedPreset === "md") {
       setWf(JSON.stringify(makeMdWorkflow(fresh), null, 2));
     } else if (selectedPreset === "mmpbsa") {
@@ -1188,28 +1277,30 @@ export default function App() {
         setWf(JSON.stringify(PRESET_LIGAND_3D, null, 2));
         setInputs(JSON.stringify({ compounds: comps.map((c) => c.payload) }, null, 2));
       } else if (key === "dft") {
-        setWf(JSON.stringify(makeDftWorkflow(enginePaths), null, 2));
         const selectedComp = comps.find((c) => c.id === targetQmCompId) || comps[0];
-        setInputs(
-          JSON.stringify(
-            {
-              compounds: comps.map((c) => c.payload),
-              calculation: buildDefaultCalculationPayload(
-                selectedComp,
-                formId,
-                conformerId,
-                method,
-                basis,
-                protocol,
-                solvation,
-                charge,
-                multiplicity
-              ),
-            },
-            null,
-            2
-          )
+        const matchedConf = dashboard?.prepared_conformers?.find((c) => c.conformer_id === conformerId) || preparedConformers.find((c) => c.conformer_id === conformerId);
+        const hasPrep = Boolean(matchedConf?.conformer_payload && matchedConf?.form_payload);
+        setWf(JSON.stringify(makeDftWorkflow(enginePaths, hasPrep), null, 2));
+        const calcPayload = buildDefaultCalculationPayload(
+          selectedComp,
+          formId,
+          conformerId,
+          method,
+          basis,
+          protocol,
+          solvation,
+          charge,
+          multiplicity
         );
+        const dftInputs: Record<string, unknown> = {
+          compounds: comps.map((c) => c.payload),
+          calculation: calcPayload,
+        };
+        if (hasPrep && matchedConf?.conformer_payload && matchedConf?.form_payload) {
+          dftInputs.form = matchedConf.form_payload;
+          dftInputs.conformer = matchedConf.conformer_payload;
+        }
+        setInputs(JSON.stringify(dftInputs, null, 2));
       } else if (key === "md") {
         setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
         if (mdDemoInfo) {
@@ -1230,7 +1321,7 @@ export default function App() {
         void loadDemoMmpbsaSystem();
       }
     },
-    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId]
+    [activeTargetArtifact, compounds, targetChain, exhaustiveness, receptorPh, altlocPolicy, mdLengthNs, mdTimestepFs, mdTempK, enginePaths, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, qmCompoundId, qmFormId, qmConformerId, dashboard?.prepared_conformers, preparedConformers]
   );
 
   useEffect(() => {
@@ -1245,26 +1336,29 @@ export default function App() {
       setInputs(JSON.stringify(inputObj, null, 2));
     } else if (selectedPreset === "dft") {
       const selectedComp = compounds.find((c) => c.id === qmCompoundId) || compounds[0];
-      setInputs(
-        JSON.stringify(
-          {
-            compounds: compounds.map((c) => c.payload),
-            calculation: buildDefaultCalculationPayload(
-              selectedComp,
-              qmFormId,
-              qmConformerId,
-              qmMethod,
-              qmBasis,
-              qmProtocol,
-              qmSolvation,
-              qmCharge,
-              qmMultiplicity
-            ),
-          },
-          null,
-          2
-        )
+      const matchedConf = dashboard?.prepared_conformers?.find((c) => c.conformer_id === qmConformerId) || preparedConformers.find((c) => c.conformer_id === qmConformerId);
+      const hasPrep = Boolean(matchedConf?.conformer_payload && matchedConf?.form_payload);
+      setWf(JSON.stringify(makeDftWorkflow(enginePaths, hasPrep), null, 2));
+      const calcPayload = buildDefaultCalculationPayload(
+        selectedComp,
+        qmFormId,
+        qmConformerId,
+        qmMethod,
+        qmBasis,
+        qmProtocol,
+        qmSolvation,
+        qmCharge,
+        qmMultiplicity
       );
+      const dftInputs: Record<string, unknown> = {
+        compounds: compounds.map((c) => c.payload),
+        calculation: calcPayload,
+      };
+      if (hasPrep && matchedConf?.conformer_payload && matchedConf?.form_payload) {
+        dftInputs.form = matchedConf.form_payload;
+        dftInputs.conformer = matchedConf.conformer_payload;
+      }
+      setInputs(JSON.stringify(dftInputs, null, 2));
     } else if (selectedPreset === "md") {
       if (!mdDemoInfo) {
 
@@ -1285,7 +1379,7 @@ export default function App() {
     } else if (selectedPreset === "admet" || selectedPreset === "ligand_3d") {
       setInputs(JSON.stringify({ compounds: compounds.map((c) => c.payload) }, null, 2));
     }
-  }, [compounds, activeTargetArtifact, selectedPreset, mdLengthNs, mdTimestepFs, mdTempK, mmpbsaDemoInfo, qmCompoundId, qmFormId, qmConformerId, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity]);
+  }, [compounds, activeTargetArtifact, selectedPreset, mdLengthNs, mdTimestepFs, mdTempK, mmpbsaDemoInfo, qmCompoundId, qmFormId, qmConformerId, qmMethod, qmBasis, qmProtocol, qmSolvation, qmCharge, qmMultiplicity, enginePaths, dashboard?.prepared_conformers, preparedConformers]);
 
   async function loadDemoMdSystem() {
     if (!pid) return;

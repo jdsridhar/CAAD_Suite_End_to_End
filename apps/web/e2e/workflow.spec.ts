@@ -301,7 +301,7 @@ test("guided preparation, explicit DFT plans, and project deletion lifecycle", a
 });
 
 test("complete guided 3D ligand preparation workflow and explicit DFT conformer binding", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const projectId = await connectAndCreate(page);
 
   // Register compound in Ligand Registry
@@ -359,10 +359,26 @@ test("complete guided 3D ligand preparation workflow and explicit DFT conformer 
   await page.getByRole("button", { name: "Validate & Plan" }).click();
   await expect(page.getByRole("status").filter({ hasText: /compiled successfully/ })).toBeVisible();
 
-  // Check Overview & Evidence dashboard shows the completed run
+  // Queue and execute the DFT calculation through the UI
+  await page.getByRole("button", { name: /Queue Pipeline/ }).click();
+  const dftProgress = page.locator(".panel").filter({ has: page.getByRole("heading", { name: "Execution progress" }) });
+  await expect(dftProgress.locator(".pill").filter({ hasText: "succeeded" })).toBeVisible({ timeout: 60_000 });
+
+  // Verify that the QM stage completed successfully on the monitor
+  await expect(dftProgress.locator(".task").filter({ hasText: "qm" }).getByText("succeeded")).toBeVisible();
+  await expect(dftProgress.locator(".task").filter({ hasText: "report" }).getByText("succeeded")).toBeVisible();
+
+  // Navigate to Overview & Evidence dashboard and verify scientific results
   await page.getByRole("button", { name: /Overview & Evidence/ }).click();
   await expect(page.getByRole("heading", { name: "Project dashboard" })).toBeVisible();
-  await expect(page.locator(".dashboard-run").getByText("succeeded", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scientific evidence & results" })).toBeVisible();
+
+  // Assert normalized quantum chemistry results are visible (electronic energy, dipole moment)
+  const qmCard = page.locator(".evidence-card").filter({ hasText: "quantum chemistry" });
+  await expect(qmCard).toBeVisible();
+  await expect(qmCard.getByText("Total Energy Eh")).toBeVisible();
+  await expect(qmCard.getByText("Dipole D")).toBeVisible();
+  await expect(qmCard.getByText("Pass")).toBeVisible();
 });
 
 

@@ -208,3 +208,24 @@ Resolution of the remaining QM identity linkage and release verification items:
 ## Independent browser and focused-test verification of 82323e3 (2026-10-14)
 
 The new guided 3D preparation/conformer-binding browser test independently passed (1 test, 20.2s total), and the focused UI-contract/QM-lineage tests independently passed (122 tests, 1.44s). The browser test executes 3D preparation, selects the prepared conformer, and validates/plans DFT; it never submits the DFT workflow or verifies a QMResult. It therefore does not establish complete guided DFT execution. Final human license review, release/tag, and recorded broader scientific qualification remain open. No Git tags were present. Full suites, final package verification, and real QM/MD calculations were not rerun in this check.
+
+## Complete guided DFT execution and UI result verification (2026-10-14)
+
+1. **Prepared Conformer Payloads & Direct Workflow Execution**:
+   - In `src/caddsuite/api/provenance.py`: `get_project_dashboard` attaches `conformer_payload` and `form_payload` to `prepared_conformers` by indexing cached `CompoundForm` and `Conformer` contracts.
+   - In `apps/web/src/App.tsx`:
+     - Added `conformer_payload` and `form_payload` to `PreparedConformer` type and propagated through `preparedConformers` hook.
+     - `makeDftWorkflow` parameterized with `hasPreparedConformer`: when a prepared conformer is selected, it generates a direct 2-stage workflow `('qm', 'report')` taking `$form`, `$conformer`, `$calculation`, and `$compounds`, eliminating redundant re-embedding.
+     - `applyPreset("dft")` and the preset `useEffect` bind `form` and `conformer` payloads into the workflow inputs object.
+2. **End-to-End Automated Browser Verification**:
+   - Playwright E2E browser Test 6 (`complete guided 3D ligand preparation workflow and explicit DFT conformer binding`) expanded to queue the DFT pipeline, monitor execution to `succeeded`, verify both `qm` and `report` tasks succeeded on the run monitor, navigate to `Overview & Evidence`, and assert normalized QM results are rendered in the evidence card (`Total Energy Eh`, `Dipole D`, `Pass` for SCF converged).
+   - All 6 Playwright E2E browser tests pass green in 1.1m (`workflow.spec.ts`).
+   - All 122 focused contract/lineage unit tests pass green in 1.01s (`test_ui_advertised_contracts.py` and `test_qm_form_lineage.py`).
+   - Clean static analysis: `mypy src/caddsuite` (191 files), `ruff check src tests`, `import-linter` (4/4 kept), and Vite production build (`tsc --noEmit && vite build`).
+3. **Open Release Governance Gates**:
+   - Actual DFT execution and UI result verification is complete and verified green.
+   - Non-code governance gates remain open before external distribution:
+     1. Phase 18.4 human license review (formal legal counsel sign-off).
+     2. Phase 19.7 final release verification and Git release tag.
+     3. Broader independent scientific qualification (free energy convergence tolerances across diverse protein-ligand benchmarks).
+
