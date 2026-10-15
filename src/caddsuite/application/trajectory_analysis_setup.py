@@ -9,9 +9,9 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -45,8 +45,23 @@ class ProteinAnalysisOptions(ContractModel):
     backbone_selection: str = Field(default="protein and backbone", min_length=1, max_length=500)
     ca_selection: str = Field(default="protein and name CA", min_length=1, max_length=500)
     protein_selection: str = Field(default="protein", min_length=1, max_length=500)
+    ligand_selection: str | None = Field(default=None, min_length=1, max_length=500)
+    sasa_surface_selection: str = Field(default="protein", min_length=1, max_length=500)
+    sasa_output_selection: str = Field(default="protein", min_length=1, max_length=500)
+    sasa_probe_radius_A: float = Field(default=1.4, gt=0, le=5, allow_inf_nan=False)
+    sasa_sphere_points: int = Field(default=24, ge=1, le=1_000_000)
+    hbond_distance_nm: float = Field(default=0.35, gt=0, le=1, allow_inf_nan=False)
+    hbond_angle_deg: float = Field(default=30, gt=0, le=180, allow_inf_nan=False)
     metrics: tuple[
-        Literal["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration"], ...
+        Literal[
+            "backbone_rmsd",
+            "protein_ca_rmsf",
+            "protein_radius_of_gyration",
+            "solvent_accessible_surface_area",
+            "protein_ligand_hbond_count",
+            "protein_hbond_count",
+        ],
+        ...,
     ] = ("backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration")
     start_time_ns: Annotated[float, Field(ge=0, allow_inf_nan=False)] = 0
     end_time_ns: Annotated[float, Field(gt=0, allow_inf_nan=False)] | None = None
@@ -54,6 +69,16 @@ class ProteinAnalysisOptions(ContractModel):
     reference_frame: Literal[0] = 0
     mdanalysis_python: str | None = None
     gmx_executable: str | None = None
+
+    @model_validator(mode="after")
+    def _required_selections(self) -> ProteinAnalysisOptions:
+        if not self.metrics or len(set(self.metrics)) != len(self.metrics):
+            raise ValueError("Select one or more unique supported trajectory metrics.")
+        if "protein_ligand_hbond_count" in self.metrics and not (
+            self.ligand_selection and self.ligand_selection.strip()
+        ):
+            raise ValueError("Hydrogen-bond analysis requires an explicit ligand selection.")
+        return self
 
 
 def _analysis_python(explicit: str | None) -> Path:
@@ -138,17 +163,37 @@ def prepare_protein_analysis(
     work.mkdir(parents=True, mode=0o700)
     for role, extension in (("topology", "gro"), ("trajectory", "xtc")):
         shutil.copyfile(store.path_for(sources[role].sha256 or ""), work / f"{role}.{extension}")
-    expressions = {
-        "backbone": options.backbone_selection,
-        "protein_ca": options.ca_selection,
-        "protein": options.protein_selection,
-    }
+    metrics = set(options.metrics)
+    expressions = {}
+    if "backbone_rmsd" in metrics:
+        expressions["backbone"] = options.backbone_selection
+    if "protein_ca_rmsf" in metrics:
+        expressions["protein_ca"] = options.ca_selection
+    if {
+        "protein_radius_of_gyration",
+        "protein_ligand_hbond_count",
+        "protein_hbond_count",
+    } & metrics:
+        expressions["protein"] = options.protein_selection
+    index_groups: dict[str, str] = {}
+    if "solvent_accessible_surface_area" in metrics:
+        expressions.update(
+            surface=options.sasa_surface_selection, sasa_output=options.sasa_output_selection
+        )
+        index_groups.update(surface="CSA_Surface", sasa_output="CSA_SasaOutput")
+    if "protein_ligand_hbond_count" in metrics:
+        expressions["ligand"] = options.ligand_selection or ""
+        index_groups.update(protein="CSA_Protein", ligand="CSA_Ligand")
+    if "protein_hbond_count" in metrics:
+        index_groups["protein"] = "CSA_Protein"
     request = {
         "topology": "topology.gro",
         "trajectory": "trajectory.xtc",
         "hashes": {key: sources[key].sha256 for key in ("topology", "trajectory")},
         "selections": expressions,
     }
+    if index_groups:
+        request["index_groups"] = index_groups
     request_path = work / "inspection.json"
     request_path.write_text(json.dumps(request) + "\n")
     argv = (str(python), str(workers / "trajectory_inspection_worker.py"), str(request_path))
@@ -172,6 +217,33 @@ def prepare_protein_analysis(
         or metadata.get("hashes") != request["hashes"]
     ):
         raise ValueError("Trajectory inspection receipt does not match its input hashes.")
+    index_ref = None
+    if index_groups:
+        index_receipt = metadata.get("index")
+        if not isinstance(index_receipt, dict) or index_receipt.get("groups") != index_groups:
+            raise ValueError("Trajectory inspection did not verify the requested index groups.")
+        index_path = work / "analysis-groups.ndx"
+        if index_receipt.get("path") != index_path.name or not index_path.is_file():
+            raise ValueError("Trajectory inspection index artifact is missing.")
+        blob = store.put_bytes(index_path.read_bytes())
+        if blob.sha256 != index_receipt.get("sha256"):
+            raise ValueError("Trajectory inspection index hash does not match its receipt.")
+        with sessions.begin() as session:
+            artifact = register_blob(
+                session,
+                blob,
+                kind="trajectory_index",
+                media_type="text/plain",
+                original_name=index_path.name,
+            )
+            if session.get(ProjectArtifactRow, (project_id, artifact.id, "analysis_index")) is None:
+                session.add(
+                    ProjectArtifactRow(
+                        project_id=project_id, artifact_id=artifact.id, role="analysis_index"
+                    )
+                )
+            index_ref = ArtifactRef(artifact_id=artifact.id, role="index", sha256=artifact.sha256)
+        sources["index"] = index_ref
     start = max(options.start_time_ns, metadata["start_time_ps"] / 1000)
     end = options.end_time_ns if options.end_time_ns is not None else metadata["end_time_ps"] / 1000
     if not start < end <= metadata["end_time_ps"] / 1000 + 1e-9:
@@ -218,19 +290,48 @@ def prepare_protein_analysis(
             TrajectoryTransform.REMOVE_PERIODIC_JUMPS,
         ),
     )
-    plan = TrajectoryAnalysisPlan(
-        id=new_ulid(),
-        simulation_id=simulation_id,
-        trajectory_id=new_ulid(),
-        compound_id=result.compound_id,
-        form_id=result.form_id,
-        selections=selections,
-        metrics=tuple(TrajectoryMetric(metric) for metric in options.metrics),
-        start_time_ns=start,
-        end_time_ns=end,
-        stride=options.stride,
-        reference_frame=options.reference_frame,
-    )
+    plans: dict[str, TrajectoryAnalysisPlan] = {}
+    trajectory_id = new_ulid()
+    for name, names, selection_keys in (
+        (
+            "analysis",
+            metrics
+            - {
+                "solvent_accessible_surface_area",
+                "protein_ligand_hbond_count",
+                "protein_hbond_count",
+            },
+            {"backbone", "protein_ca", "protein"},
+        ),
+        ("sasa", metrics & {"solvent_accessible_surface_area"}, {"surface", "sasa_output"}),
+        ("hbond", metrics & {"protein_ligand_hbond_count"}, {"protein", "ligand"}),
+        ("protein_hbond", metrics & {"protein_hbond_count"}, {"protein"}),
+    ):
+        if not names:
+            continue
+        stage_selections = {
+            key: value for key, value in selections.items() if key in selection_keys
+        }
+        if name != "analysis":
+            stage_selections = {
+                key: value.model_copy(update={"description": index_groups[key]})
+                for key, value in stage_selections.items()
+            }
+        plans[name] = TrajectoryAnalysisPlan(
+            id=new_ulid(),
+            simulation_id=simulation_id,
+            trajectory_id=trajectory_id,
+            compound_id=result.compound_id,
+            form_id=result.form_id,
+            selections=stage_selections,
+            metrics=tuple(
+                TrajectoryMetric(metric) for metric in options.metrics if metric in names
+            ),
+            start_time_ns=start,
+            end_time_ns=end,
+            stride=options.stride,
+            reference_frame=options.reference_frame,
+        )
     receipt = {
         "metadata": metadata,
         "options": options.model_dump(mode="json"),
@@ -250,16 +351,19 @@ def prepare_protein_analysis(
             media_type="application/json",
             original_name="trajectory-inspection.json",
         )
-        session.add(
-            ProjectArtifactRow(project_id=project_id, artifact_id=artifact.id, role="inspection")
-        )
+        if session.get(ProjectArtifactRow, (project_id, artifact.id, "inspection")) is None:
+            session.add(
+                ProjectArtifactRow(
+                    project_id=project_id, artifact_id=artifact.id, role="inspection"
+                )
+            )
         inspection = ArtifactRef(artifact_id=artifact.id, role="inspection", sha256=artifact.sha256)
     workflow = {
         "schema": "caddsuite.workflow/1",
         "name": "Recorded MD protein trajectory analysis",
         "inputs": {
             "request": {"contract": processing.schema_version},
-            "analysis_plan": {"contract": plan.schema_version},
+            **{f"{name}_plan": {"contract": plan.schema_version} for name, plan in plans.items()},
         },
         "stages": [
             {
@@ -274,39 +378,73 @@ def prepare_protein_analysis(
                         "gmx_executable": gmx,
                         "python_executable": sys.executable,
                         "output_group_atom_count": metadata["n_atoms"],
-                    },
-                    "inspection_receipt": inspection.model_dump(mode="json"),
-                    "source_md_task_id": str(options.source_task_id),
-                },
-            },
-            {
-                "id": "analysis",
-                "kind": "trajectory.analyze_processed",
-                "engine": "mdanalysis",
-                "needs": ["process"],
-                "input_contracts": {
-                    "analysis_plan": plan.schema_version,
-                    "preprocessing": "trajectory_processing_result/1.2",
-                },
-                "input_bindings": {"analysis_plan": "$analysis_plan", "preprocessing": "process"},
-                "output_contract": "trajectory_analysis_result/1.2",
-                "params": {
-                    "engine_parameters": {
-                        "python_executable": str(python),
-                        "worker_script": str(workers / "mdanalysis_metrics_worker.py"),
+                        **(
+                            {"index_artifact": index_ref.model_dump(mode="json")}
+                            if index_ref
+                            else {}
+                        ),
                     },
                     "inspection_receipt": inspection.model_dump(mode="json"),
                     "source_md_task_id": str(options.source_task_id),
                 },
             },
         ],
-        "outputs": {"analysis": "analysis"},
+        "outputs": {name: name for name in plans},
     }
+    for name, plan in plans.items():
+        engine = {
+            "analysis": "mdanalysis",
+            "sasa": "gromacs_sasa",
+            "hbond": "gromacs_hbond",
+            "protein_hbond": "gromacs_hbond",
+        }[name]
+        engine_parameters: dict[str, object] = {
+            "python_executable": str(python) if name == "analysis" else sys.executable,
+            "worker_script": str(
+                workers
+                / {
+                    "analysis": "mdanalysis_metrics_worker.py",
+                    "sasa": "gromacs_sasa_worker.py",
+                    "hbond": "gromacs_hbond_worker.py",
+                    "protein_hbond": "gromacs_hbond_worker.py",
+                }[name]
+            ),
+        }
+        if name != "analysis":
+            engine_parameters["gmx_executable"] = gmx
+        if name == "sasa":
+            engine_parameters.update(
+                probe_radius_A=options.sasa_probe_radius_A, sphere_points=options.sasa_sphere_points
+            )
+        if name in {"hbond", "protein_hbond"}:
+            engine_parameters.update(
+                hbond_distance_nm=options.hbond_distance_nm,
+                donor_acceptor_angle_deg=options.hbond_angle_deg,
+            )
+        cast(list[dict[str, object]], workflow["stages"]).append(
+            {
+                "id": name,
+                "kind": "trajectory.analyze_processed",
+                "engine": engine,
+                "needs": ["process"],
+                "input_contracts": {
+                    "analysis_plan": plan.schema_version,
+                    "preprocessing": "trajectory_processing_result/1.2",
+                },
+                "input_bindings": {"analysis_plan": f"${name}_plan", "preprocessing": "process"},
+                "output_contract": "trajectory_analysis_result/1.2",
+                "params": {
+                    "engine_parameters": engine_parameters,
+                    "inspection_receipt": inspection.model_dump(mode="json"),
+                    "source_md_task_id": str(options.source_task_id),
+                },
+            }
+        )
     return {
         "workflow": workflow,
         "inputs": {
             "request": processing.model_dump(mode="json"),
-            "analysis_plan": plan.model_dump(mode="json"),
+            **{f"{name}_plan": plan.model_dump(mode="json") for name, plan in plans.items()},
         },
         "inspection": receipt,
         "inspection_artifact": inspection.model_dump(mode="json"),

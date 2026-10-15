@@ -83,7 +83,8 @@
         "protein_ligand_min_distance",
         "protein_ligand_contact_count",
         "solvent_accessible_surface_area",
-        "protein_ligand_hbond_count"
+        "protein_ligand_hbond_count",
+        "protein_hbond_count"
       ],
       "title": "TrajectoryMetric",
       "type": "string"

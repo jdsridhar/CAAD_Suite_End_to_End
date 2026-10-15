@@ -90,6 +90,12 @@ class GromacsSasaAdapter:
             for artifact in preprocessing.source_artifacts.values()
         ):
             issues.append("GROMACS TPR is not a hash-linked source of the processing result")
+        if request.index_file is not None and not any(
+            artifact.artifact_id == request.index_file.artifact_id
+            and artifact.sha256 == request.index_file.sha256
+            for artifact in preprocessing.source_artifacts.values()
+        ):
+            issues.append("GROMACS index file is not a hash-linked processing input")
         if preprocessing.processor.name.casefold() != "gromacs":
             issues.append("GROMACS SASA requires a GROMACS-produced trajectory")
         if request.expected_atom_count != preprocessing.n_atoms:
@@ -147,8 +153,16 @@ class GromacsSasaAdapter:
             topology_path = staged_paths[str(request.topology.artifact_id)]
         except KeyError as exc:
             raise GromacsSasaPlanError(f"missing staged path for artifact {exc.args[0]}") from exc
+        index_spec: dict[str, object] = {}
+        if request.index_file is not None:
+            try:
+                index_path = staged_paths[str(request.index_file.artifact_id)]
+            except KeyError as exc:
+                raise GromacsSasaPlanError("missing staged path for index artifact") from exc
+            index_spec["index_file"] = {"path": index_path, "sha256": request.index_file.sha256}
         aligned = TrajectoryTransform.ALIGN_ROT_TRANS in preprocessing.transforms
         return {
+            **index_spec,
             "protocol": "caddsuite.gromacs-sasa/1",
             "request_id": str(request.id),
             "simulation_id": str(request.simulation_id),
@@ -190,7 +204,10 @@ class GromacsSasaAdapter:
         config = GromacsSasaParameters.model_validate(parameters)
         root = working_directory.resolve(strict=True)
         staged_paths: dict[str, str] = {}
-        for artifact in (request.trajectory, request.topology):
+        artifacts = [request.trajectory, request.topology]
+        if request.index_file is not None:
+            artifacts.append(request.index_file)
+        for artifact in artifacts:
             staged = staged_inputs.get(str(artifact.artifact_id))
             if staged is None:
                 raise GromacsSasaPlanError(
@@ -377,6 +394,10 @@ class GromacsSasaAdapter:
             window_ns=(request.start_time_ns, request.end_time_ns),
         )
         expected_inputs = {request.trajectory.artifact_id, request.topology.artifact_id}
+        if request.index_file is not None:
+            expected_inputs.add(request.index_file.artifact_id)
+            if metadata.get("index_sha256") != request.index_file.sha256:
+                raise GromacsSasaPlanError("worker index-file hash differs from the request")
         if not expected_inputs.issubset({item.artifact_id for item in source_artifacts.values()}):
             raise GromacsSasaPlanError("normalized result omitted a request input artifact")
         if any(
@@ -402,6 +423,9 @@ class GromacsSasaAdapter:
                 dict[str, JsonValue],
                 {
                     "method": "GROMACS gmx sasa",
+                    "index_file_sha256": (
+                        request.index_file.sha256 if request.index_file is not None else None
+                    ),
                     "probe_radius_A": metadata.get("probe_radius_A"),
                     "sphere_points": metadata.get("sphere_points"),
                     "use_pbc": metadata.get("use_pbc"),

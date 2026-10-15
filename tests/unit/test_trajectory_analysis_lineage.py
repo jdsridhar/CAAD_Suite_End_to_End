@@ -65,6 +65,11 @@ def test_processed_analysis_matches_original_md_files_only_through_exact_parent_
         metrics=(),
     )
     assert _matches_recorded_inputs(result, "a" * 64, "b" * 64, [md, parent])
+    native_result = result.model_copy(
+        update={"source_artifacts": {"topology": tpr, "trajectory": processed}}
+    )
+    assert _matches_recorded_inputs(native_result, "a" * 64, "b" * 64, [md, parent])
+    assert not _matches_recorded_inputs(native_result, "a" * 64, "b" * 64, [parent])
     assert not _matches_recorded_inputs(result, "a" * 64, "b" * 64, [parent])
     assert not _matches_recorded_inputs(result, "a" * 64, "0" * 64, [md, parent])
     assert not _matches_recorded_inputs(

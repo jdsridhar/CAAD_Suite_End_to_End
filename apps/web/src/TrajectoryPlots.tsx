@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+type Analyzer = { name: string; version: string };
+
 type Metric = {
   name: string;
   unit: string;
@@ -16,6 +18,10 @@ type Metric = {
   };
   summary: Record<string, number>;
   window_ns: number[];
+  analyzer?: Analyzer;
+  parameters?: Record<string, unknown>;
+  result_id?: string;
+  task_id?: string;
 };
 
 export type TrajectoryAnalyticsResult = {
@@ -23,7 +29,9 @@ export type TrajectoryAnalyticsResult = {
   result_id: string;
   task_id: string;
   run_id: string;
-  analyzer: { name: string; version: string };
+  analyzer: Analyzer;
+  analyzers?: Analyzer[];
+  parameters?: Record<string, unknown>;
   metrics: Metric[];
   warnings: string[];
 };
@@ -44,6 +52,9 @@ function nameLabel(name: string) {
     rg: "Radius of gyration",
     rg_protein: "Protein radius of gyration",
     sasa: "Solvent accessible surface area",
+    solvent_accessible_surface_area: "Solvent accessible surface area",
+    hbond_protein: "Protein hydrogen bonds",
+    protein_hbond_count: "Protein hydrogen bonds",
     protein_ligand_hbond_count: "Protein–ligand hydrogen bonds",
   } as Record<string, string>)[name] || name.replaceAll("_", " ");
 }
@@ -86,6 +97,12 @@ function MetricChart({ metric }: { metric: Metric }) {
 export default function TrajectoryPlots({ data, apiUrl, token, projectId }: Props) {
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const analyzers = data.analyzers?.length ? data.analyzers
+    : data.metrics.some((metric) => metric.analyzer)
+      ? data.metrics.flatMap((metric) => metric.analyzer ? [metric.analyzer] : [])
+      : [data.analyzer];
+  const analyzerLabels = [...new Set(analyzers.map((analyzer) => `${analyzer.name} ${analyzer.version}`))];
+  const legacySingleAnalyzer = !data.analyzers && !data.metrics.some((metric) => metric.analyzer);
   async function download(metric: Metric) {
     setError("");
     setDownloading(metric.artifact_id);
@@ -108,7 +125,7 @@ export default function TrajectoryPlots({ data, apiUrl, token, projectId }: Prop
   return (
     <section className="trajectory-analytics-card" aria-label="Recorded trajectory analysis">
       <h3>Recorded trajectory analysis</h3>
-      <p>{data.analyzer.name} {data.analyzer.version} · {data.metrics.length} recorded metrics</p>
+      <p>{analyzerLabels.join(" · ")} · {data.metrics.length} recorded metrics</p>
       {data.warnings.map((warning) => <p key={warning} className="method-note">{warning}</p>)}
       {error && <p role="alert">{error}</p>}
       <div className="trajectory-charts-grid">
@@ -125,12 +142,22 @@ export default function TrajectoryPlots({ data, apiUrl, token, projectId }: Prop
             <details>
               <summary>Method and recorded summary</summary>
               <dl>
+                <dt>Analyzer</dt><dd>{metric.analyzer ? `${metric.analyzer.name} ${metric.analyzer.version}` : legacySingleAnalyzer ? `${data.analyzer.name} ${data.analyzer.version}` : "Not recorded"}</dd>
                 <dt>Atoms measured</dt><dd>{metric.definition.target_selection}</dd>
                 <dt>Alignment</dt><dd>{metric.definition.fit_selection || "Not specified"}</dd>
                 <dt>Weighting</dt><dd>{metric.definition.weighting || "Not specified"}</dd>
                 <dt>Time window</dt><dd>{metric.window_ns.join(" – ")} ns</dd>
+                {(metric.result_id || legacySingleAnalyzer) && <><dt>Result</dt><dd>{metric.result_id || data.result_id}</dd></>}
+                {(metric.task_id || legacySingleAnalyzer) && <><dt>Task</dt><dd>{metric.task_id || data.task_id}</dd></>}
               </dl>
               {metric.definition.notes && <p>{metric.definition.notes}</p>}
+              {Object.keys(metric.parameters ?? (legacySingleAnalyzer ? data.parameters : undefined) ?? {}).length > 0 && (
+                <dl aria-label="Recorded method parameters">
+                  {Object.entries(metric.parameters ?? (legacySingleAnalyzer ? data.parameters : undefined) ?? {}).map(([key, value]) => (
+                    <div key={key}><dt>{key.replaceAll("_", " ")}</dt><dd>{typeof value === "string" ? value : JSON.stringify(value)}</dd></div>
+                  ))}
+                </dl>
+              )}
               <table><caption>Recorded summary ({metric.unit})</caption>
                 <tbody>{Object.entries(metric.summary).filter(([, value]) => Number.isFinite(value)).map(([key, value]) => (
                   <tr key={key}><th scope="row">{key.replaceAll("_", " ")}</th><td>{value}</td></tr>

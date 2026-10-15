@@ -23,7 +23,7 @@ async function connectAndCreate(page: Page) {
   await page.getByLabel("API base URL").fill(api);
   await page.getByLabel("Access token").fill(token);
   await page.getByRole("button", { name: "Connect to API" }).click();
-  await expect(page.getByText("API CONNECTED")).toBeVisible();
+  await expect(page.getByText("API CONNECTED")).toBeVisible({ timeout: 30_000 });
   await page.getByPlaceholder(/Project name/).fill("Browser UI fixture project");
   await page.getByPlaceholder(/slug \(e.g./).fill(slug);
   await page.getByRole("button", { name: "Create project", exact: true }).click();
@@ -38,6 +38,249 @@ async function upload(page: Page, name: string, mimeType: string, buffer: Buffer
   await page.getByRole("button", { name: "Upload structure file" }).click();
   await expect(page.getByRole("status").filter({ hasText: /Uploaded to project CAS/ })).toContainText(name);
 }
+
+test.describe("guided trajectory analysis", () => {
+  let projectId: string;
+  let taskId: string;
+  let topologyId: string;
+  let trajectoryId: string;
+
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(90_000);
+    projectId = await connectAndCreate(page);
+    taskId = ulid(); topologyId = ulid(); trajectoryId = ulid();
+    // Metadata and intercepted requests only; these fixtures do not run scientific engines.
+    const artifact = (id: string, name: string) => ({
+      id, original_name: name, kind: "ui_fixture", media_type: "application/octet-stream",
+      sha256: "a".repeat(64), size_bytes: 1,
+    });
+    await page.route(api + "/v1/projects/" + projectId + "/dashboard", async (route) => {
+      const original = await route.fetch();
+      await route.fulfill({ json: { ...await original.json(), trajectory_options: [{
+        task_id: taskId, run_id: ulid(), accession: "MD UI fixture", stage_id: "production",
+        stage_kind: "production", system_id: ulid(),
+        topologies: [artifact(topologyId, "recorded.gro")],
+        trajectories: [artifact(trajectoryId, "recorded.xtc")],
+      }] } });
+    });
+    await page.route(api + "/v1/projects/" + projectId + "/trajectory-analysis/prepare", (route) =>
+      route.fulfill({ status: 422, json: { detail: "UI fixture: prepare request captured" } }));
+    await page.getByRole("button", { name: /3D Molecular Studio/ }).click();
+    await expect(page.getByRole("combobox", { name: "Topology", exact: true })).toHaveValue(topologyId, { timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Calculate analysis", exact: true })).toBeEnabled();
+  });
+
+  async function capturePrepare(page: Page) {
+    const requested = page.waitForRequest(api + "/v1/projects/" + projectId + "/trajectory-analysis/prepare");
+    await page.getByRole("button", { name: "Calculate analysis", exact: true }).click();
+    const request = await requested;
+    expect(request.headers().authorization).toBe("Bearer " + token);
+    await expect(page.getByText("UI fixture: prepare request captured", { exact: false })).toBeVisible();
+    return request.postDataJSON();
+  }
+
+  test("keeps three default metrics and sends explicit optional SASA selections and settings", async ({ page }) => {
+    const defaults = ["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration"];
+    const sasa = page.getByRole("checkbox", { name: "Solvent accessible surface area (SASA)", exact: true });
+    const hbond = page.getByRole("checkbox", { name: "Protein–ligand hydrogen bonds", exact: true });
+    await expect(sasa).not.toBeChecked();
+    await expect(hbond).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Protein hydrogen bonds", exact: true })).not.toBeChecked();
+    expect(await capturePrepare(page)).toMatchObject({
+      source_task_id: taskId, topology_artifact_id: topologyId, trajectory_artifact_id: trajectoryId,
+      metrics: defaults,
+    });
+    await sasa.check();
+    await expect(page.getByLabel("SASA surface selection (MDAnalysis)")).toHaveValue("protein");
+    await expect(page.getByLabel("SASA output selection (MDAnalysis)")).toHaveValue("protein");
+    const sasaDefaults = await capturePrepare(page);
+    expect(sasaDefaults).toMatchObject({
+      metrics: [...defaults, "solvent_accessible_surface_area"], sasa_surface_selection: "protein",
+      sasa_output_selection: "protein", sasa_probe_radius_A: 1.4, sasa_sphere_points: 24,
+    });
+    expect(sasaDefaults).not.toHaveProperty("ligand_selection");
+    await page.getByLabel("SASA surface selection (MDAnalysis)").fill("protein or resname DRG");
+    await page.getByLabel("SASA output selection (MDAnalysis)").fill("resname DRG");
+    await page.getByLabel("SASA probe radius (Å)").fill("1.6");
+    await page.getByLabel("SASA sphere points").fill("96");
+    expect(await capturePrepare(page)).toMatchObject({
+      sasa_surface_selection: "protein or resname DRG", sasa_output_selection: "resname DRG",
+      sasa_probe_radius_A: 1.6, sasa_sphere_points: 96,
+    });
+    const calculate = page.getByRole("button", { name: "Calculate analysis", exact: true });
+    await page.getByLabel("SASA surface selection (MDAnalysis)").fill("   ");
+    await expect(calculate).toBeDisabled();
+    await expect(page.getByRole("alert").filter({ hasText: "Enter both the SASA" })).toBeVisible();
+    await page.getByLabel("SASA surface selection (MDAnalysis)").fill("protein or resname DRG");
+    await page.getByLabel("SASA output selection (MDAnalysis)").fill("");
+    await expect(calculate).toBeDisabled();
+    await page.getByLabel("SASA output selection (MDAnalysis)").fill("resname DRG");
+    for (const invalid of ["0", "2.5", "1000001"]) {
+      await page.getByLabel("SASA sphere points").fill(invalid);
+      await expect(calculate).toBeDisabled();
+    }
+    await page.getByLabel("SASA sphere points").fill("96");
+    for (const invalid of ["0", "6"]) {
+      await page.getByLabel("SASA probe radius (Å)").fill(invalid);
+      await expect(calculate).toBeDisabled();
+    }
+    await sasa.uncheck();
+    const original = await capturePrepare(page);
+    expect(original.metrics).toEqual(defaults);
+    expect(original).not.toHaveProperty("sasa_surface_selection");
+    expect(original).not.toHaveProperty("sasa_output_selection");
+    expect(original).not.toHaveProperty("sasa_probe_radius_A");
+    expect(original).not.toHaveProperty("sasa_sphere_points");
+    await page.getByRole("checkbox", { name: "Backbone RMSD", exact: true }).uncheck();
+    await page.getByRole("checkbox", { name: "Cα RMSF", exact: true }).uncheck();
+    await page.getByRole("checkbox", { name: "Protein radius of gyration", exact: true }).uncheck();
+    await expect(calculate).toBeDisabled();
+  });
+
+  test("protein hydrogen bonds work without a ligand and share cutoffs with the ligand option", async ({ page }) => {
+    const protein = page.getByRole("checkbox", { name: "Protein hydrogen bonds", exact: true });
+    const ligand = page.getByRole("checkbox", { name: "Protein–ligand hydrogen bonds", exact: true });
+    const calculate = page.getByRole("button", { name: "Calculate analysis", exact: true });
+    await protein.check();
+    await expect(page.getByLabel("Ligand selection (MDAnalysis)", { exact: true })).toHaveCount(0);
+    const defaults = await capturePrepare(page);
+    expect(defaults).toMatchObject({
+      metrics: ["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration", "protein_hbond_count"],
+      hbond_distance_nm: 0.35, hbond_angle_deg: 30,
+    });
+    expect(defaults).not.toHaveProperty("ligand_selection");
+    await page.getByLabel("Hydrogen-bond distance cutoff (nm)").fill("0.31");
+    await page.getByLabel("Hydrogen-bond angle cutoff (degrees)").fill("20");
+    await ligand.check();
+    await expect(calculate).toBeDisabled();
+    await page.getByLabel("Ligand selection (MDAnalysis)", { exact: true }).fill("resname DRG");
+    await expect(page.getByLabel("Hydrogen-bond distance cutoff (nm)")).toHaveCount(1);
+    const combined = await capturePrepare(page);
+    expect(combined).toMatchObject({ ligand_selection: "resname DRG", hbond_distance_nm: 0.31, hbond_angle_deg: 20 });
+    expect(combined.metrics).toContain("protein_hbond_count");
+    expect(combined.metrics).toContain("protein_ligand_hbond_count");
+    await page.getByLabel("Ligand selection (MDAnalysis)", { exact: true }).fill("");
+    await ligand.uncheck();
+    const proteinOnly = await capturePrepare(page);
+    expect(proteinOnly).not.toHaveProperty("ligand_selection");
+    expect(proteinOnly).toMatchObject({ hbond_distance_nm: 0.31, hbond_angle_deg: 20 });
+    await protein.uncheck();
+    const original = await capturePrepare(page);
+    expect(original).not.toHaveProperty("hbond_distance_nm");
+    expect(original).not.toHaveProperty("hbond_angle_deg");
+  });
+
+  test("requires an explicit ligand and sends both optional metrics through the prepared workflow", async ({ page }) => {
+    const hbond = page.getByRole("checkbox", { name: "Protein–ligand hydrogen bonds", exact: true });
+    const calculate = page.getByRole("button", { name: "Calculate analysis", exact: true });
+    await hbond.check();
+    const ligand = page.getByLabel("Ligand selection (MDAnalysis)", { exact: true });
+    await expect(ligand).toHaveValue("");
+    await expect(calculate).toBeDisabled();
+    await expect(page.getByRole("alert").filter({ hasText: "Enter an explicit ligand" })).toBeVisible();
+    await ligand.fill("   ");
+    await expect(calculate).toBeDisabled();
+    await ligand.fill("resname DRG");
+    expect(await capturePrepare(page)).toMatchObject({
+      ligand_selection: "resname DRG", hbond_distance_nm: 0.35, hbond_angle_deg: 30,
+      metrics: ["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration", "protein_ligand_hbond_count"],
+    });
+    for (const [label, invalids, valid] of [
+      ["Hydrogen-bond distance cutoff (nm)", ["0", "1.1"], "0.32"],
+      ["Hydrogen-bond angle cutoff (degrees)", ["0", "181"], "25"],
+    ] as const) {
+      for (const invalid of invalids) {
+        await page.getByLabel(label).fill(invalid);
+        await expect(calculate).toBeDisabled();
+      }
+      await page.getByLabel(label).fill(valid);
+    }
+    await page.getByLabel("Protein selection (radius of gyration / hydrogen bonds)").fill("protein and segid A");
+    await page.getByRole("checkbox", { name: "Solvent accessible surface area (SASA)", exact: true }).check();
+    const workflow = { name: "Prepared UI workflow fixture", stages: [] };
+    const inputs = { marker: "Prepared inputs fixture" };
+    await page.route(api + "/v1/projects/" + projectId + "/trajectory-analysis/prepare", async (route) => {
+      expect(route.request().postDataJSON()).toMatchObject({
+        ligand_selection: "resname DRG", protein_selection: "protein and segid A",
+        hbond_distance_nm: 0.32, hbond_angle_deg: 25,
+        sasa_surface_selection: "protein", sasa_output_selection: "protein",
+        sasa_probe_radius_A: 1.4, sasa_sphere_points: 24,
+        metrics: ["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration", "protein_ligand_hbond_count", "solvent_accessible_surface_area"],
+      });
+      await route.fulfill({ json: { workflow, inputs } });
+    });
+    await page.route(api + "/v1/projects/" + projectId + "/runs/*/execute", async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ workflow, inputs });
+      await route.fulfill({ json: { project_id: projectId, run_id: ulid(), status: "queued", tasks: [] } });
+    });
+    await calculate.click();
+    await expect(page.getByRole("status").filter({ hasText: "Trajectory analysis queued" })).toBeVisible();
+  });
+
+  test("recorded mixed engines show per-metric methods, parameters, provenance, and CSV downloads", async ({ page }) => {
+    const mda = { name: "MDAnalysis", version: "2.9.0" };
+    const gmx = { name: "GROMACS", version: "2026.1" };
+    const metrics = [
+      { name: "rmsd_backbone", unit: "Å", analyzer: mda, parameters: { method: "Backbone alignment" } },
+      { name: "sasa", unit: "nm^2", analyzer: gmx, parameters: { method: "GROMACS gmx sasa", probe_radius_A: 1.4, sphere_points: 24 } },
+      { name: "protein_ligand_hbond_count", unit: "count", analyzer: gmx, parameters: { hbond_distance_nm: 0.35, donor_acceptor_angle_deg: 30 } },
+      { name: "hbond_protein", unit: "count", analyzer: gmx, parameters: { hbond_distance_nm: 0.35, donor_acceptor_angle_deg: 30, protein_selection: "protein" } },
+      { name: "rmsf_ca", unit: "Å", analyzer: mda, parameters: { method: "Cα fluctuations" } },
+      { name: "rg_protein", unit: "Å", analyzer: mda, parameters: { method: "Mass weighting" } },
+    ].map((metric) => ({ ...metric, axis: "time_ns", x: [0, 1], values: [2, 4],
+      artifact_id: ulid(), result_id: ulid(), task_id: ulid(), summary: { mean: 3 }, window_ns: [0, 1],
+      definition: { target_selection: "Recorded fixture selection", fit_selection: null,
+        refit: null, weighting: null, notes: "UI fixture only; not a scientific measurement." },
+    }));
+    await page.route(api + "/v1/projects/" + projectId + "/trajectories/analyze?**", (route) => route.fulfill({ json: {
+      status: "recorded", result_id: metrics[0].result_id, task_id: metrics[0].task_id,
+      run_id: ulid(), analyzer: mda, analyzers: [mda, gmx, gmx], metrics, warnings: [],
+    } }));
+    await page.getByRole("button", { name: /Load recorded analysis/ }).click();
+    const recorded = page.getByLabel("Recorded trajectory analysis");
+    await expect(recorded.getByText("MDAnalysis 2.9.0 · GROMACS 2026.1 · 6 recorded metrics", { exact: true })).toBeVisible();
+    for (const [index, title] of ["Backbone RMSD", "Solvent accessible surface area", "Protein–ligand hydrogen bonds", "Protein hydrogen bonds", "Cα RMSF", "Protein radius of gyration"].entries()) {
+      const metric = metrics[index];
+      const panel = recorded.getByRole("region", { name: title, exact: true });
+      await panel.getByText("Method and recorded summary", { exact: true }).click();
+      await expect(panel.getByText(`${metric.analyzer.name} ${metric.analyzer.version}`, { exact: true })).toBeVisible();
+      if (metric.analyzer.name === "GROMACS") await expect(panel.getByText(/MDAnalysis/)).toHaveCount(0);
+      await expect(panel.getByText(metric.result_id, { exact: true })).toBeVisible();
+      await expect(panel.getByText(metric.task_id, { exact: true })).toBeVisible();
+      for (const key of Object.keys(metric.parameters)) {
+        await expect(panel.getByLabel("Recorded method parameters").getByText(key.replaceAll("_", " "), { exact: true })).toBeVisible();
+      }
+      await page.route(api + "/v1/projects/" + projectId + "/artifacts/" + metric.artifact_id + "/content", async (route) => {
+        expect(route.request().headers().authorization).toBe("Bearer " + token);
+        await route.fulfill({ contentType: "text/csv", body: "time_ns,value\n0,2\n1,4\n" });
+      });
+      const downloaded = page.waitForEvent("download");
+      await panel.getByRole("button", { name: "Download CSV", exact: true }).click();
+      expect((await downloaded).suggestedFilename()).toBe(metric.name + ".csv");
+    }
+  });
+});
+
+test("local MD timestep select offers only 0.5, 1, 1.5, and 2 fs and submits the selected value", async ({ page }) => {
+  const projectId = await connectAndCreate(page);
+  await page.getByRole("button", { name: /Pipeline Studio/ }).click();
+  await page.getByRole("button", { name: /Protein-Ligand MD/ }).click();
+  await page.getByRole("button", { name: /Local Solution Builder \(GROMACS\)/ }).click();
+  const timestep = page.getByRole("combobox", { name: "Timestep (fs)", exact: true });
+  await expect(timestep).toHaveValue("2");
+  await expect(timestep.locator("option")).toHaveText(["0.5 fs", "1 fs", "1.5 fs", "2 fs"]);
+  expect(await timestep.locator("option").evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))).toEqual(["0.5", "1", "1.5", "2"]);
+  await expect(page.getByRole("spinbutton", { name: "Timestep (fs)", exact: true })).toHaveCount(0);
+  await page.route(api + "/v1/projects/" + projectId + "/build-local-solution?**", (route) =>
+    route.fulfill({ status: 422, json: { detail: "UI fixture: local build request captured" } }));
+  for (const value of ["0.5", "1", "1.5", "2"]) {
+    await timestep.selectOption(value);
+    const requested = page.waitForRequest(api + "/v1/projects/" + projectId + "/build-local-solution?**");
+    await page.getByRole("button", { name: /Build Solution System \(Local GROMACS\)/ }).click();
+    expect(new URL((await requested).url()).searchParams.get("timestep_fs")).toBe(value);
+    await expect(page.getByText(/UI fixture: local build request captured/)).toBeVisible();
+  }
+});
 
 test("guided setup, real registry, previews, and decision-resume workflow", async ({ page }) => {
   test.setTimeout(120_000);

@@ -57,9 +57,10 @@ def _matches_recorded_inputs(
     )
     if parent is None or parent.simulation_id != result.simulation_id:
         return False
-    if source_top != parent.reference_structure or source_traj != parent.output_artifacts.get(
-        "processed"
-    ):
+    if source_top not in (
+        parent.reference_structure,
+        parent.source_artifacts.get("topology"),
+    ) or source_traj != parent.output_artifacts.get("processed"):
         return False
     raw_hashes = {ref.sha256 for ref in parent.source_artifacts.values()}
     if trajectory_sha not in raw_hashes:
@@ -193,7 +194,47 @@ def load_recorded_trajectory_analytics(
                 result, topology.sha256, trajectory.sha256, [item for item, _ in completed]
             ):
                 continue
-            metrics = [_metric_view(metric, store) for metric in result.metrics]
+            # Parallel scientific adapters share one processing parent and one run.
+            # Never combine measurements across runs, windows or processing histories.
+            siblings = [
+                (item, producer)
+                for item, producer in completed
+                if isinstance(item, TrajectoryAnalysisResult)
+                and producer.run_id == task.run_id
+                and item.preprocessing_result_id == result.preprocessing_result_id
+                and item.simulation_id == result.simulation_id
+                and item.trajectory_id == result.trajectory_id
+                and all(
+                    item.parameters.get(key) == result.parameters.get(key)
+                    for key in ("start_time_ns", "end_time_ns", "stride")
+                )
+                and _matches_recorded_inputs(
+                    item,
+                    topology.sha256,
+                    trajectory.sha256,
+                    [contract for contract, _ in completed],
+                )
+            ]
+            metrics = []
+            seen = set()
+            analyzers = []
+            for sibling, producer in siblings:
+                analyzers.append(sibling.analyzer.model_dump(mode="json"))
+                for metric in sibling.metrics:
+                    if metric.name in seen:
+                        raise RecordedAnalysisUnavailable(
+                            "This analysis run recorded duplicate metric names; "
+                            "inspect its results separately."
+                        )
+                    seen.add(metric.name)
+                    view = _metric_view(metric, store)
+                    view.update(
+                        analyzer=sibling.analyzer.model_dump(mode="json"),
+                        parameters=cast(JsonValue, sibling.parameters),
+                        result_id=str(sibling.id),
+                        task_id=str(producer.id),
+                    )
+                    metrics.append(view)
             if not metrics:
                 raise RecordedAnalysisUnavailable("This workflow recorded no trajectory metrics.")
             return {
@@ -202,6 +243,7 @@ def load_recorded_trajectory_analytics(
                 "task_id": str(task.id),
                 "run_id": str(task.run_id),
                 "analyzer": result.analyzer.model_dump(mode="json"),
+                "analyzers": cast(JsonValue, analyzers),
                 "parameters": cast(JsonValue, result.parameters),
                 "metrics": cast(JsonValue, metrics),
                 "warnings": [

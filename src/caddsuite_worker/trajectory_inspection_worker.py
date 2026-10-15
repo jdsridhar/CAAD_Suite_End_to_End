@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import json
 import math
+import re
 import sys
 from itertools import pairwise
 from pathlib import Path
@@ -40,12 +41,29 @@ def inspect(request: dict[str, object], root: Path) -> dict[str, object]:
     if not isinstance(expressions, dict):
         raise ValueError("explicit selections are required")
     selections = {}
+    selected_indices: dict[str, set[int]] = {}
     for name, expression in expressions.items():
+        if re.search(
+            r"\b(around|sphzone|sphlayer|cyzone|cylayer|point|prop|isolayer)\b", str(expression)
+        ):
+            raise ValueError(
+                "Guided analysis requires static atom selections, not spatial selections"
+            )
         atoms = universe.select_atoms(str(expression))
-        if len(atoms) < 3:
-            raise ValueError(f"selection {name!r} contains fewer than three atoms")
+        minimum = 3 if name in {"backbone", "protein_ca"} else 1
+        if len(atoms) < minimum:
+            raise ValueError(f"selection {name!r} contains fewer than {minimum} atoms")
         selections[str(name)] = {"description": str(expression), "n_atoms": len(atoms)}
-    return {
+        selected_indices[str(name)] = {int(index) + 1 for index in atoms.indices}
+    if {"protein", "ligand"}.issubset(selected_indices) and (
+        selected_indices["protein"] & selected_indices["ligand"]
+    ):
+        raise ValueError("Protein and ligand selections must not overlap")
+    if {"surface", "sasa_output"}.issubset(selected_indices) and not (
+        selected_indices["sasa_output"].issubset(selected_indices["surface"])
+    ):
+        raise ValueError("SASA output selection must be a subset of its surface selection")
+    result = {
         "protocol": "caddsuite.trajectory-inspection/1",
         "mdanalysis_version": mda.__version__,
         "hashes": hashes,
@@ -56,6 +74,31 @@ def inspect(request: dict[str, object], root: Path) -> dict[str, object]:
         "end_time_ps": times[-1],
         "selections": selections,
     }
+    groups = request.get("index_groups")
+    if groups is not None:
+        if not isinstance(groups, dict) or not groups:
+            raise ValueError("Index groups must be an explicit nonempty mapping")
+        lines = ["[ System ]"]
+        all_groups = {"System": set(range(1, len(universe.atoms) + 1))}
+        for key, group_name in groups.items():
+            if key not in selected_indices or not re.fullmatch(r"CSA_[A-Za-z]+", str(group_name)):
+                raise ValueError("Index group names or selected atoms are invalid")
+            if group_name in all_groups:
+                raise ValueError("Index group names must be unique")
+            all_groups[str(group_name)] = selected_indices[key]
+        lines = []
+        for name, indices in all_groups.items():
+            lines.append(f"[ {name} ]")
+            values = sorted(indices)
+            lines.extend(" ".join(map(str, values[i : i + 15])) for i in range(0, len(values), 15))
+        index_path = root / "analysis-groups.ndx"
+        index_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        result["index"] = {
+            "path": index_path.name,
+            "sha256": hashlib.sha256(index_path.read_bytes()).hexdigest(),
+            "groups": groups,
+        }
+    return result
 
 
 def main() -> int:

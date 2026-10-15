@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from caddsuite.api.provenance import create_app
 from caddsuite.contracts.analysis import MetricDefinition, MetricSeries, TrajectoryAnalysisResult
@@ -169,6 +171,68 @@ def test_changed_metric_artifact_fails_without_replacement_values(tmp_path: Path
         assert "metrics" not in response.json()
 
 
+def test_parallel_metrics_merge_only_same_run_parent_window_and_trajectory(tmp_path: Path) -> None:
+    project, _, topology, trajectory, run_id = _fixture(tmp_path)
+    engine = create_db_engine(database_path(tmp_path))
+    sessions = make_session_factory(engine)
+    with sessions.begin() as session:
+        cached = session.scalar(select(TaskCacheRow))
+        assert cached is not None
+        source = TrajectoryAnalysisResult.model_validate(cached.payload)
+        foreign_run = WorkflowRunRow(
+            project_id=project,
+            accession="RUN-OTHER",
+            status="succeeded",
+            workflow_hash="d" * 64,
+            config_hash="e" * 64,
+        )
+        session.add(foreign_run)
+        session.flush()
+        for i, (name, changes) in enumerate(
+            [
+                ("sasa", {}),
+                ("hbond_protein", {}),
+                ("wrong_parent", {"preprocessing_result_id": new_ulid()}),
+                ("wrong_trajectory", {"trajectory_id": new_ulid()}),
+                ("wrong_window", {"parameters": {"start_time_ns": 2}}),
+                ("wrong_run", {}),
+            ],
+            start=1,
+        ):
+            task = TaskRow(
+                run_id=foreign_run.id if name == "wrong_run" else run_id,
+                stage_id=name,
+                state="succeeded",
+                cache_key=f"{i:064x}",
+            )
+            session.add(task)
+            session.flush()
+            metric = source.metrics[0].model_copy(update={"name": name})
+            result = source.model_copy(
+                update={"id": new_ulid(), "request_id": new_ulid(), "metrics": (metric,), **changes}
+            )
+            session.add(
+                TaskCacheRow(
+                    cache_key=task.cache_key,
+                    source_task_id=task.id,
+                    schema_version=result.schema_version,
+                    payload=result.model_dump(mode="json"),
+                    created_at=datetime(2000, 1, 1, tzinfo=UTC),
+                )
+            )
+    engine.dispose()
+    with TestClient(create_app(data_root=tmp_path, token=TEST_TOKEN)) as client:
+        response = client.post(
+            f"/v1/projects/{project}/trajectories/analyze",
+            params={"topology_artifact_id": topology, "trajectory_artifact_id": trajectory},
+            headers={"Authorization": f"Bearer {TEST_TOKEN}"},
+        )
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert {metric["name"] for metric in payload["metrics"]} == {"rg", "sasa", "hbond_protein"}
+        assert all("analyzer" in metric and "task_id" in metric for metric in payload["metrics"])
+
+
 @pytest.mark.parametrize("target", ["run", "project"])
 def test_active_work_cannot_be_deleted(tmp_path: Path, target: str) -> None:
     project, _, _, _, run = _fixture(tmp_path)
@@ -209,4 +273,3 @@ def test_candidate_listing_endpoints(tmp_path: Path) -> None:
         )
         assert mmpbsa_cands.status_code == 200
         assert mmpbsa_cands.json() == []
-

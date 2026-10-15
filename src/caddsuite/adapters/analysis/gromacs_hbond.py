@@ -54,14 +54,14 @@ class GromacsHbondParameters(ContractModel):
 
 
 class GromacsHbondAdapter:
-    """Count chemically assigned protein-ligand H-bonds from a GROMACS TPR/XTC pair."""
+    """Count intraprotein or protein-ligand H-bonds from a GROMACS TPR/XTC pair."""
 
     adapter_id = "caddsuite.gromacs.hbond"
     version = "0.1.0"
     capabilities = TrajectoryAnalysisCapabilities(
         topology_formats=("GROMACS TPR", "TPR"),
         trajectory_formats=("XTC",),
-        metrics=(TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT,),
+        metrics=(TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT, TrajectoryMetric.PROTEIN_HBOND_COUNT),
     )
 
     def _issues(
@@ -74,8 +74,9 @@ class GromacsHbondAdapter:
             problems.append("GROMACS hydrogen-bond counts require a GROMACS TPR topology")
         if request.trajectory_format.upper() != "XTC":
             problems.append("GROMACS hydrogen-bond counts currently require XTC")
-        if set(request.metrics) != {TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT}:
-            problems.append("this adapter supports only protein-ligand hydrogen-bond counts")
+        internal = request.metrics == (TrajectoryMetric.PROTEIN_HBOND_COUNT,)
+        if len(request.metrics) != 1 or request.metrics[0] not in self.capabilities.metrics:
+            problems.append("this adapter supports one protein or protein-ligand H-bond metric")
         if request.preprocessing_result_id != preprocessing.id:
             problems.append("preprocessing result ID differs from the request")
         if request.simulation_id != preprocessing.simulation_id:
@@ -107,20 +108,32 @@ class GromacsHbondAdapter:
             abs_tol=1e-5,
         ):
             problems.append("request frame interval differs from the processed trajectory")
-        if not {"protein", "ligand"}.issubset(request.selections):
-            problems.append("hydrogen-bond analysis needs verified protein and ligand selections")
+        required = {"protein"} if internal else {"protein", "ligand"}
+        if not required.issubset(request.selections):
+            problems.append(f"hydrogen-bond analysis needs verified selections: {sorted(required)}")
         else:
             if any(
                 not request.selections[key].description.strip()
+                or "\x00" in request.selections[key].description
                 or "\n" in request.selections[key].description
                 or "\r" in request.selections[key].description
-                for key in ("protein", "ligand")
+                for key in required
             ):
                 problems.append("GROMACS hbond group names must be single-line")
-            if request.selections["protein"].n_atoms + request.selections["ligand"].n_atoms > (
-                request.expected_atom_count
+            if (
+                sum(request.selections[key].n_atoms for key in required)
+                > request.expected_atom_count
             ):
-                problems.append("protein and ligand selections cannot exceed total atom count")
+                problems.append("hydrogen-bond selections cannot exceed total atom count")
+            if not internal:
+                protein, ligand = (request.selections[key] for key in ("protein", "ligand"))
+                if protein.description.strip().casefold() == ligand.description.strip().casefold():
+                    problems.append("protein and ligand index group names must be distinct")
+            if any(request.selections[key].indices is not None for key in required):
+                problems.append(
+                    "GROMACS hydrogen bonds require named groups in index_file; "
+                    "separate per-selection index artifacts are unsupported"
+                )
         if problems:
             return (
                 ValidationIssue(
@@ -129,8 +142,8 @@ class GromacsHbondAdapter:
                     subject=SubjectRef(kind="trajectory", id=str(request.id)),
                     message="; ".join(problems),
                     remediation=(
-                        "Use the hash-linked processed XTC and source GROMACS TPR, with distinct "
-                        "verified static GROMACS selections for protein and ligand.",
+                        "Use the hash-linked processed XTC, source TPR and index, with a verified "
+                        "protein group for intraprotein counts or disjoint protein/ligand groups.",
                     ),
                     rule_version="1",
                 ),
@@ -164,6 +177,7 @@ class GromacsHbondAdapter:
             raise GromacsHbondPlanError(f"missing staged path for artifact {exc.args[0]}") from exc
         return {
             "protocol": "caddsuite.gromacs-hbond/1",
+            "metric": request.metrics[0].value,
             "request_id": str(request.id),
             "simulation_id": str(request.simulation_id),
             "trajectory_id": str(request.trajectory_id),
@@ -184,10 +198,16 @@ class GromacsHbondAdapter:
                 "group_name": request.selections["protein"].description,
                 "expected_atom_count": request.selections["protein"].n_atoms,
             },
-            "ligand_selection": {
-                "group_name": request.selections["ligand"].description,
-                "expected_atom_count": request.selections["ligand"].n_atoms,
-            },
+            **(
+                {
+                    "ligand_selection": {
+                        "group_name": request.selections["ligand"].description,
+                        "expected_atom_count": request.selections["ligand"].n_atoms,
+                    }
+                }
+                if request.metrics[0] == TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT
+                else {}
+            ),
             "hbond_distance_nm": parameters.hbond_distance_nm,
             "donor_acceptor_angle_deg": parameters.donor_acceptor_angle_deg,
             "output_dir": parameters.output_dir,
@@ -297,7 +317,7 @@ class GromacsHbondAdapter:
         ):
             raise GromacsHbondPlanError("GROMACS hbond worker result or lineage is malformed")
         if (
-            metric_data.get("metric") != TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT.value
+            metric_data.get("metric") != request.metrics[0].value
             or metric_data.get("file") != "hbond_count.csv"
             or metric_data.get("engine_file") != "hbond_count.xvg"
             or metric_artifacts.keys() != {"hbond_count"}
@@ -350,16 +370,26 @@ class GromacsHbondAdapter:
         version = metadata.get("gromacs_version")
         if not isinstance(version, str) or not version:
             raise GromacsHbondPlanError("worker did not report the GROMACS version")
+        internal = request.metrics[0] == TrajectoryMetric.PROTEIN_HBOND_COUNT
+        target = request.selections["protein" if internal else "ligand"].description
+        scope = "intraprotein" if internal else "protein-ligand"
         metric = MetricSeries(
-            name="protein_ligand_hbond_count",
+            name="hbond_protein" if internal else "protein_ligand_hbond_count",
             definition=MetricDefinition(
-                target_selection=request.selections["ligand"].description,
+                target_selection=target,
                 notes=(
-                    "GROMACS topology-assigned geometric hydrogen bonds; protein selection: "
+                    f"GROMACS topology-assigned geometric {scope} hydrogen bonds; "
+                    "protein selection: "
                     f"{request.selections['protein'].description}; donor-acceptor cutoff "
-                    f"{metadata.get('hbond_distance_nm')} nm and donor-acceptor-hydrogen angle "
+                    f"{metadata.get('hbond_distance_nm')} nm and "
+                    "acceptor-donor-hydrogen (A-D-H) angle "
                     f"<= {metadata.get('donor_acceptor_angle_deg')} degrees. Per-frame counts "
                     "do not identify residue pairs or establish interaction persistence."
+                    + (
+                        " Both donors and acceptors belong to the same protein group."
+                        if internal
+                        else ""
+                    )
                 ),
             ),
             unit="hydrogen_bonds",
@@ -386,13 +416,17 @@ class GromacsHbondAdapter:
             parameters={
                 "adapter_id": self.adapter_id,
                 "adapter_version": self.version,
-                "metric": TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT.value,
+                "metric": request.metrics[0].value,
                 "hbond_distance_nm": metadata["hbond_distance_nm"],
                 "donor_acceptor_angle_deg": metadata["donor_acceptor_angle_deg"],
                 "donor_elements": metadata["donor_elements"],
                 "acceptor_elements": metadata["acceptor_elements"],
                 "protein_selection": request.selections["protein"].description,
-                "ligand_selection": request.selections["ligand"].description,
+                **(
+                    {"ligand_selection": request.selections["ligand"].description}
+                    if not internal
+                    else {}
+                ),
                 "index_file_sha256": request.index_file.sha256,
                 "start_time_ns": request.start_time_ns,
                 "end_time_ns": request.end_time_ns,

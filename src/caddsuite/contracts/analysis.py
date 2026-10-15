@@ -343,6 +343,7 @@ class TrajectoryMetric(StrEnum):
     PROTEIN_LIGAND_CONTACT_COUNT = "protein_ligand_contact_count"
     SOLVENT_ACCESSIBLE_SURFACE_AREA = "solvent_accessible_surface_area"
     PROTEIN_LIGAND_HBOND_COUNT = "protein_ligand_hbond_count"
+    PROTEIN_HBOND_COUNT = "protein_hbond_count"
 
 
 class TrajectoryAnalysisRequest(VersionedContract):
@@ -430,10 +431,13 @@ class TrajectoryAnalysisRequest(VersionedContract):
             required.update({"surface", "sasa_output"})
         if TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT in self.metrics:
             required.update({"protein", "ligand"})
-            if self.index_file is None:
-                raise ValueError(
-                    "protein-ligand hydrogen-bond counts require a hash-linked index file"
-                )
+        if TrajectoryMetric.PROTEIN_HBOND_COUNT in self.metrics:
+            required.add("protein")
+        if {
+            TrajectoryMetric.PROTEIN_LIGAND_HBOND_COUNT,
+            TrajectoryMetric.PROTEIN_HBOND_COUNT,
+        }.intersection(self.metrics) and self.index_file is None:
+            raise ValueError("hydrogen-bond counts require a hash-linked index file")
         missing = required.difference(self.selections)
         if missing:
             raise ValueError(f"metrics require verified selections: {sorted(missing)}")
@@ -497,6 +501,8 @@ class TrajectoryAnalysisPlan(VersionedContract):
             required.update({"protein", "ligand"})
         if TrajectoryMetric.SOLVENT_ACCESSIBLE_SURFACE_AREA in self.metrics:
             required.update({"surface", "sasa_output"})
+        if TrajectoryMetric.PROTEIN_HBOND_COUNT in self.metrics:
+            required.add("protein")
         missing = required.difference(self.selections)
         if missing:
             raise ValueError(f"trajectory plan metrics require selections: {sorted(missing)}")

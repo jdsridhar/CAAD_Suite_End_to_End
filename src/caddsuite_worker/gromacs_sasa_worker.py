@@ -210,6 +210,18 @@ def _run(
     if topology_hash != topology_spec.get("sha256"):
         raise WorkerFailure("staged TPR SHA-256 differs from its artifact manifest")
 
+    index_spec = request.get("index_file")
+    index_hash: str | None = None
+    index_args: list[str] = []
+    if index_spec is not None:
+        if not isinstance(index_spec, dict):
+            raise WorkerFailure("index artifact record is malformed")
+        index = _confined(root, index_spec.get("path"), "GROMACS index")
+        index_hash = _sha256(index)
+        if index_hash != index_spec.get("sha256"):
+            raise WorkerFailure("staged index SHA-256 differs from its artifact manifest")
+        index_args = ["-n", str(index)]
+
     gmx_value = request.get("gmx_executable")
     timeout = request.get("timeout_seconds")
     if not isinstance(gmx_value, str) or not gmx_value or "\x00" in gmx_value:
@@ -226,6 +238,12 @@ def _run(
 
     surface_expression, expected_surface_count = _selection_spec(request, "surface")
     output_expression, expected_output_count = _selection_spec(request, "sasa_output")
+    # With a staged index, descriptions are exact static group names from preparation.
+    # Quote them explicitly for the GROMACS selection language.
+    surface_selection = (
+        "group " + json.dumps(surface_expression) if index_args else surface_expression
+    )
+    output_selection = "group " + json.dumps(output_expression) if index_args else output_expression
     start_ns = _number(request.get("start_time_ns"), "start_time_ns")
     end_ns = _number(request.get("end_time_ns"), "end_time_ns", minimum=0.000001)
     if end_ns <= start_ns:
@@ -277,9 +295,9 @@ def _run(
 
     selection_receipts: dict[str, dict[str, Any]] = {}
     selection_sets: dict[str, set[int]] = {}
-    for key, expression, expected_count in (
-        ("surface", surface_expression, expected_surface_count),
-        ("sasa_output", output_expression, expected_output_count),
+    for key, description, expression, expected_count in (
+        ("surface", surface_expression, surface_selection, expected_surface_count),
+        ("sasa_output", output_expression, output_selection, expected_output_count),
     ):
         index_path = output / f"{key}.ndx"
         count_path = output / f"{key}.count.xvg"
@@ -287,6 +305,7 @@ def _run(
             [
                 executable,
                 "select",
+                *index_args,
                 "-s",
                 str(topology),
                 "-select",
@@ -314,7 +333,7 @@ def _run(
             raise WorkerFailure(f"selection {key!r} contains an atom outside the system")
         selection_sets[key] = indices
         selection_receipts[key] = {
-            "description": expression,
+            "description": description,
             "n_atoms": len(indices),
             "index_file": index_path.name,
             "index_sha256": _sha256(index_path),
@@ -328,6 +347,7 @@ def _run(
     sasa_argv = [
         executable,
         "sasa",
+        *index_args,
         "-s",
         str(topology),
         "-f",
@@ -346,9 +366,9 @@ def _run(
         "none",
         "-rmpbc",
         "-surface",
-        surface_expression,
+        surface_selection,
         "-output",
-        output_expression,
+        output_selection,
         "-o",
         str(xvg_path),
     ]
@@ -420,6 +440,7 @@ def _run(
             "frame_interval_ps": interval_ps,
             "trajectory_sha256": trajectory_hash,
             "topology_sha256": topology_hash,
+            "index_sha256": index_hash,
             "probe_radius_A": probe_A,
             "sphere_points": sphere_points,
             "radius_method": "GROMACS atom/radius assignment; retain any engine warning",
@@ -441,6 +462,7 @@ def _run(
                 "input_artifacts": {
                     "trajectory": trajectory_hash,
                     "topology": topology_hash,
+                    **({"index": index_hash} if index_hash is not None else {}),
                 },
                 "commands": records,
             },

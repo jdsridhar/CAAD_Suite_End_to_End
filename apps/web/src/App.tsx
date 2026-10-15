@@ -16,6 +16,16 @@ export type EnginePaths = components["schemas"]["EnginePaths"];
 export type EngineReadiness = components["schemas"]["EngineReadiness"];
 export type EngineDiscoveryReport = components["schemas"]["EngineDiscoveryReport"];
 
+type GuidedAnalysisMetric = components["schemas"]["ProteinAnalysisOptions"]["metrics"][number];
+const ANALYSIS_METRIC_OPTIONS: Array<[GuidedAnalysisMetric, string]> = [
+  ["backbone_rmsd", "Backbone RMSD"],
+  ["protein_ca_rmsf", "Cα RMSF"],
+  ["protein_radius_of_gyration", "Protein radius of gyration"],
+  ["solvent_accessible_surface_area", "Solvent accessible surface area (SASA)"],
+  ["protein_hbond_count", "Protein hydrogen bonds"],
+  ["protein_ligand_hbond_count", "Protein–ligand hydrogen bonds"],
+];
+
 export const DEFAULT_ENGINE_PATHS: EnginePaths = {
   vina_executable: "vina",
   cadd_python: "python",
@@ -1063,10 +1073,31 @@ export default function App() {
   const [analysisBackboneSelection, setAnalysisBackboneSelection] = useState("protein and backbone");
   const [analysisCaSelection, setAnalysisCaSelection] = useState("protein and name CA");
   const [analysisProteinSelection, setAnalysisProteinSelection] = useState("protein");
+  const [analysisLigandSelection, setAnalysisLigandSelection] = useState("");
+  const [analysisSasaSurfaceSelection, setAnalysisSasaSurfaceSelection] = useState("protein");
+  const [analysisSasaOutputSelection, setAnalysisSasaOutputSelection] = useState("protein");
+  const [analysisSasaProbeRadius, setAnalysisSasaProbeRadius] = useState(1.4);
+  const [analysisSasaSpherePoints, setAnalysisSasaSpherePoints] = useState(24);
+  const [analysisHbondDistance, setAnalysisHbondDistance] = useState(0.35);
+  const [analysisHbondAngle, setAnalysisHbondAngle] = useState(30);
   const [analysisStartNs, setAnalysisStartNs] = useState(0);
   const [analysisEndNs, setAnalysisEndNs] = useState("");
   const [analysisStride, setAnalysisStride] = useState(1);
-  const [analysisMetrics, setAnalysisMetrics] = useState(["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration"]);
+  const [analysisMetrics, setAnalysisMetrics] = useState<GuidedAnalysisMetric[]>(["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration"]);
+  const analysisIncludesSasa = analysisMetrics.includes("solvent_accessible_surface_area");
+  const analysisIncludesLigandHbond = analysisMetrics.includes("protein_ligand_hbond_count");
+  const analysisIncludesHbond = analysisIncludesLigandHbond || analysisMetrics.includes("protein_hbond_count");
+  const analysisSettingsError = analysisIncludesLigandHbond && !analysisLigandSelection.trim()
+    ? "Enter an explicit ligand selection to calculate protein–ligand hydrogen bonds."
+    : analysisIncludesSasa && (!analysisSasaSurfaceSelection.trim() || !analysisSasaOutputSelection.trim())
+      ? "Enter both the SASA surface and output selections."
+      : analysisIncludesSasa && (!Number.isFinite(analysisSasaProbeRadius) || analysisSasaProbeRadius <= 0 || analysisSasaProbeRadius > 5
+        || !Number.isInteger(analysisSasaSpherePoints) || analysisSasaSpherePoints < 1 || analysisSasaSpherePoints > 1_000_000)
+        ? "SASA requires a probe radius above 0 and up to 5 Å, and 1–1,000,000 integer sphere points."
+        : analysisIncludesHbond && (!Number.isFinite(analysisHbondDistance) || analysisHbondDistance <= 0
+          || analysisHbondDistance > 1 || !Number.isFinite(analysisHbondAngle) || analysisHbondAngle <= 0 || analysisHbondAngle > 180)
+          ? "Hydrogen bonds require a distance cutoff above 0 and up to 1 nm, and an angle cutoff above 0 and up to 180°."
+          : "";
   const [queuedAnalysis, setQueuedAnalysis] = useState<{ runId: string; topologyId: string; trajectoryId: string } | null>(null);
   const loadedAnalysisRun = useRef("");
   const analyticsGeneration = useRef(0);
@@ -2038,6 +2069,10 @@ export default function App() {
 
   async function calculateTrajectoryAnalysis() {
     if (!pid || manualTrajectoryFiles || !selectedTrajectoryOption || !topologyId || !trajectoryId) return;
+    if (analysisSettingsError || analysisMetrics.length === 0) {
+      setErr(analysisSettingsError || "Select at least one analysis metric.");
+      return;
+    }
     const projectId = pid;
     const generation = analyticsGeneration.current;
     const selectedTopology = topologyId, selectedTrajectory = trajectoryId;
@@ -2055,6 +2090,17 @@ export default function App() {
           backbone_selection: analysisBackboneSelection,
           ca_selection: analysisCaSelection,
           protein_selection: analysisProteinSelection,
+          ...(analysisIncludesSasa ? {
+            sasa_surface_selection: analysisSasaSurfaceSelection.trim(),
+            sasa_output_selection: analysisSasaOutputSelection.trim(),
+            sasa_probe_radius_A: analysisSasaProbeRadius,
+            sasa_sphere_points: analysisSasaSpherePoints,
+          } : {}),
+          ...(analysisIncludesHbond ? {
+            hbond_distance_nm: analysisHbondDistance,
+            hbond_angle_deg: analysisHbondAngle,
+          } : {}),
+          ...(analysisIncludesLigandHbond ? { ligand_selection: analysisLigandSelection.trim() } : {}),
           metrics: analysisMetrics,
           start_time_ns: analysisStartNs,
           end_time_ns: analysisEndNs.trim() ? Number(analysisEndNs) : null,
@@ -3347,15 +3393,13 @@ export default function App() {
 
                           <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
                             Timestep (fs)
-                            <input
-                              type="number"
-                              min={0.5}
-                              max={2.0}
-                              step={0.5}
+                            <select
                               value={mdTimestepFs}
-                              onChange={(e) => setMdTimestepFs(Math.max(0.1, parseFloat(e.target.value) || 2.0))}
+                              onChange={(e) => setMdTimestepFs(Number(e.target.value))}
                               style={{ fontSize: "11px" }}
-                            />
+                            >
+                              {[0.5, 1, 1.5, 2].map((value) => <option key={value} value={value}>{value} fs</option>)}
+                            </select>
                           </label>
 
                           <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
@@ -4476,7 +4520,7 @@ export default function App() {
               )}
 
               {/* TRAJECTORY ANALYTICS DASHBOARD */}
-              {projectArtifacts.some((a) => coordinatesFormat(a)) && (
+              {(trajectoryOptions.length > 0 || projectArtifacts.some((a) => coordinatesFormat(a))) && (
                 <div className="structure-list" style={{ marginTop: "16px" }}>
                   <div className="between">
                     <div>
@@ -4493,23 +4537,48 @@ export default function App() {
                     </button>
                   </div>
                   <fieldset className="trajectory-analysis-settings" disabled={preparingTrajectoryAnalysis}>
-                    <legend>Protein analysis settings</legend>
+                    <legend>Trajectory analysis settings</legend>
                     <div className="analysis-settings-grid">
                       <label>Backbone selection (RMSD)<input value={analysisBackboneSelection} onChange={(e) => setAnalysisBackboneSelection(e.target.value)} /></label>
                       <label>Cα selection (RMSF)<input value={analysisCaSelection} onChange={(e) => setAnalysisCaSelection(e.target.value)} /></label>
-                      <label>Protein selection (radius of gyration)<input value={analysisProteinSelection} onChange={(e) => setAnalysisProteinSelection(e.target.value)} /></label>
+                      <label>Protein selection (radius of gyration / hydrogen bonds)<input value={analysisProteinSelection} onChange={(e) => setAnalysisProteinSelection(e.target.value)} /></label>
                       <label>Start time (ns)<input type="number" min={0} step="any" value={analysisStartNs} onChange={(e) => setAnalysisStartNs(Number(e.target.value))} /></label>
                       <label>End time (ns)<input type="number" min={0} step="any" placeholder="Last saved frame" value={analysisEndNs} onChange={(e) => setAnalysisEndNs(e.target.value)} /></label>
                       <label>Frame stride<input type="number" min={1} max={10000} value={analysisStride} onChange={(e) => setAnalysisStride(Number(e.target.value))} /></label>
                     </div>
                     <div className="analysis-metric-options">
-                      {[["backbone_rmsd", "Backbone RMSD"], ["protein_ca_rmsf", "Cα RMSF"], ["protein_radius_of_gyration", "Protein radius of gyration"]].map(([key, label]) => (
+                      {ANALYSIS_METRIC_OPTIONS.map(([key, label]) => (
                         <label key={key}><input type="checkbox" checked={analysisMetrics.includes(key)} onChange={(e) => setAnalysisMetrics((items) => e.target.checked ? [...items, key] : items.filter((item) => item !== key))} />{label}</label>
                       ))}
                     </div>
+                    {analysisIncludesSasa && (
+                      <fieldset>
+                        <legend>SASA settings</legend>
+                        <div className="analysis-settings-grid">
+                          <label>SASA surface selection (MDAnalysis)<input required maxLength={500} value={analysisSasaSurfaceSelection} onChange={(e) => setAnalysisSasaSurfaceSelection(e.target.value)} /></label>
+                          <label>SASA output selection (MDAnalysis)<input required maxLength={500} value={analysisSasaOutputSelection} onChange={(e) => setAnalysisSasaOutputSelection(e.target.value)} /></label>
+                          <label>SASA probe radius (Å)<input type="number" min={0} max={5} step="any" value={analysisSasaProbeRadius} onChange={(e) => setAnalysisSasaProbeRadius(Number(e.target.value))} /></label>
+                          <label>SASA sphere points<input type="number" min={1} max={1000000} step={1} value={analysisSasaSpherePoints} onChange={(e) => setAnalysisSasaSpherePoints(Number(e.target.value))} /></label>
+                        </div>
+                        <p className="dim">The surface selection defines atoms that occlude the probe, for example <code>protein</code> or <code>protein or resname LIG</code>. The output selection defines atoms whose area is reported and must be contained in the surface selection.</p>
+                      </fieldset>
+                    )}
+                    {analysisIncludesHbond && (
+                      <fieldset>
+                        <legend>Hydrogen-bond settings</legend>
+                        <div className="analysis-settings-grid">
+                          {analysisIncludesLigandHbond && <label>Ligand selection (MDAnalysis)<input required maxLength={500} placeholder="e.g. resname LIG" value={analysisLigandSelection} onChange={(e) => setAnalysisLigandSelection(e.target.value)} /></label>}
+                          <label>Hydrogen-bond distance cutoff (nm)<input type="number" min={0} max={1} step="any" value={analysisHbondDistance} onChange={(e) => setAnalysisHbondDistance(Number(e.target.value))} /></label>
+                          <label>Hydrogen-bond angle cutoff (degrees)<input type="number" min={0} max={180} step="any" value={analysisHbondAngle} onChange={(e) => setAnalysisHbondAngle(Number(e.target.value))} /></label>
+                        </div>
+                        <p className="dim">Protein hydrogen bonds are counted within the protein selection above. The angle cutoff is the maximum deviation from a straight hydrogen bond.</p>
+                        {analysisIncludesLigandHbond && <p className="dim">Enter the ligand expression for this topology. Protein–ligand hydrogen bonds are counted between the protein selection above and this ligand.</p>}
+                      </fieldset>
+                    )}
                     <p className="dim">Preparation: make molecules whole and remove periodic jumps using the recorded TPR. Reference: first saved frame. RMSD fits the backbone; RMSF fits Cα atoms. Radius of gyration uses topology masses.</p>
-                    <p className="dim">SASA and hydrogen-bond counts are unavailable in this analysis adapter. This operation analyses saved frames; it does not rerun MD.</p>
-                    <button type="button" className="dark" disabled={preparingTrajectoryAnalysis || !guidedAnalysisAvailable || analysisMetrics.length === 0 || (queuedAnalysis?.runId === rid && Boolean(run && !["succeeded", "failed", "stopped"].includes(run.status)))} onClick={() => void calculateTrajectoryAnalysis()}>
+                    <p className="dim">This operation analyses saved frames; it does not rerun MD.</p>
+                    {analysisSettingsError && <p role="alert">{analysisSettingsError}</p>}
+                    <button type="button" className="dark" disabled={preparingTrajectoryAnalysis || !guidedAnalysisAvailable || analysisMetrics.length === 0 || Boolean(analysisSettingsError) || (queuedAnalysis?.runId === rid && Boolean(run && !["succeeded", "failed", "stopped"].includes(run.status)))} onClick={() => void calculateTrajectoryAnalysis()}>
                       {preparingTrajectoryAnalysis ? "Inspecting trajectory..." : "Calculate analysis"}
                     </button>
                     {manualTrajectoryFiles && <p className="dim">Automatic preparation requires a recorded MD task with GRO/XTC and TPR outputs. Imported files can use a separately configured analysis workflow.</p>}

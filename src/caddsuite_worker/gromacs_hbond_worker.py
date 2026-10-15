@@ -126,7 +126,9 @@ def _read_xvg(path: Path) -> list[tuple[float, float]]:
         if len(fields) < 2:
             raise WorkerFailure("GROMACS H-bond XVG has a malformed numeric row")
         try:
-            time_ns, count = float(fields[0]), float(fields[-1])
+            # -num can include a third column for pairs within the distance cutoff.
+            # Only the second column reports hydrogen bonds.
+            time_ns, count = float(fields[0]), float(fields[1])
         except ValueError as exc:
             raise WorkerFailure("GROMACS H-bond XVG contains non-numeric data") from exc
         if not math.isfinite(time_ns) or not math.isfinite(count) or count < 0:
@@ -184,7 +186,7 @@ def _run_command(
 
 
 def _run(request_path: Path, output_arg: str) -> None:
-    root = request_path.parent.resolve(strict=True)
+    root = Path.cwd().resolve(strict=True)
     request_file = request_path.resolve(strict=True)
     if not request_file.is_relative_to(root) or not request_file.is_file():
         raise WorkerFailure("request file must be inside the private stage")
@@ -241,10 +243,18 @@ def _run(request_path: Path, output_arg: str) -> None:
     executable = shutil.which(gmx_value)
     if executable is None:
         raise WorkerFailure(f"GROMACS executable is unavailable: {gmx_value}")
+    # Requests predating the metric field represent protein-ligand counts.
+    metric = request.get("metric", "protein_ligand_hbond_count")
+    if metric not in {"protein_hbond_count", "protein_ligand_hbond_count"}:
+        raise WorkerFailure("unsupported hydrogen-bond metric")
+    internal = metric == "protein_hbond_count"
     protein, protein_count = _selection(request, "protein")
-    ligand, ligand_count = _selection(request, "ligand")
-    if protein.casefold() == ligand.casefold():
-        raise WorkerFailure("protein and ligand index group names must be distinct")
+    if internal:
+        partner, partner_count = protein, protein_count
+    else:
+        partner, partner_count = _selection(request, "ligand")
+        if protein.casefold() == partner.casefold():
+            raise WorkerFailure("protein and ligand index group names must be distinct")
     expected_atoms = request.get("expected_atom_count")
     expected_frames = request.get("expected_frame_count")
     if (
@@ -256,17 +266,18 @@ def _run(request_path: Path, output_arg: str) -> None:
         or expected_frames < 1
     ):
         raise WorkerFailure("expected atom/frame counts must be positive integers")
-    if protein_count + ligand_count > expected_atoms:
-        raise WorkerFailure("protein and ligand selection counts exceed total system atoms")
+    selected_count = protein_count if internal else protein_count + partner_count
+    if selected_count > expected_atoms:
+        raise WorkerFailure("hydrogen-bond selection counts exceed total system atoms")
     index_order, index_groups = _read_index(index_file, expected_atoms=expected_atoms)
-    if protein not in index_groups or ligand not in index_groups:
-        raise WorkerFailure("requested protein or ligand group is absent from the index file")
-    protein_atoms, ligand_atoms = index_groups[protein], index_groups[ligand]
-    if len(protein_atoms) != protein_count or len(ligand_atoms) != ligand_count:
+    if protein not in index_groups or partner not in index_groups:
+        raise WorkerFailure("requested hydrogen-bond group is absent from the index file")
+    protein_atoms, partner_atoms = index_groups[protein], index_groups[partner]
+    if len(protein_atoms) != protein_count or len(partner_atoms) != partner_count:
         raise WorkerFailure("index group atom counts differ from independently verified selections")
-    if protein_atoms.intersection(ligand_atoms):
+    if not internal and protein_atoms.intersection(partner_atoms):
         raise WorkerFailure("protein and ligand index groups overlap")
-    protein_index, ligand_index = index_order.index(protein), index_order.index(ligand)
+    protein_index, partner_index = index_order.index(protein), index_order.index(partner)
     interval_ns = _number(request, "frame_interval_ps", minimum=1e-12) / 1000.0
     first_ns = _number(request, "trajectory_first_time_ns")
     start_ns = _number(request, "start_time_ns")
@@ -287,10 +298,10 @@ def _run(request_path: Path, output_arg: str) -> None:
         records=records,
     )
     version_text = (version_run.stdout + version_run.stderr).decode("utf-8", errors="replace")
-    version_lines = [line.strip() for line in version_text.splitlines() if line.strip()]
-    if not version_lines:
-        raise WorkerFailure("GROMACS --version returned no version information")
-    gromacs_version = version_lines[0]
+    version_match = re.search(r"GROMACS version:\s*([^\r\n]+)", version_text)
+    if version_match is None:
+        raise WorkerFailure("GROMACS --version returned no parseable version information")
+    gromacs_version = version_match.group(1).strip()
     help_run = _run_command(
         [executable, "hbond", "-h"],
         root=root,
@@ -342,7 +353,7 @@ def _run(request_path: Path, output_arg: str) -> None:
         label="gromacs_hbond",
         timeout=timeout,
         records=records,
-        input_bytes=f"{protein_index}\n{ligand_index}\n".encode(),
+        input_bytes=f"{protein_index}\n{partner_index}\n".encode(),
     )
     raw_rows = _read_xvg(xvg)
     if len(raw_rows) != expected_frames:
@@ -372,7 +383,7 @@ def _run(request_path: Path, output_arg: str) -> None:
         writer.writerow(("time_ns", "hbond_count"))
         writer.writerows((f"{time:.10g}", f"{count:.10g}") for time, count in selected)
     metric = {
-        "metric": "protein_ligand_hbond_count",
+        "metric": metric,
         "file": csv_path.name,
         "sha256": _sha256(csv_path),
         "unit": "hydrogen_bonds",
@@ -401,9 +412,16 @@ def _run(request_path: Path, output_arg: str) -> None:
         "protein_selection": protein,
         "protein_group_index": protein_index,
         "protein_selection_atom_count_verified_upstream": protein_count,
-        "ligand_selection": ligand,
-        "ligand_group_index": ligand_index,
-        "ligand_selection_atom_count_verified_upstream": ligand_count,
+        **(
+            {"analysis_scope": "intraprotein"}
+            if internal
+            else {
+                "analysis_scope": "protein_ligand",
+                "ligand_selection": partner,
+                "ligand_group_index": partner_index,
+                "ligand_selection_atom_count_verified_upstream": partner_count,
+            }
+        ),
         "pbc": "GROMACS default; periodicity inferred from trajectory box",
     }
     (output / "commands.json").write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")

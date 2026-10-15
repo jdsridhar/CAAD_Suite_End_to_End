@@ -71,6 +71,7 @@ mdanalysis = "caddsuite.application.trajectory_stage_plugin:plugin_factory"
 mdanalysis_trajectory = "caddsuite.application.mdanalysis_trajectory_stage_plugin:plugin_factory"
 md_trajectory_binding = "caddsuite.application.md_trajectory_binding_stage_plugin:plugin_factory"
 gromacs_trajectory = "caddsuite.application.gromacs_trajectory_stage_plugin:plugin_factory"
+gromacs_metrics = "caddsuite.application.gromacs_metrics_stage_plugin:plugin_factory"
 gmx_mmpbsa = "caddsuite.application.binding_energy_stage_plugin:plugin_factory"
 
 [project.entry-points."caddsuite.qm_engines"]

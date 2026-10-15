@@ -416,6 +416,33 @@
             ],
             "title": "Gmx Executable"
           },
+          "hbond_angle_deg": {
+            "default": 30,
+            "exclusiveMinimum": 0.0,
+            "maximum": 180.0,
+            "title": "Hbond Angle Deg",
+            "type": "number"
+          },
+          "hbond_distance_nm": {
+            "default": 0.35,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Hbond Distance Nm",
+            "type": "number"
+          },
+          "ligand_selection": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ligand Selection"
+          },
           "mdanalysis_python": {
             "anyOf": [
               {
@@ -437,7 +464,10 @@
               "enum": [
                 "backbone_rmsd",
                 "protein_ca_rmsf",
-                "protein_radius_of_gyration"
+                "protein_radius_of_gyration",
+                "solvent_accessible_surface_area",
+                "protein_ligand_hbond_count",
+                "protein_hbond_count"
               ],
               "type": "string"
             },
@@ -456,6 +486,34 @@
             "default": 0,
             "title": "Reference Frame",
             "type": "integer"
+          },
+          "sasa_output_selection": {
+            "default": "protein",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Sasa Output Selection",
+            "type": "string"
+          },
+          "sasa_probe_radius_A": {
+            "default": 1.4,
+            "exclusiveMinimum": 0.0,
+            "maximum": 5.0,
+            "title": "Sasa Probe Radius A",
+            "type": "number"
+          },
+          "sasa_sphere_points": {
+            "default": 24,
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Sasa Sphere Points",
+            "type": "integer"
+          },
+          "sasa_surface_selection": {
+            "default": "protein",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Sasa Surface Selection",
+            "type": "string"
           },
           "source_task_id": {
             "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",

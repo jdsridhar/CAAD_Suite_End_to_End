@@ -658,6 +658,18 @@ export interface components {
             end_time_ns?: number | null;
             /** Gmx Executable */
             gmx_executable?: string | null;
+            /**
+             * Hbond Angle Deg
+             * @default 30
+             */
+            hbond_angle_deg: number;
+            /**
+             * Hbond Distance Nm
+             * @default 0.35
+             */
+            hbond_distance_nm: number;
+            /** Ligand Selection */
+            ligand_selection?: string | null;
             /** Mdanalysis Python */
             mdanalysis_python?: string | null;
             /**
@@ -668,7 +680,7 @@ export interface components {
              *       "protein_radius_of_gyration"
              *     ]
              */
-            metrics: ("backbone_rmsd" | "protein_ca_rmsf" | "protein_radius_of_gyration")[];
+            metrics: ("backbone_rmsd" | "protein_ca_rmsf" | "protein_radius_of_gyration" | "solvent_accessible_surface_area" | "protein_ligand_hbond_count" | "protein_hbond_count")[];
             /**
              * Protein Selection
              * @default protein
@@ -680,6 +692,26 @@ export interface components {
              * @constant
              */
             reference_frame: 0;
+            /**
+             * Sasa Output Selection
+             * @default protein
+             */
+            sasa_output_selection: string;
+            /**
+             * Sasa Probe Radius A
+             * @default 1.4
+             */
+            sasa_probe_radius_A: number;
+            /**
+             * Sasa Sphere Points
+             * @default 24
+             */
+            sasa_sphere_points: number;
+            /**
+             * Sasa Surface Selection
+             * @default protein
+             */
+            sasa_surface_selection: string;
             /** Source Task Id */
             source_task_id: string;
             /**

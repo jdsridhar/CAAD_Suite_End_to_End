@@ -116,6 +116,18 @@ def test_adapter_requires_linked_gromacs_tpr_and_processed_xtc():
     )
 
 
+def test_adapter_does_not_treat_index_artifact_metadata_as_atom_indices():
+    request, parent = request_pair()
+    selections = {
+        key: selection.model_copy(update={"indices": artifact(f"{key}_indices")})
+        for key, selection in request.selections.items()
+    }
+    issues = GromacsHbondAdapter().validate_request(
+        request.model_copy(update={"selections": selections}), parent
+    )
+    assert any("per-selection index artifacts are unsupported" in issue.message for issue in issues)
+
+
 def test_plan_confines_inputs_and_records_selection_and_geometry_parameters(tmp_path: Path):
     adapter = GromacsHbondAdapter()
     request, preprocessing = request_pair()

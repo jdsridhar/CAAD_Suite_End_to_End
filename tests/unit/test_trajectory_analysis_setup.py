@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from collections.abc import Iterator
@@ -37,8 +38,19 @@ def storage(tmp_path: Path) -> Iterator[tuple[sessionmaker[Session], ArtifactSto
     engine.dispose()
 
 
+@pytest.mark.parametrize(
+    "extra_metrics",
+    [
+        (),
+        ("solvent_accessible_surface_area",),
+        ("protein_ligand_hbond_count",),
+        ("protein_hbond_count",),
+        ("solvent_accessible_surface_area", "protein_ligand_hbond_count"),
+        ("solvent_accessible_surface_area", "protein_hbond_count", "protein_ligand_hbond_count"),
+    ],
+)
 def test_guided_plan_preserves_inspected_dimensions_methods_and_source_identity(
-    storage, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    storage, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, extra_metrics
 ) -> None:
     sessions, store = storage
     with sessions.begin() as session:
@@ -76,6 +88,17 @@ def test_guided_plan_preserves_inspected_dimensions_methods_and_source_identity(
                     for key, value in request["selections"].items()
                 },
             }
+            if request.get("index_groups"):
+                index_path = Path(spec.argv[-1]).parent / "analysis-groups.ndx"
+                lines = ["[ System ]", "1 2 3 4 5 6"]
+                for key, group in request["index_groups"].items():
+                    lines.extend([f"[ {group} ]", "4 5 6" if key == "ligand" else "1 2 3"])
+                index_path.write_text("\n".join(lines) + "\n")
+                metadata["index"] = {
+                    "path": index_path.name,
+                    "sha256": hashlib.sha256(index_path.read_bytes()).hexdigest(),
+                    "groups": request["index_groups"],
+                }
             stdout = store.put_bytes(json.dumps(metadata).encode())
             stderr = store.put_bytes(b"")
             return SimpleNamespace(
@@ -96,6 +119,8 @@ def test_guided_plan_preserves_inspected_dimensions_methods_and_source_identity(
         end_time_ns=0.008,
         stride=2,
         gmx_executable="fixture-gmx",
+        metrics=("backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration", *extra_metrics),
+        ligand_selection="resname LIG" if "protein_ligand_hbond_count" in extra_metrics else None,
     )
     result = setup.prepare_protein_analysis(project_id, options, sessions, store, tmp_path / "runs")
     request = TrajectoryProcessingRequest.model_validate(result["inputs"]["request"])
@@ -114,7 +139,36 @@ def test_guided_plan_preserves_inspected_dimensions_methods_and_source_identity(
     compiled = StageHandlerRegistry.discover().compile(
         WorkflowDefinition.model_validate(result["workflow"])
     )
-    assert len(compiled.tasks) == 2
+    assert len(compiled.tasks) == 2 + len(extra_metrics)
+    if extra_metrics:
+        index = result["workflow"]["stages"][0]["params"]["engine_parameters"]["index_artifact"]
+        assert store.verify(index["sha256"])
+        repeated = setup.prepare_protein_analysis(
+            project_id, options, sessions, store, tmp_path / "runs"
+        )
+        repeated_index = repeated["workflow"]["stages"][0]["params"]["engine_parameters"][
+            "index_artifact"
+        ]
+        assert repeated_index == index
+    if "solvent_accessible_surface_area" in extra_metrics:
+        sasa_plan = TrajectoryAnalysisPlan.model_validate(result["inputs"]["sasa_plan"])
+        assert sasa_plan.selections["surface"].description == "CSA_Surface"
+    if "protein_ligand_hbond_count" in extra_metrics:
+        hb_plan = TrajectoryAnalysisPlan.model_validate(result["inputs"]["hbond_plan"])
+        assert hb_plan.selections["ligand"].description == "CSA_Ligand"
+    if "protein_hbond_count" in extra_metrics:
+        hb_plan = TrajectoryAnalysisPlan.model_validate(result["inputs"]["protein_hbond_plan"])
+        assert set(hb_plan.selections) == {"protein"}
+
+
+def test_hydrogen_bonds_require_explicit_ligand_selection() -> None:
+    with pytest.raises(ValueError, match="explicit ligand"):
+        setup.ProteinAnalysisOptions(
+            source_task_id=new_ulid(),
+            topology_artifact_id=new_ulid(),
+            trajectory_artifact_id=new_ulid(),
+            metrics=("protein_ligand_hbond_count",),
+        )
 
 
 def test_guided_analysis_rejects_a_task_outside_the_project(storage, tmp_path: Path) -> None:
