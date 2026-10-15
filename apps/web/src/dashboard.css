@@ -341,3 +341,27 @@
   .workspace-tab-btn{white-space:normal;text-align:left;padding:10px 8px;line-height:1.3;min-width:0}
   .shell .between{flex-wrap:wrap;gap:10px}
 }
+.trajectory-file-picker > label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.trajectory-file-picker label.trajectory-manual-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.trajectory-file-picker .trajectory-manual-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  padding: 0;
+}
+.trajectory-file-picker select {
+  width: 100%;
+  min-width: 0;
+}
+.trajectory-file-picker p {
+  overflow-wrap: anywhere;
+}

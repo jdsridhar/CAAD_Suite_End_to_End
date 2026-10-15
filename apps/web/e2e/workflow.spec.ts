@@ -112,6 +112,7 @@ test("recorded metrics retain methods and download with authentication", async (
   await upload(page, "browser-topology.pdb", "chemical/x-pdb", Buffer.from(
     "ATOM      1  C1  LIG A   1       1.000   1.000   1.000  1.00  0.00           C\nEND\n"));
   await upload(page, "browser-trajectory.xtc", "application/octet-stream", Buffer.from("UI fixture only"));
+  await page.getByRole("checkbox", { name: "Choose other files (advanced)" }).check();
   const topology = page.getByRole("combobox", { name: "Topology", exact: true });
   const coords = page.getByRole("combobox", { name: "Coordinates", exact: true });
   const topId = await topology.locator("option").filter({ hasText: "browser-topology.pdb" }).getAttribute("value");
@@ -179,13 +180,72 @@ test("cube and compatible trajectory previews preserve their existing viewer pat
   ].join("\n")).join("\n");
   await upload(page, "two-atom-topology.pdb", "chemical/x-pdb", Buffer.from(topology));
   await upload(page, "two-atom-trajectory.lammpstrj", "text/plain", Buffer.from(frames));
+  await page.getByRole("checkbox", { name: "Choose other files (advanced)" }).check();
   const tops = page.getByRole("combobox", { name: "Topology", exact: true });
   const coords = page.getByRole("combobox", { name: "Coordinates", exact: true });
   await tops.selectOption((await tops.locator("option").filter({ hasText: "two-atom-topology" }).getAttribute("value"))!);
   await coords.selectOption((await coords.locator("option").filter({ hasText: "two-atom-trajectory" }).getAttribute("value"))!);
+  await page.getByRole("button", { name: "View trajectory", exact: true }).click();
   await expect(page.getByLabel("Molecular trajectory viewer")).toBeVisible();
   await expect(page.locator(".molstar-host canvas").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByLabel("Molecular trajectory viewer").locator(".alert")).not.toBeVisible();
+});
+
+test("trajectory dropdowns show only the selected MD task files", async ({ page }) => {
+  test.setTimeout(60_000);
+  const projectId = await connectAndCreate(page);
+  await page.getByRole("button", { name: /3D Molecular Studio/ }).click();
+  // Explicit metadata/UI fixtures; no scientific calculation or trajectory is fabricated.
+  for (const name of ["older.pdb", "latest.pdb", "unrelated.pdb", "older.xtc", "latest.xtc"]) {
+    await upload(page, name, "application/octet-stream", Buffer.from("UI selection fixture " + name));
+  }
+  const response = await page.request.get(api + "/v1/projects/" + projectId + "/artifacts",
+    { headers: { Authorization: "Bearer " + token } });
+  const artifacts = await response.json() as Array<{ id: string; original_name: string }>;
+  const artifact = (name: string) => artifacts.find((item) => item.original_name === name)!;
+  const latestTask = ulid(), olderTask = ulid();
+  const groups = [
+    { task_id: latestTask, run_id: ulid(), accession: "Latest MD fixture", stage_id: "production", stage_kind: "production",
+      system_id: ulid(), topologies: [artifact("latest.pdb")], trajectories: [artifact("latest.xtc")] },
+    { task_id: olderTask, run_id: ulid(), accession: "Older MD fixture", stage_id: "production", stage_kind: "production",
+      system_id: ulid(), topologies: [artifact("older.pdb")], trajectories: [artifact("older.xtc")] },
+  ];
+  await page.route(api + "/v1/projects/" + projectId + "/dashboard", async (route) => {
+    const original = await route.fetch();
+    const dashboard = await original.json();
+    await route.fulfill({ json: { ...dashboard, trajectory_options: groups } });
+  });
+  const source = page.getByRole("combobox", { name: "Completed MD task", exact: true });
+  await expect(source).toBeVisible({ timeout: 20_000 });
+  const tops = page.getByRole("combobox", { name: "Topology", exact: true });
+  const coords = page.getByRole("combobox", { name: "Coordinates", exact: true });
+  await expect(tops.locator("option")).toHaveCount(2);
+  await expect(coords.locator("option")).toHaveCount(2);
+  await expect(tops).toHaveValue(artifact("latest.pdb").id);
+  await expect(coords).toHaveValue(artifact("latest.xtc").id);
+  await expect(page.getByLabel("Molecular trajectory viewer")).not.toBeVisible();
+  await source.selectOption(olderTask);
+  await expect(tops).toHaveValue(artifact("older.pdb").id);
+  await expect(coords).toHaveValue(artifact("older.xtc").id);
+  await expect(tops.locator("option").filter({ hasText: "latest.pdb" })).toHaveCount(0);
+  await expect(tops.locator("option").filter({ hasText: "unrelated.pdb" })).toHaveCount(0);
+  await page.getByRole("checkbox", { name: "Choose other files (advanced)" }).check();
+  await expect(tops.locator("option")).toHaveCount(4);
+  await expect(coords.locator("option")).toHaveCount(3);
+  await expect(tops).toHaveValue("");
+  await expect(page.getByText(/Manual selection: confirm both files/)).toBeVisible();
+  await page.getByRole("checkbox", { name: "Choose other files (advanced)" }).uncheck();
+  await expect(tops).toHaveValue(artifact("older.pdb").id);
+  await page.locator(".structure-list").filter({ has: page.getByRole("heading", { name: "Trajectory 3D Preview (Mol*)" }) }).screenshot({ path: "test-results/trajectory-file-filtering.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await page.getByRole("button", { name: /Projects & API/ }).click();
+  await page.getByPlaceholder(/Project name/).fill("Separate empty project");
+  await page.getByPlaceholder(/slug \(e.g./).fill("empty-trajectory-" + Date.now());
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Project created:" })).toBeVisible();
+  await page.getByRole("button", { name: /3D Molecular Studio/ }).click();
+  await expect(page.getByRole("heading", { name: "Trajectory 3D Preview (Mol*)" })).not.toBeVisible();
 });
 
 test("engine configuration displays discovered readiness and supports editable path overrides", async ({ page }) => {
@@ -482,7 +542,3 @@ test("recorded MD inputs disambiguation supports candidate selection and loads s
   await expect(page.getByText("Prepared system: Recorded inputs loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: /Queue Pipeline/ })).toBeEnabled();
 });
-
-
-
-

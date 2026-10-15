@@ -45,6 +45,16 @@ type Snapshot = {
 type ArtifactItem = { id: string; sha256: string; media_type: string; kind: string; size_bytes: number; original_name?: string | null };
 type Lineage = { artifacts?: ArtifactItem[] };
 type ProjectArtifact = ArtifactItem;
+type TrajectoryOption = {
+  task_id: string;
+  run_id: string;
+  accession: string;
+  stage_id: string;
+  stage_kind: string;
+  system_id: string;
+  topologies: ArtifactItem[];
+  trajectories: ArtifactItem[];
+};
 type PreparedConformer = {
   conformer_id: string;
   form_id: string;
@@ -64,6 +74,7 @@ type Dashboard = {
   workflow_statuses: Record<string, number>;
   artifact_kinds: Record<string, { count: number; size_bytes: number }>;
   prepared_conformers?: PreparedConformer[];
+  trajectory_options?: TrajectoryOption[];
   recent_runs: Array<{ run_id: string; accession: string; status: string; created_at: string; tasks: Array<{ stage_id: string; state: string; updated_at: string | null }> }>;
   scientific_results: Array<{
     schema_version: string;
@@ -1011,6 +1022,9 @@ export default function App() {
   const [viewingArtifact, setViewingArtifact] = useState<ArtifactItem | null>(null);
   const [topologyId, setTopologyId] = useState("");
   const [trajectoryId, setTrajectoryId] = useState("");
+  const [trajectoryTaskId, setTrajectoryTaskId] = useState("");
+  const [manualTrajectoryFiles, setManualTrajectoryFiles] = useState(false);
+  const [trajectoryPreviewOpen, setTrajectoryPreviewOpen] = useState(false);
   const [volumeArtifact, setVolumeArtifact] = useState<ArtifactItem | null>(null);
   const [logText, setLogText] = useState("");
   const [err, setErr] = useState("");
@@ -1049,7 +1063,26 @@ export default function App() {
   useEffect(() => {
     analyticsGeneration.current += 1;
     setTrajectoryAnalytics(null);
+    setTrajectoryPreviewOpen(false);
   }, [pid, topologyId, trajectoryId]);
+
+  const trajectoryOptions = dashboard?.trajectory_options ?? [];
+  const selectedTrajectoryOption = trajectoryOptions.find((item) => item.task_id === trajectoryTaskId) ?? trajectoryOptions[0];
+  const trajectoryTopologies = manualTrajectoryFiles
+    ? projectArtifacts.filter((item) => topologyFormat(item))
+    : selectedTrajectoryOption?.topologies ?? [];
+  const trajectoryCoordinates = manualTrajectoryFiles
+    ? projectArtifacts.filter((item) => coordinatesFormat(item))
+    : selectedTrajectoryOption?.trajectories ?? [];
+  const defaultTrajectoryTask = selectedTrajectoryOption?.task_id ?? "";
+  const defaultTopologyId = selectedTrajectoryOption?.topologies[0]?.id ?? "";
+  const defaultTrajectoryId = selectedTrajectoryOption?.trajectories[0]?.id ?? "";
+  useEffect(() => {
+    if (manualTrajectoryFiles) return;
+    setTrajectoryTaskId(defaultTrajectoryTask);
+    setTopologyId(defaultTopologyId);
+    setTrajectoryId(defaultTrajectoryId);
+  }, [manualTrajectoryFiles, defaultTrajectoryTask, defaultTopologyId, defaultTrajectoryId]);
 
 
   const api = useMemo(() => createApiClient(url, token), [url, token]);
@@ -1345,6 +1378,12 @@ export default function App() {
 
   useEffect(() => {
     setMdDemoInfo(null);
+    setTrajectoryTaskId("");
+    setManualTrajectoryFiles(false);
+    setTopologyId("");
+    setTrajectoryId("");
+    setDashboard(null);
+    setProjectArtifacts([]);
     setMmpbsaDemoInfo(null);
     setMdCandidates([]);
     setSelectedMdRunId("");
@@ -4245,24 +4284,54 @@ export default function App() {
                 </div>
               )}
 
-              {projectArtifacts.some((a) => topologyFormat(a)) && projectArtifacts.some((a) => coordinatesFormat(a)) && (
-                <div className="structure-list">
+              {(trajectoryOptions.length > 0 || projectArtifacts.some((a) => coordinatesFormat(a))) && (
+                <div className="structure-list trajectory-file-picker">
                   <div className="between">
                     <div>
                       <h3>Trajectory 3D Preview (Mol*)</h3>
                       <p>View multi-frame simulation coordinate playback.</p>
                     </div>
                   </div>
-                  <p className="dim" style={{ fontSize: "11px", margin: "2px 0 10px" }}>
-                    💡 <strong>Tip:</strong> Select topology and coordinates from the same system. File size and filenames do not establish scientific compatibility.
-                  </p>
+                  <label className="trajectory-manual-toggle">
+                    <input
+                      type="checkbox"
+                      checked={manualTrajectoryFiles}
+                      onChange={(e) => {
+                        setTopologyId("");
+                        setTrajectoryId("");
+                        setManualTrajectoryFiles(e.target.checked);
+                      }}
+                    />
+                    Choose other files (advanced)
+                  </label>
+                  {manualTrajectoryFiles ? (
+                    <p className="dim">Manual selection: confirm both files have the same atoms and atom ordering. These choices are not paired by a completed MD task.</p>
+                  ) : (
+                    <>
+                      {trajectoryOptions.length > 1 && (
+                        <label>
+                          Completed MD task
+                          <select value={defaultTrajectoryTask} onChange={(e) => setTrajectoryTaskId(e.target.value)}>
+                            {trajectoryOptions.map((item) => (
+                              <option key={item.task_id} value={item.task_id}>
+                                {item.accession} / {item.stage_id} ({item.stage_kind})
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <p className="dim">
+                        {selectedTrajectoryOption
+                          ? `Only files recorded together by ${selectedTrajectoryOption.accession} / ${selectedTrajectoryOption.stage_id} are shown.`
+                          : "No completed MD task has a recorded structure/trajectory pair yet. Use advanced selection for imported files."}
+                      </p>
+                    </>
+                  )}
                   <label>
                     Topology
                     <select value={topologyId} onChange={(e) => setTopologyId(e.target.value)}>
                       <option value="">Choose topology</option>
-                      {projectArtifacts
-                        .filter((a) => topologyFormat(a))
-                        .sort((a, b) => b.size_bytes - a.size_bytes)
+                      {trajectoryTopologies
                         .map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.original_name || a.kind} ({formatBytes(a.size_bytes)})
@@ -4277,8 +4346,7 @@ export default function App() {
                       onChange={(e) => setTrajectoryId(e.target.value)}
                     >
                       <option value="">Choose trajectory</option>
-                      {projectArtifacts
-                        .filter((a) => coordinatesFormat(a))
+                      {trajectoryCoordinates
                         .map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.original_name || a.kind} / {formatBytes(a.size_bytes)}
@@ -4286,11 +4354,20 @@ export default function App() {
                         ))}
                     </select>
                   </label>
-                  {topologyId &&
+                  <button
+                    type="button"
+                    className="dark"
+                    disabled={!topologyId || !trajectoryId}
+                    onClick={() => setTrajectoryPreviewOpen(true)}
+                  >
+                    View trajectory
+                  </button>
+                  {trajectoryPreviewOpen && topologyId &&
                     trajectoryId &&
                     (() => {
-                      const t = projectArtifacts.find((a) => a.id === topologyId)!;
-                      const c = projectArtifacts.find((a) => a.id === trajectoryId)!;
+                      const t = trajectoryTopologies.find((a) => a.id === topologyId);
+                      const c = trajectoryCoordinates.find((a) => a.id === trajectoryId);
+                      if (!t || !c || !topologyFormat(t) || !coordinatesFormat(c)) return null;
                       return (
                         <Suspense fallback={<p className="viewer-status">Loading Mol* viewer...</p>}>
                           <TrajectoryViewer
@@ -4307,8 +4384,7 @@ export default function App() {
                             trajectoryFormat={coordinatesFormat(c)!}
                             trajectorySize={c.size_bytes}
                             onClose={() => {
-                              setTopologyId("");
-                              setTrajectoryId("");
+                              setTrajectoryPreviewOpen(false);
                             }}
                           />
                         </Suspense>

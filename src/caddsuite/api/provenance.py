@@ -42,6 +42,7 @@ from caddsuite.application.trajectory_analytics import (
     RecordedAnalysisUnavailable,
     load_recorded_trajectory_analytics,
 )
+from caddsuite.application.trajectory_options import recorded_trajectory_options
 from caddsuite.application.version_drift import version_drift
 from caddsuite.chem.standardize import (
     ChemistryDependencyError,
@@ -1184,6 +1185,9 @@ def create_app(
                 "workflow_statuses": cast(JsonValue, run_counts),
                 "artifact_kinds": cast(JsonValue, artifact_kinds),
                 "prepared_conformers": cast(JsonValue, prepared_conformers),
+                "trajectory_options": cast(
+                    JsonValue, recorded_trajectory_options(session, project_id)
+                ),
                 "scientific_results": cast(JsonValue, scientific_results[:50]),
                 "recent_runs": [
                     {

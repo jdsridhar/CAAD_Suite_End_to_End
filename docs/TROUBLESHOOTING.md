@@ -29,3 +29,9 @@ The same input used a 4 fs timestep with conventional masses and only hydrogen-b
 To recover, refresh the application, choose **2 fs** in **Local Solution Builder**, rebuild the prepared inputs, and submit a new run. Retrying the failed run unchanged keeps its old MDP and reproduces the error. Keep the failed attempt for provenance.
 
 On 2026-10-15, 58 targeted tests passed; two expensive builder cases were deselected. Copied-input grompp checks at 2 fs for 100 ps and 50 ps both exited 0 with no warnings and no warning override. No MD trajectory was run. Diagnostic inputs, hashes, commands, stdout/stderr and generated TPRs are retained at /home/sridhar/.cache/caddsuite-md-01M4YNYXV4-9tb_wyfm/. Successful preprocessing does not validate minimization convergence, equilibration, trajectory stability, or production sampling.
+
+## Trajectory file dropdowns
+
+By default, the 3D Molecular Studio lists the self-contained structure and trajectories recorded together by one successful MD task. The newest task is selected initially; a Completed MD task selector appears when multiple tasks are available. Choices use normalized result provenance and registered hashes rather than project-wide filename or file-size guesses. A GROMACS .gro output is preferred over an include-only .top file for the browser model. Failed tasks and incomplete pairs are not suggested.
+
+For an imported trajectory without a completed MD result, enable Choose other files (advanced), then select the matching structure and trajectory explicitly. Manual selection does not certify atom ordering or compatibility. Click View trajectory to open playback; file selection alone does not start a large browser download. Switching projects clears the choices. Load recorded analysis still only displays already computed metrics; this picker change does not calculate RMSD/RMSF.
