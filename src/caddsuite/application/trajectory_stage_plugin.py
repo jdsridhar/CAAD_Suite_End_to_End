@@ -273,7 +273,8 @@ class TrajectoryAnalysisStagePlugin:
     def _preflight(cls, stage: StageDefinition) -> EnginePreflightResult:
         try:
             settings = cls._settings(stage)
-            python = Path(settings.python_executable).expanduser().resolve(strict=True)
+            # Preserve the venv entry point: resolving its symlink loses pyvenv.cfg.
+            python = Path(settings.python_executable).expanduser().absolute()
             worker = Path(settings.worker_script).expanduser().resolve(strict=True)
             if not python.is_file() or not os.access(python, os.X_OK) or not worker.is_file():
                 raise ValueError("configured MDAnalysis interpreter or worker is unavailable")
@@ -302,7 +303,7 @@ class TrajectoryAnalysisStagePlugin:
     @classmethod
     def _build(cls, stage: StageDefinition, services: LocalRuntimeServices) -> StageHandler:
         settings = cls._settings(stage)
-        python = Path(settings.python_executable).expanduser().resolve(strict=True)
+        python = Path(settings.python_executable).expanduser().absolute()
         worker = Path(settings.worker_script).expanduser().resolve(strict=True)
         probe = subprocess.run(  # noqa: S603 - configured interpreter, fixed probe code
             [

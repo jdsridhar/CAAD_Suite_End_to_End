@@ -94,6 +94,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/build-local-solution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build Local Solution Endpoint
+         * @description Run local GROMACS solution builder (pdb2gmx, editconf, solvate, genion).
+         */
+        post: operations["build_local_solution_endpoint_v1_projects__project_id__build_local_solution_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/compounds": {
         parameters: {
             query?: never;
@@ -352,6 +372,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/trajectory-analysis/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Prepare Trajectory Analysis Endpoint */
+        post: operations["prepare_trajectory_analysis_endpoint_v1_projects__project_id__trajectory_analysis_prepare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/provenance/attempts/{attempt_id}": {
         parameters: {
             query?: never;
@@ -604,6 +641,61 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /** ProteinAnalysisOptions */
+        ProteinAnalysisOptions: {
+            /**
+             * Backbone Selection
+             * @default protein and backbone
+             */
+            backbone_selection: string;
+            /**
+             * Ca Selection
+             * @default protein and name CA
+             */
+            ca_selection: string;
+            /** End Time Ns */
+            end_time_ns?: number | null;
+            /** Gmx Executable */
+            gmx_executable?: string | null;
+            /** Mdanalysis Python */
+            mdanalysis_python?: string | null;
+            /**
+             * Metrics
+             * @default [
+             *       "backbone_rmsd",
+             *       "protein_ca_rmsf",
+             *       "protein_radius_of_gyration"
+             *     ]
+             */
+            metrics: ("backbone_rmsd" | "protein_ca_rmsf" | "protein_radius_of_gyration")[];
+            /**
+             * Protein Selection
+             * @default protein
+             */
+            protein_selection: string;
+            /**
+             * Reference Frame
+             * @default 0
+             * @constant
+             */
+            reference_frame: 0;
+            /** Source Task Id */
+            source_task_id: string;
+            /**
+             * Start Time Ns
+             * @default 0
+             */
+            start_time_ns: number;
+            /**
+             * Stride
+             * @default 1
+             */
+            stride: number;
+            /** Topology Artifact Id */
+            topology_artifact_id: string;
+            /** Trajectory Artifact Id */
+            trajectory_artifact_id: string;
         };
         /**
          * RetryPolicy
@@ -980,6 +1072,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    build_local_solution_endpoint_v1_projects__project_id__build_local_solution_post: {
+        parameters: {
+            query?: {
+                /** @description Specific receptor PDB artifact ID */
+                target_artifact_id?: string | null;
+                /** @description GROMACS force field */
+                forcefield?: string;
+                /** @description Water model */
+                water_model?: string;
+                /** @description Simulation box type */
+                box_type?: string;
+                /** @description Box boundary padding in nm */
+                padding_nm?: number;
+                /** @description Salt concentration in M */
+                conc_molar?: number;
+                /** @description Neutralize net system charge */
+                neutralize?: boolean;
+                length_ns?: number | null;
+                timestep_fs?: number | null;
+                temp_k?: number | null;
+            };
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -1566,6 +1711,45 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: components["schemas"]["JsonValue"];
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_trajectory_analysis_endpoint_v1_projects__project_id__trajectory_analysis_prepare_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                origin?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProteinAnalysisOptions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
                     };
                 };
             };

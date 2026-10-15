@@ -1059,10 +1059,21 @@ export default function App() {
   const [selectedMmpbsaRunId, setSelectedMmpbsaRunId] = useState("");
   const [analyzingTrajectory, setAnalyzingTrajectory] = useState(false);
   const [trajectoryAnalytics, setTrajectoryAnalytics] = useState<TrajectoryAnalyticsResult | null>(null);
+  const [preparingTrajectoryAnalysis, setPreparingTrajectoryAnalysis] = useState(false);
+  const [analysisBackboneSelection, setAnalysisBackboneSelection] = useState("protein and backbone");
+  const [analysisCaSelection, setAnalysisCaSelection] = useState("protein and name CA");
+  const [analysisProteinSelection, setAnalysisProteinSelection] = useState("protein");
+  const [analysisStartNs, setAnalysisStartNs] = useState(0);
+  const [analysisEndNs, setAnalysisEndNs] = useState("");
+  const [analysisStride, setAnalysisStride] = useState(1);
+  const [analysisMetrics, setAnalysisMetrics] = useState(["backbone_rmsd", "protein_ca_rmsf", "protein_radius_of_gyration"]);
+  const [queuedAnalysis, setQueuedAnalysis] = useState<{ runId: string; topologyId: string; trajectoryId: string } | null>(null);
+  const loadedAnalysisRun = useRef("");
   const analyticsGeneration = useRef(0);
   useEffect(() => {
     analyticsGeneration.current += 1;
     setTrajectoryAnalytics(null);
+    setAnalyzingTrajectory(false);
     setTrajectoryPreviewOpen(false);
   }, [pid, topologyId, trajectoryId]);
 
@@ -1077,6 +1088,9 @@ export default function App() {
   const defaultTrajectoryTask = selectedTrajectoryOption?.task_id ?? "";
   const defaultTopologyId = selectedTrajectoryOption?.topologies[0]?.id ?? "";
   const defaultTrajectoryId = selectedTrajectoryOption?.trajectories[0]?.id ?? "";
+  const guidedAnalysisAvailable = !manualTrajectoryFiles && Boolean(selectedTrajectoryOption)
+    && trajectoryTopologies.some((item) => item.id === topologyId && topologyFormat(item) === "gro")
+    && trajectoryCoordinates.some((item) => item.id === trajectoryId && coordinatesFormat(item) === "xtc");
   useEffect(() => {
     if (manualTrajectoryFiles) return;
     setTrajectoryTaskId(defaultTrajectoryTask);
@@ -1378,6 +1392,8 @@ export default function App() {
 
   useEffect(() => {
     setMdDemoInfo(null);
+    setQueuedAnalysis(null);
+    loadedAnalysisRun.current = "";
     setTrajectoryTaskId("");
     setManualTrajectoryFiles(false);
     setTopologyId("");
@@ -1998,7 +2014,13 @@ export default function App() {
           Authorization: `Bearer ${token}`,
         },
       });
+      if (generation !== analyticsGeneration.current) return;
       if (!resp.ok) {
+        if (resp.status === 409) {
+          setTrajectoryAnalytics(null);
+          setMsg("No saved plots exist for these files yet. Choose your analysis settings and click Calculate analysis.");
+          return;
+        }
         const body = await resp.text();
         throw new Error(`Trajectory analysis failed: ${body}`);
       }
@@ -2013,6 +2035,66 @@ export default function App() {
       setAnalyzingTrajectory(false);
     }
   }
+
+  async function calculateTrajectoryAnalysis() {
+    if (!pid || manualTrajectoryFiles || !selectedTrajectoryOption || !topologyId || !trajectoryId) return;
+    const projectId = pid;
+    const generation = analyticsGeneration.current;
+    const selectedTopology = topologyId, selectedTrajectory = trajectoryId;
+    setPreparingTrajectoryAnalysis(true);
+    setErr("");
+    setMsg("Inspecting the saved trajectory and preparing analysis...");
+    try {
+      const response = await fetch(`${url}/v1/projects/${projectId}/trajectory-analysis/prepare`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source_task_id: selectedTrajectoryOption.task_id,
+          topology_artifact_id: selectedTopology,
+          trajectory_artifact_id: selectedTrajectory,
+          backbone_selection: analysisBackboneSelection,
+          ca_selection: analysisCaSelection,
+          protein_selection: analysisProteinSelection,
+          metrics: analysisMetrics,
+          start_time_ns: analysisStartNs,
+          end_time_ns: analysisEndNs.trim() ? Number(analysisEndNs) : null,
+          stride: analysisStride,
+          reference_frame: 0,
+          gmx_executable: enginePaths.gmx_executable === "gmx" ? null : enginePaths.gmx_executable,
+        }),
+      });
+      const prepared = await response.json() as { workflow: unknown; inputs: Record<string, unknown>; detail?: string };
+      if (!response.ok) throw new Error(typeof prepared.detail === "string" ? prepared.detail : "Unable to prepare analysis; inspect the input selections and engine configuration.");
+      if (currentProjectId.current !== projectId) return;
+      if (generation !== analyticsGeneration.current) {
+        setMsg("The selected files changed. Review them and calculate analysis again.");
+        return;
+      }
+      const runId = ulid();
+      const queued = await get(api.POST("/v1/projects/{project_id}/runs/{run_id}/execute", {
+        params: { path: { project_id: projectId, run_id: runId } },
+        body: { workflow: prepared.workflow as never, inputs: prepared.inputs },
+      }));
+      if (currentProjectId.current !== projectId) return;
+      setRid(runId);
+      setRun(queued as Snapshot);
+      setQueuedAnalysis({ runId, topologyId: selectedTopology, trajectoryId: selectedTrajectory });
+      setMsg("Trajectory analysis queued. Plots will load here after processing and analysis succeed.");
+      void refreshHistory(projectId);
+    } catch (error) {
+      if (currentProjectId.current === projectId) setErr(String(error));
+    } finally {
+      if (currentProjectId.current === projectId) setPreparingTrajectoryAnalysis(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!queuedAnalysis || queuedAnalysis.runId !== rid || run?.status !== "succeeded") return;
+    if (queuedAnalysis.topologyId !== topologyId || queuedAnalysis.trajectoryId !== trajectoryId) return;
+    if (loadedAnalysisRun.current === rid) return;
+    loadedAnalysisRun.current = rid;
+    void runTrajectoryAnalysis(queuedAnalysis.topologyId, queuedAnalysis.trajectoryId);
+  }, [queuedAnalysis, rid, run?.status, topologyId, trajectoryId]);
 
   async function createProject(e: React.FormEvent) {
     e.preventDefault();
@@ -4398,8 +4480,8 @@ export default function App() {
                 <div className="structure-list" style={{ marginTop: "16px" }}>
                   <div className="between">
                     <div>
-                      <h3>Trajectory Analytics (RMSD, RMSF, SASA, Rg, H-Bond)</h3>
-                      <p>Select an exact topology and trajectory pair to view measurements recorded by a completed analysis workflow.</p>
+                      <h3>Trajectory analysis and plots</h3>
+                      <p>Calculate measurements from your completed MD run, or load its previously recorded plots.</p>
                     </div>
                     <button
                       type="button"
@@ -4410,6 +4492,30 @@ export default function App() {
                       {analyzingTrajectory ? "⏳ Loading recorded metrics..." : "📊 Load recorded analysis"}
                     </button>
                   </div>
+                  <fieldset className="trajectory-analysis-settings" disabled={preparingTrajectoryAnalysis}>
+                    <legend>Protein analysis settings</legend>
+                    <div className="analysis-settings-grid">
+                      <label>Backbone selection (RMSD)<input value={analysisBackboneSelection} onChange={(e) => setAnalysisBackboneSelection(e.target.value)} /></label>
+                      <label>Cα selection (RMSF)<input value={analysisCaSelection} onChange={(e) => setAnalysisCaSelection(e.target.value)} /></label>
+                      <label>Protein selection (radius of gyration)<input value={analysisProteinSelection} onChange={(e) => setAnalysisProteinSelection(e.target.value)} /></label>
+                      <label>Start time (ns)<input type="number" min={0} step="any" value={analysisStartNs} onChange={(e) => setAnalysisStartNs(Number(e.target.value))} /></label>
+                      <label>End time (ns)<input type="number" min={0} step="any" placeholder="Last saved frame" value={analysisEndNs} onChange={(e) => setAnalysisEndNs(e.target.value)} /></label>
+                      <label>Frame stride<input type="number" min={1} max={10000} value={analysisStride} onChange={(e) => setAnalysisStride(Number(e.target.value))} /></label>
+                    </div>
+                    <div className="analysis-metric-options">
+                      {[["backbone_rmsd", "Backbone RMSD"], ["protein_ca_rmsf", "Cα RMSF"], ["protein_radius_of_gyration", "Protein radius of gyration"]].map(([key, label]) => (
+                        <label key={key}><input type="checkbox" checked={analysisMetrics.includes(key)} onChange={(e) => setAnalysisMetrics((items) => e.target.checked ? [...items, key] : items.filter((item) => item !== key))} />{label}</label>
+                      ))}
+                    </div>
+                    <p className="dim">Preparation: make molecules whole and remove periodic jumps using the recorded TPR. Reference: first saved frame. RMSD fits the backbone; RMSF fits Cα atoms. Radius of gyration uses topology masses.</p>
+                    <p className="dim">SASA and hydrogen-bond counts are unavailable in this analysis adapter. This operation analyses saved frames; it does not rerun MD.</p>
+                    <button type="button" className="dark" disabled={preparingTrajectoryAnalysis || !guidedAnalysisAvailable || analysisMetrics.length === 0 || (queuedAnalysis?.runId === rid && Boolean(run && !["succeeded", "failed", "stopped"].includes(run.status)))} onClick={() => void calculateTrajectoryAnalysis()}>
+                      {preparingTrajectoryAnalysis ? "Inspecting trajectory..." : "Calculate analysis"}
+                    </button>
+                    {manualTrajectoryFiles && <p className="dim">Automatic preparation requires a recorded MD task with GRO/XTC and TPR outputs. Imported files can use a separately configured analysis workflow.</p>}
+                    {!manualTrajectoryFiles && topologyId && trajectoryId && !guidedAnalysisAvailable && <p className="dim">This guided analysis path supports recorded GRO/XTC pairs with a TPR. Other formats require a compatible analysis workflow.</p>}
+                  </fieldset>
+                  {queuedAnalysis && <p role="status">Analysis run {queuedAnalysis.runId}: {queuedAnalysis.runId === rid ? run?.status : "submitted"}. <button type="button" className="link" onClick={() => setActiveTab("monitor")}>Monitor analysis</button></p>}
                   {trajectoryAnalytics && (
                     <TrajectoryPlots
                       data={trajectoryAnalytics}

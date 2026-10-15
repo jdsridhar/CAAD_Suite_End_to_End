@@ -42,20 +42,23 @@ function nameLabel(name: string) {
     rmsd_ligand_internal: "Ligand internal RMSD",
     rmsf_ca: "Cα RMSF",
     rg: "Radius of gyration",
+    rg_protein: "Protein radius of gyration",
     sasa: "Solvent accessible surface area",
     protein_ligand_hbond_count: "Protein–ligand hydrogen bonds",
   } as Record<string, string>)[name] || name.replaceAll("_", " ");
 }
 
 function MetricChart({ metric }: { metric: Metric }) {
+  const repeatedResidues = metric.axis === "residue" && new Set(metric.x).size !== metric.x.length;
+  const displayX = repeatedResidues ? metric.x.map((_, index) => index + 1) : metric.x;
   const stride = Math.max(1, Math.ceil(metric.x.length / 1000));
   const indices = metric.x.map((_, i) => i).filter((i) => i % stride === 0 || i === metric.x.length - 1);
-  const xs = indices.map((i) => metric.x[i]);
+  const xs = indices.map((i) => displayX[i]);
   const ys = indices.map((i) => metric.values[i]);
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
   const points = indices.map((i) =>
-    (45 + 600 * (metric.x[i] - xmin) / (xmax - xmin || 1)).toFixed(2) + "," +
+    (45 + 600 * (displayX[i] - xmin) / (xmax - xmin || 1)).toFixed(2) + "," +
     (180 - 145 * (metric.values[i] - ymin) / (ymax - ymin || 1)).toFixed(2)
   ).join(" ");
   const title = nameLabel(metric.name);
@@ -68,12 +71,14 @@ function MetricChart({ metric }: { metric: Metric }) {
         <text x="45" y="205" fontSize="12">{xmin.toPrecision(4)}</text>
         <text x="595" y="205" fontSize="12">{xmax.toPrecision(4)}</text>
         <text x="48" y="25" fontSize="12">{ymax.toPrecision(4)} {metric.unit}</text>
-        <text x="300" y="217" fontSize="12">{metric.axis === "time_ns" ? "Time (ns)" : "Residue"}</text>
+        <text x="300" y="217" fontSize="12">{metric.axis === "time_ns" ? "Time (ns)" : repeatedResidues ? "Selected Cα order" : "Residue"}</text>
       </svg>
       <p className="dim">
         {metric.values.length} recorded values.
+        {` Range: ${ymin.toPrecision(4)}–${ymax.toPrecision(4)} ${metric.unit}.`}
         {stride > 1 && " The chart shows a sampled preview; the CSV contains every value."}
       </p>
+      {repeatedResidues && <p className="dim">Residue numbers repeat across the selection. The horizontal axis uses selected Cα order; the CSV preserves the original residue numbers.</p>}
     </>
   );
 }

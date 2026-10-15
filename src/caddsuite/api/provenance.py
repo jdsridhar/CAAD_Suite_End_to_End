@@ -38,6 +38,10 @@ from caddsuite.application.gromacs_solution_service import build_local_solution_
 from caddsuite.application.handlers import StageHandlerDiscoveryError, StageHandlerRegistry
 from caddsuite.application.run_queue import LocalRunSupervisor, RunSubmissionQueue
 from caddsuite.application.runtime import LocalWorkflowRuntime
+from caddsuite.application.trajectory_analysis_setup import (
+    ProteinAnalysisOptions,
+    prepare_protein_analysis,
+)
 from caddsuite.application.trajectory_analytics import (
     RecordedAnalysisUnavailable,
     load_recorded_trajectory_analytics,
@@ -607,6 +611,21 @@ def create_app(
             return list_recorded_mmpbsa_candidates(project_id, sessions, store)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="project was not found") from exc
+
+    @app.post("/v1/projects/{project_id}/trajectory-analysis/prepare")
+    def prepare_trajectory_analysis_endpoint(
+        project_id: str,
+        options: ProteinAnalysisOptions,
+        _: None = Depends(authenticate),
+    ) -> dict[str, object]:
+        try:
+            return prepare_protein_analysis(
+                project_id, options, sessions, ArtifactStore(artifacts_root(root)), root / "runs"
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except (ValueError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.post(
         "/v1/projects/{project_id}/trajectories/analyze",

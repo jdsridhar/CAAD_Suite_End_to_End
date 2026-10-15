@@ -376,6 +376,124 @@
         "title": "ProjectResponse",
         "type": "object"
       },
+      "ProteinAnalysisOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "backbone_selection": {
+            "default": "protein and backbone",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Backbone Selection",
+            "type": "string"
+          },
+          "ca_selection": {
+            "default": "protein and name CA",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Ca Selection",
+            "type": "string"
+          },
+          "end_time_ns": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time Ns"
+          },
+          "gmx_executable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmx Executable"
+          },
+          "mdanalysis_python": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mdanalysis Python"
+          },
+          "metrics": {
+            "default": [
+              "backbone_rmsd",
+              "protein_ca_rmsf",
+              "protein_radius_of_gyration"
+            ],
+            "items": {
+              "enum": [
+                "backbone_rmsd",
+                "protein_ca_rmsf",
+                "protein_radius_of_gyration"
+              ],
+              "type": "string"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "protein_selection": {
+            "default": "protein",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Protein Selection",
+            "type": "string"
+          },
+          "reference_frame": {
+            "const": 0,
+            "default": 0,
+            "title": "Reference Frame",
+            "type": "integer"
+          },
+          "source_task_id": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "title": "Source Task Id",
+            "type": "string"
+          },
+          "start_time_ns": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Start Time Ns",
+            "type": "number"
+          },
+          "stride": {
+            "default": 1,
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Stride",
+            "type": "integer"
+          },
+          "topology_artifact_id": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "title": "Topology Artifact Id",
+            "type": "string"
+          },
+          "trajectory_artifact_id": {
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "title": "Trajectory Artifact Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_task_id",
+          "topology_artifact_id",
+          "trajectory_artifact_id"
+        ],
+        "title": "ProteinAnalysisOptions",
+        "type": "object"
+      },
       "RetryPolicy": {
         "additionalProperties": false,
         "description": "Bounded retries for named retryable error codes; no retries are implicit.",
@@ -1144,6 +1262,217 @@
           }
         ],
         "summary": "Read Project Text Artifact"
+      }
+    },
+    "/v1/projects/{project_id}/build-local-solution": {
+      "post": {
+        "description": "Run local GROMACS solution builder (pdb2gmx, editconf, solvate, genion).",
+        "operationId": "build_local_solution_endpoint_v1_projects__project_id__build_local_solution_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Specific receptor PDB artifact ID",
+            "in": "query",
+            "name": "target_artifact_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Specific receptor PDB artifact ID",
+              "title": "Target Artifact Id"
+            }
+          },
+          {
+            "description": "GROMACS force field",
+            "in": "query",
+            "name": "forcefield",
+            "required": false,
+            "schema": {
+              "default": "amber14sb",
+              "description": "GROMACS force field",
+              "title": "Forcefield",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Water model",
+            "in": "query",
+            "name": "water_model",
+            "required": false,
+            "schema": {
+              "default": "tip3p",
+              "description": "Water model",
+              "title": "Water Model",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Simulation box type",
+            "in": "query",
+            "name": "box_type",
+            "required": false,
+            "schema": {
+              "default": "dodecahedron",
+              "description": "Simulation box type",
+              "title": "Box Type",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Box boundary padding in nm",
+            "in": "query",
+            "name": "padding_nm",
+            "required": false,
+            "schema": {
+              "default": 1.0,
+              "description": "Box boundary padding in nm",
+              "maximum": 5.0,
+              "minimum": 0.5,
+              "title": "Padding Nm",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Salt concentration in M",
+            "in": "query",
+            "name": "conc_molar",
+            "required": false,
+            "schema": {
+              "default": 0.15,
+              "description": "Salt concentration in M",
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "title": "Conc Molar",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Neutralize net system charge",
+            "in": "query",
+            "name": "neutralize",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "Neutralize net system charge",
+              "title": "Neutralize",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "length_ns",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 100.0,
+                  "minimum": 0.0001,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Length Ns"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestep_fs",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 5.0,
+                  "minimum": 0.1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Timestep Fs"
+            }
+          },
+          {
+            "in": "query",
+            "name": "temp_k",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 500.0,
+                  "minimum": 50.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Temp K"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Build Local Solution Endpoint V1 Projects  Project Id  Build Local Solution Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Build Local Solution Endpoint"
       }
     },
     "/v1/projects/{project_id}/compounds": {
@@ -2371,6 +2700,78 @@
           }
         ],
         "summary": "Analyze Trajectory Endpoint"
+      }
+    },
+    "/v1/projects/{project_id}/trajectory-analysis/prepare": {
+      "post": {
+        "operationId": "prepare_trajectory_analysis_endpoint_v1_projects__project_id__trajectory_analysis_prepare_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProteinAnalysisOptions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Prepare Trajectory Analysis Endpoint V1 Projects  Project Id  Trajectory Analysis Prepare Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Prepare Trajectory Analysis Endpoint"
       }
     },
     "/v1/provenance/attempts/{attempt_id}": {

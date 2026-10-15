@@ -10,8 +10,13 @@ from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from caddsuite.contracts.analysis import MetricSeries, TrajectoryAnalysisResult
-from caddsuite.contracts.base import load_contract
+from caddsuite.contracts.analysis import (
+    MetricSeries,
+    TrajectoryAnalysisResult,
+    TrajectoryProcessingResult,
+)
+from caddsuite.contracts.base import VersionedContract, load_contract
+from caddsuite.contracts.md import MDStageResult
 from caddsuite.storage.artifacts import ArtifactStore
 from caddsuite.storage.models import (
     ArtifactRow,
@@ -27,6 +32,53 @@ from caddsuite.storage.models import (
 
 class RecordedAnalysisUnavailable(ValueError):
     """The selected inputs have no readable, completed workflow analysis."""
+
+
+def _matches_recorded_inputs(
+    result: TrajectoryAnalysisResult,
+    topology_sha: str,
+    trajectory_sha: str,
+    contracts: list[VersionedContract],
+) -> bool:
+    source_top = result.source_artifacts.get("topology")
+    source_traj = result.source_artifacts.get("trajectory")
+    if source_top is None or source_traj is None:
+        return False
+    if (source_top.sha256, source_traj.sha256) == (topology_sha, trajectory_sha):
+        return True
+    parent = next(
+        (
+            item
+            for item in contracts
+            if isinstance(item, TrajectoryProcessingResult)
+            and item.id == result.preprocessing_result_id
+        ),
+        None,
+    )
+    if parent is None or parent.simulation_id != result.simulation_id:
+        return False
+    if source_top != parent.reference_structure or source_traj != parent.output_artifacts.get(
+        "processed"
+    ):
+        return False
+    raw_hashes = {ref.sha256 for ref in parent.source_artifacts.values()}
+    if trajectory_sha not in raw_hashes:
+        return False
+    if topology_sha in raw_hashes:
+        return True
+    # A browser GRO model and processing TPR may be separate outputs of the same
+    # successful MD task. Prove the chain through that result, never through names.
+    processing_topology = parent.source_artifacts.get("topology")
+    if processing_topology is None:
+        return False
+    for source in contracts:
+        if not isinstance(source, MDStageResult):
+            continue
+        refs = tuple(source.artifacts.values())
+        hashes = {ref.sha256 for ref in refs}
+        if topology_sha in hashes and trajectory_sha in hashes and processing_topology in refs:
+            return True
+    return False
 
 
 def _visible_artifact(session: Session, project_id: str, artifact_id: str) -> ArtifactRow:
@@ -127,20 +179,18 @@ def load_recorded_trajectory_analytics(
             )
             .order_by(TaskCacheRow.created_at.desc(), TaskCacheRow.cache_key.desc())
         )
+        completed: list[tuple[VersionedContract, TaskRow]] = []
         for cached, task in rows:
             try:
                 result = load_contract(cached.payload)
             except (TypeError, ValueError):
                 continue
+            completed.append((result, task))
+        for result, task in completed:
             if not isinstance(result, TrajectoryAnalysisResult):
                 continue
-            source_top = result.source_artifacts.get("topology")
-            source_traj = result.source_artifacts.get("trajectory")
-            if (
-                source_top is None
-                or source_traj is None
-                or source_top.sha256 != topology.sha256
-                or source_traj.sha256 != trajectory.sha256
+            if not _matches_recorded_inputs(
+                result, topology.sha256, trajectory.sha256, [item for item, _ in completed]
             ):
                 continue
             metrics = [_metric_view(metric, store) for metric in result.metrics]
