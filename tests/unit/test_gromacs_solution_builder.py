@@ -11,6 +11,7 @@ from caddsuite.structure.gromacs_solution_builder import (
     GromacsSolutionBuilder,
     SolutionBuilderConfig,
     find_gmx_binary,
+    validate_production_settings,
 )
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +28,42 @@ def test_config_defaults() -> None:
     assert cfg.neutralize is True
     assert cfg.positive_ion == "NA"
     assert cfg.negative_ion == "CL"
+
+
+@pytest.mark.parametrize(
+    ("length_ns", "timestep_fs"), [(0.05, 2.0), (0.1, 2.0), (0.1, 1.5), (0.0001, 2.0)]
+)
+def test_production_energy_intervals_and_step_count(
+    tmp_path: Path, length_ns: float, timestep_fs: float
+) -> None:
+    mdp = tmp_path / "production.mdp"
+    GromacsSolutionBuilder.write_production_mdp(mdp, length_ns=length_ns, timestep_fs=timestep_fs)
+    values = {
+        line.split("=", 1)[0].strip(): line.split("=", 1)[1].strip()
+        for line in mdp.read_text().splitlines()
+        if "=" in line and not line.startswith(";")
+    }
+    assert int(values["nstenergy"]) % int(values["nstcalcenergy"]) == 0
+    assert float(values["dt"]) == pytest.approx(timestep_fs / 1000)
+    assert int(values["nsteps"]) == round(length_ns * 1_000_000 / timestep_fs)
+    assert "maxwarn" not in mdp.read_text()
+
+
+@pytest.mark.parametrize("timestep_fs", [0.0, -1.0, 4.0, 5.0, float("nan"), float("inf")])
+def test_local_builder_rejects_unqualified_timestep(tmp_path: Path, timestep_fs: float) -> None:
+    with pytest.raises(ValueError, match=r"0\.1 and 2 fs"):
+        GromacsSolutionBuilder.write_production_mdp(
+            tmp_path / "production.mdp", timestep_fs=timestep_fs
+        )
+    assert not (tmp_path / "production.mdp").exists()
+
+
+@pytest.mark.parametrize("name", ["length_ns", "temp_k"])
+@pytest.mark.parametrize("value", [0.0, -1.0, float("nan"), float("inf")])
+def test_production_settings_reject_invalid_values(name: str, value: float) -> None:
+    settings = {"length_ns": 0.1, "timestep_fs": 2.0, "temp_k": 300.0, name: value}
+    with pytest.raises(ValueError, match="finite and positive"):
+        validate_production_settings(**settings)
 
 
 def test_find_gmx_binary() -> None:

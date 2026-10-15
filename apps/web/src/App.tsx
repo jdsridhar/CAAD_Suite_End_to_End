@@ -1627,6 +1627,10 @@ export default function App() {
 
   async function buildLocalSolutionSystem() {
     if (!pid) return;
+    if (!Number.isFinite(mdTimestepFs) || mdTimestepFs < 0.1 || mdTimestepFs > 2) {
+      setErr("Local solution preparation supports 0.1–2 fs. Use 2 fs for this conventional-mass topology; 4 fs requires a separately prepared and validated HMR or virtual-site system.");
+      return;
+    }
     setIsBuildingLocalSolution(true);
     setErr("");
     try {
@@ -3225,7 +3229,7 @@ export default function App() {
                             <input
                               type="number"
                               min={0.5}
-                              max={5.0}
+                              max={2.0}
                               step={0.5}
                               value={mdTimestepFs}
                               onChange={(e) => setMdTimestepFs(Math.max(0.1, parseFloat(e.target.value) || 2.0))}

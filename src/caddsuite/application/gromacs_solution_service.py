@@ -32,6 +32,7 @@ from caddsuite.storage.models import ArtifactRow, ProjectArtifactRow, ProjectRow
 from caddsuite.structure.gromacs_solution_builder import (
     GromacsSolutionBuilder,
     SolutionBuilderConfig,
+    validate_production_settings,
 )
 from caddsuite.validation import default_registry
 from caddsuite.validation.force_field_profiles import get_gromacs_solution_profile_id
@@ -70,7 +71,6 @@ def _extract_box_spec_from_gro(gro_path: Path, box_type: str) -> BoxSpec:
     return BoxSpec(shape=shape, vectors_nm=vectors)
 
 
-
 def build_local_solution_system(
     project_id: str,
     sessions: sessionmaker[Session],
@@ -90,6 +90,14 @@ def build_local_solution_system(
     temp_k: float = 300.0,
 ) -> dict[str, Any]:
     """Execute local GROMACS solution builder pipeline and register prepared artifacts in CAS."""
+    effective_length_ns = float(length_ns)
+    effective_timestep_fs = float(timestep_fs)
+    effective_temp_k = float(temp_k)
+    n_steps = validate_production_settings(
+        length_ns=effective_length_ns,
+        timestep_fs=effective_timestep_fs,
+        temp_k=effective_temp_k,
+    )
     with sessions() as session:
         if session.get(ProjectRow, project_id) is None:
             msg = f"Project {project_id!r} not found."
@@ -139,10 +147,6 @@ def build_local_solution_system(
             input_filename += ".pdb"
         input_pdb_path = out_dir / input_filename
         shutil.copyfile(target_path, input_pdb_path)
-
-        effective_length_ns = float(length_ns or 1.0)
-        effective_timestep_fs = float(timestep_fs or 2.0)
-        effective_temp_k = float(temp_k or 300.0)
 
         cfg = SolutionBuilderConfig(
             forcefield=forcefield,
@@ -297,18 +301,10 @@ def build_local_solution_system(
         tool=builder_software,
         compatibility_profile_id=profile_id,
         component_force_fields={
-            ForceFieldComponent.PROTEIN: ComponentForceField(
-                family=ff_family, name=forcefield
-            ),
-            ForceFieldComponent.LIGAND: ComponentForceField(
-                family=ff_family, name="None"
-            ),
-            ForceFieldComponent.WATER: ComponentForceField(
-                family=ff_family, name=water_model
-            ),
-            ForceFieldComponent.IONS: ComponentForceField(
-                family=ff_family, name="Standard ions"
-            ),
+            ForceFieldComponent.PROTEIN: ComponentForceField(family=ff_family, name=forcefield),
+            ForceFieldComponent.LIGAND: ComponentForceField(family=ff_family, name="None"),
+            ForceFieldComponent.WATER: ComponentForceField(family=ff_family, name=water_model),
+            ForceFieldComponent.IONS: ComponentForceField(family=ff_family, name="Standard ions"),
         },
         quality={"topology_format": "GROMACS"},
         artifacts=extra_itp_artifacts,
@@ -335,11 +331,6 @@ def build_local_solution_system(
         },
         engine_inputs={"gromacs": gmx_engine_inputs},
     )
-
-    effective_length_ns = float(length_ns or 1.0)
-    effective_timestep_fs = float(timestep_fs or 2.0)
-    effective_temp_k = float(temp_k or 300.0)
-    n_steps = max(1000, round((effective_length_ns * 1_000_000) / effective_timestep_fs))
 
     protocol = MDProtocol(
         stages=(
@@ -405,7 +396,6 @@ def build_local_solution_system(
         artifacts=plan_artifacts,
     )
 
-
     return {
         "status": "success",
         "system_build": system_build.model_dump(mode="json"),
@@ -431,4 +421,3 @@ def build_local_solution_system(
             "target_name": target_row.original_name,
         },
     }
-

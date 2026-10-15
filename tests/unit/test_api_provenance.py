@@ -47,6 +47,17 @@ from caddsuite.workflow.scheduler import DecisionRequired, TaskInvocation
 from tests.unit.test_attempt_store import _running_attempt
 
 
+def test_local_builder_rejects_4fs_before_building(tmp_path: Path) -> None:
+    app = create_app(data_root=tmp_path, token="test-secret")  # noqa: S106
+    with TestClient(app) as client:
+        response = client.post(
+            f"/v1/projects/{new_ulid()}/build-local-solution?timestep_fs=4",
+            headers={"Authorization": "Bearer test-secret"},
+        )
+    assert response.status_code == 422
+    assert "0.1 and 2 fs" in response.json()["detail"]
+
+
 def _seed_project_run(root: Path) -> tuple[str, str, str]:
     migrate.upgrade(database_path(root))
     engine = create_db_engine(database_path(root))

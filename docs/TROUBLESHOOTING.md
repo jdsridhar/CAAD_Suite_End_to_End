@@ -19,3 +19,13 @@ Start with `caddsuite doctor`, then inspect the persisted run/task state and ass
 For a reproducibility package that cannot be replayed, run its diagnostics-only preflight first and review blockers and unknown engine states. Read [reproduction design](reproducibility/REPRODUCE_DESIGN.md); a successful preflight is not a successful calculation.
 
 When reporting a defect, include CADD Suite commit, workflow/run/task IDs, stage/engine, relevant input artifact IDs and hashes, structured error, and the minimal logs. Remove bearer tokens and other secrets. Include a small repro or existing validation record when available.
+
+## GROMACS aborts before MD: energy-output interval warning
+
+Run 01M4YNYXV4BFG0H3T2Y2N3QBCZ failed in grompp, before mdrun. Its generated file had nstenergy=250 but omitted nstcalcenergy, whose engine default was 100. GROMACS changed the output interval to 300, issued a warning, and aborted with Too many warnings (1). The generator now explicitly chooses a calculation interval dividing the requested energy-output interval. MD errors now include a bounded stdout/stderr tail, while complete logs remain registered artifacts.
+
+The same input used a 4 fs timestep with conventional masses and only hydrogen-bond constraints. GROMACS also noted a 0.022 ps bonded vibration relative to the 0.004 ps timestep. The local builder now supports 0.1-2 fs and rejects larger steps before expensive preparation; it does not prepare or qualify HMR/virtual-site systems. See [GROMACS timestep guidance](https://tutorials.gromacs.org/docs/md-intro-tutorial.html). Imported, separately validated engine workflows remain distinct from this local-builder limit.
+
+To recover, refresh the application, choose **2 fs** in **Local Solution Builder**, rebuild the prepared inputs, and submit a new run. Retrying the failed run unchanged keeps its old MDP and reproduces the error. Keep the failed attempt for provenance.
+
+On 2026-10-15, 58 targeted tests passed; two expensive builder cases were deselected. Copied-input grompp checks at 2 fs for 100 ps and 50 ps both exited 0 with no warnings and no warning override. No MD trajectory was run. Diagnostic inputs, hashes, commands, stdout/stderr and generated TPRs are retained at /home/sridhar/.cache/caddsuite-md-01M4YNYXV4-9tb_wyfm/. Successful preprocessing does not validate minimization convergence, equilibration, trajectory stability, or production sampling.

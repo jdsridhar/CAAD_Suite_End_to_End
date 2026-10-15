@@ -537,6 +537,8 @@ def create_app(
             raise HTTPException(status_code=404, detail="project was not found") from exc
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except Exception as exc:
             logger.exception("local solution builder failed for project %s", project_id)
             raise HTTPException(

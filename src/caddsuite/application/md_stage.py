@@ -178,10 +178,19 @@ class MDExecutionStageHandler:
                 ) from exc
             elapsed += execution.duration_seconds
             if execution.exit_code != 0:
+                excerpt = ""
+                for ref in (execution.stderr, execution.stdout):
+                    if ref.sha256:
+                        with self.services.artifacts.path_for(ref.sha256).open("rb") as log:
+                            size = log.seek(0, 2)
+                            log.seek(max(0, size - 1600))
+                            excerpt = log.read(1600).decode("utf-8", errors="replace").strip()
+                    if excerpt:
+                        break
                 raise StageExecutionFailure(
                     "MD.ENGINE_FAILURE",
                     f"MD command {index} exited with status {execution.exit_code}; "
-                    "inspect attempt logs",
+                    f"inspect attempt logs.\n{excerpt}",
                 )
             stdout = self.services.artifacts.path_for(execution.stdout.sha256 or "").read_bytes()
             stderr = self.services.artifacts.path_for(execution.stderr.sha256 or "").read_bytes()

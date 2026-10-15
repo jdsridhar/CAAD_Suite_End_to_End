@@ -5,6 +5,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from caddsuite.application.md_stage import MDExecutionStageHandler
 from caddsuite.application.runtime import LocalRuntimeServices
 from caddsuite.contracts.base import ArtifactRef
@@ -17,6 +19,7 @@ from caddsuite.ports.adapters import AdapterContext, CommandStep, ExecutionPlan
 from caddsuite.storage.artifacts import ArtifactStore
 from caddsuite.storage.db import create_db_engine, make_session_factory
 from caddsuite.storage.migrate import upgrade
+from caddsuite.workflow.scheduler import StageExecutionFailure
 from tests.unit.test_gromacs_adapter import _result
 
 
@@ -24,8 +27,9 @@ class FakeMDEngine:
     adapter_id = "tests.md.fake"
     version = "1.0"
 
-    def __init__(self) -> None:
+    def __init__(self, *, fail: bool = False) -> None:
         self.step_checks: list[int] = []
+        self.fail = fail
 
     def validate_stage(self, context: AdapterContext) -> tuple[object, ...]:
         del context
@@ -37,13 +41,20 @@ class FakeMDEngine:
         return {"inputs/topology.dat": stage_input.artifacts["topology"]}
 
     def plan_stage(self, context: AdapterContext) -> ExecutionPlan:
+        script = (
+            "import sys; sys.stderr.write('A' * 2500 + "
+            "'WARNING: nstenergy must be a multiple of nstcalcenergy. "
+            "Fatal error: Too many warnings (1).'); sys.exit(1)"
+            if self.fail
+            else "open('run.log','w').write('ok')"
+        )
         return ExecutionPlan(
             commands=(
                 CommandStep(
                     argv=(
                         sys.executable,
                         "-c",
-                        "open('run.log','w').write('ok')",
+                        script,
                     ),
                     working_directory=context.working_directory,
                     environment={},
@@ -60,8 +71,10 @@ class FakeMDEngine:
         return ()
 
 
+@pytest.mark.parametrize("fail", [False, True])
 def test_md_stage_handler_materializes_executes_and_registers_normalized_outputs(
     tmp_path: Path,
+    fail: bool,
 ) -> None:
     database = tmp_path / "platform.sqlite"
     upgrade(database)
@@ -101,7 +114,7 @@ def test_md_stage_handler_materializes_executes_and_registers_normalized_outputs
             "topology": ArtifactRef(artifact_id=new_ulid(), role="topology", sha256=blob.sha256)
         },
     )
-    fake = FakeMDEngine()
+    fake = FakeMDEngine(fail=fail)
     handler = MDExecutionStageHandler(
         fake,
         engine_version="test-engine 1.0",
@@ -119,6 +132,15 @@ def test_md_stage_handler_materializes_executes_and_registers_normalized_outputs
         inputs={"system_build": (build,), "stage_input": (stage_input,)},
     )
     try:
+        if fail:
+            with pytest.raises(StageExecutionFailure) as raised:
+                handler.execute(invocation)
+            assert raised.value.code == "MD.ENGINE_FAILURE"
+            assert "nstenergy must be a multiple of nstcalcenergy" in str(raised.value)
+            assert "Fatal error: Too many warnings" in str(raised.value)
+            assert len(str(raised.value)) < 2000
+            assert fake.step_checks == []
+            return
         result = handler.execute(invocation)
         assert result.schema_version == "md_stage_result/1.1"
         assert result.system_id == build.system.id

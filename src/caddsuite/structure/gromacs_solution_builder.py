@@ -16,6 +16,7 @@ parameterized ligand .gro and .itp files into the system topology).
 from __future__ import annotations
 
 import argparse
+import importlib
 import logging
 import math
 import os
@@ -27,6 +28,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger("gromacs_solution_builder")
+
+
+def validate_production_settings(*, length_ns: float, timestep_fs: float, temp_k: float) -> int:
+    """Validate the conventional-mass local builder and return its exact step count.
+
+    Larger timesteps require a separately prepared and qualified HMR/virtual-site
+    system; this builder does not create either of those topologies.
+    """
+    if not math.isfinite(timestep_fs) or not 0.1 <= timestep_fs <= 2.0:
+        raise ValueError(
+            "Local solution builder requires a timestep between 0.1 and 2 fs. "
+            "A 4 fs timestep requires separately prepared and validated hydrogen mass "
+            "repartitioning or virtual sites; this builder provides neither."
+        )
+    if not math.isfinite(length_ns) or length_ns <= 0:
+        raise ValueError("MD duration must be finite and positive.")
+    if not math.isfinite(temp_k) or temp_k <= 0:
+        raise ValueError("MD temperature must be finite and positive.")
+    steps = round(length_ns * 1_000_000 / timestep_fs)
+    if steps < 1:
+        raise ValueError("MD duration must include at least one integration step.")
+    return steps
 
 
 @dataclass(frozen=True)
@@ -119,7 +142,7 @@ def find_gmx_binary(explicit_path: str | Path | None = None) -> Path:
 def find_python_with_pdbfixer() -> Path | None:
     """Find a Python interpreter that has pdbfixer and openmm installed."""
     try:
-        import pdbfixer  # noqa: F401
+        importlib.import_module("pdbfixer")
 
         return Path(sys.executable).resolve()
     except ImportError:
@@ -346,8 +369,7 @@ class GromacsSolutionBuilder:
                         prev_chain is not None
                         and prev_resnum is not None
                         and (
-                            chain != prev_chain
-                            or (resnum is not None and resnum > prev_resnum + 1)
+                            chain != prev_chain or (resnum is not None and resnum > prev_resnum + 1)
                         )
                     ):
                         fout.write("TER\n")
@@ -488,16 +510,20 @@ pbc                     = xyz
         temp_k: float = 300.0,
     ) -> None:
         """Create a standard NPT production molecular dynamics parameter file."""
-        dt_ps = max(0.0005, min(0.005, timestep_fs / 1000.0))
-        n_steps = max(100, round((length_ns * 1000.0) / dt_ps))
+        n_steps = validate_production_settings(
+            length_ns=length_ns, timestep_fs=timestep_fs, temp_k=temp_k
+        )
+        dt_ps = timestep_fs / 1000.0
         nst_out = max(100, min(5000, n_steps // 100 if n_steps >= 1000 else 100))
+        nst_calc_energy = math.gcd(100, nst_out)
 
         content = f"""; production.mdp - standard NPT production molecular dynamics
 integrator              = md
-dt                      = {dt_ps:.4f}
+dt                      = {dt_ps:.8g}
 nsteps                  = {n_steps}
 
 ; Output control
+nstcalcenergy           = {nst_calc_energy}
 nstxout-compressed      = {nst_out}
 nstenergy               = {nst_out}
 nstlog                  = {nst_out}
