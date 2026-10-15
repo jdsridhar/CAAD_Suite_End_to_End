@@ -11,6 +11,21 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from caddsuite.contracts.base import ArtifactRef, SoftwareRef
+from caddsuite.contracts.md import (
+    BoxSpec,
+    ComponentForceField,
+    ForceFieldComponent,
+    ForceFieldFamily,
+    MDProtocol,
+    MDStage,
+    MDStageKind,
+    MDSystem,
+    Parameterization,
+)
+from caddsuite.contracts.md_plan import MDStagePlan
+from caddsuite.contracts.system import SystemBuildResult
+from caddsuite.domain.enums import LicenseClass, SoftwareKind
 from caddsuite.domain.identity import new_ulid
 from caddsuite.storage.artifacts import ArtifactStore, register_blob
 from caddsuite.storage.models import ArtifactRow, ProjectArtifactRow, ProjectRow
@@ -18,8 +33,42 @@ from caddsuite.structure.gromacs_solution_builder import (
     GromacsSolutionBuilder,
     SolutionBuilderConfig,
 )
+from caddsuite.validation import default_registry
+from caddsuite.validation.force_field_profiles import get_gromacs_solution_profile_id
 
 logger = logging.getLogger("caddsuite.gromacs_solution_service")
+
+
+def _extract_box_spec_from_gro(gro_path: Path, box_type: str) -> BoxSpec:
+    """Extract a valid BoxSpec from the last line of a GROMACS .gro file."""
+    lines = gro_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    box_line = ""
+    for line in reversed(lines):
+        line = line.strip()
+        if line:
+            box_line = line
+            break
+    parts = [float(p) for p in box_line.split()]
+    if len(parts) == 3:
+        xx, yy, zz = parts
+        vectors = ((xx, 0.0, 0.0), (0.0, yy, 0.0), (0.0, 0.0, zz))
+    elif len(parts) >= 9:
+        xx, yy, zz, v1y, v1z, v2x, v2z, v3x, v3y = parts[:9]
+        vectors = ((xx, v1y, v1z), (v2x, yy, v2z), (v3x, v3y, zz))
+    else:
+        vectors = ((5.0, 0.0, 0.0), (0.0, 5.0, 0.0), (0.0, 0.0, 5.0))
+
+    if "dodec" in box_type.lower():
+        shape = "rhombic_dodecahedron"
+    elif "octa" in box_type.lower():
+        shape = "truncated_octahedron"
+    elif all(abs(vectors[i][j]) < 1e-12 for i in range(3) for j in range(3) if i != j):
+        shape = "rectangular"
+    else:
+        shape = "triclinic"
+
+    return BoxSpec(shape=shape, vectors_nm=vectors)
+
 
 
 def build_local_solution_system(
@@ -91,6 +140,10 @@ def build_local_solution_system(
         input_pdb_path = out_dir / input_filename
         shutil.copyfile(target_path, input_pdb_path)
 
+        effective_length_ns = float(length_ns or 1.0)
+        effective_timestep_fs = float(timestep_fs or 2.0)
+        effective_temp_k = float(temp_k or 300.0)
+
         cfg = SolutionBuilderConfig(
             forcefield=forcefield,
             water_model=water_model,
@@ -107,6 +160,15 @@ def build_local_solution_system(
             output_dir=out_dir,
         )
 
+        builder.write_production_mdp(
+            out_dir / "production.mdp",
+            length_ns=effective_length_ns,
+            timestep_fs=effective_timestep_fs,
+            temp_k=effective_temp_k,
+        )
+
+        box_spec = _extract_box_spec_from_gro(out_dir / "system.gro", box_type)
+
         artifact_refs: dict[str, dict[str, Any]] = {}
         registered_by_name: dict[str, dict[str, Any]] = {}
         files_to_register = [
@@ -114,7 +176,9 @@ def build_local_solution_system(
             ("topology", out_dir / "topol.top", "topol.top", "chemical/x-top"),
             ("parameter", out_dir / "posre.itp", "posre.itp", "text/plain"),
             ("index", out_dir / "index.ndx", "index.ndx", "text/plain"),
+            ("protocol", out_dir / "production.mdp", "production.mdp", "text/plain"),
             ("protocol", out_dir / "ions.mdp", "ions.mdp", "text/plain"),
+            ("protocol", out_dir / "em.mdp", "em.mdp", "text/plain"),
         ]
         for extra_itp in sorted(out_dir.glob("*.itp")):
             if extra_itp.name != "posre.itp" and extra_itp.is_file():
@@ -150,215 +214,209 @@ def build_local_solution_system(
                 artifact_refs[role] = ref_payload
                 registered_by_name[orig_name] = ref_payload
 
-    gro_ref = artifact_refs["coordinates"]
-    top_ref = artifact_refs["topology"]
-    ndx_ref = artifact_refs.get("index")
-    mdp_ref = artifact_refs.get("protocol")
-
-    sys_id = new_ulid()
-    build_id = new_ulid()
-    n_steps = max(1000, round(((length_ns or 1.0) * 1_000_000) / (timestep_fs or 2.0)))
+    gro_ref = ArtifactRef(
+        artifact_id=artifact_refs["coordinates"]["id"],
+        role="coordinates",
+        sha256=artifact_refs["coordinates"]["sha256"],
+    )
+    top_ref = ArtifactRef(
+        artifact_id=artifact_refs["topology"]["id"],
+        role="topology",
+        sha256=artifact_refs["topology"]["sha256"],
+    )
+    ndx_ref = (
+        ArtifactRef(
+            artifact_id=artifact_refs["index"]["id"],
+            role="index",
+            sha256=artifact_refs["index"]["sha256"],
+        )
+        if "index" in artifact_refs
+        else None
+    )
+    prod_mdp_ref = (
+        ArtifactRef(
+            artifact_id=registered_by_name["production.mdp"]["id"],
+            role="mdp",
+            sha256=registered_by_name["production.mdp"]["sha256"],
+        )
+        if "production.mdp" in registered_by_name
+        else None
+    )
+    ions_mdp_ref = (
+        ArtifactRef(
+            artifact_id=registered_by_name["ions.mdp"]["id"],
+            role="mdp",
+            sha256=registered_by_name["ions.mdp"]["sha256"],
+        )
+        if "ions.mdp" in registered_by_name
+        else None
+    )
 
     extra_itp_artifacts = {
-        name: {
-            "artifact_id": ref["id"],
-            "role": "parameter",
-            "sha256": ref["sha256"],
-        }
+        name: ArtifactRef(
+            artifact_id=ref["id"],
+            role="parameter",
+            sha256=ref["sha256"],
+        )
         for name, ref in registered_by_name.items()
         if name.endswith(".itp")
     }
 
-    system_build = {
-        "schema_version": "system_build_result/1.0",
-        "id": build_id,
-        "request_id": new_ulid(),
-        "complex_id": new_ulid(),
-        "builder": {
-            "adapter_id": "system_builder.gromacs_solution_builder",
-            "engine": "gromacs",
-            "version": "2026.3",
-        },
-        "parameterization": {
-            "id": new_ulid(),
-            "compatibility_profile_id": "caddsuite.charmm_gui.gromacs.charmm36m_cgenff_v1",
-            "protein_ff": forcefield,
-            "ligand_method": "None",
-            "ligand_charge_model": "None",
-            "water_model": water_model,
-            "ion_parameters": "Standard ions",
-        },
-        "system": {
-            "id": sys_id,
-            "complex_id": new_ulid(),
-            "compound_id": new_ulid(),
-            "form_id": new_ulid(),
-            "n_atoms": summary.total_atoms,
-            "net_charge": 0,
-            "parameterization_id": new_ulid(),
-            "engine_inputs": {
-                "gromacs": {
-                    "topology": {
-                        "artifact_id": top_ref["id"],
-                        "role": "topology",
-                        "sha256": top_ref["sha256"],
-                    },
-                    "coordinates": {
-                        "artifact_id": gro_ref["id"],
-                        "role": "coordinates",
-                        "sha256": gro_ref["sha256"],
-                    },
-                    **(
-                        {
-                            "index": {
-                                "artifact_id": ndx_ref["id"],
-                                "role": "index",
-                                "sha256": ndx_ref["sha256"],
-                            }
-                        }
-                        if ndx_ref
-                        else {}
-                    ),
-                    **(
-                        {
-                            "mdp": {
-                                "artifact_id": mdp_ref["id"],
-                                "role": "mdp",
-                                "sha256": mdp_ref["sha256"],
-                            }
-                        }
-                        if mdp_ref
-                        else {}
-                    ),
-                    **extra_itp_artifacts,
-                }
-            },
-        },
-        "protocol": {
-            "stages": [
-                {
-                    "kind": "production",
-                    "integrator": "md",
-                    "n_steps": n_steps,
-                    "timestep_fs": timestep_fs or 2.0,
-                    "length_ns": length_ns or 1.0,
-                    "temperature_K": temp_k or 300.0,
-                }
-            ]
-        },
-        "raw_artifacts": {
-            "coordinates": {
-                "artifact_id": gro_ref["id"],
-                "role": "coordinates",
-                "sha256": gro_ref["sha256"],
-            },
-            "topology": {
-                "artifact_id": top_ref["id"],
-                "role": "topology",
-                "sha256": top_ref["sha256"],
-            },
-            **(
-                {
-                    "index": {
-                        "artifact_id": ndx_ref["id"],
-                        "role": "index",
-                        "sha256": ndx_ref["sha256"],
-                    }
-                }
-                if ndx_ref
-                else {}
-            ),
-            **(
-                {
-                    "mdp": {
-                        "artifact_id": mdp_ref["id"],
-                        "role": "mdp",
-                        "sha256": mdp_ref["sha256"],
-                    }
-                }
-                if mdp_ref
-                else {}
-            ),
-            **extra_itp_artifacts,
-        },
-        "normalized_artifacts": {
-            "coordinates": {
-                "artifact_id": gro_ref["id"],
-                "role": "coordinates",
-                "sha256": gro_ref["sha256"],
-            },
-            "topology": {
-                "artifact_id": top_ref["id"],
-                "role": "topology",
-                "sha256": top_ref["sha256"],
-            },
-            **(
-                {
-                    "index": {
-                        "artifact_id": ndx_ref["id"],
-                        "role": "index",
-                        "sha256": ndx_ref["sha256"],
-                    }
-                }
-                if ndx_ref
-                else {}
-            ),
-            **extra_itp_artifacts,
-        },
-        "validation_issues": [],
+    gmx_engine_inputs: dict[str, ArtifactRef] = {
+        "coordinates": gro_ref,
+        "topology": top_ref,
+        "system.gro": gro_ref,
+        "topol.top": top_ref,
+        **({"index": ndx_ref, "index.ndx": ndx_ref} if ndx_ref else {}),
+        **({"mdp": prod_mdp_ref, "production.mdp": prod_mdp_ref} if prod_mdp_ref else {}),
+        **({"ions.mdp": ions_mdp_ref} if ions_mdp_ref else {}),
+        **extra_itp_artifacts,
     }
 
-    stage_input = {
-        "schema_version": "md_stage_plan/1.0",
-        "engine": "gromacs",
-        "stage_index": 0,
-        "artifacts": {
-            "coordinates": {
-                "artifact_id": gro_ref["id"],
-                "role": "coordinates",
-                "sha256": gro_ref["sha256"],
-            },
-            "topology": {
-                "artifact_id": top_ref["id"],
-                "role": "topology",
-                "sha256": top_ref["sha256"],
-            },
-            **(
-                {
-                    "index": {
-                        "artifact_id": ndx_ref["id"],
-                        "role": "index",
-                        "sha256": ndx_ref["sha256"],
-                    }
-                }
-                if ndx_ref
-                else {}
+    builder_software = SoftwareRef(
+        name="gromacs",
+        version="2026.3",
+        kind=SoftwareKind.ENGINE,
+        license_class=LicenseClass.OPEN_SOURCE_PERMISSIVE,
+    )
+
+    ff_lower = forcefield.lower()
+    ff_family = ForceFieldFamily.CHARMM if "charmm" in ff_lower else ForceFieldFamily.AMBER
+
+    profile_id = get_gromacs_solution_profile_id(forcefield, water_model)
+    param_id = new_ulid()
+
+    parameterization = Parameterization(
+        id=param_id,
+        ff_family=ff_family,
+        protein_ff=forcefield,
+        ligand_method="None",
+        ligand_charge_model="None",
+        water_model=water_model,
+        ion_parameters="Standard ions",
+        tool=builder_software,
+        compatibility_profile_id=profile_id,
+        component_force_fields={
+            ForceFieldComponent.PROTEIN: ComponentForceField(
+                family=ff_family, name=forcefield
             ),
-            **(
-                {
-                    "mdp": {
-                        "artifact_id": mdp_ref["id"],
-                        "role": "mdp",
-                        "sha256": mdp_ref["sha256"],
-                    }
-                }
-                if mdp_ref
-                else {}
+            ForceFieldComponent.LIGAND: ComponentForceField(
+                family=ff_family, name="None"
+            ),
+            ForceFieldComponent.WATER: ComponentForceField(
+                family=ff_family, name=water_model
+            ),
+            ForceFieldComponent.IONS: ComponentForceField(
+                family=ff_family, name="Standard ions"
             ),
         },
+        quality={"topology_format": "GROMACS"},
+        artifacts=extra_itp_artifacts,
+    )
+
+    sys_id = new_ulid()
+    complex_id = new_ulid()
+
+    system = MDSystem(
+        id=sys_id,
+        complex_id=complex_id,
+        compound_id=None,
+        form_id=None,
+        parameterization_id=param_id,
+        builder=builder_software,
+        box=box_spec,
+        n_atoms=summary.total_atoms,
+        net_charge=0.0,
+        composition={
+            "protein_atoms": summary.solute_atoms,
+            "water_molecules": summary.water_molecules,
+            "positive_ions": summary.positive_ions,
+            "negative_ions": summary.negative_ions,
+        },
+        engine_inputs={"gromacs": gmx_engine_inputs},
+    )
+
+    effective_length_ns = float(length_ns or 1.0)
+    effective_timestep_fs = float(timestep_fs or 2.0)
+    effective_temp_k = float(temp_k or 300.0)
+    n_steps = max(1000, round((effective_length_ns * 1_000_000) / effective_timestep_fs))
+
+    protocol = MDProtocol(
+        stages=(
+            MDStage(
+                kind=MDStageKind.PRODUCTION,
+                integrator="md",
+                n_steps=n_steps,
+                timestep_fs=effective_timestep_fs,
+                temperature_K=effective_temp_k,
+            ),
+        )
+    )
+
+    issues = tuple(
+        default_registry().run(
+            "system_build",
+            {"parameterization": parameterization, "md_system": system},
+        )
+    )
+
+    raw_artifacts = {
+        "coordinates": gro_ref,
+        "topology": top_ref,
+        "system.gro": gro_ref,
+        "topol.top": top_ref,
+        **({"index": ndx_ref, "index.ndx": ndx_ref} if ndx_ref else {}),
+        **({"mdp": prod_mdp_ref, "production.mdp": prod_mdp_ref} if prod_mdp_ref else {}),
+        **({"ions.mdp": ions_mdp_ref} if ions_mdp_ref else {}),
+        **extra_itp_artifacts,
     }
+    normalized_artifacts = {
+        "coordinates": gro_ref,
+        "topology": top_ref,
+        "system.gro": gro_ref,
+        "topol.top": top_ref,
+        **({"index": ndx_ref, "index.ndx": ndx_ref} if ndx_ref else {}),
+        **extra_itp_artifacts,
+    }
+
+    system_build = SystemBuildResult(
+        id=new_ulid(),
+        request_id=new_ulid(),
+        complex_id=complex_id,
+        builder=builder_software,
+        parameterization=parameterization,
+        system=system,
+        protocol=protocol,
+        raw_artifacts=raw_artifacts,
+        normalized_artifacts=normalized_artifacts,
+        validation_issues=issues,
+    )
+
+    plan_artifacts = {
+        "coordinates": "system.gro",
+        "topology": "topol.top",
+        **({"md_parameters": "production.mdp"} if prod_mdp_ref else {}),
+        **({"index": "index.ndx"} if ndx_ref else {}),
+    }
+
+    stage_plan = MDStagePlan(
+        engine="gromacs",
+        stage_index=0,
+        artifacts=plan_artifacts,
+    )
+
 
     return {
         "status": "success",
-        "system_build": system_build,
-        "stage_input": stage_input,
+        "system_build": system_build.model_dump(mode="json"),
+        "stage_input": stage_plan.model_dump(mode="json"),
         "info": {
             "system_id": sys_id,
             "atoms": summary.total_atoms,
             "engine": "gromacs",
-            "length_ns": length_ns or 1.0,
-            "timestep_fs": timestep_fs or 2.0,
-            "temperature_K": temp_k or 300.0,
+            "length_ns": effective_length_ns,
+            "timestep_fs": effective_timestep_fs,
+            "temperature_K": effective_temp_k,
             "identity": (
                 f"Local GROMACS Built ({summary.total_atoms:,d} atoms, "
                 f"{summary.water_molecules:,d} waters)"
@@ -373,3 +431,4 @@ def build_local_solution_system(
             "target_name": target_row.original_name,
         },
     }
+

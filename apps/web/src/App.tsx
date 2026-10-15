@@ -489,7 +489,32 @@ function makeDftWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS, hasPreparedC
   };
 }
 
-function makeMdWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
+interface MakeMdWorkflowOptions {
+  stageIndex?: number;
+  topologyPath?: string;
+  coordinatesPath?: string;
+  mdpPath?: string;
+  indexPath?: string;
+  outputPrefix?: string;
+  resourceMode?: "cpu" | "gpu";
+  cpuThreads?: number;
+  gpuIds?: number[];
+}
+
+function makeMdWorkflow(
+  paths: EnginePaths = DEFAULT_ENGINE_PATHS,
+  options?: MakeMdWorkflowOptions
+) {
+  const stageIndex = options?.stageIndex ?? 0;
+  const topologyPath = options?.topologyPath ?? "topol.top";
+  const coordinatesPath = options?.coordinatesPath ?? "system.gro";
+  const mdpPath = options?.mdpPath ?? "production.mdp";
+  const indexPath = options?.indexPath ?? "index.ndx";
+  const outputPrefix = options?.outputPrefix ?? "production";
+  const resourceMode = options?.resourceMode ?? "gpu";
+  const cpuThreads = options?.cpuThreads ?? 4;
+  const gpuIds = resourceMode === "gpu" ? (options?.gpuIds ?? [0]) : undefined;
+
   return {
     schema: "caddsuite.workflow/1",
     name: "Protein-Ligand Molecular Dynamics (GROMACS)",
@@ -527,15 +552,16 @@ function makeMdWorkflow(paths: EnginePaths = DEFAULT_ENGINE_PATHS) {
             timeout_seconds: 7200,
             gromacs: {
               executable: paths.gmx_executable || "gmx",
-              stage_index: 2,
-              topology_path: "topol.top",
-              coordinates_path: "step4.1_equilibration.gro",
-              mdp_path: "step5_production.mdp",
-              index_path: "index.ndx",
-              output_prefix: "production",
-              resource_mode: "gpu",
-              cpu_threads: 4,
-              gpu_ids: [0]
+              stage_index: stageIndex,
+              topology_path: topologyPath,
+              coordinates_path: coordinatesPath,
+              mdp_path: mdpPath,
+              index_path: indexPath,
+              output_prefix: outputPrefix,
+              resource_mode: resourceMode,
+              cpu_threads: cpuThreads,
+              thread_mpi_ranks: 1,
+              ...(resourceMode === "gpu" && gpuIds ? { gpu_ids: gpuIds } : {})
             }
           }
         }
@@ -1563,6 +1589,22 @@ export default function App() {
         info: Record<string, unknown>;
       };
       setMdDemoInfo(data.info);
+      const isThreeStage = (data.stage_input as { stage_index?: number })?.stage_index === 2;
+      setWf(
+        JSON.stringify(
+          makeMdWorkflow(enginePaths, {
+            stageIndex: isThreeStage ? 2 : 0,
+            coordinatesPath: isThreeStage ? "step4.1_equilibration.gro" : "system.gro",
+            topologyPath: "topol.top",
+            mdpPath: isThreeStage ? "step5_production.mdp" : "production.mdp",
+            indexPath: "index.ndx",
+            resourceMode: "gpu",
+            gpuIds: [0],
+          }),
+          null,
+          2
+        )
+      );
       setInputs(
         JSON.stringify(
           {
@@ -1618,7 +1660,21 @@ export default function App() {
         ...data.info,
         is_local_build: true,
       });
-      setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
+      setWf(
+        JSON.stringify(
+          makeMdWorkflow(enginePaths, {
+            stageIndex: 0,
+            coordinatesPath: "system.gro",
+            topologyPath: "topol.top",
+            mdpPath: "production.mdp",
+            indexPath: "index.ndx",
+            resourceMode: "gpu",
+            gpuIds: [0],
+          }),
+          null,
+          2
+        )
+      );
       setInputs(
         JSON.stringify(
           {
@@ -1682,41 +1738,70 @@ export default function App() {
     }
     const ndx = projectArtifacts.find((a) => a.id === uploadNdxId);
     const mdp = projectArtifacts.find((a) => a.id === uploadMdpId);
+    const boundGroName = gro.original_name || "system.gro";
+    const boundTopName = top.original_name || "topol.top";
+    const boundNdxName = ndx ? (ndx.original_name || "index.ndx") : undefined;
+    const boundMdpName = mdp ? (mdp.original_name || "production.mdp") : undefined;
+
     const sysId = ulid();
     const buildId = ulid();
+    const complexId = ulid();
+    const paramId = ulid();
+    const builderRef = {
+      name: "gromacs",
+      version: "2026.3",
+      kind: "engine",
+      license_class: "open_source_permissive",
+    };
     const boundSystemBuild = {
       schema_version: "system_build_result/1.0",
       id: buildId,
       request_id: ulid(),
-      complex_id: ulid(),
-      builder: {
-        adapter_id: "system_builder.charmm_gui_gromacs_import",
-        engine: "charmm_gui_gromacs_import",
-        version: "0.1.0",
-      },
+      complex_id: complexId,
+      builder: builderRef,
       parameterization: {
-        id: ulid(),
+        id: paramId,
+        ff_family: "charmm",
         compatibility_profile_id: "caddsuite.charmm_gui.gromacs.charmm36m_cgenff_v1",
         protein_ff: "CHARMM36m",
         ligand_method: "CGenFF",
         ligand_charge_model: "CGenFF",
         water_model: "CHARMM TIP3P",
         ion_parameters: "CHARMM ions",
+        tool: builderRef,
+        component_force_fields: {
+          protein: { family: "charmm", name: "CHARMM36m" },
+          ligand: { family: "charmm", name: "CGenFF" },
+          water: { family: "charmm", name: "CHARMM TIP3P" },
+          ions: { family: "charmm", name: "CHARMM ions" },
+        },
+        quality: { topology_format: "GROMACS" },
       },
       system: {
         id: sysId,
-        complex_id: ulid(),
-        compound_id: compounds[0]?.id || ulid(),
-        form_id: ulid(),
+        complex_id: complexId,
+        compound_id: null,
+        form_id: null,
+        parameterization_id: paramId,
+        builder: builderRef,
+        box: {
+          shape: "rectangular",
+          vectors_nm: [
+            [5.0, 0.0, 0.0],
+            [0.0, 5.0, 0.0],
+            [0.0, 0.0, 5.0],
+          ],
+        },
         n_atoms: 50000,
         net_charge: 0,
-        parameterization_id: ulid(),
         engine_inputs: {
           gromacs: {
             topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
             coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
-            ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
-            ...(mdp ? { mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 } } : {}),
+            [boundTopName]: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+            [boundGroName]: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+            ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 }, [boundNdxName!]: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+            ...(mdp ? { md_parameters: { artifact_id: mdp.id, role: "md_parameters", sha256: mdp.sha256 }, mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 }, [boundMdpName!]: { artifact_id: mdp.id, role: "md_parameters", sha256: mdp.sha256 } } : {}),
           },
         },
       },
@@ -1735,13 +1820,17 @@ export default function App() {
       raw_artifacts: {
         coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
         topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
-        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
-        ...(mdp ? { mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 } } : {}),
+        [boundGroName]: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+        [boundTopName]: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 }, [boundNdxName!]: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+        ...(mdp ? { md_parameters: { artifact_id: mdp.id, role: "md_parameters", sha256: mdp.sha256 }, mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 }, [boundMdpName!]: { artifact_id: mdp.id, role: "md_parameters", sha256: mdp.sha256 } } : {}),
       },
       normalized_artifacts: {
         coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
         topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
-        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
+        [boundGroName]: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
+        [boundTopName]: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
+        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 }, [boundNdxName!]: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
       },
       validation_issues: [],
     };
@@ -1750,12 +1839,13 @@ export default function App() {
       engine: "gromacs",
       stage_index: 0,
       artifacts: {
-        coordinates: { artifact_id: gro.id, role: "coordinates", sha256: gro.sha256 },
-        topology: { artifact_id: top.id, role: "topology", sha256: top.sha256 },
-        ...(ndx ? { index: { artifact_id: ndx.id, role: "index", sha256: ndx.sha256 } } : {}),
-        ...(mdp ? { mdp: { artifact_id: mdp.id, role: "mdp", sha256: mdp.sha256 } } : {}),
+        coordinates: boundGroName,
+        topology: boundTopName,
+        ...(ndx ? { index: boundNdxName! } : {}),
+        ...(mdp ? { md_parameters: boundMdpName! } : {}),
       },
     };
+
     setMdDemoInfo({
       is_uploaded: true,
       system_id: sysId,
@@ -1764,9 +1854,23 @@ export default function App() {
       length_ns: mdLengthNs || 1.0,
       timestep_fs: mdTimestepFs || 2.0,
       temperature_K: mdTempK || 300.0,
-      identity: `${gro.original_name || "coordinates.gro"} + ${top.original_name || "topol.top"}`,
+      identity: `${boundGroName} + ${boundTopName}`,
     });
-    setWf(JSON.stringify(makeMdWorkflow(enginePaths), null, 2));
+    setWf(
+      JSON.stringify(
+        makeMdWorkflow(enginePaths, {
+          stageIndex: 0,
+          coordinatesPath: boundGroName,
+          topologyPath: boundTopName,
+          mdpPath: boundMdpName || "production.mdp",
+          indexPath: boundNdxName,
+          resourceMode: "gpu",
+          gpuIds: [0],
+        }),
+        null,
+        2
+      )
+    );
     setInputs(
       JSON.stringify(
         {
@@ -3018,7 +3122,7 @@ export default function App() {
                           Runs GROMACS built-in tools (<strong>pdb2gmx</strong> → <strong>editconf</strong> → <strong>solvate</strong> → <strong>genion</strong> → <strong>make_ndx</strong>) locally on your project receptor structure.
                         </p>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: "white", padding: 12, borderRadius: 6, border: "1px solid #dce5da", marginBottom: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, background: "white", padding: 12, borderRadius: 6, border: "1px solid #dce5da", marginBottom: 12 }}>
                           <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
                             Target Receptor Structure (.pdb)
                             <select
@@ -3102,7 +3206,47 @@ export default function App() {
                               style={{ fontSize: "11px" }}
                             />
                           </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Simulation Length (ns)
+                            <input
+                              type="number"
+                              min={0.1}
+                              max={10000}
+                              step={0.5}
+                              value={mdLengthNs}
+                              onChange={(e) => setMdLengthNs(Math.max(0.001, parseFloat(e.target.value) || 1.0))}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Timestep (fs)
+                            <input
+                              type="number"
+                              min={0.5}
+                              max={5.0}
+                              step={0.5}
+                              value={mdTimestepFs}
+                              onChange={(e) => setMdTimestepFs(Math.max(0.1, parseFloat(e.target.value) || 2.0))}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </label>
+
+                          <label style={{ fontSize: "10px", fontWeight: 600, display: "grid", gap: 4 }}>
+                            Temperature (K)
+                            <input
+                              type="number"
+                              min={50}
+                              max={500}
+                              step={1}
+                              value={mdTempK}
+                              onChange={(e) => setMdTempK(Math.max(1, parseFloat(e.target.value) || 300.0))}
+                              style={{ fontSize: "11px" }}
+                            />
+                          </label>
                         </div>
+
 
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <label style={{ fontSize: "11px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>

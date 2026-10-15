@@ -12,6 +12,14 @@ from caddsuite.contracts.md import (
 CHARMM_GUI_GROMACS_PROFILE_ID = "caddsuite.charmm_gui.gromacs.charmm36m_cgenff_v1"
 AMBER_TLEAP_GROMACS_PROFILE_ID = "caddsuite.ambertools.gromacs.ff14sb_gaff2_tip3p_v1"
 AMBER_TLEAP_NATIVE_PROFILE_ID = "caddsuite.ambertools.amber.ff14sb_gaff2_tip3p_v1"
+GROMACS_SOLUTION_BUILDER_PROFILE_ID = "caddsuite.gromacs.solution_builder.amber14sb_tip3p_v1"
+
+
+def get_gromacs_solution_profile_id(forcefield: str, water_model: str) -> str:
+    """Return deterministic compatibility profile ID for GROMACS solution builder runs."""
+    ff_key = forcefield.lower().replace("-", "_")
+    water_key = water_model.lower().replace("-", "_")
+    return f"caddsuite.gromacs.solution_builder.{ff_key}_{water_key}_v1"
 
 
 class ForceFieldCompatibilityProfile(ContractModel):
@@ -129,5 +137,40 @@ def default_force_field_profiles() -> ForceFieldCompatibilityRegistry:
                     "validation."
                 ),
             ),
+            *(
+                ForceFieldCompatibilityProfile(
+                    profile_id=get_gromacs_solution_profile_id(ff_name, w_name),
+                    family=ff_family,
+                    component_force_fields={
+                        ForceFieldComponent.PROTEIN: ComponentForceField(
+                            family=ff_family, name=ff_name
+                        ),
+                        ForceFieldComponent.LIGAND: ComponentForceField(
+                            family=ff_family, name="None"
+                        ),
+                        ForceFieldComponent.WATER: ComponentForceField(
+                            family=ff_family, name=w_name
+                        ),
+                        ForceFieldComponent.IONS: ComponentForceField(
+                            family=ff_family, name="Standard ions"
+                        ),
+                    },
+                    ligand_charge_model="None",
+                    topology_format="GROMACS",
+                    supported=True,
+                    scope_note=(
+                        f"Audited GROMACS built-in solution builder {ff_name} / {w_name} "
+                        "explicit solvent parameterization."
+                    ),
+                )
+                for ff_name, ff_family in (
+                    ("amber14sb", ForceFieldFamily.AMBER),
+                    ("amber99sb-ildn", ForceFieldFamily.AMBER),
+                    ("charmm27", ForceFieldFamily.CHARMM),
+                    ("oplsaa", ForceFieldFamily.AMBER),
+                )
+                for w_name in ("tip3p", "spce", "tip4p")
+            ),
         )
     )
+

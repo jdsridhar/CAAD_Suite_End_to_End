@@ -43,6 +43,7 @@ class SolutionBuilderConfig:
     negative_ion: str = "CL"  # "CL" for Amber/CHARMM, "CLA" for some OPLS
     ignore_hydrogens: bool = True  # Pass -ignh to pdb2gmx
     repair_missing_atoms: bool = True  # Auto-repair missing sidechain heavy atoms with PDBFixer
+    run_energy_minimization: bool = True  # Run gentle energy minimization to relax steric clashes
     solvent_model_gro: str = "spc216.gro"  # Template solvent box in GROMACS library
     extra_pdb2gmx_args: tuple[str, ...] = ()
 
@@ -329,12 +330,34 @@ class GromacsSolutionBuilder:
             input_pdb.open("r", encoding="utf-8", errors="replace") as fin,
             cleaned_pdb.open("w", encoding="utf-8") as fout,
         ):
+            prev_chain: str | None = None
+            prev_resnum: int | None = None
             for line in fin:
-                if line.startswith(("ATOM", "TER", "ENDMDL", "END")):
+                if line.startswith("ATOM"):
                     resname = line[17:20].strip().upper() if len(line) >= 20 else ""
                     if resname in ("HOH", "WAT", "TIP3", "SOL"):
                         continue
+                    chain = line[21] if len(line) > 21 else " "
+                    try:
+                        resnum = int(line[22:26])
+                    except ValueError:
+                        resnum = None
+                    if (
+                        prev_chain is not None
+                        and prev_resnum is not None
+                        and (
+                            chain != prev_chain
+                            or (resnum is not None and resnum > prev_resnum + 1)
+                        )
+                    ):
+                        fout.write("TER\n")
+                    prev_chain = chain
+                    prev_resnum = resnum
                     fout.write(line)
+                elif line.startswith(("TER", "ENDMDL", "END")):
+                    fout.write(line)
+                    prev_chain = None
+                    prev_resnum = None
 
         pdb_for_pdb2gmx = cleaned_pdb
         if self.config.repair_missing_atoms:
@@ -436,6 +459,91 @@ pbc                     = xyz
 """
         target_path.write_text(content, encoding="utf-8")
 
+    @staticmethod
+    def write_em_mdp(target_path: Path) -> None:
+        """Create an energy minimization MDP parameter file to relax steric clashes."""
+        content = """\
+; em.mdp - energy minimization parameter file
+integrator              = steep
+emtol                   = 1000.0
+emstep                  = 0.01
+nsteps                  = 1000
+
+; Neighbor searching and nonbonded
+nstlist                 = 1
+cutoff-scheme           = Verlet
+coulombtype             = PME
+rcoulomb                = 1.0
+rvdw                    = 1.0
+pbc                     = xyz
+"""
+        target_path.write_text(content, encoding="utf-8")
+
+    @staticmethod
+    def write_production_mdp(
+        target_path: Path,
+        *,
+        length_ns: float = 1.0,
+        timestep_fs: float = 2.0,
+        temp_k: float = 300.0,
+    ) -> None:
+        """Create a standard NPT production molecular dynamics parameter file."""
+        dt_ps = max(0.0005, min(0.005, timestep_fs / 1000.0))
+        n_steps = max(100, round((length_ns * 1000.0) / dt_ps))
+        nst_out = max(100, min(5000, n_steps // 100 if n_steps >= 1000 else 100))
+
+        content = f"""; production.mdp - standard NPT production molecular dynamics
+integrator              = md
+dt                      = {dt_ps:.4f}
+nsteps                  = {n_steps}
+
+; Output control
+nstxout-compressed      = {nst_out}
+nstenergy               = {nst_out}
+nstlog                  = {nst_out}
+
+; Bond constraints
+continuation            = no
+constraint_algorithm    = lincs
+constraints             = h-bonds
+lincs_iter              = 1
+lincs_order             = 4
+
+; Nonbonded interactions
+cutoff-scheme           = Verlet
+nstlist                 = 20
+rcoulomb                = 1.0
+rvdw                    = 1.0
+
+; Electrostatics
+coulombtype             = PME
+pme_order               = 4
+fourierspacing          = 0.16
+
+; Temperature coupling
+tcoupl                  = V-rescale
+tc-grps                 = System
+tau_t                   = 0.1
+ref_t                   = {temp_k:.2f}
+
+; Pressure coupling
+pcoupl                  = C-rescale
+pcoupltype              = isotropic
+tau_p                   = 2.0
+ref_p                   = 1.0
+compressibility         = 4.5e-5
+
+; Periodic boundary conditions & dispersion correction
+pbc                     = xyz
+DispCorr                = EnerPres
+
+; Velocity generation
+gen_vel                 = yes
+gen_temp                = {temp_k:.2f}
+gen_seed                = -1
+"""
+        target_path.write_text(content, encoding="utf-8")
+
     def step4_grompp_for_ions(
         self,
         solvated_gro: Path,
@@ -494,6 +602,56 @@ pbc                     = xyz
 
         # Feed "SOL\n" to genion stdin to select solvent molecules for replacement
         self._run_cmd("genion", args, cwd=work_dir, stdin_input="SOL\n")
+
+    def step5b_minimize(
+        self,
+        ionized_gro: Path,
+        top_file: Path,
+        em_mdp: Path,
+        output_tpr: Path,
+        output_gro: Path,
+        work_dir: Path,
+    ) -> bool:
+        """Step 5b: Energy minimization with steep to relax bad steric contacts."""
+        logger.info("[Step 5b] Running gmx grompp & mdrun to relax system steric contacts...")
+        grompp_args = [
+            "-f",
+            str(em_mdp.resolve()),
+            "-c",
+            str(ionized_gro.resolve()),
+            "-p",
+            str(top_file.resolve()),
+            "-o",
+            str(output_tpr.resolve()),
+            "-maxwarn",
+            "1",
+        ]
+        self._run_cmd("grompp", grompp_args, cwd=work_dir)
+
+        # mdrun minimization on CPU with single thread-MPI rank to avoid thread/GPU conflicts
+        mdrun_args = [
+            "-v",
+            "-s",
+            str(output_tpr.resolve()),
+            "-deffnm",
+            "em",
+            "-ntmpi",
+            "1",
+            "-ntomp",
+            "4",
+        ]
+        try:
+            self._run_cmd("mdrun", mdrun_args, cwd=work_dir)
+            em_gro = work_dir / "em.gro"
+            if em_gro.is_file():
+                shutil.copyfile(em_gro, output_gro)
+                return True
+        except Exception as exc:
+            logger.warning(
+                "Energy minimization step failed (%s); proceeding with unminimized coordinates.",
+                exc,
+            )
+        return False
 
     def step6_make_ndx(
         self,
@@ -605,12 +763,30 @@ pbc                     = xyz
         )
 
         # Step 5: genion
+        ionized_gro = output_dir / "05_ionized.gro"
         self.step5_genion(
             ions_tpr=ions_tpr,
             top_file=topol_top,
-            output_gro=system_gro,
+            output_gro=ionized_gro,
             work_dir=output_dir,
         )
+
+        # Step 5b: Energy minimization to relax bad steric contacts
+        minimized = False
+        em_mdp = output_dir / "em.mdp"
+        em_tpr = output_dir / "em.tpr"
+        if self.config.run_energy_minimization:
+            self.write_em_mdp(em_mdp)
+            minimized = self.step5b_minimize(
+                ionized_gro=ionized_gro,
+                top_file=topol_top,
+                em_mdp=em_mdp,
+                output_tpr=em_tpr,
+                output_gro=system_gro,
+                work_dir=output_dir,
+            )
+        if not minimized:
+            shutil.copyfile(ionized_gro, system_gro)
 
         # Step 6: make_ndx
         self.step6_make_ndx(
@@ -628,6 +804,7 @@ pbc                     = xyz
             "posre": str(posre_itp),
             "index": str(index_ndx),
             "ions_mdp": str(ions_mdp),
+            "em_mdp": str(em_mdp),
             **itp_files,
         }
         logger.info(

@@ -191,6 +191,7 @@ class GromacsStagePlanParameters(ContractModel):
     target_ns: PositiveFloat | None = None
     resource_mode: Literal["cpu", "gpu"] = "cpu"
     cpu_threads: Annotated[int, Field(ge=1)] = 1
+    thread_mpi_ranks: Annotated[int, Field(ge=1)] | None = None
     gpu_ids: tuple[StrictInt, ...] = ()
     checkpoint_interval_minutes: PositiveFloat | None = None
     maximum_runtime_hours: PositiveFloat | None = None
@@ -337,6 +338,8 @@ class GromacsMDAdapter:
             mdrun.extend(("-cpt", str(parameters.checkpoint_interval_minutes)))
         if parameters.maximum_runtime_hours is not None:
             mdrun.extend(("-maxh", str(parameters.maximum_runtime_hours)))
+        if parameters.thread_mpi_ranks is not None:
+            mdrun.extend(("-ntmpi", str(parameters.thread_mpi_ranks)))
         mdrun.extend(("-ntomp", str(parameters.cpu_threads), "-pin", "on", "-pinoffset", "0"))
         environment = {"OMP_NUM_THREADS": str(parameters.cpu_threads)}
         if parameters.resource_mode == "gpu":
