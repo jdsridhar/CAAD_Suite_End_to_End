@@ -489,10 +489,10 @@ pbc                     = xyz
 integrator              = steep
 emtol                   = 1000.0
 emstep                  = 0.01
-nsteps                  = 1000
+nsteps                  = 500
 
 ; Neighbor searching and nonbonded
-nstlist                 = 1
+nstlist                 = 20
 cutoff-scheme           = Verlet
 coulombtype             = PME
 rcoulomb                = 1.0
